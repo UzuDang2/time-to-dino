@@ -1,13 +1,409 @@
 <!DOCTYPE html>
-  <html lang="ko">
-  <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>타임투다이노</title>
-  </head>
-  <body>
-  <h1>🦖 타임투다이노</h1>
-  <p>게임 준비 중...</p>
-  <p>곧 업데이트 예정입니다!</p>
-  </body>
-  </html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>🦖 타임투다이노</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+        #root { max-width: 800px; margin: 0 auto; }
+        .stat-box {
+            background: #16213e;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .stat-label { font-size: 12px; color: #aaa; margin-bottom: 4px; }
+        .stat-value { font-size: 18px; font-weight: 600; }
+        button {
+            background: #0f3460;
+            color: #eee;
+            border: 1px solid #16213e;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+        button:hover { background: #16213e; border-color: #e94560; }
+        button:active { transform: scale(0.95); }
+        .card {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+        .card:active { 
+            transform: scale(0.95);
+            box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+        }
+        .hex { cursor: pointer; transition: all 0.2s; }
+        .hex:active { opacity: 0.7; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function Game() {
+            const [tiles, setTiles] = useState([]);
+            const [currentTile, setCurrentTile] = useState(0);
+            const [health, setHealth] = useState(6);
+            const [hunger, setHunger] = useState(12);
+            const [detection, setDetection] = useState(0);
+            const [hand, setHand] = useState([]);
+            const [deck, setDeck] = useState([]);
+            const [graveyard, setGraveyard] = useState([]);
+            const [inventory, setInventory] = useState([]);
+            const [gameOver, setGameOver] = useState(false);
+            const [victory, setVictory] = useState(false);
+            const [message, setMessage] = useState('눈을 뜨자 낯선 숲이 펼쳐졌다.');
+
+            useEffect(() => {
+                initializeGame();
+            }, []);
+
+            function initializeGame() {
+                const newTiles = generateHexMap();
+                setTiles(newTiles);
+                const cards = [
+                    { id: 'search', name: '뒤져보기', count: 5, effect: '아이템 획득', detection: 5 },
+                    { id: 'listen', name: '귀 기울이기', count: 2, effect: '몬스터 감지', detection: -5 },
+                    { id: 'find_food', name: '음식 찾기', count: 1, effect: '음식 획득', detection: 5 },
+                    { id: 'find_weapon', name: '무기 장비 찾기', count: 1, effect: '무기/장비', detection: 10 },
+                    { id: 'hide', name: '숨기', count: 1, effect: '은신', detection: -15 }
+                ];
+                const newDeck = initializeDeck(cards);
+                setDeck(newDeck);
+            }
+
+            function generateHexMap() {
+                const tiles = [];
+                const types = ['start', ...Array(12).fill('normal'), ...Array(4).fill('good'), ...Array(2).fill('trap'), 'exit'];
+                
+                for (let i = types.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [types[i], types[j]] = [types[j], types[i]];
+                }
+                
+                for (let i = 0; i < 20; i++) {
+                    const connections = [];
+                    const count = Math.floor(Math.random() * 3) + 2;
+                    
+                    for (let j = 0; j < count; j++) {
+                        let target;
+                        do {
+                            target = Math.floor(Math.random() * 20);
+                        } while (target === i || connections.includes(target));
+                        connections.push(target);
+                    }
+                    
+                    tiles.push({
+                        id: i,
+                        type: types[i],
+                        connections,
+                        visited: i === 0,
+                        discovered: i === 0
+                    });
+                }
+                
+                return tiles;
+            }
+
+            function initializeDeck(cards) {
+                const deck = [];
+                cards.forEach(card => {
+                    for (let i = 0; i < card.count; i++) {
+                        deck.push({ ...card, uid: `${card.id}_${i}` });
+                    }
+                });
+                return shuffleDeck(deck);
+            }
+
+            function shuffleDeck(deck) {
+                const newDeck = [...deck];
+                for (let i = newDeck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+                }
+                return newDeck;
+            }
+
+            useEffect(() => {
+                if (hand.length < 5 && deck.length > 0) {
+                    const drawn = deck.slice(0, 5 - hand.length);
+                    setHand([...hand, ...drawn]);
+                    setDeck(deck.slice(5 - hand.length));
+                } else if (hand.length < 5 && deck.length === 0 && graveyard.length > 0) {
+                    const newDeck = shuffleDeck(graveyard);
+                    const drawn = newDeck.slice(0, 5 - hand.length);
+                    setHand([...hand, ...drawn]);
+                    setDeck(newDeck.slice(5 - hand.length));
+                    setGraveyard([]);
+                }
+            }, [hand, deck, graveyard]);
+
+            useEffect(() => {
+                if (health <= 0 || hunger <= 0) {
+                    setGameOver(true);
+                    setMessage(health <= 0 ? '생명력이 다했다...' : '배고픔을 이기지 못했다...');
+                }
+            }, [health, hunger]);
+
+            useEffect(() => {
+                if (tiles.length > 0 && tiles[currentTile]?.type === 'exit') {
+                    setVictory(true);
+                    setMessage('탈출에 성공했다!');
+                }
+            }, [currentTile, tiles]);
+
+            const useCard = (card) => {
+                setHand(hand.filter(c => c.uid !== card.uid));
+                setGraveyard([...graveyard, card]);
+                
+                const newDetection = Math.min(100, Math.max(0, detection + card.detection));
+                setDetection(newDetection);
+                
+                let msg = `${card.name}을(를) 사용했다. `;
+                
+                if (card.id === 'search') {
+                    const items = Math.floor(Math.random() * 2) + 1;
+                    setInventory([...inventory, ...Array(items).fill('재료')]);
+                    msg += `재료 ${items}개를 발견했다.`;
+                } else if (card.id === 'find_food') {
+                    const food = Math.floor(Math.random() * 2) + 2;
+                    setInventory([...inventory, ...Array(food).fill('음식')]);
+                    msg += `음식 ${food}개를 발견했다.`;
+                } else if (card.id === 'listen') {
+                    msg += '주변에서 이상한 소리가 들린다...';
+                } else if (card.id === 'hide') {
+                    msg += '조용히 몸을 숨겼다.';
+                } else if (card.id === 'find_weapon') {
+                    setInventory([...inventory, '나무창']);
+                    msg += '나무창을 발견했다!';
+                }
+                
+                setMessage(msg);
+            };
+
+            const moveTo = (targetId) => {
+                setHunger(hunger - 1);
+                const newTiles = tiles.map(t => 
+                    t.id === targetId ? { ...t, visited: true, discovered: true } : t
+                );
+                
+                tiles[targetId].connections.forEach(connId => {
+                    newTiles[connId].discovered = true;
+                });
+                
+                setTiles(newTiles);
+                setCurrentTile(targetId);
+                
+                const tile = newTiles[targetId];
+                let msg = '';
+                
+                if (tile.type === 'normal') {
+                    msg = '평범한 숲길이다.';
+                } else if (tile.type === 'good') {
+                    msg = '졸졸 흐르는 물소리가 들린다. 좋은 곳을 발견했다!';
+                } else if (tile.type === 'trap') {
+                    const damage = Math.floor(Math.random() * 2) + 1;
+                    setHealth(health - damage);
+                    msg = `함정이다! 생명력 ${damage}을(를) 잃었다.`;
+                } else if (tile.type === 'exit') {
+                    msg = '탈출구다!';
+                }
+                
+                setMessage(msg);
+            };
+
+            const getTileColor = (tile) => {
+                if (!tile.visited && !tile.discovered) return '#0f3460';
+                if (tile.type === 'start') return '#4CAF50';
+                if (tile.type === 'exit') return '#2196F3';
+                if (tile.type === 'good') return '#FFC107';
+                if (tile.type === 'trap') return '#e94560';
+                return '#16213e';
+            };
+
+            const detectionColor = detection < 30 ? '#4CAF50' : 
+                                   detection < 60 ? '#FFC107' : '#e94560';
+
+            if (tiles.length === 0) {
+                return <div style={{ textAlign: 'center', padding: '40px' }}>게임 로딩 중...</div>;
+            }
+
+            return (
+                <div style={{ padding: '10px 0' }}>
+                    <h1 style={{ marginBottom: '15px', fontSize: '24px' }}>🦖 타임투다이노</h1>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', marginBottom: '15px' }}>
+                        <div className="stat-box">
+                            <div className="stat-label">생명력</div>
+                            <div className="stat-value">❤️ {health}/6</div>
+                        </div>
+                        <div className="stat-box">
+                            <div className="stat-label">배고픔</div>
+                            <div className="stat-value">🍖 {hunger}/12</div>
+                        </div>
+                    </div>
+                    
+                    <div className="stat-box" style={{ marginBottom: '15px' }}>
+                        <div className="stat-label">🚨 몬스터 발각 확률</div>
+                        <div style={{ background: '#0f3460', height: '24px', borderRadius: '12px', overflow: 'hidden', marginTop: '8px' }}>
+                            <div style={{ 
+                                width: `${detection}%`, 
+                                height: '100%', 
+                                background: detectionColor, 
+                                transition: 'all 0.3s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                color: '#fff'
+                            }}>
+                                {detection > 15 ? `${detection}%` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="stat-box" style={{ marginBottom: '15px', minHeight: '300px' }}>
+                        <div className="stat-label" style={{ marginBottom: '10px' }}>육각형 맵</div>
+                        <svg viewBox="0 0 600 450" style={{ width: '100%', height: 'auto' }}>
+                            {tiles.map((tile, i) => {
+                                const x = 80 + (i % 5) * 100 + (Math.floor(i / 5) % 2) * 50;
+                                const y = 70 + Math.floor(i / 5) * 90;
+                                const isCurrent = i === currentTile;
+                                const canMove = tiles[currentTile].connections.includes(i);
+                                
+                                return (
+                                    <g key={tile.id}>
+                                        <polygon
+                                            className="hex"
+                                            points={`${x},${y-30} ${x+25},${y-15} ${x+25},${y+15} ${x},${y+30} ${x-25},${y+15} ${x-25},${y-15}`}
+                                            fill={tile.visited || tile.discovered ? getTileColor(tile) : '#0f3460'}
+                                            stroke={isCurrent ? '#e94560' : '#16213e'}
+                                            strokeWidth={isCurrent ? '3' : '1.5'}
+                                            opacity={tile.discovered ? 1 : 0.4}
+                                            onClick={() => canMove && !gameOver && !victory && moveTo(i)}
+                                        />
+                                        {tile.visited && (
+                                            <text x={x} y={y + 5} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="600">
+                                                {tile.type === 'start' ? '시작' : 
+                                                 tile.type === 'exit' ? '탈출' : 
+                                                 i === currentTile ? '현재' : ''}
+                                            </text>
+                                        )}
+                                    </g>
+                                );
+                            })}
+                        </svg>
+                    </div>
+
+                    <div className="stat-box" style={{ marginBottom: '15px' }}>
+                        <div style={{ fontSize: '14px', lineHeight: '1.6' }}>{message}</div>
+                    </div>
+
+                    {!gameOver && !victory && (
+                        <>
+                            <div style={{ marginBottom: '10px', fontSize: '13px', color: '#aaa' }}>
+                                손패 ({hand.length}/5) · 덱 {deck.length}장 · 무덤 {graveyard.length}장
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px', marginBottom: '15px' }}>
+                                {hand.map(card => (
+                                    <div key={card.uid} className="card" onClick={() => useCard(card)}>
+                                        <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '5px' }}>{card.name}</div>
+                                        <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>{card.effect}</div>
+                                        <div style={{ fontSize: '11px', color: card.detection > 0 ? '#e94560' : '#4CAF50', fontWeight: '500' }}>
+                                            발각 {card.detection > 0 ? '+' : ''}{card.detection}%
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div style={{ marginBottom: '10px', fontSize: '13px', color: '#aaa' }}>
+                                이동 가능한 타일
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '15px' }}>
+                                {tiles[currentTile].connections.map(connId => (
+                                    <button key={connId} onClick={() => moveTo(connId)}>
+                                        #{connId} {tiles[connId].visited ? '(방문)' : tiles[connId].discovered ? '(발견)' : '(미지)'}
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    {inventory.length > 0 && (
+                        <div style={{ marginTop: '15px' }}>
+                            <div style={{ fontSize: '13px', color: '#aaa', marginBottom: '8px' }}>소지품 ({inventory.length})</div>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                {inventory.map((item, i) => (
+                                    <span key={i} style={{ 
+                                        background: '#16213e', 
+                                        padding: '5px 10px', 
+                                        borderRadius: '6px', 
+                                        fontSize: '12px',
+                                        border: '1px solid #0f3460'
+                                    }}>
+                                        {item}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {(gameOver || victory) && (
+                        <div style={{ 
+                            background: victory ? '#4CAF50' : '#e94560', 
+                            color: 'white',
+                            padding: '30px', 
+                            borderRadius: '12px', 
+                            textAlign: 'center',
+                            marginTop: '20px'
+                        }}>
+                            <div style={{ fontSize: '22px', fontWeight: '600', marginBottom: '16px' }}>
+                                {victory ? '🎉 승리!' : '💀 게임 오버'}
+                            </div>
+                            <button 
+                                onClick={() => window.location.reload()}
+                                style={{ 
+                                    background: 'white',
+                                    color: '#333',
+                                    border: 'none',
+                                    padding: '12px 24px',
+                                    fontSize: '15px',
+                                    fontWeight: '600'
+                                }}
+                            >
+                                다시 시작
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<Game />, document.getElementById('root'));
+    </script>
+</body>
+</html>
