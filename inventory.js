@@ -1,7 +1,7 @@
 // inventory.js - 테트리스식 인벤토리 시스템
 
 class InventorySystem {
-    constructor(rows = 6, cols = 8) {
+    constructor(rows = 6, cols = 5) {
         this.rows = rows;
         this.cols = cols;
         this.grid = Array(rows).fill(null).map(() => Array(cols).fill(null));
