@@ -1,0 +1,168 @@
+/* gameStyles.css - 게임 UI 스타일 */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    overflow: hidden;
+}
+
+#root { 
+    width: 100vw; 
+    height: 100vh; 
+    display: flex; 
+    flex-direction: column; 
+}
+
+/* 스탯 박스 */
+.stat-box {
+    background: #16213e;
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.stat-label { 
+    font-size: 11px; 
+    color: #aaa; 
+    margin-bottom: 2px; 
+}
+
+.stat-value { 
+    font-size: 16px; 
+    font-weight: 600; 
+}
+
+/* 버튼 */
+button {
+    background: #0f3460;
+    color: #eee;
+    border: 1px solid #16213e;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    touch-action: manipulation;
+}
+
+button:hover { 
+    background: #16213e; 
+    border-color: #e94560; 
+}
+
+button:active { 
+    transform: scale(0.95); 
+}
+
+/* 카드 */
+.card {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    touch-action: manipulation;
+}
+
+.card:active { 
+    transform: scale(0.95);
+    box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+}
+
+/* 맵 컨테이너 */
+.map-container {
+    flex: 1;
+    overflow: auto;
+    background: #0a0e27;
+    position: relative;
+}
+
+.map-svg { 
+    display: block; 
+}
+
+/* 육각형 타일 */
+.hex-tile {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.hex-tile:hover { 
+    filter: brightness(1.2); 
+}
+
+.hex-tile.current { 
+    filter: drop-shadow(0 0 8px #e94560); 
+}
+
+/* 인벤토리 */
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 45px);
+    grid-template-rows: repeat(6, 45px);
+    gap: 2px;
+    background: #0f3460;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.inventory-cell {
+    background: #16213e;
+    border: 1px solid #0f3460;
+}
+
+.inventory-cell.occupied { 
+    background: #2a4365; 
+}
+
+.inventory-item {
+    position: absolute;
+    background: #4a5568;
+    border: 2px solid #e94560;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.inventory-item.selected {
+    background: #e94560;
+    z-index: 10;
+}
+
+/* UI 패널 */
+.ui-panel {
+    background: #16213e;
+    padding: 10px;
+}
+
+/* 모달 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal-content {
+    background: #16213e;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+}
