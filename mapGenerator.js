@@ -5,13 +5,14 @@ class MapGenerator {
         this.gridSize = gridSize;
     }
 
-    // 육각형 그리드 좌표 생성
+    // 육각형 그리드 좌표 생성 (간격 축소)
     generateHexPositions() {
         const positions = [];
         for (let row = 0; row < this.gridSize; row++) {
             for (let col = 0; col < this.gridSize; col++) {
-                const x = col * 150 + (row % 2) * 75 + 100;
-                const y = row * 130 + 100;
+                // 타일 간격 축소: 150 → 110, 75 → 55, 130 → 95
+                const x = col * 110 + (row % 2) * 55 + 100;
+                const y = row * 95 + 100;
                 positions.push({ x, y, row, col });
             }
         }
@@ -52,7 +53,7 @@ class MapGenerator {
         return neighbors.filter(n => n >= 0 && n < this.gridSize * this.gridSize);
     }
 
-    // 미로 생성 (Recursive Backtracking)
+    // 미로 생성 (Recursive Backtracking) - 복잡도 증가
     generateMaze(playerStart, exitPos) {
         const totalTiles = this.gridSize * this.gridSize;
         const positions = this.generateHexPositions();
@@ -96,8 +97,8 @@ class MapGenerator {
             }
         }
         
-        // 추가 랜덤 연결 (미로를 덜 직선적으로)
-        const extraConnectionsCount = Math.floor(totalTiles * 0.1);
+        // 추가 랜덤 연결 증가 (10% → 25%): 미로를 더 복잡하게
+        const extraConnectionsCount = Math.floor(totalTiles * 0.25);
         for (let i = 0; i < extraConnectionsCount; i++) {
             const randomTile = Math.floor(Math.random() * totalTiles);
             const neighbors = this.getHexNeighbors(randomTile, positions);

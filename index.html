@@ -159,6 +159,12 @@
             function initializeGame() {
                 const mapGen = new MapGenerator(7);
                 const { tiles: newTiles, playerStart, bossPos, exitPos } = mapGen.generate();
+                
+                // 시작 타일의 인접 타일들을 discovered로 설정 (물음표로 보이게)
+                newTiles[playerStart].connections.forEach(conn => {
+                    newTiles[conn].discovered = true;
+                });
+                
                 setTiles(newTiles);
                 setCurrentTile(playerStart);
                 
@@ -268,10 +274,17 @@
                 setHunger(hunger - 1);
                 setTime(0);
                 
-                // 이동한 타일을 discovered로 설정
-                const newTiles = tiles.map(t => 
-                    t.id === targetId ? { ...t, visited: true, discovered: true } : t
-                );
+                // 이동한 타일 방문 처리 + 인접 타일들 discovered로 설정
+                const newTiles = tiles.map(t => {
+                    if (t.id === targetId) {
+                        return { ...t, visited: true, discovered: true };
+                    }
+                    // 새로운 위치의 인접 타일들을 discovered로 설정
+                    if (tiles[targetId].connections.includes(t.id)) {
+                        return { ...t, discovered: true };
+                    }
+                    return t;
+                });
                 
                 setTiles(newTiles);
                 setCurrentTile(targetId);
@@ -359,13 +372,8 @@
                 return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>게임 로딩 중...</div>;
             }
 
-            // 한번이라도 발견했거나 현재 인접한 타일만 표시
-            const visibleTiles = tiles.filter(t => 
-                t.visited || 
-                t.discovered ||
-                t.revealed ||
-                tiles[currentTile].connections.includes(t.id)
-            );
+            // 발견되었거나 방문한 타일만 표시
+            const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
 
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -440,19 +448,19 @@
                     </div>
 
                     <div className="map-container" ref={mapRef}>
-                        <svg className="map-svg" width="1300" height="1200">
+                        <svg className="map-svg" width="1100" height="1000">
                             {visibleTiles.map((tile) => {
                                 const { x, y } = tile.position;
                                 const isCurrent = tile.id === currentTile;
                                 const canMove = tiles[currentTile].connections.includes(tile.id);
                                 const isBoss = boss && tile.id === boss.position && tile.revealed;
-                                const isRevealed = tile.revealed || tile.visited || tile.discovered;
+                                const isRevealed = tile.revealed || tile.visited;
                                 
                                 return (
                                     <g key={tile.id}>
                                         <polygon
                                             className={`hex-tile ${isCurrent ? 'current' : ''}`}
-                                            points={`${x},${y-60} ${x+52},${y-30} ${x+52},${y+30} ${x},${y+60} ${x-52},${y+30} ${x-52},${y-30}`}
+                                            points={`${x},${y-50} ${x+43},${y-25} ${x+43},${y+25} ${x},${y+50} ${x-43},${y+25} ${x-43},${y-25}`}
                                             fill={getTileColor(tile)}
                                             stroke={isCurrent ? '#e94560' : canMove ? '#4CAF50' : '#0f3460'}
                                             strokeWidth={isCurrent ? '4' : canMove ? '3' : '2'}
@@ -461,22 +469,16 @@
                                         />
                                         {isRevealed ? (
                                             <>
-                                                <text x={x} y={y - 10} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="600">
-                                                    {isCurrent ? '현재' :
-                                                     tile.type === 'start' ? '내위치' : 
+                                                <text x={x} y={y} textAnchor="middle" fill="#fff" fontSize="13" fontWeight="600">
+                                                    {isCurrent ? '내위치' :
                                                      tile.type === 'exit' ? '탈출구' : 
                                                      isBoss ? '🦖' :
                                                      tile.type === 'good' ? '👍' :
                                                      tile.type === 'trap' ? '⚠️' : ''}
                                                 </text>
-                                                {canMove && !isCurrent && (
-                                                    <text x={x} y={y + 25} textAnchor="middle" fill="#4CAF50" fontSize="10" fontWeight="600">
-                                                        이동가능
-                                                    </text>
-                                                )}
                                             </>
                                         ) : (
-                                            <text x={x} y={y + 5} textAnchor="middle" fill="#666" fontSize="28" fontWeight="bold">
+                                            <text x={x} y={y + 5} textAnchor="middle" fill="#666" fontSize="24" fontWeight="bold">
                                                 ?
                                             </text>
                                         )}
