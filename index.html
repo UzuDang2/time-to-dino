@@ -6,6 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>🦖 타임투다이노</title>
+    <script src="mapGenerator.js"></script>
     <script src="inventory.js"></script>
     <script src="boss.js"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -60,19 +61,13 @@
             background: #0a0e27;
             position: relative;
         }
-        .map-svg {
-            display: block;
-        }
+        .map-svg { display: block; }
         .hex-tile {
             cursor: pointer;
             transition: all 0.2s;
         }
-        .hex-tile:hover {
-            filter: brightness(1.2);
-        }
-        .hex-tile.current {
-            filter: drop-shadow(0 0 8px #e94560);
-        }
+        .hex-tile:hover { filter: brightness(1.2); }
+        .hex-tile.current { filter: drop-shadow(0 0 8px #e94560); }
         .inventory-grid {
             display: grid;
             grid-template-columns: repeat(5, 45px);
@@ -86,9 +81,7 @@
             background: #16213e;
             border: 1px solid #0f3460;
         }
-        .inventory-cell.occupied {
-            background: #2a4365;
-        }
+        .inventory-cell.occupied { background: #2a4365; }
         .inventory-item {
             position: absolute;
             background: #4a5568;
@@ -164,7 +157,8 @@
             }, []);
 
             function initializeGame() {
-                const { tiles: newTiles, playerStart, bossPos, exitPos } = generateMazeMap();
+                const mapGen = new MapGenerator(7);
+                const { tiles: newTiles, playerStart, bossPos, exitPos } = mapGen.generate();
                 setTiles(newTiles);
                 setCurrentTile(playerStart);
                 
@@ -186,181 +180,6 @@
                 const newBoss = new BossMonster(newTiles, playerStart);
                 newBoss.position = bossPos;
                 setBoss(newBoss);
-            }
-
-            function generateMazeMap() {
-                const gridSize = 7;
-                const tiles = [];
-                const positions = [];
-                
-                // 1. 육각형 그리드 좌표 생성
-                for (let row = 0; row < gridSize; row++) {
-                    for (let col = 0; col < gridSize; col++) {
-                        const index = row * gridSize + col;
-                        const x = col * 150 + (row % 2) * 75 + 100;
-                        const y = row * 130 + 100;
-                        
-                        positions.push({ x, y, row, col });
-                        
-                        tiles.push({
-                            id: index,
-                            type: 'normal',
-                            connections: [],
-                            visited: false,
-                            discovered: false,
-                            revealed: false, // 귀 기울이기로 공개됨
-                            position: { x, y, row, col }
-                        });
-                    }
-                }
-                
-                // 2. 가능한 모든 육각형 연결 후보 생성
-                const allPossibleConnections = [];
-                for (let i = 0; i < tiles.length; i++) {
-                    const { row, col } = positions[i];
-                    const neighbors = [];
-                    
-                    if (row % 2 === 0) {
-                        if (row > 0) {
-                            neighbors.push((row - 1) * gridSize + col);
-                            if (col > 0) neighbors.push((row - 1) * gridSize + col - 1);
-                        }
-                        if (col > 0) neighbors.push(row * gridSize + col - 1);
-                        if (col < gridSize - 1) neighbors.push(row * gridSize + col + 1);
-                        if (row < gridSize - 1) {
-                            neighbors.push((row + 1) * gridSize + col);
-                            if (col > 0) neighbors.push((row + 1) * gridSize + col - 1);
-                        }
-                    } else {
-                        if (row > 0) {
-                            neighbors.push((row - 1) * gridSize + col);
-                            if (col < gridSize - 1) neighbors.push((row - 1) * gridSize + col + 1);
-                        }
-                        if (col > 0) neighbors.push(row * gridSize + col - 1);
-                        if (col < gridSize - 1) neighbors.push(row * gridSize + col + 1);
-                        if (row < gridSize - 1) {
-                            neighbors.push((row + 1) * gridSize + col);
-                            if (col < gridSize - 1) neighbors.push((row + 1) * gridSize + col + 1);
-                        }
-                    }
-                    
-                    neighbors.forEach(n => {
-                        if (n >= 0 && n < tiles.length && i < n) {
-                            allPossibleConnections.push([i, n]);
-                        }
-                    });
-                }
-                
-                // 3. 시작점과 탈출구 설정
-                const cornerCandidates = [0, 6, 42, 48, 3, 45];
-                const playerStart = cornerCandidates[Math.floor(Math.random() * cornerCandidates.length)];
-                
-                // 플레이어 시작점에서 가장 먼 곳을 탈출구로
-                let maxDist = 0;
-                let exitPos = 0;
-                for (let i = 0; i < tiles.length; i++) {
-                    const dist = Math.abs(positions[i].row - positions[playerStart].row) + 
-                                 Math.abs(positions[i].col - positions[playerStart].col);
-                    if (dist > maxDist) {
-                        maxDist = dist;
-                        exitPos = i;
-                    }
-                }
-                
-                // 4. Prim's Algorithm으로 미로 생성 (시작점→탈출구 경로 보장)
-                const visited = new Set([playerStart]);
-                const edges = [];
-                
-                // 시작점에서 가능한 엣지 추가
-                allPossibleConnections.forEach(([a, b]) => {
-                    if (a === playerStart || b === playerStart) {
-                        edges.push([a, b]);
-                    }
-                });
-                
-                while (visited.size < tiles.length && edges.length > 0) {
-                    // 랜덤 엣지 선택
-                    const edgeIndex = Math.floor(Math.random() * edges.length);
-                    const [a, b] = edges[edgeIndex];
-                    edges.splice(edgeIndex, 1);
-                    
-                    const newNode = visited.has(a) ? b : a;
-                    
-                    if (!visited.has(newNode)) {
-                        // 연결 추가
-                        tiles[a].connections.push(b);
-                        tiles[b].connections.push(a);
-                        visited.add(newNode);
-                        
-                        // 새 노드에서 가능한 엣지 추가
-                        allPossibleConnections.forEach(([x, y]) => {
-                            if ((x === newNode && !visited.has(y)) || 
-                                (y === newNode && !visited.has(x))) {
-                                edges.push([x, y]);
-                            }
-                        });
-                    }
-                }
-                
-                // 5. 추가 랜덤 연결 (미로를 덜 직선적으로)
-                const extraConnections = Math.floor(allPossibleConnections.length * 0.15);
-                for (let i = 0; i < extraConnections; i++) {
-                    const [a, b] = allPossibleConnections[Math.floor(Math.random() * allPossibleConnections.length)];
-                    if (!tiles[a].connections.includes(b)) {
-                        tiles[a].connections.push(b);
-                        tiles[b].connections.push(a);
-                    }
-                }
-                
-                // 6. 타일 타입 설정
-                tiles[playerStart].type = 'start';
-                tiles[playerStart].visited = true;
-                tiles[playerStart].discovered = true;
-                
-                tiles[exitPos].type = 'exit';
-                
-                // 7. 보스 위치 (플레이어에서 먼 곳)
-                const distances = tiles.map((tile, index) => ({
-                    index,
-                    distance: calculateMazeDistance(tiles, playerStart, index)
-                })).filter(d => d.distance >= 5 && d.index !== exitPos);
-                
-                distances.sort((a, b) => b.distance - a.distance);
-                const bossPos = distances.length > 0 ? distances[Math.floor(Math.random() * Math.min(3, distances.length))].index : exitPos - 1;
-                
-                // 8. 특수 타일 배치
-                const availableIndices = tiles
-                    .map((t, i) => i)
-                    .filter(i => tiles[i].type === 'normal' && i !== bossPos);
-                
-                const specialTiles = { good: 4, trap: 2 };
-                for (const [type, count] of Object.entries(specialTiles)) {
-                    for (let i = 0; i < count && availableIndices.length > 0; i++) {
-                        const randomIndex = Math.floor(Math.random() * availableIndices.length);
-                        const tileIndex = availableIndices.splice(randomIndex, 1)[0];
-                        tiles[tileIndex].type = type;
-                    }
-                }
-                
-                return { tiles, playerStart, bossPos, exitPos };
-            }
-
-            function calculateMazeDistance(tiles, from, to) {
-                const queue = [{ tile: from, dist: 0 }];
-                const visited = new Set([from]);
-                
-                while (queue.length > 0) {
-                    const { tile, dist } = queue.shift();
-                    if (tile === to) return dist;
-                    
-                    for (const conn of tiles[tile].connections) {
-                        if (!visited.has(conn)) {
-                            visited.add(conn);
-                            queue.push({ tile: conn, dist: dist + 1 });
-                        }
-                    }
-                }
-                return Infinity;
             }
 
             function initializeDeck(cards) {
@@ -418,7 +237,7 @@
                     inventory.addItem('food');
                     msg += `음식을 발견했다.`;
                 } else if (card.id === 'listen') {
-                    // 귀 기울이기: 인접 타일 공개
+                    // 귀 기울이기: 인접 타일 영구 공개
                     const newTiles = tiles.map(t => {
                         if (tiles[currentTile].connections.includes(t.id)) {
                             return { ...t, revealed: true };
@@ -449,6 +268,7 @@
                 setHunger(hunger - 1);
                 setTime(0);
                 
+                // 이동한 타일을 discovered로 설정
                 const newTiles = tiles.map(t => 
                     t.id === targetId ? { ...t, visited: true, discovered: true } : t
                 );
@@ -539,9 +359,11 @@
                 return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>게임 로딩 중...</div>;
             }
 
-            // 연결된 타일만 표시
+            // 한번이라도 발견했거나 현재 인접한 타일만 표시
             const visibleTiles = tiles.filter(t => 
                 t.visited || 
+                t.discovered ||
+                t.revealed ||
                 tiles[currentTile].connections.includes(t.id)
             );
 
@@ -624,7 +446,7 @@
                                 const isCurrent = tile.id === currentTile;
                                 const canMove = tiles[currentTile].connections.includes(tile.id);
                                 const isBoss = boss && tile.id === boss.position && tile.revealed;
-                                const isRevealed = tile.revealed || tile.visited;
+                                const isRevealed = tile.revealed || tile.visited || tile.discovered;
                                 
                                 return (
                                     <g key={tile.id}>
@@ -640,21 +462,21 @@
                                         {isRevealed ? (
                                             <>
                                                 <text x={x} y={y - 10} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="600">
-                                                    {tile.type === 'start' ? '내위치' : 
+                                                    {isCurrent ? '현재' :
+                                                     tile.type === 'start' ? '내위치' : 
                                                      tile.type === 'exit' ? '탈출구' : 
-                                                     isCurrent ? '현재' :
                                                      isBoss ? '🦖' :
                                                      tile.type === 'good' ? '👍' :
                                                      tile.type === 'trap' ? '⚠️' : ''}
                                                 </text>
-                                                {!isCurrent && !isBoss && canMove && (
-                                                    <text x={x} y={y + 25} textAnchor="middle" fill="#4CAF50" fontSize="10">
+                                                {canMove && !isCurrent && (
+                                                    <text x={x} y={y + 25} textAnchor="middle" fill="#4CAF50" fontSize="10" fontWeight="600">
                                                         이동가능
                                                     </text>
                                                 )}
                                             </>
                                         ) : (
-                                            <text x={x} y={y + 5} textAnchor="middle" fill="#666" fontSize="28">
+                                            <text x={x} y={y + 5} textAnchor="middle" fill="#666" fontSize="28" fontWeight="bold">
                                                 ?
                                             </text>
                                         )}
