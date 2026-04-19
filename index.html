@@ -194,6 +194,73 @@
             );
         }
 
+        // 타일 이벤트 모달 컴포넌트
+        function TileEventModal({ tile, onClose }) {
+            if (!tile) return null;
+            
+            const getEventInfo = () => {
+                switch(tile.type) {
+                    case 'good':
+                        return {
+                            emoji: '✨',
+                            title: '좋은 곳 발견!',
+                            message: '이곳은 휴식하기 좋은 장소입니다.',
+                            color: '#FFC107'
+                        };
+                    case 'trap':
+                        return {
+                            emoji: '⚠️',
+                            title: '함정!',
+                            message: tile.damage ? `생명력이 ${tile.damage} 감소했습니다!` : '위험한 함정이 있습니다!',
+                            color: '#e94560'
+                        };
+                    default:
+                        return null;
+                }
+            };
+            
+            const eventInfo = getEventInfo();
+            if (!eventInfo) return null;
+            
+            return (
+                <div className="modal">
+                    <div style={{ 
+                        background: eventInfo.color, 
+                        color: 'white',
+                        padding: '30px', 
+                        borderRadius: '12px', 
+                        textAlign: 'center',
+                        minWidth: '300px'
+                    }}>
+                        <div style={{ fontSize: '48px', marginBottom: '15px' }}>
+                            {eventInfo.emoji}
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: '600', marginBottom: '15px' }}>
+                            {eventInfo.title}
+                        </div>
+                        <div style={{ fontSize: '16px', marginBottom: '20px' }}>
+                            {eventInfo.message}
+                        </div>
+                        <button 
+                            onClick={onClose}
+                            style={{ 
+                                background: 'white',
+                                color: eventInfo.color,
+                                border: 'none',
+                                padding: '12px 30px',
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         // 인벤토리 모달 컴포넌트
         function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory }) {
             return (
@@ -303,6 +370,7 @@
             const [message, setMessage] = useState('눈을 뜨자 낯선 숲이 펼쳐졌다.');
             const [showInventory, setShowInventory] = useState(false);
             const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
+            const [eventTile, setEventTile] = useState(null);
             const mapRef = useRef(null);
 
             // 게임 초기화
@@ -502,10 +570,14 @@
                     msg = '평범한 숲길이다.';
                 } else if (tile.type === 'good') {
                     msg = '좋은 곳을 발견했다!';
+                    // 이벤트 모달 표시
+                    setEventTile({ ...tile });
                 } else if (tile.type === 'trap') {
                     const damage = Math.floor(Math.random() * 2) + 1;
                     setHealth(health - damage);
                     msg = `함정! 생명력 -${damage}`;
+                    // 이벤트 모달 표시 (데미지 정보 포함)
+                    setEventTile({ ...tile, damage });
                 } else if (tile.type === 'exit') {
                     msg = '탈출구다!';
                 }
@@ -559,6 +631,13 @@
                         victory={victory}
                         moveTo={moveTo}
                     />
+
+                    {eventTile && (
+                        <TileEventModal 
+                            tile={eventTile} 
+                            onClose={() => setEventTile(null)} 
+                        />
+                    )}
 
                     {showInventory && inventory && (
                         <InventoryModal
