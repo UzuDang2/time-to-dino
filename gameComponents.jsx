@@ -83,7 +83,63 @@ function HandCards({ hand, gameOver, victory, useCard }) {
 }
 
 // 육각형 타일 컴포넌트
+// HexTile 컴포넌트 수정
 function HexTile({ tile, currentTile, tiles, boss, gameOver, victory, moveTo }) {
+    const { x, y } = tile.position;
+    const isCurrent = tile.id === currentTile;
+    const canMove = tiles[currentTile].connections.includes(tile.id);
+    const isBoss = boss && tile.id === boss.position && tile.revealed;
+    const isRevealed = tile.revealed || tile.visited;
+    
+    // 🔧 길이 없는 타일 (connections 없음) 판별
+    const hasNoConnections = tile.connections.length === 0 && 
+                            tile.type !== 'start' && 
+                            tile.type !== 'exit';
+    
+    const getTileColor = (tile) => {
+        if (!tile.visited && !tile.revealed) return '#1a1f3a';
+        if (tile.type === 'start') return '#4CAF50';
+        if (tile.type === 'exit' && tile.revealed) return '#2196F3';
+        if (tile.type === 'good' && tile.revealed) return '#FFC107';
+        if (tile.type === 'trap' && tile.revealed) return '#e94560';
+        if (boss && tile.id === boss.position && tile.revealed) return '#8B0000';
+        return '#2d3561';
+    };
+    
+    const getTileLabel = () => {
+        if (!isRevealed && !isCurrent) return '?';
+        if (isCurrent) return '내위치';
+        if (tile.type === 'exit') return '탈출구';
+        if (isBoss) return '🦖';
+        if (tile.type === 'good') return '👍';
+        if (tile.type === 'trap') return '⚠️';
+        return '';
+    };
+    
+    return (
+        <g key={tile.id} opacity={hasNoConnections ? 0 : 1}>
+            <polygon
+                className={`hex-tile ${isCurrent ? 'current' : ''}`}
+                points={`${x},${y-50} ${x+43},${y-25} ${x+43},${y+25} ${x},${y+50} ${x-43},${y+25} ${x-43},${y-25}`}
+                fill={isCurrent ? '#f5f5f5' : getTileColor(tile)}
+                stroke={isCurrent ? 'none' : canMove ? '#4CAF50' : '#0f3460'}
+                strokeWidth={canMove ? '3' : '2'}
+                opacity={isRevealed || isCurrent ? 1 : 0.6}
+                onClick={() => !gameOver && !victory && canMove && moveTo(tile.id)}
+            />
+            <text 
+                x={x} 
+                y={y + 5} 
+                textAnchor="middle" 
+                fill={isCurrent ? '#1a1a2e' : isRevealed ? '#fff' : '#666'} 
+                fontSize={isRevealed || isCurrent ? '14' : '24'} 
+                fontWeight={isRevealed || isCurrent ? '700' : 'bold'}
+            >
+                {getTileLabel()}
+            </text>
+        </g>
+    );
+}function HexTile({ tile, currentTile, tiles, boss, gameOver, victory, moveTo }) {
     const { x, y } = tile.position;
     const isCurrent = tile.id === currentTile;
     const canMove = tiles[currentTile].connections.includes(tile.id);

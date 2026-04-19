@@ -165,31 +165,31 @@
 
             // 타일 이동
             const moveTo = (targetId) => {
-                if (!tiles[currentTile].connections.includes(targetId)) {
-                    setMessage('그곳으로는 갈 수 없습니다!');
-                    return;
-                }
-                
-                const newMoveCount = playerMoveCount + 1;
-                setPlayerMoveCount(newMoveCount);
-                setHunger(hunger - 1);
-                setTime(0);
-                
-                // 🔧 수정: getHexNeighbors를 사용하여 물리적으로 인접한 모든 타일을 discovered로 설정
-                const mapGen = new MapGenerator(7);
-                const positions = mapGen.generateHexPositions();
-                const targetNeighbors = mapGen.getHexNeighbors(targetId, positions);
-                
-                const newTiles = tiles.map(t => {
-                    if (t.id === targetId) {
-                        return { ...t, visited: true, discovered: true };
-                    }
-                    // 새로운 위치의 물리적 인접 타일들을 discovered로 설정
-                    if (targetNeighbors.includes(t.id)) {
-                        return { ...t, discovered: true };
-                    }
-                    return t;
-                });
+    if (!tiles[currentTile].connections.includes(targetId)) {
+        setMessage('그곳으로는 갈 수 없습니다!');
+        return;
+    }
+    
+    const newMoveCount = playerMoveCount + 1;
+    setPlayerMoveCount(newMoveCount);
+    setHunger(hunger - 1);
+    setTime(0);
+    
+    const mapGen = new MapGenerator(7);
+    const positions = mapGen.generateHexPositions();
+    const targetNeighbors = mapGen.getHexNeighbors(targetId, positions);
+    
+    const newTiles = tiles.map(t => {
+        if (t.id === targetId) {
+            // 🔧 도착한 타일은 즉시 모든 정보 공개
+            return { ...t, visited: true, discovered: true, revealed: true };
+        }
+        // 새로운 위치의 물리적 인접 타일들을 discovered로 설정
+        if (targetNeighbors.includes(t.id)) {
+            return { ...t, discovered: true };
+        }
+        return t;
+    });
                 
                 setTiles(newTiles);
                 setCurrentTile(targetId);
