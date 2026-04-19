@@ -141,6 +141,7 @@
         function Game() {
             const [tiles, setTiles] = useState([]);
             const [currentTile, setCurrentTile] = useState(0);
+            const [playerMoveCount, setPlayerMoveCount] = useState(0);
             const [health, setHealth] = useState(6);
             const [hunger, setHunger] = useState(12);
             const [time, setTime] = useState(0);
@@ -188,17 +189,15 @@
             }
 
             function generateHexMap() {
-                // 1. 육각형 그리드 생성 (7x7 = 49 타일)
                 const gridSize = 7;
                 const tiles = [];
                 const positions = [];
                 
-                // 육각형 좌표 생성
                 for (let row = 0; row < gridSize; row++) {
                     for (let col = 0; col < gridSize; col++) {
                         const index = row * gridSize + col;
-                        const x = col * 150 + (row % 2) * 75;
-                        const y = row * 130;
+                        const x = col * 150 + (row % 2) * 75 + 100; // 세이프 에어리어 추가
+                        const y = row * 130 + 100; // 세이프 에어리어 추가
                         
                         positions.push({ x, y, row, col });
                         
@@ -213,79 +212,61 @@
                     }
                 }
                 
-                // 육각형 면 기준 연결 (6방향)
+                // 육각형 면 기준 연결
                 for (let i = 0; i < tiles.length; i++) {
                     const { row, col } = positions[i];
                     const connections = [];
                     
-                    // 짝수 행
                     if (row % 2 === 0) {
-                        // 위쪽
                         if (row > 0) {
-                            connections.push((row - 1) * gridSize + col); // 위
-                            if (col > 0) connections.push((row - 1) * gridSize + col - 1); // 좌상
+                            connections.push((row - 1) * gridSize + col);
+                            if (col > 0) connections.push((row - 1) * gridSize + col - 1);
                         }
-                        // 양옆
-                        if (col > 0) connections.push(row * gridSize + col - 1); // 좌
-                        if (col < gridSize - 1) connections.push(row * gridSize + col + 1); // 우
-                        // 아래쪽
+                        if (col > 0) connections.push(row * gridSize + col - 1);
+                        if (col < gridSize - 1) connections.push(row * gridSize + col + 1);
                         if (row < gridSize - 1) {
-                            connections.push((row + 1) * gridSize + col); // 아래
-                            if (col > 0) connections.push((row + 1) * gridSize + col - 1); // 좌하
+                            connections.push((row + 1) * gridSize + col);
+                            if (col > 0) connections.push((row + 1) * gridSize + col - 1);
                         }
                     } else {
-                        // 홀수 행
                         if (row > 0) {
-                            connections.push((row - 1) * gridSize + col); // 위
-                            if (col < gridSize - 1) connections.push((row - 1) * gridSize + col + 1); // 우상
+                            connections.push((row - 1) * gridSize + col);
+                            if (col < gridSize - 1) connections.push((row - 1) * gridSize + col + 1);
                         }
-                        if (col > 0) connections.push(row * gridSize + col - 1); // 좌
-                        if (col < gridSize - 1) connections.push(row * gridSize + col + 1); // 우
+                        if (col > 0) connections.push(row * gridSize + col - 1);
+                        if (col < gridSize - 1) connections.push(row * gridSize + col + 1);
                         if (row < gridSize - 1) {
-                            connections.push((row + 1) * gridSize + col); // 아래
-                            if (col < gridSize - 1) connections.push((row + 1) * gridSize + col + 1); // 우하
+                            connections.push((row + 1) * gridSize + col);
+                            if (col < gridSize - 1) connections.push((row + 1) * gridSize + col + 1);
                         }
                     }
                     
                     tiles[i].connections = connections.filter(c => c >= 0 && c < tiles.length);
                 }
                 
-                // 2. 플레이어 시작점 후보 (육각형 맵의 6개 모서리)
-                const cornerCandidates = [
-                    0, // 좌상
-                    6, // 우상
-                    42, // 좌하
-                    48, // 우하
-                    3, // 상
-                    45  // 하
-                ];
-                
+                // 플레이어 시작점
+                const cornerCandidates = [0, 6, 42, 48, 3, 45];
                 const playerStart = cornerCandidates[Math.floor(Math.random() * cornerCandidates.length)];
                 tiles[playerStart].type = 'start';
                 tiles[playerStart].visited = true;
                 tiles[playerStart].discovered = true;
                 
-                // 인접 타일 발견
                 tiles[playerStart].connections.forEach(conn => {
                     tiles[conn].discovered = true;
                 });
                 
-                // 3. 보스 생성 위치 (플레이어에서 먼 곳 + 180도 분산)
+                // 보스 생성
                 const distances = tiles.map((tile, index) => ({
                     index,
                     distance: calculateDistance(tiles, playerStart, index),
                     angle: calculateAngle(positions[playerStart], positions[index])
                 }));
                 
-                // 거리순 정렬
                 distances.sort((a, b) => b.distance - a.distance);
-                
-                // 거리 5 이상인 것만 필터
                 const farTiles = distances.filter(d => d.distance >= 5);
                 
-                // 120도씩 분산된 3개 선택
                 const bossCandidates = [];
-                const sectors = [0, 120, 240]; // 각도 섹터
+                const sectors = [0, 120, 240];
                 
                 for (const sector of sectors) {
                     const inSector = farTiles.filter(d => {
@@ -298,7 +279,6 @@
                     }
                 }
                 
-                // 후보가 부족하면 가장자리에서 추가
                 while (bossCandidates.length < 3) {
                     const edgeTiles = [0, 6, 42, 48, 21, 27];
                     const available = edgeTiles.filter(e => 
@@ -316,7 +296,7 @@
                 const bossPos = bossCandidates[Math.floor(Math.random() * bossCandidates.length)];
                 tiles[bossPos].type = 'boss';
                 
-                // 4. 탈출구 (플레이어와 보스 위치 제외, 먼 곳)
+                // 탈출구
                 const exitCandidates = farTiles.filter(d => 
                     d.index !== playerStart && 
                     d.index !== bossPos &&
@@ -329,12 +309,8 @@
                 
                 tiles[exitPos].type = 'exit';
                 
-                // 특수 타일 배치
-                const specialTiles = {
-                    good: 4,
-                    trap: 2
-                };
-                
+                // 특수 타일
+                const specialTiles = { good: 4, trap: 2 };
                 const availableIndices = tiles
                     .map((t, i) => i)
                     .filter(i => tiles[i].type === 'normal');
@@ -447,6 +423,10 @@
                     return;
                 }
                 
+                // 플레이어 이동 카운트 증가
+                const newMoveCount = playerMoveCount + 1;
+                setPlayerMoveCount(newMoveCount);
+                
                 setHunger(hunger - 1);
                 setTime(0);
                 
@@ -482,8 +462,30 @@
                 setDeck(newDeck);
                 setGraveyard(newGraveyard);
                 
-                // 보스 이동
-                const encounter = boss.onPlayerMove(targetId, detection);
+                // 보스 이동 (2칸마다 1번)
+                let newBossPos = boss.position;
+                if (newMoveCount % 2 === 0 && !boss.isChasing()) {
+                    // 일반 모드: 랜덤 이동
+                    const bossConnections = newTiles[boss.position].connections;
+                    if (bossConnections.length > 0) {
+                        newBossPos = bossConnections[Math.floor(Math.random() * bossConnections.length)];
+                        boss.position = newBossPos;
+                    }
+                }
+                
+                // 추격 모드
+                if (detection >= 80 && !boss.chaseMode) {
+                    boss.chaseMode = true;
+                    boss.playerMoveCount = 0;
+                }
+                
+                if (boss.chaseMode) {
+                    boss.onPlayerMove(targetId, detection);
+                    newBossPos = boss.position;
+                }
+                
+                // 조우 확인
+                const encounter = newBossPos === targetId;
                 
                 const tile = newTiles[targetId];
                 let msg = '';
@@ -503,21 +505,21 @@
                     msg = '탈출구다!';
                 }
                 
-                if (boss.isChasing()) {
-                    msg += ` [⚠️ 보스 추격중!]`;
+                if (boss.chaseMode && !encounter) {
+                    msg += ` [⚠️ 보스 추격중! 위치: #${newBossPos}]`;
                 }
                 
                 setMessage(msg);
             };
 
             const getTileColor = (tile) => {
-                if (!tile.discovered) return '#0a0e27';
+                if (!tile.discovered) return '#1a1f3a';
                 if (tile.type === 'start') return '#4CAF50';
                 if (tile.type === 'exit') return '#2196F3';
                 if (tile.type === 'good') return '#FFC107';
                 if (tile.type === 'trap') return '#e94560';
-                if (boss && tile.id === boss.getPosition()) return '#8B0000';
-                return '#16213e';
+                if (boss && tile.id === boss.position) return '#8B0000';
+                return '#2d3561';
             };
 
             const detectionColor = detection < 30 ? '#4CAF50' : 
@@ -549,7 +551,7 @@
                             <div className="stat-box">
                                 <div className="stat-label">보스</div>
                                 <div className="stat-value" style={{ fontSize: '13px' }}>
-                                    {boss?.isChasing() ? '🔴 추격' : '🟢 순찰'}
+                                    {boss?.chaseMode ? '🔴 추격' : '🟢 순찰'}
                                 </div>
                             </div>
                         </div>
@@ -600,14 +602,14 @@
                         )}
                     </div>
 
-                    {/* 맵 영역 (스크롤 가능) */}
+                    {/* 맵 영역 (세이프 에어리어 추가) */}
                     <div className="map-container" ref={mapRef}>
-                        <svg className="map-svg" width="1100" height="1000">
+                        <svg className="map-svg" width="1300" height="1200">
                             {tiles.map((tile) => {
                                 const { x, y } = tile.position;
                                 const isCurrent = tile.id === currentTile;
                                 const canMove = tiles[currentTile].connections.includes(tile.id);
-                                const isBoss = boss && tile.id === boss.getPosition();
+                                const isBoss = boss && tile.id === boss.position;
                                 
                                 return (
                                     <g key={tile.id}>
@@ -615,30 +617,37 @@
                                             className={`hex-tile ${isCurrent ? 'current' : ''}`}
                                             points={`${x},${y-60} ${x+52},${y-30} ${x+52},${y+30} ${x},${y+60} ${x-52},${y+30} ${x-52},${y-30}`}
                                             fill={getTileColor(tile)}
-                                            stroke={isCurrent ? '#e94560' : isBoss ? '#FF0000' : '#0f3460'}
-                                            strokeWidth={isCurrent || isBoss ? '4' : '2'}
-                                            opacity={tile.discovered ? 1 : 0.3}
+                                            stroke={isCurrent ? '#e94560' : isBoss && tile.discovered ? '#FF0000' : '#0f3460'}
+                                            strokeWidth={isCurrent || (isBoss && tile.discovered) ? '4' : '2'}
+                                            opacity={tile.discovered ? 1 : 0.5}
                                             onClick={() => !gameOver && !victory && moveTo(tile.id)}
                                         />
                                         {tile.discovered && (
                                             <>
                                                 <text x={x} y={y - 10} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="600">
-                                                    {tile.type === 'start' ? '시작' : 
+                                                    {tile.type === 'start' ? '내위치' : 
                                                      tile.type === 'exit' ? '탈출구' : 
                                                      isCurrent ? '현재' :
                                                      isBoss ? '🦖' :
                                                      tile.type === 'good' ? '👍' :
                                                      tile.type === 'trap' ? '⚠️' : ''}
                                                 </text>
-                                                <text x={x} y={y + 10} textAnchor="middle" fill="#aaa" fontSize="11">
-                                                    #{tile.id}
-                                                </text>
+                                                {!isCurrent && !isBoss && (
+                                                    <text x={x} y={y + 10} textAnchor="middle" fill="#aaa" fontSize="11">
+                                                        #{tile.id}
+                                                    </text>
+                                                )}
                                                 {canMove && !isCurrent && (
-                                                    <text x={x} y={y + 25} textAnchor="middle" fill="#4CAF50" fontSize="10">
+                                                    <text x={x} y={y + 30} textAnchor="middle" fill="#4CAF50" fontSize="10">
                                                         이동가능
                                                     </text>
                                                 )}
                                             </>
+                                        )}
+                                        {!tile.discovered && (
+                                            <text x={x} y={y + 5} textAnchor="middle" fill="#666" fontSize="24">
+                                                ?
+                                            </text>
                                         )}
                                     </g>
                                 );
@@ -694,7 +703,7 @@
                         </div>
                     )}
 
-                    {/* 게임 오버/승리 모달 */}
+                    {/* 게임 오버/승리 */}
                     {(gameOver || victory) && (
                         <div className="modal">
                             <div style={{ 
