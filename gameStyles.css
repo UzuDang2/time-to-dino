@@ -138,6 +138,42 @@ button:active {
     z-index: 10;
 }
 
+/* 공중에 뜬 선택 아이템 */
+.inventory-item.floating {
+    box-shadow: 0 6px 14px rgba(0,0,0,0.5), 0 0 0 2px #e94560 inset;
+    opacity: 0.92;
+    z-index: 11;
+    pointer-events: auto;
+    transition: left 0.08s, top 0.08s;
+}
+
+/* 확정 대기 미리보기 오버레이 */
+.inventory-preview {
+    border-radius: 4px;
+    z-index: 5;
+}
+.inventory-preview.ok {
+    background: rgba(72, 187, 120, 0.18);
+    border: 2px dashed #48bb78;
+}
+.inventory-preview.ok.merge {
+    background: rgba(236, 201, 75, 0.22);
+    border: 2px dashed #ecc94b;
+}
+.inventory-preview.ok.swap {
+    background: rgba(66, 153, 225, 0.18);
+    border: 2px dashed #4299e1;
+}
+.inventory-preview.bad {
+    background: rgba(229, 62, 62, 0.18);
+    border: 2px dashed #e53e3e;
+}
+
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 /* UI 패널 */
 .ui-panel {
     background: #16213e;

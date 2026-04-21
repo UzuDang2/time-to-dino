@@ -263,6 +263,88 @@
 
         // 인벤토리 모달 컴포넌트
         function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory }) {
+            const [, setTick] = React.useState(0);
+            const bump = () => setTick(t => t + 1);
+            // 확정 대기 위치 (그리드 셀을 눌러 지정)
+            const [pendingPos, setPendingPos] = React.useState(null);
+
+            const ROWS = 6, COLS = 5, CELL = 47, PAD = 4;
+
+            const handleItemClick = (item) => {
+                if (!selectedItem) {
+                    inventory.selectItem(item);
+                    setSelectedItem(item);
+                    setPendingPos({ x: item.x, y: item.y });
+                    bump();
+                    return;
+                }
+                if (selectedItem.id === item.id) {
+                    // 같은 아이템 다시 클릭 — 원위치 되돌림
+                    inventory.cancelSelection();
+                    setSelectedItem(null);
+                    setPendingPos(null);
+                    bump();
+                }
+                // 다른 아이템 클릭은 셀 클릭 경로에서 처리 (교체/머지)
+            };
+
+            const handleCellClick = (row, col) => {
+                if (!selectedItem) return;
+                setPendingPos({ x: col, y: row });
+                bump();
+            };
+
+            const handleRotate = () => {
+                if (!selectedItem) return;
+                inventory.rotateItem(selectedItem);
+                bump();
+            };
+
+            const handleConfirm = () => {
+                if (!selectedItem || !pendingPos) return;
+                const res = inventory.confirmPlacement(pendingPos.x, pendingPos.y);
+                if (!res.ok) {
+                    bump();
+                    return;
+                }
+                if (res.action === 'swap') {
+                    // 새로 공중에 뜬 아이템으로 선택 전환
+                    setSelectedItem(inventory.selectedItem);
+                    setPendingPos(inventory.selectedItem
+                        ? { x: inventory.selectedItem.x, y: inventory.selectedItem.y }
+                        : null);
+                } else {
+                    setSelectedItem(null);
+                    setPendingPos(null);
+                }
+                bump();
+            };
+
+            const handleCancel = () => {
+                if (!selectedItem) return;
+                inventory.cancelSelection();
+                setSelectedItem(null);
+                setPendingPos(null);
+                bump();
+            };
+
+            // 미리보기 가능 여부 (현재 pendingPos에 selectedItem이 들어갈 수 있는가)
+            const previewInfo = (() => {
+                if (!selectedItem || !pendingPos) return null;
+                const { x, y } = pendingPos;
+                const shape = selectedItem.shape;
+                if (y + shape.length > ROWS || x + shape[0].length > COLS) {
+                    return { ok: false, kind: 'oob' };
+                }
+                const overlap = inventory.getItemsOverlapping(shape, x, y);
+                if (overlap.length === 0) return { ok: true, kind: 'place' };
+                if (overlap.length === 1) {
+                    if (inventory.canMerge(selectedItem, overlap[0])) return { ok: true, kind: 'merge' };
+                    return { ok: true, kind: 'swap' };
+                }
+                return { ok: false, kind: 'blocked' };
+            })();
+
             return (
                 <div className="modal">
                     <div className="modal-content">
@@ -272,39 +354,82 @@
                         </div>
                         <div style={{ position: 'relative' }}>
                             <div className="inventory-grid">
-                                {Array(6).fill(null).map((_, row) => 
-                                    Array(5).fill(null).map((_, col) => (
-                                        <div 
-                                            key={`${row}-${col}`} 
+                                {Array(ROWS).fill(null).map((_, row) =>
+                                    Array(COLS).fill(null).map((_, col) => (
+                                        <div
+                                            key={`${row}-${col}`}
                                             className={`inventory-cell ${inventory.grid[row][col] ? 'occupied' : ''}`}
+                                            onClick={() => handleCellClick(row, col)}
                                         />
                                     ))
                                 )}
                             </div>
-                            {inventory.items.map(item => (
+
+                            {/* 확정 대기 미리보기 */}
+                            {selectedItem && pendingPos && previewInfo && (
+                                <div
+                                    className={`inventory-preview ${previewInfo.ok ? 'ok' : 'bad'} ${previewInfo.kind}`}
+                                    style={{
+                                        position: 'absolute',
+                                        left: `${pendingPos.x * CELL + PAD}px`,
+                                        top: `${pendingPos.y * CELL + PAD}px`,
+                                        width: `${selectedItem.shape[0].length * CELL - PAD}px`,
+                                        height: `${selectedItem.shape.length * CELL - PAD}px`,
+                                        pointerEvents: 'none'
+                                    }}
+                                />
+                            )}
+
+                            {/* 그리드에 배치된 아이템들 */}
+                            {inventory.items.filter(i => !selectedItem || i.id !== selectedItem.id).map(item => (
                                 <div
                                     key={item.id}
-                                    className={`inventory-item ${selectedItem?.id === item.id ? 'selected' : ''}`}
+                                    className="inventory-item"
                                     style={{
-                                        left: `${item.x * 47 + 4}px`,
-                                        top: `${item.y * 47 + 4}px`,
-                                        width: `${item.shape[0].length * 47 - 4}px`,
-                                        height: `${item.shape.length * 47 - 4}px`
+                                        left: `${item.x * CELL + PAD}px`,
+                                        top: `${item.y * CELL + PAD}px`,
+                                        width: `${item.shape[0].length * CELL - PAD}px`,
+                                        height: `${item.shape.length * CELL - PAD}px`
                                     }}
-                                    onClick={() => setSelectedItem(item)}
+                                    onClick={(e) => { e.stopPropagation(); handleItemClick(item); }}
                                 >
                                     {item.name}
                                 </div>
                             ))}
+
+                            {/* 공중에 뜬 선택 아이템 (pendingPos를 따라감) */}
+                            {selectedItem && pendingPos && (
+                                <div
+                                    className="inventory-item floating selected"
+                                    style={{
+                                        left: `${pendingPos.x * CELL + PAD}px`,
+                                        top: `${pendingPos.y * CELL + PAD}px`,
+                                        width: `${selectedItem.shape[0].length * CELL - PAD}px`,
+                                        height: `${selectedItem.shape.length * CELL - PAD}px`,
+                                    }}
+                                    onClick={(e) => { e.stopPropagation(); handleItemClick(selectedItem); }}
+                                >
+                                    {selectedItem.name}
+                                </div>
+                            )}
                         </div>
-                        {selectedItem && (
-                            <div style={{ marginTop: '10px' }}>
-                                <button onClick={() => {
-                                    inventory.rotateItem(selectedItem);
-                                }}>회전</button>
-                                <button onClick={() => setSelectedItem(null)} style={{ marginLeft: '8px' }}>
-                                    확정
+
+                        {selectedItem ? (
+                            <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button onClick={handleRotate}>회전</button>
+                                <button
+                                    onClick={handleConfirm}
+                                    disabled={!previewInfo || !previewInfo.ok}
+                                >
+                                    확정{previewInfo && previewInfo.ok && previewInfo.kind !== 'place'
+                                        ? ` (${previewInfo.kind === 'merge' ? '머지' : '교체'})`
+                                        : ''}
                                 </button>
+                                <button onClick={handleCancel}>취소</button>
+                            </div>
+                        ) : (
+                            <div style={{ marginTop: '10px', fontSize: '11px', color: '#aaa' }}>
+                                아이템을 눌러 선택 → 칸을 눌러 위치 지정 → 확정
                             </div>
                         )}
                     </div>
