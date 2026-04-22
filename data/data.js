@@ -832,8 +832,8 @@ window.TTD_DATA = {
     },
     {
       "id": "water",
-      "name": "맑은 물",
-      "이름": "맑은 물",
+      "name": "맑은물",
+      "이름": "맑은물",
       "카테고리": "음식",
       "재료 타입": "음식재료",
       "아이템 등급": "1단계",
@@ -1017,6 +1017,35 @@ window.TTD_DATA = {
         "actions": [],
         "raw": ""
       }
+    },
+    {
+      "id": "clean_berry",
+      "name": "깨끗한 딸기",
+      "이름": "깨끗한 딸기",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "3단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "맑은 물에 씻어낸 산딸기 한 접시. 개운하고 든든하다.",
+      "효과 요약": "배고픔 +3.",
+      "사용 효과": "hunger+3",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 3
+          }
+        ],
+        "raw": "hunger+3"
+      }
     }
   ],
   "DROP_TABLE": {
@@ -1149,6 +1178,13 @@ window.TTD_DATA = {
         "plant_fiber"
       ],
       "result": "bandage"
+    },
+    {
+      "ingredients": [
+        "water",
+        "berry_mix"
+      ],
+      "result": "clean_berry"
     }
   ]
 };

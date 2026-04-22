@@ -36,7 +36,8 @@ class InventorySystem {
         // === 시냇물 음식재료 (D-33: 신규 — 머지 없음, 단독 소비) ===
         //   water: hunger+1 기본 음식. 80% 비중으로 시냇물에서 자주.
         //   fish : hunger+2 귀한 음식. 20% 비중. 머지는 없지만 mix와 동급 효과.
-        water:    { name: '맑은 물',  shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
+        // D-44 (2026-04-23): '맑은 물' → '맑은물' 표기 통일 (시트 SSOT와 일치).
+        water:    { name: '맑은물',   shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
         fish:     { name: '물고기',   shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
 
         // === 2단계 (조합 결과물) ===
@@ -48,6 +49,10 @@ class InventorySystem {
         // === 2단계 음식 (D-30 신규) ===
         berry_mix:    { name: '딸기모둠',     shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
         mushroom_mix: { name: '버섯모둠',     shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
+
+        // === 3단계 음식 (D-44 신규) ===
+        //   clean_berry: water + berry_mix 조합 결과. hunger+3. 최종형(머지 불가).
+        clean_berry:  { name: '깨끗한 딸기',  shape: [[1]], grade: 3, mergeable: false, category: 'food', merge_result: null },
 
         // === 레거시 (기존 카드 시스템 참조) — 후속 작업에서 1단계 체계로 흡수 예정 ===
         material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: false, merge_result: null },
@@ -373,6 +378,19 @@ class InventorySystem {
             }
         }
         this.selectedItem = null;
+    }
+
+    // D-45 (2026-04-23): 선택된 아이템을 인벤토리에서 영구 제거 (버리기).
+    // - selectItem() 시점에 이미 grid에서 removeItem() 되어 있으므로 items 배열에서만 빼면 된다.
+    // - 반환: 제거된 아이템(없으면 null). 호출부는 이름으로 메시지를 구성.
+    // - 확인 단계 없음(1회 확정) — UI 쪽에서 버튼 1클릭 = 즉시 폐기. 인벤토리 롱프레스 UX라
+    //   오조작 확률이 낮아 속도를 우선 (디렉터 판단).
+    discardSelected() {
+        if (!this.selectedItem) return null;
+        const item = this.selectedItem;
+        this.items = this.items.filter(it => it.id !== item.id);
+        this.selectedItem = null;
+        return item;
     }
 
     // 상위 단계 결과물(머지/조합)을 그리드의 특정 좌표에 배치.

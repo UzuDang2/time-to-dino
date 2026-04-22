@@ -97,18 +97,22 @@
                         />
                         <div className="stat-box" style={{ ...compactBox, display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                             <div style={{ display: 'flex', gap: '2px' }}>
+                                {/* D-43 (2026-04-23): 남은 회수 표시로 반전.
+                                    - 밝은 아이콘 = 아직 쓸 수 있는 회수, 어두운 아이콘 = 소모됨.
+                                    - 시작 3/3 → 전부 소모 시 0/3. */}
                                 {Array.from({ length: maxTime }).map((_, i) => {
-                                    const used = i < time;
+                                    // i가 작을수록 먼저 소모됨. 남은 개수는 (maxTime - time).
+                                    const remaining = i < (maxTime - time);
                                     return (
                                         <span
                                             key={i}
                                             style={{
                                                 fontSize: '14px',
                                                 lineHeight: 1,
-                                                opacity: used ? 0.25 : 1,
+                                                opacity: remaining ? 1 : 0.25,
                                                 filter: timeEmpty
                                                     ? 'grayscale(1) brightness(0.9)'
-                                                    : used ? 'grayscale(1) brightness(0.7)' : 'none',
+                                                    : remaining ? 'none' : 'grayscale(1) brightness(0.7)',
                                                 color: timeEmpty ? '#c04a5e' : undefined,
                                                 transition: 'all 0.2s'
                                             }}
@@ -123,7 +127,7 @@
                                 fontWeight: '600',
                                 color: timeTextColor,
                             }}>
-                                {time}/{maxTime}
+                                {maxTime - time}/{maxTime}
                             </span>
                         </div>
                     </div>
@@ -705,6 +709,20 @@
                 bump();
             };
 
+            // D-45 (2026-04-23): 선택한 아이템을 인벤토리에서 영구 제거.
+            // - 1회 확정. 롱프레스로 이미 선택된 상태라 오조작 확률이 낮아 별도 확인창 없음.
+            // - 공간이 꽉 찼을 때 탈출 수단이자 불필요한 1단계 부산물 정리용.
+            const handleDiscard = () => {
+                if (!selectedItem) return;
+                const discarded = inventory.discardSelected();
+                setSelectedItem(null);
+                setPendingPos(null);
+                if (discarded && onFlashMessage) {
+                    onFlashMessage(`${discarded.name}을(를) 버렸다.`);
+                }
+                bump();
+            };
+
             // 미리보기 가능 여부 (현재 pendingPos에 selectedItem이 들어갈 수 있는가)
             const previewInfo = (() => {
                 if (!selectedItem || !pendingPos) return null;
@@ -810,6 +828,20 @@
                                         : ''}
                                 </button>
                                 <button onClick={handleCancel}>취소</button>
+                                {/* D-45 (2026-04-23): 버리기 — 빨강 톤, 1회 확정.
+                                    - 파밍으로 공간이 꽉 찼을 때 탈출 수단.
+                                    - 머지/조합 대상이 없는 부산물(낡은 재료 등) 정리용. */}
+                                <button
+                                    onClick={handleDiscard}
+                                    style={{
+                                        marginLeft: 'auto',
+                                        background: '#6b2a2f',
+                                        color: '#f4d4d8',
+                                        border: '1px solid #8a3a42',
+                                    }}
+                                >
+                                    버리기
+                                </button>
                             </div>
                         ) : (
                             <div style={{ marginTop: '10px', fontSize: '11px', color: '#aaa' }}>

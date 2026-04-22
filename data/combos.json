@@ -40,5 +40,12 @@
       "plant_fiber"
     ],
     "result": "bandage"
+  },
+  {
+    "ingredients": [
+      "water",
+      "berry_mix"
+    ],
+    "result": "clean_berry"
   }
 ]
