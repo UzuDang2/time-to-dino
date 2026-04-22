@@ -15,11 +15,16 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
+    <!-- 데이터 번들 (시트 + Notion 아이템 SSOT 스냅샷, scripts/fetch_data.py로 재생성) -->
+    <script src="data/data.js"></script>
+
     <!-- 게임 모듈 -->
     <script src="mapGenerator.js"></script>
     <script src="inventory.js"></script>
     <script src="boss.js"></script>
     <script src="dropTable.js"></script>
+    <script src="effectParser.js"></script>
+    <script src="combatDeck.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -262,16 +267,98 @@
             );
         }
 
+        // 아이템 정보창 — 이름/등급/가방칸수/성능(effect)/사용 버튼
+        //
+        // 데이터 소스 우선순위:
+        //   1) window.TTD_DATA.ITEMS (Notion SSOT) — '이름'으로 조회, effect 포함
+        //   2) InventorySystem.ITEMS[item.type] — 구버전 폴백
+        function ItemInfoModal({ item, onUse, onClose }) {
+            const invDef = InventorySystem.ITEMS[item.type] || {};
+            const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+            const notionItem = notionItems.find(it => it && it['이름'] === (invDef.name || item.name));
+
+            const effect = (notionItem && notionItem.effect) || null;
+            const usable = !!(effect && effect.usable);
+            const effectLabel = window.EffectParser
+                ? window.EffectParser.describeEffect(effect)
+                : (effect && effect.raw) || '효과 없음';
+
+            const grade = (notionItem && notionItem['아이템 등급']) || null;
+            const slot = (notionItem && notionItem['가방칸수']) || '1x1';
+
+            return (
+                <div
+                    className="modal"
+                    style={{ zIndex: 1000 }}
+                    onClick={onClose}
+                >
+                    <div
+                        className="modal-content"
+                        style={{ maxWidth: '320px' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h3 style={{ margin: 0 }}>{invDef.name || item.name}</h3>
+                            <button onClick={onClose}>닫기</button>
+                        </div>
+
+                        <div style={{ fontSize: '13px', lineHeight: '1.7', color: '#ddd' }}>
+                            {grade && <div>등급: <span style={{ color: '#fff' }}>{grade}</span></div>}
+                            <div>가방칸수: <span style={{ color: '#fff' }}>{slot}</span></div>
+                            <div>성능: <span style={{ color: usable ? '#8bd17c' : '#888' }}>{effectLabel}</span></div>
+                            {notionItem && notionItem['설명 텍스트'] && (
+                                <div style={{ marginTop: '8px', fontSize: '11px', color: '#aaa' }}>
+                                    {notionItem['설명 텍스트']}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>
+                            <button
+                                onClick={onUse}
+                                disabled={!usable}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px',
+                                    background: usable ? '#4CAF50' : '#555',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: usable ? 'pointer' : 'not-allowed',
+                                    fontWeight: 600
+                                }}
+                            >
+                                {usable ? '사용' : '사용 불가'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // 인벤토리 모달 컴포넌트
-        function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory }) {
+        //
+        // 아이템 인터랙션 분기:
+        //   - 짧은 탭 (< 400ms 내에 떼면) → 정보창 모달
+        //   - 긴 누름 (≥ 400ms 유지) → 기존 동작(선택/이동/머지/회전)
+        // 임계값 400ms 채택 근거: Android 표준 long-press(500ms)보다 살짝 빠르게, iOS 기본(≈300ms)보다는 여유롭게.
+        // 게임은 연타/드래그가 잦아 짧은 의도를 놓치면 답답하고, 반대로 너무 짧으면 스와이프가 잘못 인식된다.
+        function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory, onUseItem }) {
             const [, setTick] = React.useState(0);
             const bump = () => setTick(t => t + 1);
             // 확정 대기 위치 (그리드 셀을 눌러 지정)
             const [pendingPos, setPendingPos] = React.useState(null);
+            // 정보창으로 띄울 아이템 (null이면 정보창 닫힘)
+            const [infoItem, setInfoItem] = React.useState(null);
 
             const ROWS = 6, COLS = 5, CELL = 47, PAD = 4;
+            const LONG_PRESS_MS = 400;
 
-            const handleItemClick = (item) => {
+            // 프레스 상태를 ref로 관리해 재렌더 없이 타이머/가드 갱신.
+            const pressRef = React.useRef({ timer: null, longFired: false, itemId: null });
+
+            // 기존 탭(=롱프레스) 경로: 선택/원복
+            const activateSelect = (item) => {
                 if (!selectedItem) {
                     inventory.selectItem(item);
                     setSelectedItem(item);
@@ -280,13 +367,73 @@
                     return;
                 }
                 if (selectedItem.id === item.id) {
-                    // 같은 아이템 다시 클릭 — 원위치 되돌림
                     inventory.cancelSelection();
                     setSelectedItem(null);
                     setPendingPos(null);
                     bump();
                 }
-                // 다른 아이템 클릭은 셀 클릭 경로에서 처리 (교체/머지)
+                // 다른 아이템으로 전환은 셀 클릭 경로에서 처리 (교체/머지)
+            };
+
+            // 짧은 탭: 정보창 열기. 단, 이미 선택 모드라면 기존 동작(교체/취소) 우선.
+            const openInfo = (item) => {
+                if (selectedItem) {
+                    // 선택 중 다른 아이템 짧게 탭 = 실수 방지용으로 기존 selectItem 경로로 라우팅.
+                    activateSelect(item);
+                    return;
+                }
+                setInfoItem(item);
+            };
+
+            const onItemPointerDown = (e, item) => {
+                e.stopPropagation();
+                // 마우스 우클릭/중간클릭 무시
+                if (e.button && e.button !== 0) return;
+                pressRef.current = { timer: null, longFired: false, itemId: item.id };
+                pressRef.current.timer = setTimeout(() => {
+                    pressRef.current.longFired = true;
+                    activateSelect(item);
+                }, LONG_PRESS_MS);
+            };
+
+            const onItemPointerUp = (e, item) => {
+                e.stopPropagation();
+                const st = pressRef.current;
+                if (st.timer) clearTimeout(st.timer);
+                if (st.itemId !== item.id) {
+                    pressRef.current = { timer: null, longFired: false, itemId: null };
+                    return;
+                }
+                if (!st.longFired) openInfo(item);
+                pressRef.current = { timer: null, longFired: false, itemId: null };
+            };
+
+            const onItemPointerCancel = () => {
+                const st = pressRef.current;
+                if (st.timer) clearTimeout(st.timer);
+                pressRef.current = { timer: null, longFired: false, itemId: null };
+            };
+
+            // 레거시: 기존 onClick 경로 유지 (키보드 접근성/기존 테스트 호환).
+            // 포인터 기반 분기가 발동하면 longFired가 true가 되어 중복 호출되지 않도록 가드.
+            const handleItemClick = (item) => {
+                const st = pressRef.current;
+                if (st.longFired) { onItemPointerCancel(); return; }
+                // 포인터 이벤트가 쓰이지 않는 환경에서의 폴백
+                openInfo(item);
+            };
+
+            // 사용 버튼 — 효과 적용 후 일회용이면 인벤에서 제거, 정보창 닫기
+            const handleUseFromInfo = () => {
+                if (!infoItem) return;
+                const result = onUseItem ? onUseItem(infoItem) : { ok: false };
+                if (result && result.ok && result.consumed) {
+                    // 아이템 제거
+                    inventory.removeItem(infoItem);
+                    inventory.items = inventory.items.filter(i => i.id !== infoItem.id);
+                }
+                setInfoItem(null);
+                bump();
             };
 
             const handleCellClick = (row, col) => {
@@ -392,7 +539,11 @@
                                         width: `${item.shape[0].length * CELL - PAD}px`,
                                         height: `${item.shape.length * CELL - PAD}px`
                                     }}
-                                    onClick={(e) => { e.stopPropagation(); handleItemClick(item); }}
+                                    onPointerDown={(e) => onItemPointerDown(e, item)}
+                                    onPointerUp={(e) => onItemPointerUp(e, item)}
+                                    onPointerCancel={onItemPointerCancel}
+                                    onPointerLeave={onItemPointerCancel}
+                                    onContextMenu={(e) => e.preventDefault()}
                                 >
                                     {item.name}
                                 </div>
@@ -430,10 +581,18 @@
                             </div>
                         ) : (
                             <div style={{ marginTop: '10px', fontSize: '11px', color: '#aaa' }}>
-                                아이템을 눌러 선택 → 칸을 눌러 위치 지정 → 확정
+                                짧게 탭 = 정보 · 길게 누르면 선택해서 이동/머지
                             </div>
                         )}
                     </div>
+
+                    {infoItem && (
+                        <ItemInfoModal
+                            item={infoItem}
+                            onUse={handleUseFromInfo}
+                            onClose={() => setInfoItem(null)}
+                        />
+                    )}
                 </div>
             );
         }
@@ -497,6 +656,9 @@
             const [showInventory, setShowInventory] = useState(false);
             const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
             const [eventTile, setEventTile] = useState(null);
+            // 전투 임시 카드(아이템 사용으로 생성) — 전투 진입 시 combat 덱에 병합, 사용 후 소멸.
+            // 구조: [{ id:'throw', count:N }, ...]
+            const [combatExtraCards, setCombatExtraCards] = useState([]);
             const mapRef = useRef(null);
 
             // 게임 초기화
@@ -518,13 +680,27 @@
                 setTiles(newTiles);
                 setCurrentTile(playerStart);
                 
-                const cards = [
-                    { id: 'search', name: '뒤져보기', count: 5, effect: '아이템 획득', detection: 5, time: 1 },
-                    { id: 'listen', name: '귀 기울이기', count: 2, effect: '몬스터 감지', detection: -5, time: 1 },
-                    { id: 'find_food', name: '음식 찾기', count: 1, effect: '음식 획득', detection: 5, time: 1 },
-                    { id: 'find_weapon', name: '무기 장비 찾기', count: 1, effect: '무기/장비', detection: 10, time: 1 },
-                    { id: 'hide', name: '숨기', count: 1, effect: '은신', detection: -15, time: 1 }
-                ];
+                // 카드 데이터는 구글 시트 '베이스탐험카드' 탭이 SSOT.
+                // data/data.js의 TTD_DATA.BASE_CARDS를 읽어 런타임 필드(time 기본값 1)만 덧붙인다.
+                // 시트 갱신 시: 시트 수정 → `make data` 실행 → 새로고침.
+                const sheetBaseCards = (window.TTD_DATA && window.TTD_DATA.BASE_CARDS) || [];
+                const cards = sheetBaseCards.length > 0
+                    ? sheetBaseCards.map(c => ({
+                          id: c.id,
+                          name: c.name,
+                          count: Number(c.count) || 0,
+                          effect: c.effect || '',
+                          detection: Number(c.detection) || 0,
+                          time: Number(c.time) || 1   // 시트에 time 컬럼 추가 시 자동 반영
+                      }))
+                    : [
+                          // 폴백(데이터 로드 실패 시) — 기존 하드코딩 그대로
+                          { id: 'search', name: '뒤져보기', count: 5, effect: '아이템 획득', detection: 5, time: 1 },
+                          { id: 'listen', name: '귀 기울이기', count: 2, effect: '몬스터 감지', detection: -5, time: 1 },
+                          { id: 'find_food', name: '음식 찾기', count: 1, effect: '음식 획득', detection: 5, time: 1 },
+                          { id: 'find_weapon', name: '무기 장비 찾기', count: 1, effect: '무기/장비', detection: 10, time: 1 },
+                          { id: 'hide', name: '숨기', count: 1, effect: '은신', detection: -15, time: 1 }
+                      ];
                 
                 const newDeck = initializeDeck(cards);
                 setDeck(newDeck.slice(3));
@@ -571,6 +747,52 @@
                     setMessage('탈출에 성공했다!');
                 }
             }, [currentTile, tiles]);
+
+            // 아이템 사용 — 인벤토리 정보창에서 '사용' 버튼을 누를 때 호출.
+            // EffectParser가 파싱한 Notion '사용 효과' DSL을 런타임에 적용하고,
+            // 소비형(consumed) 판정은 effectParser가 내려준 값을 그대로 따른다.
+            //
+            // spawn_card:throw 는 '전투 카드 덱에 던지기 카드 추가'로 해석한다.
+            // 기획 근거(요한 지시): "전투모드시에 등장하는 카드에 추가된다".
+            // 사용 시점에 카드가 생성되어 임시 풀(combatExtraCards)에 쌓이고,
+            // 다음 전투 시작 때 기본 덱과 병합되며, 그 전투 내에서 카드를 쓰면 소멸한다.
+            // (영구 추가가 아닌 근거: 현재 아이템이 일회용 판정이 아니어도 재탐색/머지 가능 재료이므로
+            //  덱에 영구 편입시키면 밸런스가 쉽게 무너지고, 요한 말 "전투 종료 시 소멸"이 자연스러움.)
+            const handleUseItem = (item) => {
+                const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+                const def = InventorySystem.ITEMS[item.type] || {};
+                const notionItem = notionItems.find(it => it && it['이름'] === (def.name || item.name));
+                const parsed = (notionItem && notionItem.effect) || null;
+                if (!parsed || !parsed.usable || !window.EffectParser) {
+                    setMessage('이 아이템은 아직 사용할 수 없다.');
+                    return { ok: false };
+                }
+
+                const result = window.EffectParser.applyItemEffect(parsed, {
+                    getStat: (name) => (name === 'hunger' ? hunger : name === 'health' ? health : null),
+                    setStat: (name, val) => {
+                        if (name === 'hunger') setHunger(val);
+                        else if (name === 'health') setHealth(val);
+                    },
+                    addThrowCard: (cardId) => {
+                        // 같은 cardId를 여러 번 써서 여러 장을 쌓을 수도 있음.
+                        setCombatExtraCards(prev => {
+                            const next = [...prev];
+                            const idx = next.findIndex(c => c.id === cardId);
+                            if (idx >= 0) next[idx] = { ...next[idx], count: next[idx].count + 1 };
+                            else next.push({ id: cardId, count: 1 });
+                            return next;
+                        });
+                    },
+                    setMessage
+                });
+
+                if (result.ok) {
+                    const label = window.EffectParser.describeEffect(parsed);
+                    setMessage(`${def.name || item.name}을(를) 사용했다. (${label})`);
+                }
+                return result;
+            };
 
             // 카드 사용
             const useCard = (card) => {
@@ -789,6 +1011,7 @@
                             selectedItem={selectedInventoryItem}
                             setSelectedItem={setSelectedInventoryItem}
                             closeInventory={() => setShowInventory(false)}
+                            onUseItem={handleUseItem}
                         />
                     )}
 
