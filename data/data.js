@@ -1029,23 +1029,28 @@ window.TTD_DATA = {
     "pool": {
       "숲": {
         "env": [
-          "branch"
+          "branch",
+          "stone"
         ],
         "food": [
-          "mushroom"
+          "mushroom",
+          "berry"
         ]
       },
       "덤불": {
         "env": [
-          "stem"
+          "stem",
+          "branch"
         ],
         "food": [
-          "berry"
+          "berry",
+          "mushroom"
         ]
       },
       "평원": {
         "env": [
-          "stone"
+          "stone",
+          "branch"
         ],
         "food": [
           "berry"
@@ -1053,15 +1058,18 @@ window.TTD_DATA = {
       },
       "시냇물": {
         "env": [
-          "stone"
+          "stone",
+          "stem"
         ]
       },
       "동굴": {
         "env": [
-          "stone"
+          "stone",
+          "stem"
         ],
         "food": [
-          "mushroom"
+          "mushroom",
+          "berry"
         ]
       }
     }
