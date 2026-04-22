@@ -19,6 +19,7 @@
     <script src="mapGenerator.js"></script>
     <script src="inventory.js"></script>
     <script src="boss.js"></script>
+    <script src="dropTable.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -588,8 +589,26 @@
                 let msg = `${card.name}을(를) 사용했다. (시간 +${card.time}) `;
                 
                 if (card.id === 'search') {
-                    inventory.addItem('material_low');
-                    msg += `재료를 발견했다.`;
+                    // 2단계 드롭: 현재 타일의 region → 드롭 테이블 추첨
+                    const currentRegion = tiles[currentTile]?.region;
+                    if (currentRegion) {
+                        const { item, category } = rollTileDrop(currentRegion);
+                        if (item) {
+                            const def = InventorySystem.ITEMS[item];
+                            const added = inventory.addItem(item);
+                            if (added) {
+                                msg += `[${currentRegion}] ${def?.name || item}을(를) 발견했다.`;
+                            } else {
+                                msg += `[${currentRegion}] ${def?.name || item}을(를) 발견했지만 가방이 가득 찼다.`;
+                            }
+                        } else {
+                            msg += `[${currentRegion}] 이 근처에는 쓸만한 게 없다.`;
+                        }
+                    } else {
+                        // 안전망: region 없는 타일(구버전 세이브 등)은 레거시 동작
+                        inventory.addItem('material_low');
+                        msg += `재료를 발견했다.`;
+                    }
                 } else if (card.id === 'find_food') {
                     inventory.addItem('food');
                     msg += `음식을 발견했다.`;

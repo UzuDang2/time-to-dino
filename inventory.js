@@ -10,23 +10,29 @@ class InventorySystem {
     }
 
     // 아이템 정의
+    // 1단계 환경재료/음식재료는 category='env'|'food'로 구분, 기존 카드 시스템용 레거시 아이템은 유지.
     static ITEMS = {
-        // 재료 (1x1)
-        material_low: { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: true },
-        material_mid: { name: '일반 재료', shape: [[1]], grade: 2, mergeable: true },
+        // === 1단계 환경재료 (Notion "🎒 아이템" 1단계 5종과 대응) ===
+        stone:    { name: '돌맹이',   shape: [[1]], grade: 1, mergeable: true,  category: 'env' },
+        branch:   { name: '나뭇가지', shape: [[1]], grade: 1, mergeable: true,  category: 'env' },
+        stem:     { name: '질긴줄기', shape: [[1]], grade: 1, mergeable: true,  category: 'env' },
+
+        // === 1단계 음식재료 ===
+        mushroom: { name: '버섯',     shape: [[1]], grade: 1, mergeable: false, category: 'food' },
+        berry:    { name: '산딸기',   shape: [[1]], grade: 1, mergeable: false, category: 'food' },
+
+        // === 레거시 (기존 카드 시스템 참조) — 후속 작업에서 1단계 체계로 흡수 예정 ===
+        material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: true },
+        material_mid:  { name: '일반 재료', shape: [[1]], grade: 2, mergeable: true },
         material_high: { name: '고급 재료', shape: [[1]], grade: 3, mergeable: true },
-        
-        // 음식 (1x1)
+
         food: { name: '음식', shape: [[1]], grade: 1, mergeable: false },
-        
-        // 무기 (2x1)
+
         weapon_basic: { name: '나무창', shape: [[1, 1]], grade: 1, mergeable: false },
-        weapon_stone: { name: '돌창', shape: [[1, 1]], grade: 2, mergeable: false },
-        
-        // 도구 (L자 모양)
+        weapon_stone: { name: '돌창',   shape: [[1, 1]], grade: 2, mergeable: false },
+
         tool_pickaxe: { name: '곡괭이', shape: [[1, 0], [1, 1]], grade: 2, mergeable: false },
-        
-        // 장비 (2x2)
+
         armor: { name: '가죽 갑옷', shape: [[1, 1], [1, 1]], grade: 2, mergeable: false }
     };
 

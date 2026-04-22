@@ -1,5 +1,29 @@
 // mapGenerator.js - 인접 타일 자동 연결 방식
 
+// 타일 지형(region) — 뒤져보기 드롭 테이블과 연동되는 키
+// 값은 Notion "🎲 타일 드롭 테이블" DB의 지역 title과 일치시킨다.
+const REGIONS = ['숲', '덤불', '평원', '시냇물', '동굴'];
+
+// 지역별 생성 가중치 (합이 1일 필요는 없음, 상대 비율)
+// 숲/덤불은 다니기 쉬운 기본 지형, 시냇물/동굴은 상대적으로 희소하게.
+const REGION_WEIGHTS = {
+    '숲': 28,
+    '덤불': 24,
+    '평원': 24,
+    '시냇물': 12,
+    '동굴': 12
+};
+
+function pickWeightedRegion() {
+    const total = Object.values(REGION_WEIGHTS).reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (const region of REGIONS) {
+        r -= REGION_WEIGHTS[region];
+        if (r <= 0) return region;
+    }
+    return REGIONS[0];
+}
+
 class MapGenerator {
     constructor(gridSize = 7) {
         this.gridSize = gridSize;
@@ -60,15 +84,17 @@ class MapGenerator {
         
         // 초기화: 모든 타일 생성
         for (let i = 0; i < totalTiles; i++) {
+            const isEmpty = emptySlots.has(i);
             tiles.push({
                 id: i,
                 type: 'normal',
+                region: isEmpty ? null : pickWeightedRegion(),
                 connections: [],
                 visited: false,
                 discovered: false,
                 revealed: false,
                 position: positions[i],
-                isEmpty: emptySlots.has(i)
+                isEmpty
             });
         }
         
@@ -195,5 +221,6 @@ class MapGenerator {
 
 // Export
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = MapGenerator;
+    module.exports = { MapGenerator, REGIONS, REGION_WEIGHTS, pickWeightedRegion };
+    module.exports.default = MapGenerator;
 }
