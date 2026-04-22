@@ -311,13 +311,113 @@ def parse_effect_dsl(raw: str) -> dict[str, Any]:
     return {"usable": len(actions) > 0, "actions": actions, "raw": s}
 
 
+# ─── id 매핑 (Notion 한글 이름 ↔ 런타임 영문 key) ──────────────────────
+#
+# D-24: 머지·조합 통합 시스템에서 런타임은 영문 id(`stone`, `branch` …)로
+# 아이템을 다루고, Notion DB는 한글 title(`돌맹이`, `나뭇가지` …)을 쓴다.
+# 이 테이블이 두 축을 잇는 단일 진실의 원천. `inventory.js::ITEMS` 키와 정확히 1:1.
+# 신규 아이템 추가 시 양쪽에 함께 등록.
+
+ITEM_NAME_TO_ID: dict[str, str] = {
+    # 1단계 (파밍)
+    "돌맹이": "stone",
+    "나뭇가지": "branch",
+    "질긴줄기": "stem",
+    "버섯": "mushroom",
+    "산딸기": "berry",
+    # 2단계 (조합)
+    "목재": "wood",
+    "식물 섬유(끈)": "plant_fiber",
+    "식물 섬유": "plant_fiber",  # 괄호 주석 스트립 후 동의어
+    "깨끗한 천": "clean_cloth",
+    "붕대": "bandage",
+}
+
+
+def lookup_item_id(name_or_url: str, by_url: dict[str, str]) -> str | None:
+    """이름 또는 Notion URL로 런타임 id를 찾는다.
+    relation이 URL 배열로 오므로 by_url 도움이 필요하다."""
+    if not name_or_url:
+        return None
+    s = str(name_or_url).strip()
+    # URL 형태면 by_url에서 역추적
+    if s.startswith("http"):
+        return by_url.get(s)
+    # 이름이면 직접
+    return ITEM_NAME_TO_ID.get(s)
+
+
+# ─── 조합법 DSL 파서 ───────────────────────────────────────────────────
+#
+# 예시 입력: "나뭇가지 + 나뭇가지 → 목재 / 목재 + 목재 → 튼튼한 목재(고급)"
+# 각 slash-분절에서 `재료 + 재료 [+ 재료…] → 결과물` 패턴을 추출.
+# "x3"·"x5" 수량 표기(`억센 풀 x3 → 끈 x1`)는 이번 버전에서 **무시**하고
+# 기본 N=2 머지/2종 조합만 다룬다 — 3종 이상 및 수량 파싱은 후속 확장.
+#
+# 반환: (ingredients_names: list[str], result_name: str) 튜플 리스트
+#
+# 괄호 주석("(고급)", "(치료소 1단계 이상)")은 결과물에서 벗겨낸다.
+
+COMBO_SEGMENT_RE = re.compile(
+    r"([^/]+?)\s*(?:→|->)\s*([^/]+?)(?:\s*/|\s*$)"
+)
+PAREN_TRAIL_RE = re.compile(r"\s*\([^)]*\)\s*$")
+QUANTITY_RE = re.compile(r"\s*x\s*\d+\s*$", re.IGNORECASE)
+
+
+def _strip_item_name(s: str) -> str:
+    """'튼튼한 목재(고급)' → '튼튼한 목재', '끈 x1' → '끈'"""
+    if not s:
+        return ""
+    s = str(s).strip()
+    s = PAREN_TRAIL_RE.sub("", s)
+    s = QUANTITY_RE.sub("", s)
+    return s.strip()
+
+
+def parse_combo_recipe(raw: str) -> list[tuple[list[str], str]]:
+    """Notion `조합법` 텍스트를 (ingredients, result) 튜플 리스트로 파싱."""
+    if not raw:
+        return []
+    out: list[tuple[list[str], str]] = []
+    # slash 단위로 자른 뒤 각 분절에서 → 좌우를 추출
+    for segment in str(raw).split("/"):
+        seg = segment.strip()
+        if "→" not in seg and "->" not in seg:
+            continue
+        # 정규식보단 단순 split이 안전
+        left, _, right = seg.partition("→")
+        if not right:
+            left, _, right = seg.partition("->")
+        if not left or not right:
+            continue
+        ingredients = [_strip_item_name(x) for x in left.split("+")]
+        ingredients = [x for x in ingredients if x]
+        result = _strip_item_name(right)
+        if not ingredients or not result:
+            continue
+        out.append((ingredients, result))
+    return out
+
+
 def transform_notion_items(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """MCP notion-fetch 응답의 properties dict 배열을 게임이 쓰기 좋은 형태로 가공.
 
     Notion 체크박스는 '__YES__'/'__NO__' 문자열로 오고, 멀티셀렉트는 list[str].
     여기서 Boolean/lowercase 타입으로 정리하되, 원본 구조는 크게 깨지 않는다.
     '사용 효과' rich_text는 파싱해 effect 구조를 덧붙인다 (원본도 유지).
+    D-24: 머지·조합 통합 시스템용 필드 추가.
     """
+    # URL → id 역인덱스 (relation 해석용)
+    by_url: dict[str, str] = {}
+    for props in raw:
+        url = props.get("url")
+        name = props.get("이름") or props.get("name")
+        if url and name:
+            rid = ITEM_NAME_TO_ID.get(name)
+            if rid:
+                by_url[url] = rid
+
     out = []
     for props in raw:
         item = dict(props)
@@ -336,6 +436,23 @@ def transform_notion_items(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if "이름" in item and "name" not in item:
             item["name"] = item["이름"]
 
+        # D-24: 런타임 id (영문 key) 노출
+        name = item.get("이름") or item.get("name")
+        rid = ITEM_NAME_TO_ID.get(name) if name else None
+        if rid:
+            item["id"] = rid
+
+        # D-24: 머지 결과물 id (자기참조 relation[0] → 이름 → id)
+        # Notion의 '결과물' relation은 자기참조 페이지 URL 배열. 첫 원소가 2단계 결과물.
+        result_urls = item.get("결과물") or []
+        merge_result_id: str | None = None
+        if isinstance(result_urls, list) and result_urls:
+            first = result_urls[0]
+            merge_result_id = by_url.get(first)
+        item["merge_result"] = merge_result_id
+        # 편의: merge_enabled는 '머지 가능' + merge_result 유효 둘 다 요구
+        item["merge_enabled"] = bool(item.get("머지 가능")) and merge_result_id is not None
+
         # 사용 효과 파싱 (Notion rich_text 원문 → 구조화)
         effect_raw = item.get("사용 효과", "")
         item["effect"] = parse_effect_dsl(effect_raw)
@@ -352,6 +469,43 @@ def transform_notion_items(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def build_combos_from_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """아이템들의 `조합법` 텍스트를 모두 파싱해 전역 combos 리스트 생성.
+
+    D-24 정책:
+    - 2종 이상 재료만 허용 (머지는 같은 재료 2개 = combos에도 등장 가능; 둘 다 지원).
+    - 괄호 주석 · 수량 표기는 무시.
+    - 재료/결과 이름이 ITEM_NAME_TO_ID에 없으면 스킵(경고).
+    - 중복 레시피는 제거(ingredients sort + result 키).
+    """
+    seen: set[tuple[tuple[str, ...], str]] = set()
+    combos: list[dict[str, Any]] = []
+    for it in items:
+        recipe_raw = it.get("조합법", "") or ""
+        for ingredients, result in parse_combo_recipe(recipe_raw):
+            ing_ids: list[str] = []
+            bad = False
+            for name in ingredients:
+                rid = ITEM_NAME_TO_ID.get(name)
+                if not rid:
+                    print(f"[warn] 조합 재료 미매핑: '{name}' (from {it.get('이름')})")
+                    bad = True
+                    break
+                ing_ids.append(rid)
+            if bad:
+                continue
+            result_id = ITEM_NAME_TO_ID.get(result)
+            if not result_id:
+                print(f"[warn] 조합 결과 미매핑: '{result}' (from {it.get('이름')})")
+                continue
+            key = (tuple(sorted(ing_ids)), result_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            combos.append({"ingredients": ing_ids, "result": result_id})
+    return combos
+
+
 def export_items() -> None:
     raw_path = DATA_DIR / "items.raw.json"
     if not raw_path.exists():
@@ -365,6 +519,12 @@ def export_items() -> None:
     out_path = DATA_DIR / "items.json"
     write_json(out_path, items)
     print(f"[export] items       → {out_path.name}  ({len(items)} items)")
+
+    # D-24: 조합 레시피 — Notion `조합법` 텍스트 전역 파싱 → combos.json
+    combos = build_combos_from_items(items)
+    combos_path = DATA_DIR / "combos.json"
+    write_json(combos_path, combos)
+    print(f"[export] combos      → {combos_path.name}  ({len(combos)} recipes)")
 
 
 # ─── main ──────────────────────────────────────────────────────────────
@@ -425,6 +585,7 @@ BROWSER_BUNDLE_KEYS = {
     "buildings.json": "BUILDINGS",
     "items.json": "ITEMS",
     "drop_table.json": "DROP_TABLE",
+    "combos.json": "COMBOS",  # D-24: 머지·조합 통합 시스템
 }
 
 

@@ -160,6 +160,11 @@ button:active {
     background: rgba(236, 201, 75, 0.22);
     border: 2px dashed #ecc94b;
 }
+.inventory-preview.ok.combine {
+    /* D-24 조합: 다른 재료 결합. 머지(노란색)와 구분되는 보라/자홍 계열. */
+    background: rgba(183, 148, 244, 0.22);
+    border: 2px dashed #b794f4;
+}
 .inventory-preview.ok.swap {
     background: rgba(66, 153, 225, 0.18);
     border: 2px dashed #4299e1;

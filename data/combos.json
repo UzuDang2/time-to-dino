@@ -1,0 +1,30 @@
+[
+  {
+    "ingredients": [
+      "branch",
+      "branch"
+    ],
+    "result": "wood"
+  },
+  {
+    "ingredients": [
+      "stem",
+      "stem"
+    ],
+    "result": "plant_fiber"
+  },
+  {
+    "ingredients": [
+      "plant_fiber",
+      "stem"
+    ],
+    "result": "clean_cloth"
+  },
+  {
+    "ingredients": [
+      "clean_cloth",
+      "plant_fiber"
+    ],
+    "result": "bandage"
+  }
+]

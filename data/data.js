@@ -653,7 +653,7 @@ window.TTD_DATA = {
       "아이템 등급": "2단계",
       "이름": "목재",
       "일회용": false,
-      "조합법": "나뭇가지 + 나뭇가지 → 목재 / 목재 + 목재 → 튼튼한 목재(고급)",
+      "조합법": "나뭇가지 + 나뭇가지 → 목재",
       "카테고리": "재료",
       "태그": [
         "건축재료",
@@ -664,6 +664,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "건축·제작의 기본 재료",
       "name": "목재",
+      "id": "wood",
+      "merge_result": null,
+      "merge_enabled": false,
       "effect": {
         "usable": false,
         "actions": [],
@@ -680,7 +683,10 @@ window.TTD_DATA = {
       "아이템 등급": "2단계",
       "이름": "식물 섬유(끈)",
       "일회용": false,
-      "조합법": "억센 풀 x3 → 끈 x1 / 덩굴 x5 → 끈 x1",
+      "결과물": [
+        "https://www.notion.so/349adc7c697081eeb117cff1ccc85718"
+      ],
+      "조합법": "질긴줄기 + 질긴줄기 → 식물 섬유(끈)",
       "카테고리": "재료",
       "태그": [
         "제작재료",
@@ -692,6 +698,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "묶고 엮는 기본 재료",
       "name": "식물 섬유(끈)",
+      "id": "plant_fiber",
+      "merge_result": "clean_cloth",
+      "merge_enabled": true,
       "effect": {
         "usable": false,
         "actions": [],
@@ -711,7 +720,10 @@ window.TTD_DATA = {
       "재료": [
         "https://www.notion.so/349adc7c6970811ea72ef14cab490342"
       ],
-      "조합법": "천 조각 x3 + 깨끗한 물 → 깨끗한 천 x1",
+      "결과물": [
+        "https://www.notion.so/349adc7c6970819ba7b7e49f15baf77d"
+      ],
+      "조합법": "식물 섬유(끈) + 질긴줄기 → 깨끗한 천",
       "카테고리": "재료",
       "태그": [
         "제작재료",
@@ -723,6 +735,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "치료·고급 시설·의상용 소재",
       "name": "깨끗한 천",
+      "id": "clean_cloth",
+      "merge_result": "bandage",
+      "merge_enabled": true,
       "effect": {
         "usable": false,
         "actions": [],
@@ -747,7 +762,7 @@ window.TTD_DATA = {
       "재료": [
         "https://www.notion.so/349adc7c697081eeb117cff1ccc85718"
       ],
-      "조합법": "깨끗한 천 x1 + 식물 섬유(끈) x2 + 약초 x1 → 붕대 x1 (치료소 1단계 이상)",
+      "조합법": "깨끗한 천 + 식물 섬유(끈) → 붕대",
       "카테고리": "소모품",
       "태그": [
         "치료",
@@ -759,6 +774,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "사용 시 생명력 +2 회복 (일회용)",
       "name": "붕대",
+      "id": "bandage",
+      "merge_result": null,
+      "merge_enabled": false,
       "effect": {
         "usable": false,
         "actions": [],
@@ -773,7 +791,7 @@ window.TTD_DATA = {
         "동굴",
         "시냇물"
       ],
-      "머지 가능": true,
+      "머지 가능": false,
       "무게": 1,
       "설명 텍스트": "단단한 돌맹이. 도구와 건축에 두루 쓰인다.",
       "사용 효과": "spawn_card:throw",
@@ -793,6 +811,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "기본 건축/제작 재료.",
       "name": "돌맹이",
+      "id": "stone",
+      "merge_result": null,
+      "merge_enabled": false,
       "effect": {
         "usable": true,
         "actions": [
@@ -819,6 +840,9 @@ window.TTD_DATA = {
       "이름": "나뭇가지",
       "일회용": false,
       "재료 타입": "환경재료",
+      "결과물": [
+        "https://www.notion.so/349adc7c69708171a916d713aca7d3b4"
+      ],
       "조합법": "",
       "카테고리": "재료",
       "태그": [
@@ -830,6 +854,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "불과 창의 기본 재료.",
       "name": "나뭇가지",
+      "id": "branch",
+      "merge_result": "wood",
+      "merge_enabled": true,
       "effect": {
         "usable": false,
         "actions": [],
@@ -851,6 +878,9 @@ window.TTD_DATA = {
       "이름": "질긴줄기",
       "일회용": false,
       "재료 타입": "환경재료",
+      "결과물": [
+        "https://www.notion.so/349adc7c6970811ea72ef14cab490342"
+      ],
       "조합법": "",
       "카테고리": "재료",
       "태그": [
@@ -862,6 +892,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "묶는 데 쓰는 끈 재료.",
       "name": "질긴줄기",
+      "id": "stem",
+      "merge_result": "plant_fiber",
+      "merge_enabled": true,
       "effect": {
         "usable": false,
         "actions": [],
@@ -896,6 +929,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "배고픔 +1.",
       "name": "버섯",
+      "id": "mushroom",
+      "merge_result": null,
+      "merge_enabled": false,
       "effect": {
         "usable": true,
         "actions": [
@@ -936,6 +972,9 @@ window.TTD_DATA = {
       ],
       "효과 요약": "배고픔 +1.",
       "name": "산딸기",
+      "id": "berry",
+      "merge_result": null,
+      "merge_enabled": false,
       "effect": {
         "usable": true,
         "actions": [
@@ -1016,5 +1055,35 @@ window.TTD_DATA = {
         ]
       }
     }
-  }
+  },
+  "COMBOS": [
+    {
+      "ingredients": [
+        "branch",
+        "branch"
+      ],
+      "result": "wood"
+    },
+    {
+      "ingredients": [
+        "stem",
+        "stem"
+      ],
+      "result": "plant_fiber"
+    },
+    {
+      "ingredients": [
+        "plant_fiber",
+        "stem"
+      ],
+      "result": "clean_cloth"
+    },
+    {
+      "ingredients": [
+        "clean_cloth",
+        "plant_fiber"
+      ],
+      "result": "bandage"
+    }
+  ]
 };

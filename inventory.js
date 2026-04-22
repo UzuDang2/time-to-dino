@@ -1,4 +1,10 @@
 // inventory.js - 테트리스식 인벤토리 시스템
+//
+// D-24 머지·조합 통합 시스템:
+//   - 같은 재료 N개(기본 2개)를 겹치면 머지 → `merge_result` 타입의 상위 아이템 1개.
+//   - 다른 재료 2개를 겹치면 조합 조회 → `window.TTD_DATA.COMBOS`에서 매칭되는 result.
+//   - 둘 다 실패면 swap (기존 동작).
+// 시그니처는 기존과 동일(canMerge/mergeItems/confirmPlacement). 호출부 회귀 없음.
 
 class InventorySystem {
     constructor(rows = 6, cols = 5) {
@@ -9,26 +15,34 @@ class InventorySystem {
         this.items = [];
     }
 
-    // 아이템 정의
-    // 1단계 환경재료/음식재료는 category='env'|'food'로 구분, 기존 카드 시스템용 레거시 아이템은 유지.
-    static ITEMS = {
-        // === 1단계 환경재료 (Notion "🎒 아이템" 1단계 5종과 대응) ===
-        stone:    { name: '돌맹이',   shape: [[1]], grade: 1, mergeable: true,  category: 'env' },
-        branch:   { name: '나뭇가지', shape: [[1]], grade: 1, mergeable: true,  category: 'env' },
-        stem:     { name: '질긴줄기', shape: [[1]], grade: 1, mergeable: true,  category: 'env' },
+    // 머지 수량 N — 전역 상수(D-24). 같은 재료를 N개 겹쳐야 머지 성립.
+    // 현재는 "2개 겹치기"만 UI에서 지원 → N=2 외 값은 추후 확장.
+    static MERGE_COUNT = 2;
 
-        // === 1단계 음식재료 ===
-        mushroom: { name: '버섯',     shape: [[1]], grade: 1, mergeable: false, category: 'food' },
-        berry:    { name: '산딸기',   shape: [[1]], grade: 1, mergeable: false, category: 'food' },
+    // 아이템 정의
+    // 1단계/2단계는 Notion DB의 id와 1:1 매칭(scripts/fetch_data.py::ITEM_NAME_TO_ID 참고).
+    // `merge_result`는 Notion의 `결과물` relation을 런타임에서 덮어쓸 수 있음(TTD_DATA.ITEMS).
+    // 여기 하드코딩된 값은 런타임 폴백 + 오프라인 테스트용.
+    static ITEMS = {
+        // === 1단계 환경재료 ===
+        stone:    { name: '돌맹이',   shape: [[1]], grade: 1, mergeable: false, category: 'env',  merge_result: null },
+        branch:   { name: '나뭇가지', shape: [[1]], grade: 1, mergeable: true,  category: 'env',  merge_result: 'wood' },
+        stem:     { name: '질긴줄기', shape: [[1]], grade: 1, mergeable: true,  category: 'env',  merge_result: 'plant_fiber' },
+
+        // === 1단계 음식재료 (머지 불가 — 2단계 음식 아이템 없음) ===
+        mushroom: { name: '버섯',     shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
+        berry:    { name: '산딸기',   shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
+
+        // === 2단계 (조합 결과물) ===
+        wood:         { name: '목재',         shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
+        plant_fiber:  { name: '식물 섬유',    shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
+        clean_cloth:  { name: '깨끗한 천',    shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
+        bandage:      { name: '붕대',         shape: [[1]], grade: 2, mergeable: false, category: 'consumable', merge_result: null },
 
         // === 레거시 (기존 카드 시스템 참조) — 후속 작업에서 1단계 체계로 흡수 예정 ===
-        material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: true },
-        material_mid:  { name: '일반 재료', shape: [[1]], grade: 2, mergeable: true },
-        material_high: { name: '고급 재료', shape: [[1]], grade: 3, mergeable: true },
-
-        // 'food' 독립 아이템 제거 (요한 지시, 2026-04-22):
-        // "음식"은 카테고리(mushroom/berry 등)의 상위 분류이지 직접 드롭되는 아이템이 아님.
-        // 'find_food' 카드는 유지하되 rollTileDrop의 food 카테고리 강제 드롭으로 재배선.
+        material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: false, merge_result: null },
+        material_mid:  { name: '일반 재료', shape: [[1]], grade: 2, mergeable: false, merge_result: null },
+        material_high: { name: '고급 재료', shape: [[1]], grade: 3, mergeable: false, merge_result: null },
 
         weapon_basic: { name: '나무창', shape: [[1, 1]], grade: 1, mergeable: false },
         weapon_stone: { name: '돌창',   shape: [[1, 1]], grade: 2, mergeable: false },
@@ -37,6 +51,43 @@ class InventorySystem {
 
         armor: { name: '가죽 갑옷', shape: [[1, 1], [1, 1]], grade: 2, mergeable: false }
     };
+
+    // 런타임에 TTD_DATA.ITEMS(Notion 기반)이 덮어쓰는 값 조회.
+    // 우선 순위: TTD_DATA.ITEMS(id 매칭) → static ITEMS(type 매칭).
+    // D-24: 이 함수가 있어야 시트·Notion 편집이 코드 재배포 없이 반영됨.
+    static resolveDef(type) {
+        const staticDef = InventorySystem.ITEMS[type] || {};
+        const bundle = (typeof window !== 'undefined' && window.TTD_DATA && Array.isArray(window.TTD_DATA.ITEMS))
+            ? window.TTD_DATA.ITEMS
+            : null;
+        if (!bundle) return staticDef;
+        const notionDef = bundle.find(it => it && it.id === type);
+        if (!notionDef) return staticDef;
+        // Notion 우선: merge_enabled + merge_result만 덮어씀. name/shape 등은 static 유지.
+        return {
+            ...staticDef,
+            mergeable: notionDef.merge_enabled === true,
+            merge_result: notionDef.merge_result || null,
+        };
+    }
+
+    // 두 아이템의 조합 레시피 조회 (TTD_DATA.COMBOS 전역 리스트).
+    // ingredients 순서 무관 비교. 2종 매칭만 지원(3종 이상은 후속 이터레이션).
+    static lookupCombo(typeA, typeB) {
+        const bundle = (typeof window !== 'undefined' && window.TTD_DATA && Array.isArray(window.TTD_DATA.COMBOS))
+            ? window.TTD_DATA.COMBOS
+            : [];
+        const target = [typeA, typeB].sort();
+        for (const recipe of bundle) {
+            if (!recipe || !Array.isArray(recipe.ingredients)) continue;
+            if (recipe.ingredients.length !== 2) continue;
+            const sorted = [...recipe.ingredients].sort();
+            if (sorted[0] === target[0] && sorted[1] === target[1]) {
+                return recipe.result;
+            }
+        }
+        return null;
+    }
 
     // 아이템 추가
     addItem(itemType) {
@@ -152,7 +203,7 @@ class InventorySystem {
         const rows = shape.length;
         const cols = shape[0].length;
         const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
-        
+
         for (let y = 0; y < rows; y++) {
             for (let x = 0; x < cols; x++) {
                 rotated[x][rows - 1 - y] = shape[y][x];
@@ -164,7 +215,7 @@ class InventorySystem {
     // 아이템 이동
     moveItem(item, newX, newY) {
         this.removeItem(item);
-        
+
         if (this.canPlace(item.shape, newX, newY, item.id)) {
             item.x = newX;
             item.y = newY;
@@ -229,28 +280,45 @@ class InventorySystem {
         return overlapped;
     }
 
-    // 머지 (같은 등급 재료 합치기)
+    // ── D-24 머지·조합 통합 ──────────────────────────────────────────
+    //
+    // canMerge: 같은 type 두 아이템이 상위 단계로 파생 가능한지.
+    //   시그니처 유지. 내부 로직만 merge_result 기반으로 교체(기존 grade 승급 제거).
     canMerge(item1, item2) {
-        return item1.mergeable && 
-               item2.mergeable && 
-               item1.type === item2.type && 
-               item1.grade === item2.grade &&
-               item1.id !== item2.id;
+        if (!item1 || !item2 || item1.id === item2.id) return false;
+        if (item1.type !== item2.type) return false;
+        const def = InventorySystem.resolveDef(item1.type);
+        return def.mergeable === true && !!def.merge_result;
     }
 
+    // getMergeResult: 머지 성공 시 생성할 타입 id. null이면 머지 불가.
+    getMergeResult(item) {
+        if (!item) return null;
+        const def = InventorySystem.resolveDef(item.type);
+        return def.merge_result || null;
+    }
+
+    // canCombine: 서로 다른 type 두 아이템이 조합 레시피에 존재하는가.
+    canCombine(item1, item2) {
+        if (!item1 || !item2 || item1.id === item2.id) return false;
+        if (item1.type === item2.type) return false;
+        return InventorySystem.lookupCombo(item1.type, item2.type) !== null;
+    }
+
+    getCombineResult(item1, item2) {
+        if (!this.canCombine(item1, item2)) return null;
+        return InventorySystem.lookupCombo(item1.type, item2.type);
+    }
+
+    // 구버전 호환: 기존에 호출하던 "선택된 아이템 + 그리드 아이템 머지" API.
+    // confirmPlacement 경로로 흡수됐으나, 외부에서 직접 호출할 수 있어 시그니처 유지.
     mergeItems(item1, item2) {
         if (!this.canMerge(item1, item2)) return null;
-
-        // 다음 등급 재료 (grade 3 = 최고 등급이면 머지 불가)
-        const newType = item1.grade === 1 ? 'material_mid'
-                       : item1.grade === 2 ? 'material_high'
-                       : null;
+        const newType = this.getMergeResult(item1);
         if (!newType) return null;
-
         this.removeItem(item1);
         this.removeItem(item2);
         this.items = this.items.filter(i => i.id !== item1.id && i.id !== item2.id);
-
         return this.addItem(newType);
     }
 
@@ -297,8 +365,30 @@ class InventorySystem {
         this.selectedItem = null;
     }
 
+    // 상위 단계 결과물(머지/조합)을 그리드의 특정 좌표에 배치.
+    // 해당 자리가 차 있으면 빈 자리로 폴백(`addItem`).
+    // - 공통 헬퍼: 머지·조합 분기에서 결과물 배치 로직 중복 제거.
+    _placeDerivedItem(newType, preferredX, preferredY) {
+        const def = InventorySystem.ITEMS[newType];
+        if (!def) return false;
+        const merged = {
+            id: Date.now() + Math.random(),
+            type: newType,
+            ...def,
+            rotation: 0,
+            x: preferredX,
+            y: preferredY
+        };
+        if (this.canPlace(merged.shape, merged.x, merged.y)) {
+            this.placeItem(merged);
+            this.items.push(merged);
+            return true;
+        }
+        return this.addItem(newType);
+    }
+
     // 선택된 아이템을 (x, y)에 확정 배치
-    // 반환: { ok: boolean, action: 'place'|'merge'|'swap'|'none', mergedTo?: item }
+    // 반환: { ok: boolean, action: 'place'|'merge'|'combine'|'swap'|'none', mergedTo?: item, resultType?: string }
     confirmPlacement(x, y) {
         if (!this.selectedItem) return { ok: false, action: 'none' };
         const item = this.selectedItem;
@@ -323,46 +413,37 @@ class InventorySystem {
         if (overlapped.length === 1) {
             const target = overlapped[0];
 
-            // 2a) 머지 가능하면 머지
+            // 2a) 머지 (같은 재료 2개 → merge_result)
             if (this.canMerge(item, target)) {
-                // target은 grid에 있고 item은 공중. 둘 다 제거 후 상위 등급 생성.
+                const newType = this.getMergeResult(item);
                 this.removeItem(target);
                 this.items = this.items.filter(i => i.id !== target.id && i.id !== item.id);
                 this.selectedItem = null;
-                const newType = item.grade === 1 ? 'material_mid'
-                               : item.grade === 2 ? 'material_high'
-                               : null;
                 if (!newType) return { ok: true, action: 'merge' };
-                // 머지 결과를 target 자리에 우선 배치 시도
-                const def = InventorySystem.ITEMS[newType];
-                const merged = {
-                    id: Date.now() + Math.random(),
-                    type: newType,
-                    ...def,
-                    rotation: 0,
-                    x: target.x,
-                    y: target.y
-                };
-                if (this.canPlace(merged.shape, merged.x, merged.y)) {
-                    this.placeItem(merged);
-                    this.items.push(merged);
-                } else {
-                    this.addItem(newType);
-                }
-                return { ok: true, action: 'merge' };
+                this._placeDerivedItem(newType, target.x, target.y);
+                return { ok: true, action: 'merge', resultType: newType };
             }
 
-            // 2b) 교체: 선택 중이던 item을 target 자리에 두고, target을 선택 모드로 전환
-            //     단, item이 target 자리에 모양 맞게 들어가야 함
+            // 2b) 조합 (다른 재료 2개 → combos 레시피)
+            if (this.canCombine(item, target)) {
+                const newType = this.getCombineResult(item, target);
+                this.removeItem(target);
+                this.items = this.items.filter(i => i.id !== target.id && i.id !== item.id);
+                this.selectedItem = null;
+                if (!newType) return { ok: true, action: 'combine' };
+                this._placeDerivedItem(newType, target.x, target.y);
+                return { ok: true, action: 'combine', resultType: newType };
+            }
+
+            // 2c) 교체: 선택 중이던 item을 target 자리에 두고, target을 선택 모드로 전환
             this.removeItem(target);
             if (this.canPlace(item.shape, x, y)) {
                 item.x = x;
                 item.y = y;
                 this.placeItem(item);
-                this.selectedItem = target; // target이 공중으로
+                this.selectedItem = target;
                 return { ok: true, action: 'swap' };
             } else {
-                // 되돌리기
                 this.placeItem(target);
                 return { ok: false, action: 'none' };
             }
