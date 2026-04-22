@@ -1005,8 +1005,7 @@ window.TTD_DATA = {
       "시냇물": {
         "env": [
           "stone"
-        ],
-        "food": []
+        ]
       },
       "동굴": {
         "env": [
