@@ -1,0 +1,37 @@
+[
+  {
+    "id": "search",
+    "name": "뒤져보기",
+    "count": 5,
+    "effect": "아이템 획득, 주변 정보",
+    "detection": 5
+  },
+  {
+    "id": "listen",
+    "name": "귀 기울이기",
+    "count": 2,
+    "effect": "몬스터 감지",
+    "detection": -5
+  },
+  {
+    "id": "find_food",
+    "name": "음식 찾기",
+    "count": 1,
+    "effect": "음식 획득",
+    "detection": 5
+  },
+  {
+    "id": "find_weapon",
+    "name": "무기 장비 찾기",
+    "count": 1,
+    "effect": "무기/장비 획득",
+    "detection": 10
+  },
+  {
+    "id": "hide",
+    "name": "숨기",
+    "count": 1,
+    "effect": "은신",
+    "detection": -15
+  }
+]

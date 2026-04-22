@@ -1,0 +1,30 @@
+[
+  {
+    "id": "track_erase",
+    "name": "흔적 지우기",
+    "count": 1,
+    "effect": "발각률 감소",
+    "detection": -10
+  },
+  {
+    "id": "make_fire",
+    "name": "불 피우기",
+    "count": 1,
+    "effect": "휴식, 조리",
+    "detection": 0
+  },
+  {
+    "id": "set_trap",
+    "name": "덫 설치",
+    "count": 1,
+    "effect": "몬스터 포획",
+    "detection": 5
+  },
+  {
+    "id": "quick_look",
+    "name": "빠르게 살피기",
+    "count": 1,
+    "effect": "빠른 정찰",
+    "detection": 3
+  }
+]

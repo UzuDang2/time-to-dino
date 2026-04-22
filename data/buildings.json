@@ -1,0 +1,352 @@
+[
+  {
+    "id": "clinic",
+    "name": "치료소",
+    "stage": 1,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 10
+      },
+      {
+        "material": "끈",
+        "count": 5
+      },
+      {
+        "material": "천",
+        "count": 3
+      }
+    ],
+    "effect": "붕대 x1 시작 소지",
+    "cost_raw": "목재 x10, 끈 x5, 천 x3"
+  },
+  {
+    "id": "clinic",
+    "name": "치료소",
+    "stage": 2,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 20
+      },
+      {
+        "material": "석재",
+        "count": 10
+      },
+      {
+        "material": "약초",
+        "count": 10
+      }
+    ],
+    "effect": "붕대 x2 + 귀환시 생명력 +1",
+    "cost_raw": "목재 x20, 석재 x10, 약초 x10"
+  },
+  {
+    "id": "clinic",
+    "name": "치료소",
+    "stage": 3,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 30
+      },
+      {
+        "material": "석재",
+        "count": 20
+      },
+      {
+        "material": "약초",
+        "count": 20
+      }
+    ],
+    "effect": "붕대 x3 + 약초묶음 x2 + 귀환시 생명력 +2",
+    "cost_raw": "목재 x30, 석재 x20, 약초 x20"
+  },
+  {
+    "id": "kitchen",
+    "name": "식당",
+    "stage": 1,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 8
+      },
+      {
+        "material": "돌멩이",
+        "count": 10
+      },
+      {
+        "material": "불씩",
+        "count": 1
+      }
+    ],
+    "effect": "도시락 x1 (배고픔 +4)",
+    "cost_raw": "목재 x8, 돌멩이 x10, 불씩 x1"
+  },
+  {
+    "id": "kitchen",
+    "name": "식당",
+    "stage": 2,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 15
+      },
+      {
+        "material": "석재",
+        "count": 10
+      },
+      {
+        "material": "조리도구",
+        "count": 1
+      }
+    ],
+    "effect": "도시락 x2 (배고픔 +5)",
+    "cost_raw": "목재 x15, 석재 x10, 조리도구 x1"
+  },
+  {
+    "id": "kitchen",
+    "name": "식당",
+    "stage": 3,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 25
+      },
+      {
+        "material": "석재",
+        "count": 15
+      },
+      {
+        "material": "금속",
+        "count": 5
+      }
+    ],
+    "effect": "도시락 x3 + 비상식량 x1",
+    "cost_raw": "목재 x25, 석재 x15, 금속 x5"
+  },
+  {
+    "id": "workshop",
+    "name": "정비소",
+    "stage": 1,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 12
+      },
+      {
+        "material": "돌멩이",
+        "count": 15
+      },
+      {
+        "material": "끈",
+        "count": 5
+      }
+    ],
+    "effect": "간이 의상 (회피율 +5%)",
+    "cost_raw": "목재 x12, 돌멩이 x15, 끈 x5"
+  },
+  {
+    "id": "workshop",
+    "name": "정비소",
+    "stage": 2,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 20
+      },
+      {
+        "material": "석재",
+        "count": 15
+      },
+      {
+        "material": "가죽",
+        "count": 10
+      }
+    ],
+    "effect": "가죽 갑옷 + 무기 수리",
+    "cost_raw": "목재 x20, 석재 x15, 가죽 x10"
+  },
+  {
+    "id": "workshop",
+    "name": "정비소",
+    "stage": 3,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 30
+      },
+      {
+        "material": "석재",
+        "count": 25
+      },
+      {
+        "material": "가죽",
+        "count": 20
+      }
+    ],
+    "effect": "강화 갑옷 + 강화 무기",
+    "cost_raw": "목재 x30, 석재 x25, 가죽 x20"
+  },
+  {
+    "id": "storage",
+    "name": "창고",
+    "stage": 1,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 15
+      },
+      {
+        "material": "끈",
+        "count": 10
+      }
+    ],
+    "effect": "가방 용량 +2",
+    "cost_raw": "목재 x15, 끈 x10"
+  },
+  {
+    "id": "storage",
+    "name": "창고",
+    "stage": 2,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 25
+      },
+      {
+        "material": "석재",
+        "count": 15
+      },
+      {
+        "material": "끈",
+        "count": 15
+      }
+    ],
+    "effect": "가방 용량 +4 + 재료 보관",
+    "cost_raw": "목재 x25, 석재 x15, 끈 x15"
+  },
+  {
+    "id": "storage",
+    "name": "창고",
+    "stage": 3,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 40
+      },
+      {
+        "material": "석재",
+        "count": 30
+      },
+      {
+        "material": "금속",
+        "count": 10
+      }
+    ],
+    "effect": "가방 용량 +6 + 모든 재료 보관",
+    "cost_raw": "목재 x40, 석재 x30, 금속 x10"
+  },
+  {
+    "id": "training",
+    "name": "훈련장",
+    "stage": 1,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 10
+      },
+      {
+        "material": "돌멩이",
+        "count": 10
+      }
+    ],
+    "effect": "덱 용량 +2",
+    "cost_raw": "목재 x10, 돌멩이 x10"
+  },
+  {
+    "id": "training",
+    "name": "훈련장",
+    "stage": 2,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 20
+      },
+      {
+        "material": "석재",
+        "count": 15
+      }
+    ],
+    "effect": "덱 용량 +3 + 확장 카드 1종",
+    "cost_raw": "목재 x20, 석재 x15"
+  },
+  {
+    "id": "training",
+    "name": "훈련장",
+    "stage": 3,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 30
+      },
+      {
+        "material": "석재",
+        "count": 25
+      }
+    ],
+    "effect": "덱 용량 +5 + 확장 카드 3종",
+    "cost_raw": "목재 x30, 석재 x25"
+  },
+  {
+    "id": "watchtower",
+    "name": "감시탑",
+    "stage": 1,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 20
+      },
+      {
+        "material": "끈",
+        "count": 10
+      }
+    ],
+    "effect": "몬스터 위치 1회 확인, 발각 -5%",
+    "cost_raw": "목재 x20, 끈 x10"
+  },
+  {
+    "id": "watchtower",
+    "name": "감시탑",
+    "stage": 2,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 30
+      },
+      {
+        "material": "석재",
+        "count": 20
+      }
+    ],
+    "effect": "몬스터 위치 2회 + 패턴 힌트, 발각 -10%",
+    "cost_raw": "목재 x30, 석재 x20"
+  },
+  {
+    "id": "watchtower",
+    "name": "감시탑",
+    "stage": 3,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 40
+      },
+      {
+        "material": "석재",
+        "count": 30
+      }
+    ],
+    "effect": "실시간 위치 + 행동 예측, 발각 -15%",
+    "cost_raw": "목재 x40, 석재 x30"
+  }
+]

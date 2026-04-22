@@ -1,0 +1,23 @@
+[
+  {
+    "id": "velociraptor",
+    "name": "벨로시랩터",
+    "hp": 8,
+    "attack_pattern": [
+      {
+        "move": "으르렁",
+        "damage": 0
+      },
+      {
+        "move": "물기",
+        "damage": 2
+      },
+      {
+        "move": "발톱",
+        "damage": 3
+      }
+    ],
+    "difficulty": "쉬움",
+    "attack_pattern_raw": "으르렁(0) → 물기(2) → 발톱(3)"
+  }
+]

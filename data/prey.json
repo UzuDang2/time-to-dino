@@ -1,0 +1,162 @@
+[
+  {
+    "id": "rabbit",
+    "name": "토끼",
+    "level": 1,
+    "hp": 2,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 3
+  },
+  {
+    "id": "mouse",
+    "name": "쥐",
+    "level": 1,
+    "hp": 1,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 2
+  },
+  {
+    "id": "squirrel",
+    "name": "다람쥐",
+    "level": 1,
+    "hp": 1,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 2
+  },
+  {
+    "id": "bird",
+    "name": "메추라기새",
+    "level": 1,
+    "hp": 2,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 3
+  },
+  {
+    "id": "salamander",
+    "name": "도롱뇽",
+    "level": 1,
+    "hp": 1,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 2
+  },
+  {
+    "id": "snake",
+    "name": "작은 뱀",
+    "level": 1,
+    "hp": 1,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 2
+  },
+  {
+    "id": "frog",
+    "name": "개구리",
+    "level": 1,
+    "hp": 1,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 2
+  },
+  {
+    "id": "crab",
+    "name": "게",
+    "level": 1,
+    "hp": 1,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 2
+  },
+  {
+    "id": "grasshopper",
+    "name": "메뚜기",
+    "level": 1,
+    "hp": 1,
+    "attack": 0,
+    "evade_rate": 20,
+    "type": "회피형",
+    "meat": 1
+  },
+  {
+    "id": "boar",
+    "name": "작은 멧돼지",
+    "level": 2,
+    "hp": 5,
+    "attack": 2,
+    "evade_rate": 15,
+    "type": "반격형",
+    "meat": 5
+  },
+  {
+    "id": "dinosaur",
+    "name": "작은 공룡",
+    "level": 2,
+    "hp": 4,
+    "attack": 1,
+    "evade_rate": 15,
+    "type": "반격형",
+    "meat": 4
+  },
+  {
+    "id": "deer",
+    "name": "사슴",
+    "level": 2,
+    "hp": 7,
+    "attack": 0,
+    "evade_rate": 50,
+    "type": "회피형",
+    "meat": 7
+  },
+  {
+    "id": "badger",
+    "name": "오소리",
+    "level": 2,
+    "hp": 6,
+    "attack": 2,
+    "evade_rate": 15,
+    "type": "반격형",
+    "meat": 6
+  },
+  {
+    "id": "fox",
+    "name": "여우",
+    "level": 2,
+    "hp": 5,
+    "attack": 0,
+    "evade_rate": 60,
+    "type": "회피형",
+    "meat": 5
+  },
+  {
+    "id": "turkey",
+    "name": "큰 새",
+    "level": 2,
+    "hp": 4,
+    "attack": 1,
+    "evade_rate": 15,
+    "type": "반격형",
+    "meat": 4
+  },
+  {
+    "id": "armadillo",
+    "name": "아르마딜로",
+    "level": 2,
+    "hp": 8,
+    "attack": 0,
+    "evade_rate": 10,
+    "type": "방어형",
+    "meat": 5
+  }
+]
