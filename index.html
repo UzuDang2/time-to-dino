@@ -355,29 +355,34 @@
 
         // 게임 맵 컴포넌트
         //
-        // D-39 (2026-04-22 요한 지시): LootToast를 맵 컨테이너 내부에 얹어
-        // "맵에서 획득했다"는 공간 의미를 강화. position: absolute + 상단 기준으로
-        // 고정하되 부모 .map-container가 position: relative라 스크롤과 함께 움직이지 않음.
+        // D-46 (2026-04-22 요한 지시): LootToast를 .map-container(스크롤 영역)
+        // 밖으로 빼고 .map-area 래퍼의 형제로 둔다. 이전(D-39)에는 맵 안에 넣어
+        // "맵에서 획득" 공간감을 살렸지만, 모바일에서 맵을 스크롤하면 absolute
+        // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
+        // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
+        // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
         function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone }) {
             const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
 
             return (
-                <div className="map-container">
-                    <svg className="map-svg" width="1100" height="1000">
-                        {visibleTiles.map(tile => (
-                            <HexTile
-                                key={tile.id}
-                                tile={tile}
-                                currentTile={currentTile}
-                                tiles={tiles}
-                                boss={boss}
-                                bossVisible={bossVisible}
-                                gameOver={gameOver}
-                                victory={victory}
-                                moveTo={moveTo}
-                            />
-                        ))}
-                    </svg>
+                <div className="map-area">
+                    <div className="map-container">
+                        <svg className="map-svg" width="1100" height="1000">
+                            {visibleTiles.map(tile => (
+                                <HexTile
+                                    key={tile.id}
+                                    tile={tile}
+                                    currentTile={currentTile}
+                                    tiles={tiles}
+                                    boss={boss}
+                                    bossVisible={bossVisible}
+                                    gameOver={gameOver}
+                                    victory={victory}
+                                    moveTo={moveTo}
+                                />
+                            ))}
+                        </svg>
+                    </div>
                     <LootToast toast={lootToast} onDone={onLootToastDone} />
                 </div>
             );
@@ -1015,9 +1020,11 @@
         // - 페이드 인(빠르게) → 1초 노출 → 2초 페이드 아웃.
         // - 여러 아이템 동시 획득 시 하나의 토스트에 목록으로.
         // - 기존 메시지 로그는 유지 (토스트는 보조 강조).
-        // 위치는 맵 컨테이너 상단 중앙(D-39 요한 지시) — "맵에서 획득했다"는 의미 강화.
-        // position: absolute + 부모(.map-container)가 position: relative라 맵 안에 얹힌다.
-        // 스크롤과 함께 움직이지 않도록 부모 기준 top:12px 고정.
+        // D-46(2026-04-22, 요한 지시): 위치를 .map-area(HUD 바로 아래 영역)
+        // 상단 중앙에 absolute로 고정. 이전엔 .map-container(스크롤 영역) 안이라
+        // 맵을 스크롤하면 토스트가 시야 밖으로 밀렸음.
+        // .map-area는 스크롤하지 않으므로 토스트는 항상 같은 위치(HUD 직하단)에 노출되고,
+        // 좌·우·상단 모두 다른 상태 UI(HUD 패널, 카드, 인벤 버튼)와 겹치지 않는다.
         // z-index는 기존 modal(.modal=100, ItemInfoModal=1000, CardListModal=1100)보다
         // 위에 두어 조우 모달 중에도 가려지지 않게 1500.
         // 배경 불투명도 0.8 (D-39, 이전 0.5).

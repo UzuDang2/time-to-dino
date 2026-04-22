@@ -93,12 +93,24 @@ button:active {
     box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
 }
 
+/* 맵 영역 — D-46 (2026-04-22 요한 지시):
+   LootToast가 맵 스크롤과 함께 밀려 시야에서 사라지던 문제 해결.
+   .map-container(스크롤 영역)와 LootToast를 형제로 두고
+   .map-area를 positioned ancestor로 잡아 토스트가 HUD 바로 아래
+   고정 위치에 뜨도록 한다. */
+.map-area {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
 /* 맵 컨테이너 */
 .map-container {
     flex: 1;
     overflow: auto;
     background: #0a0e27;
-    position: relative;
 }
 
 .map-svg { 
