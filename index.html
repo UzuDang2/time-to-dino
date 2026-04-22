@@ -37,28 +37,94 @@
         // ============================================
 
         // 상단 스탯 패널 컴포넌트
+        //
+        // D-27 HUD 리뉴얼 (요한 지시 2026-04-22):
+        // - 생명력/배고움은 게이지(바) — 발각률 바 스타일 답습, 게임 다크톤 유지.
+        // - 배고픔 <= 3일 때 노란색(#d4b84a, 채도 낮춤)으로 경고.
+        // - 시간은 숫자가 아닌 '시계 아이콘 3개'. maxTime만큼 표시하고 소모된 만큼 어둡게.
+        // - 시간 전부 소모(time >= maxTime) 시 숫자/아이콘 모두 빨강으로 경고.
+        // - 게임 다크 분위기와 조화를 위해 빨강/노랑 채도는 낮게 유지.
         function StatPanel({ health, hunger, time, maxTime, boss, detection, message }) {
-            const detectionColor = detection < 30 ? '#4CAF50' : 
+            const detectionColor = detection < 30 ? '#4CAF50' :
                                   detection < 60 ? '#FFC107' : '#e94560';
-            
+
+            const MAX_HEALTH = 6;
+            const MAX_HUNGER = 12;
+            const healthPct = Math.max(0, Math.min(100, (health / MAX_HEALTH) * 100));
+            const hungerPct = Math.max(0, Math.min(100, (hunger / MAX_HUNGER) * 100));
+
+            // 채도 낮춘 경고색 (다크톤 조화). 기본은 기존 팔레트 유지.
+            const healthColor = health <= 0
+                ? '#8a2b3a'
+                : health <= 2 ? '#c04a5e' : '#b24656';
+            const hungerLow = hunger <= 3;
+            const hungerColor = hungerLow ? '#d4b84a' : '#c08a3e';
+            const timeEmpty = time >= maxTime;
+            const timeTextColor = timeEmpty ? '#c04a5e' : '#eee';
+
             return (
                 <div>
                     <div style={{ marginBottom: '8px', fontSize: '18px', fontWeight: '600' }}>
                         🦖 타임투다이노
                     </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginBottom: '8px' }}>
+
+                    {/* 1행: 생명력 · 배고픔 게이지 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                        <StatGauge
+                            label="생명력"
+                            icon="❤️"
+                            value={health}
+                            max={MAX_HEALTH}
+                            pct={healthPct}
+                            color={healthColor}
+                            valueColor="#eee"
+                        />
+                        <StatGauge
+                            label="배고픔"
+                            icon="🍖"
+                            value={hunger}
+                            max={MAX_HUNGER}
+                            pct={hungerPct}
+                            color={hungerColor}
+                            valueColor={hungerLow ? '#d4b84a' : '#eee'}
+                        />
+                    </div>
+
+                    {/* 2행: 시간(시계 아이콘) · 보스 상태 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                         <div className="stat-box">
-                            <div className="stat-label">생명력</div>
-                            <div className="stat-value">❤️ {health}/6</div>
-                        </div>
-                        <div className="stat-box">
-                            <div className="stat-label">배고픔</div>
-                            <div className="stat-value">🍖 {hunger}/12</div>
-                        </div>
-                        <div className="stat-box">
-                            <div className="stat-label">시간</div>
-                            <div className="stat-value">⏰ {time}/{maxTime}</div>
+                            <div className="stat-label" style={{ color: timeEmpty ? '#c04a5e' : '#aaa' }}>시간</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                <div style={{ display: 'flex', gap: '3px' }}>
+                                    {Array.from({ length: maxTime }).map((_, i) => {
+                                        const used = i < time;
+                                        return (
+                                            <span
+                                                key={i}
+                                                style={{
+                                                    fontSize: '16px',
+                                                    opacity: used ? 0.25 : 1,
+                                                    filter: timeEmpty
+                                                        ? 'grayscale(1) brightness(0.9)'
+                                                        : used ? 'grayscale(1) brightness(0.7)' : 'none',
+                                                    color: timeEmpty ? '#c04a5e' : undefined,
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                🕰️
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                                <span style={{
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: timeTextColor,
+                                    marginLeft: 'auto'
+                                }}>
+                                    {time}/{maxTime}
+                                </span>
+                            </div>
                         </div>
                         <div className="stat-box">
                             <div className="stat-label">보스</div>
@@ -67,14 +133,14 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="stat-box" style={{ marginBottom: '8px' }}>
                         <div className="stat-label">🚨 발각률</div>
                         <div style={{ background: '#0f3460', height: '20px', borderRadius: '10px', overflow: 'hidden', marginTop: '4px' }}>
-                            <div style={{ 
-                                width: `${detection}%`, 
-                                height: '100%', 
-                                background: detectionColor, 
+                            <div style={{
+                                width: `${detection}%`,
+                                height: '100%',
+                                background: detectionColor,
                                 transition: 'all 0.3s',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -90,6 +156,37 @@
 
                     <div className="stat-box" style={{ fontSize: '13px', marginBottom: '8px' }}>
                         {message}
+                    </div>
+                </div>
+            );
+        }
+
+        // 스탯 게이지 — 발각률 바와 동일 구조. 아이콘 + 게이지 + 숫자.
+        function StatGauge({ label, icon, value, max, pct, color, valueColor }) {
+            return (
+                <div className="stat-box">
+                    <div className="stat-label" style={{ color: valueColor === '#eee' ? '#aaa' : valueColor }}>
+                        {label}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                        <span style={{ fontSize: '14px' }}>{icon}</span>
+                        <div style={{
+                            flex: 1,
+                            background: '#0f3460',
+                            height: '12px',
+                            borderRadius: '6px',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                width: `${pct}%`,
+                                height: '100%',
+                                background: color,
+                                transition: 'all 0.3s'
+                            }} />
+                        </div>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: valueColor, minWidth: '34px', textAlign: 'right' }}>
+                            {value}/{max}
+                        </span>
                     </div>
                 </div>
             );
@@ -724,6 +821,74 @@
             );
         }
 
+        // 카드 더미(덱/무덤) 목록 모달
+        //
+        // D-27 HUD 리뉴얼 (요한 지시 2026-04-22):
+        // - 덱/무덤을 버튼으로 만들고, 클릭 시 남은 카드 목록을 이 모달로 보여준다.
+        // - CardItemConsumeModal과 UI 구조를 공유하는 "쌍둥이" 모달.
+        // - 읽기 전용: 카드 선택으로 소비되지 않는다(목록 확인용).
+        function CardListModal({ title, cards, emptyText, onClose }) {
+            // 이름별로 묶어서 카운트 — 같은 카드가 여러 장일 때 가독성 향상.
+            const grouped = cards.reduce((acc, c) => {
+                const key = c.name;
+                if (!acc[key]) acc[key] = { name: c.name, effect: c.effect, detection: c.detection, time: c.time, count: 0 };
+                acc[key].count += 1;
+                return acc;
+            }, {});
+            const list = Object.values(grouped);
+
+            return (
+                <div className="modal" style={{ zIndex: 1100 }} onClick={onClose}>
+                    <div
+                        className="modal-content"
+                        style={{ maxWidth: '360px', minWidth: '260px' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h3 style={{ margin: 0, fontSize: '16px' }}>{title} ({cards.length})</h3>
+                            <button onClick={onClose}>닫기</button>
+                        </div>
+                        {list.length === 0 ? (
+                            <div style={{ fontSize: '13px', color: '#aaa', padding: '16px 8px', textAlign: 'center' }}>
+                                {emptyText || '카드가 없습니다.'}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {list.map((entry, i) => (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            padding: '10px 12px',
+                                            background: '#0f3460',
+                                            border: '1px solid #16213e',
+                                            borderRadius: '6px'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '14px' }}>{entry.name}</div>
+                                            {entry.count > 1 && (
+                                                <div style={{ fontSize: '12px', color: '#aaa' }}>×{entry.count}</div>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px' }}>
+                                            {entry.effect}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '10px',
+                                            color: entry.detection > 0 ? '#c04a5e' : '#4CAF50',
+                                            marginTop: '2px'
+                                        }}>
+                                            발각 {entry.detection > 0 ? '+' : ''}{entry.detection}% · ⏰{entry.time}h
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         // 게임 오버/승리 모달
         function GameEndModal({ gameOver, victory }) {
             if (!gameOver && !victory) return null;
@@ -786,6 +951,9 @@
             const [message, setMessage] = useState('눈을 뜨자 낯선 숲이 펼쳐졌다.');
             const [showInventory, setShowInventory] = useState(false);
             const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
+            // D-27 HUD 리뉴얼: 덱/무덤 목록 모달 표시 플래그.
+            const [showDeckList, setShowDeckList] = useState(false);
+            const [showGraveyardList, setShowGraveyardList] = useState(false);
             const [eventTile, setEventTile] = useState(null);
             // 전투 임시 카드(아이템 사용으로 생성) — 전투 진입 시 combat 덱에 병합, 사용 후 소멸.
             // 구조: [{ id:'throw', count:N }, ...]
@@ -1250,12 +1418,22 @@
                             message={message}
                         />
                         
-                        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                        {/* D-27 HUD 리뉴얼 (요한 지시 2026-04-22):
+                            - 덱 버튼: 가방열기 왼쪽에 배치(요한 3번).
+                            - 무덤: 텍스트가 아닌 버튼으로 제공, 목록 모달 연결(요한 4번).
+                            - 손패는 하단에 항상 표시되므로 숫자만 간결히. */}
+                        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'center' }}>
+                            <button onClick={() => setShowDeckList(true)}>
+                                덱 {deck.length}
+                            </button>
                             <button onClick={() => setShowInventory(!showInventory)}>
                                 {showInventory ? '가방 닫기' : '가방 열기'}
                             </button>
+                            <button onClick={() => setShowGraveyardList(true)}>
+                                무덤 {graveyard.length}
+                            </button>
                             <div style={{ fontSize: '12px', color: '#aaa', display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
-                                손패 {hand.length}/{HAND_SIZE} · 덱 {deck.length} · 무덤 {graveyard.length}
+                                손패 {hand.length}/{HAND_SIZE}
                             </div>
                         </div>
 
@@ -1291,6 +1469,24 @@
                             closeInventory={() => setShowInventory(false)}
                             onUseItem={handleUseItem}
                             onFlashMessage={setMessage}
+                        />
+                    )}
+
+                    {showDeckList && (
+                        <CardListModal
+                            title="남은 덱"
+                            cards={deck}
+                            emptyText="덱이 비었다. 무덤이 셔플될 차례다."
+                            onClose={() => setShowDeckList(false)}
+                        />
+                    )}
+
+                    {showGraveyardList && (
+                        <CardListModal
+                            title="무덤"
+                            cards={graveyard}
+                            emptyText="아직 사용한 카드가 없다."
+                            onClose={() => setShowGraveyardList(false)}
                         />
                     )}
 
