@@ -106,6 +106,9 @@ function weightedPick(items, weights) {
 // 뒤져보기 1회 결과 추첨
 // opts.forceCategory: 'env'|'food' — 카테고리 1차 추첨을 건너뛰고 해당 풀에서 직접 추첨.
 //   '음식 찾기' 같은 카드는 이 옵션으로 배선된다. 지역에 food 풀이 비어있으면 none 폴백.
+// opts.forceAny: true — 카테고리 1차 추첨에서 none을 제거하고 env/food만 비율대로 재분배.
+//   D-38(2026-04-22): '좋은곳' 타일의 슬롯 게이트 통과 = 획득 보장. D-34 보강.
+//   게이트(100/80/80)는 '획득 확률'이므로, 통과 후 rollTileDrop이 none을 뱉으면 안 됨.
 // 반환: { item: string|null, category: 'env'|'food'|'none' }
 function rollTileDrop(region, opts) {
     const { regions, pool, weights } = resolveDropSource();
@@ -113,10 +116,21 @@ function rollTileDrop(region, opts) {
     if (!table) return { item: null, category: 'none' };
 
     const forceCategory = opts && opts.forceCategory;
+    const forceAny = !!(opts && opts.forceAny);
 
     let category;
     if (forceCategory === 'env' || forceCategory === 'food') {
         category = forceCategory;
+    } else if (forceAny) {
+        // env/food 비율대로만 재분배 (none 제거). 둘 다 0이면 none으로 폴백.
+        const envW = Math.max(0, Number(table.env) || 0);
+        const foodW = Math.max(0, Number(table.food) || 0);
+        const total = envW + foodW;
+        if (total <= 0) {
+            category = 'none';
+        } else {
+            category = (Math.random() * total < envW) ? 'env' : 'food';
+        }
     } else {
         const roll = Math.random() * 100;
         if (roll < table.env) {
@@ -205,14 +219,20 @@ function computeSearchMultiplier(tile) {
 // 반환: [{ item, category }, ...] — item이 null인 슬롯은 제외(= 드롭 없음).
 // opts는 rollTileDrop과 동일하게 forceCategory 등을 허용.
 // tile: 타일 객체(없으면 기본 확률) — type/searchedCount/hasBeenLeft를 읽는다.
+//
+// D-38(2026-04-22, 요한 지시): '좋은곳'(tile.type === 'good')은 슬롯 게이트 통과 =
+// 획득 보장. 게이트 확률(100/80/80)이 곧 획득률이 되도록, rollTileDrop에 forceAny를
+// 넘겨 카테고리 추첨에서 'none'을 제거한다. 일반 타일은 기존 동작 유지(회귀 없음).
 function rollSearchLoot(region, tile, opts) {
     const slots = resolveSearchSlots(tile);
     const mult = computeSearchMultiplier(tile);
+    const isGood = !!(tile && tile.type === 'good');
+    const callOpts = isGood ? Object.assign({}, opts, { forceAny: true }) : opts;
     const results = [];
     for (let i = 0; i < slots.length; i++) {
         const gate = Math.max(0, Math.min(100, slots[i] * mult));
         if (Math.random() * 100 >= gate) continue;
-        const drop = rollTileDrop(region, opts);
+        const drop = rollTileDrop(region, callOpts);
         if (drop && drop.item) results.push(drop);
     }
     return results;
