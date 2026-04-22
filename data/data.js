@@ -5,37 +5,47 @@ window.TTD_DATA = {
     {
       "id": "search",
       "name": "뒤져보기",
-      "count": 5,
+      "count": 7,
       "effect": "아이템 획득, 주변 정보",
-      "detection": 5
+      "detection": 5,
+      "consume": "",
+      "extra_effect": ""
     },
     {
       "id": "listen",
       "name": "귀 기울이기",
-      "count": 2,
+      "count": 3,
       "effect": "몬스터 감지",
-      "detection": -5
+      "detection": -5,
+      "consume": "",
+      "extra_effect": ""
     },
     {
       "id": "find_food",
       "name": "음식 찾기",
       "count": 1,
       "effect": "음식 획득",
-      "detection": 5
-    },
-    {
-      "id": "find_weapon",
-      "name": "무기 장비 찾기",
-      "count": 1,
-      "effect": "무기/장비 획득",
-      "detection": 10
+      "detection": 5,
+      "consume": "",
+      "extra_effect": ""
     },
     {
       "id": "hide",
       "name": "숨기",
       "count": 1,
       "effect": "은신",
-      "detection": -15
+      "detection": -15,
+      "consume": "",
+      "extra_effect": ""
+    },
+    {
+      "id": "rest",
+      "name": "휴식",
+      "count": 1,
+      "effect": "체력/배고픔 소폭 회복, 소음 최소",
+      "detection": -13,
+      "consume": "category:음식;scale:recover=2",
+      "extra_effect": ""
     }
   ],
   "EXTRA_CARDS": [
