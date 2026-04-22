@@ -363,10 +363,25 @@
         // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
         function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone }) {
             const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
+            const containerRef = React.useRef(null);
+
+            // D-47 (2026-04-22 요한 지시): 게임 시작 시 현재 위치 타일이 스크롤
+            // 뷰포트 중앙에 오도록 1회 정렬. 이전엔 항상 (0,0)에서 시작해 매번
+            // 시작 위치를 찾아야 했음.
+            // useLayoutEffect로 paint 전에 스크롤을 잡아 깜빡임 없음.
+            // 마운트 시 1회만 — 이후 이동 자유, 자동 추적은 안 함.
+            React.useLayoutEffect(() => {
+                const el = containerRef.current;
+                if (!el) return;
+                const cur = tiles[currentTile];
+                if (!cur || !cur.position) return;
+                el.scrollLeft = cur.position.x - el.clientWidth / 2;
+                el.scrollTop = cur.position.y - el.clientHeight / 2;
+            }, []);
 
             return (
                 <div className="map-area">
-                    <div className="map-container">
+                    <div className="map-container" ref={containerRef}>
                         <svg className="map-svg" width="1100" height="1000">
                             {visibleTiles.map(tile => (
                                 <HexTile
