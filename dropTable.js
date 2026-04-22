@@ -10,6 +10,13 @@
 // 데이터가 비어 있을 때만 아래 폴백 상수를 사용한다.
 // (D-06: 시트 SSOT 전환)
 //
+// D-28(2026-04-22, 요한 지시):
+// - 뒤져보기는 "슬롯 3개 독립 추첨"으로 진행. 슬롯별 게이트 확률 통과 시에만
+//   rollTileDrop이 호출되어 그 슬롯의 아이템이 결정된다.
+//   슬롯1 100% / 슬롯2 30% / 슬롯3 30% — 유저에게는 노출하지 않는다.
+// - 확률/슬롯 수는 SSOT 승격 여지를 남겨둔다: window.TTD_DATA.SEARCH_SLOTS가 있으면
+//   그 값을 쓰고, 없으면 아래 폴백 상수를 사용. 배열 요소가 하나의 슬롯 확률(0~100).
+//
 // 시트 탭이 아직 없거나 make data를 돌리기 전이면 폴백이 사용된다.
 // 폴백 값은 시트 SSOT로 옮기기 전의 마지막 하드코딩 스냅샷이며,
 // 지역별 카테고리 확률·아이템 풀을 수정할 때는 시트를 먼저 고쳐야 한다.
@@ -92,6 +99,34 @@ function describeDropCategory(category) {
          : '없음';
 }
 
+// 뒤져보기 슬롯 확률 — 유저에게 비공개. 내부 SSOT.
+// 시트 승격 시 window.TTD_DATA.SEARCH_SLOTS(배열)에서 읽어오고, 없으면 폴백.
+const FALLBACK_SEARCH_SLOTS = [100, 30, 30];
+
+function resolveSearchSlots() {
+    const fromBundle = (typeof window !== 'undefined' && window.TTD_DATA && window.TTD_DATA.SEARCH_SLOTS) || null;
+    if (Array.isArray(fromBundle) && fromBundle.length > 0) {
+        return fromBundle.map(v => Math.max(0, Math.min(100, Number(v) || 0)));
+    }
+    return FALLBACK_SEARCH_SLOTS.slice();
+}
+
+// 뒤져보기 1회 = 슬롯 배열만큼 독립 추첨.
+// 각 슬롯마다 게이트 확률을 굴려 통과 시 rollTileDrop 실행.
+// 반환: [{ item, category }, ...] — item이 null인 슬롯은 제외(= 드롭 없음).
+// opts는 rollTileDrop과 동일하게 forceCategory 등을 허용.
+function rollSearchLoot(region, opts) {
+    const slots = resolveSearchSlots();
+    const results = [];
+    for (let i = 0; i < slots.length; i++) {
+        const gate = slots[i];
+        if (Math.random() * 100 >= gate) continue;
+        const drop = rollTileDrop(region, opts);
+        if (drop && drop.item) results.push(drop);
+    }
+    return results;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { rollTileDrop, DROP_TABLE, REGION_ITEM_POOL, describeDropCategory, resolveDropSource };
+    module.exports = { rollTileDrop, rollSearchLoot, DROP_TABLE, REGION_ITEM_POOL, describeDropCategory, resolveDropSource, resolveSearchSlots };
 }

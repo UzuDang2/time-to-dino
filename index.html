@@ -821,6 +821,91 @@
             );
         }
 
+        // 획득 알림 토스트 — 뒤져보기 등으로 아이템을 얻을 때 강조용으로 띄운다.
+        //
+        // D-28(2026-04-22, 요한 지시):
+        // - 팝업과 다르게 버튼 없음. 반투명 배경.
+        // - 페이드 인(빠르게) → 1초 노출 → 2초 페이드 아웃.
+        // - 여러 아이템 동시 획득 시 하나의 토스트에 목록으로.
+        // - 기존 메시지 로그는 유지 (토스트는 보조 강조).
+        // 위치는 화면 상단 중앙 — 맵/하단 UI 시선을 가리지 않으면서 눈에 잘 띈다.
+        // z-index는 기존 modal(.modal=100, ItemInfoModal=1000, CardListModal=1100)보다
+        // 위에 두어 조우 모달 중에도 가려지지 않게 1500.
+        function LootToast({ toast, onDone }) {
+            const [phase, setPhase] = React.useState('in'); // in → hold → out → done
+            React.useEffect(() => {
+                if (!toast) return;
+                setPhase('in');
+                const t1 = setTimeout(() => setPhase('hold'), 200);   // 페이드 인 0.2s
+                const t2 = setTimeout(() => setPhase('out'), 200 + 1000); // 유지 1s
+                const t3 = setTimeout(() => {                         // 페이드 아웃 2s
+                    setPhase('done');
+                    onDone && onDone();
+                }, 200 + 1000 + 2000);
+                return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+            }, [toast && toast.id]);
+
+            if (!toast || phase === 'done') return null;
+
+            const opacity = phase === 'in' ? 0 : phase === 'hold' ? 1 : 0;
+            const transition = phase === 'in' ? 'opacity 0.2s ease-out'
+                             : phase === 'out' ? 'opacity 2s ease-in'
+                             : 'opacity 0.2s';
+
+            return (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: '14%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 1500,
+                        pointerEvents: 'none',
+                        opacity,
+                        transition,
+                        background: 'rgba(22, 33, 62, 0.5)',
+                        border: '1px solid rgba(233, 69, 96, 0.55)',
+                        padding: '14px 18px',
+                        borderRadius: '10px',
+                        minWidth: '220px',
+                        maxWidth: '80vw',
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
+                        color: '#fff',
+                        textAlign: 'center'
+                    }}
+                >
+                    <div style={{ fontSize: '12px', color: '#d4b84a', letterSpacing: '1px', marginBottom: '6px' }}>
+                        획득
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {toast.entries.map((entry, i) => (
+                            <div key={i} style={{ fontSize: '15px', fontWeight: 600 }}>
+                                {entry.name}
+                                {entry.count > 1 && (
+                                    <span style={{ fontSize: '12px', color: '#aaa', marginLeft: '6px' }}>
+                                        ×{entry.count}
+                                    </span>
+                                )}
+                                {entry.grade && (
+                                    <span style={{
+                                        fontSize: '10px',
+                                        color: '#d4b84a',
+                                        marginLeft: '8px',
+                                        border: '1px solid #d4b84a',
+                                        borderRadius: '3px',
+                                        padding: '1px 5px',
+                                        verticalAlign: 'middle'
+                                    }}>
+                                        {entry.grade}
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
         // 카드 더미(덱/무덤) 목록 모달
         //
         // D-27 HUD 리뉴얼 (요한 지시 2026-04-22):
@@ -962,7 +1047,17 @@
             // 구조: { card, consume, filter, titleText, emptyText } | null
             // 모달 활성 판정도 이 state의 truthy로 통일.
             const [pendingConsume, setPendingConsume] = useState(null);
+            // D-28 획득 토스트 — 현재 노출 중인 토스트 1개만 유지.
+            // 구조: { id: number, entries: [{ name, count, grade? }] } | null
+            const [lootToast, setLootToast] = useState(null);
             const mapRef = useRef(null);
+
+            // 토스트 발사 — entries는 묶음 표시 대상.
+            // id는 컴포넌트가 phase 타이머를 재시작하기 위한 key 역할.
+            const showLootToast = (entries) => {
+                if (!entries || entries.length === 0) return;
+                setLootToast({ id: Date.now() + Math.random(), entries });
+            };
 
             // 게임 초기화
             useEffect(() => {
@@ -1236,18 +1331,41 @@
                 let msg = `${card.name}을(를) 사용했다. (시간 +${card.time}) `;
 
                 if (card.id === 'search') {
-                    // 2단계 드롭: 현재 타일의 region → 드롭 테이블 추첨
+                    // D-28(2026-04-22, 요한 지시): 뒤져보기는 3슬롯 독립 추첨(100/30/30).
+                    // 슬롯 확률/개수 자체는 비공개. 결과만 메시지+토스트로 노출.
+                    // 여러 개 획득 시 같은 아이템은 개수 누적, 묶음 토스트 1개.
                     const currentRegion = tiles[currentTile]?.region;
                     if (currentRegion) {
-                        const { item, category } = rollTileDrop(currentRegion);
-                        if (item) {
-                            const def = InventorySystem.ITEMS[item];
+                        const drops = rollSearchLoot(currentRegion);
+                        // 같은 아이템 개수 누적 (토스트/메시지 가독성)
+                        const counter = new Map(); // item -> count
+                        let overflow = 0; // 가방 포화로 못 담은 수
+                        drops.forEach(({ item }) => {
                             const added = inventory.addItem(item);
                             if (added) {
-                                msg += `[${currentRegion}] ${def?.name || item}을(를) 발견했다.`;
+                                counter.set(item, (counter.get(item) || 0) + 1);
                             } else {
-                                msg += `[${currentRegion}] ${def?.name || item}을(를) 발견했지만 가방이 가득 찼다.`;
+                                overflow += 1;
                             }
+                        });
+
+                        if (counter.size > 0) {
+                            const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+                            const entries = [];
+                            const nameParts = [];
+                            counter.forEach((count, item) => {
+                                const def = InventorySystem.ITEMS[item] || {};
+                                const displayName = def.name || item;
+                                const notionItem = notionItems.find(it => it && it['이름'] === displayName);
+                                const grade = notionItem && notionItem['아이템 등급'];
+                                entries.push({ name: displayName, count, grade });
+                                nameParts.push(count > 1 ? `${displayName} ×${count}` : displayName);
+                            });
+                            msg += `[${currentRegion}] ${nameParts.join(', ')}을(를) 발견했다.`;
+                            if (overflow > 0) msg += ` (가방이 가득 차 ${overflow}개는 두고 왔다.)`;
+                            showLootToast(entries);
+                        } else if (overflow > 0) {
+                            msg += `[${currentRegion}] 쓸 만한 걸 찾았지만 가방이 가득 차 들고 오지 못했다.`;
                         } else {
                             msg += `[${currentRegion}] 이 근처에는 쓸만한 게 없다.`;
                         }
@@ -1418,22 +1536,31 @@
                             message={message}
                         />
                         
-                        {/* D-27 HUD 리뉴얼 (요한 지시 2026-04-22):
-                            - 덱 버튼: 가방열기 왼쪽에 배치(요한 3번).
-                            - 무덤: 텍스트가 아닌 버튼으로 제공, 목록 모달 연결(요한 4번).
+                        {/* D-27 HUD 리뉴얼 → D-28 재배치 (요한 지시 2026-04-22):
+                            - 가방 버튼은 좌측 고정.
+                            - 덱/무덤 버튼은 '손패 N/5' 카운터 쪽(우측 끝)으로 묶는다.
+                              근거: "카드 자원 관리 UI는 한 곳에"라는 요한 의도. 손패·덱·무덤은
+                              같은 카드 자원이므로 시선이 분리되지 않도록 묶음.
                             - 손패는 하단에 항상 표시되므로 숫자만 간결히. */}
                         <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'center' }}>
-                            <button onClick={() => setShowDeckList(true)}>
-                                덱 {deck.length}
-                            </button>
                             <button onClick={() => setShowInventory(!showInventory)}>
                                 {showInventory ? '가방 닫기' : '가방 열기'}
                             </button>
-                            <button onClick={() => setShowGraveyardList(true)}>
-                                무덤 {graveyard.length}
-                            </button>
-                            <div style={{ fontSize: '12px', color: '#aaa', display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
-                                손패 {hand.length}/{HAND_SIZE}
+                            <div style={{
+                                marginLeft: 'auto',
+                                display: 'flex',
+                                gap: '6px',
+                                alignItems: 'center'
+                            }}>
+                                <div style={{ fontSize: '12px', color: '#aaa' }}>
+                                    손패 {hand.length}/{HAND_SIZE}
+                                </div>
+                                <button onClick={() => setShowDeckList(true)}>
+                                    덱 {deck.length}
+                                </button>
+                                <button onClick={() => setShowGraveyardList(true)}>
+                                    무덤 {graveyard.length}
+                                </button>
                             </div>
                         </div>
 
@@ -1500,6 +1627,11 @@
                             onClose={cancelConsume}
                         />
                     )}
+
+                    <LootToast
+                        toast={lootToast}
+                        onDone={() => setLootToast(null)}
+                    />
 
                     <GameEndModal gameOver={gameOver} victory={victory} />
                 </div>
