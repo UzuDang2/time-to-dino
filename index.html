@@ -1436,26 +1436,28 @@
                         msg += '먹을 만한 건 보이지 않는다.';
                     }
                 } else if (card.id === 'listen') {
-                    // D-31: 거리별 내레이션.
-                    //   1칸  → 위치 노출 (기존 동작 유지)
-                    //   2칸  → "숨쉬는 소리가 꽤 가까이 들리는 듯 하여 소름이 돋는다"
-                    //   3칸  → "발걸음 소리가 가까워진듯 하다"
-                    //   ≥4칸 → "발걸음 소리가 아주 멀리서 들린다, 당분간은 안심해도 될 것 같다"
-                    // 거리는 BossMonster.calculateDistance(BFS)로 측정.
-                    // 귀 기울이기가 "전방위 탐지"가 아니라 "청각적 감각"이라는 원칙에 맞게,
-                    // 인접 1칸만 revealed로 밝히는 시각 효과는 1칸 분기에서만 유지.
+                    // D-31 (2026-04-22 보강):
+                    //   listen 카드의 기본 효과는 "인접 타일 revealed" — 거리와 무관하게 항상 실행.
+                    //   그 위에 거리별 청각 메시지(보스와의 BFS 거리)가 중첩된다.
+                    //   1칸  → 보스 위치 노출 + 인접 revealed
+                    //   2칸  → "숨쉬는 소리가 꽤 가까이..." + 인접 revealed
+                    //   3칸  → "발걸음 소리가 가까워진듯..." + 인접 revealed
+                    //   ≥4칸 → "발걸음 소리가 아주 멀리서..." + 인접 revealed
+                    // (직전 버전에서 2칸 이상일 때 revealed를 끊었으나, 이는 listen의 핵심 기능을
+                    //  제거한 회귀였음. 요한 QA 2026-04-22 지시로 복구.)
                     const bossPos = boss.getPosition();
                     const bossDist = boss.calculateDistance(currentTile, bossPos);
 
+                    // 인접 타일 revealed — 거리 무관하게 항상 실행되는 listen의 기본 효과.
+                    const newTiles = tiles.map(t => {
+                        if (tiles[currentTile].connections.includes(t.id)) {
+                            return { ...t, revealed: true };
+                        }
+                        return t;
+                    });
+                    setTiles(newTiles);
+
                     if (bossDist === 1) {
-                        // 보스가 바로 옆 — 시야에 잡힐 정도로 근접. 인접 타일 모두 밝힘.
-                        const newTiles = tiles.map(t => {
-                            if (tiles[currentTile].connections.includes(t.id)) {
-                                return { ...t, revealed: true };
-                            }
-                            return t;
-                        });
-                        setTiles(newTiles);
                         msg += `가쁜 숨소리가 바로 곁에서 들려온다. 보스는 타일 #${bossPos}에 있다.`;
                     } else if (bossDist === 2) {
                         msg += '숨쉬는 소리가 꽤 가까이 들리는 듯 하여 소름이 돋는다.';
