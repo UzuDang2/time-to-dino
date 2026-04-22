@@ -510,10 +510,50 @@
                 // 다른 아이템으로 전환은 셀 클릭 경로에서 처리 (교체/머지)
             };
 
-            // 짧은 탭: 정보창 열기. 단, 이미 선택 모드라면 기존 동작(교체/취소) 우선.
+            // 짧은 탭: 정보창 열기. 단, 이미 선택 모드라면 "즉시 머지/조합" 분기.
+            //
+            // D-32 (요한 지시 2026-04-22): 롱프레스 → 짧은 탭 조합으로 드래그·확정 버튼 없이
+            //   한 번에 머지/조합까지 간다. 산딸기+산딸기→딸기모둠 같은 흐름이 탭 두 번이면 끝.
+            //   - 같은 아이템을 다시 탭: 선택 취소(토글).
+            //   - 같은 type & 머지 가능 → 즉시 머지.
+            //   - 다른 type & 조합 매칭 → 즉시 조합.
+            //   - 그 외: 기존대로 selectItem 경로(선택 전환) — 드래그로 빈 칸에 옮기는 기존 UX는 살림.
             const openInfo = (item) => {
                 if (selectedItem) {
-                    // 선택 중 다른 아이템 짧게 탭 = 실수 방지용으로 기존 selectItem 경로로 라우팅.
+                    if (selectedItem.id === item.id) {
+                        // 토글: 동일 아이템 탭 = 선택 해제
+                        inventory.cancelSelection();
+                        setSelectedItem(null);
+                        setPendingPos(null);
+                        bump();
+                        return;
+                    }
+
+                    const canMerge = inventory.canMerge(selectedItem, item);
+                    const canCombine = inventory.canCombine && inventory.canCombine(selectedItem, item);
+
+                    if (canMerge || canCombine) {
+                        // 타깃 아이템의 좌표로 확정 배치 → confirmPlacement 내부에서
+                        // overlap 1개 = target → merge/combine 분기가 자동 적용.
+                        const res = inventory.confirmPlacement(item.x, item.y);
+                        if (res.ok) {
+                            setSelectedItem(null);
+                            setPendingPos(null);
+                            if (onFlashMessage && res.resultType) {
+                                const resultDef = InventorySystem.ITEMS[res.resultType];
+                                const resultName = resultDef ? resultDef.name : res.resultType;
+                                if (res.action === 'merge') {
+                                    onFlashMessage(`두 재료를 합쳐 ${resultName}을(를) 얻었다.`);
+                                } else if (res.action === 'combine') {
+                                    onFlashMessage(`재료를 조합해 ${resultName}을(를) 만들었다.`);
+                                }
+                            }
+                        }
+                        bump();
+                        return;
+                    }
+
+                    // 머지/조합 둘 다 불가 — 기존대로 선택 전환(활성화 경로).
                     activateSelect(item);
                     return;
                 }
@@ -1396,14 +1436,34 @@
                         msg += '먹을 만한 건 보이지 않는다.';
                     }
                 } else if (card.id === 'listen') {
-                    const newTiles = tiles.map(t => {
-                        if (tiles[currentTile].connections.includes(t.id)) {
-                            return { ...t, revealed: true };
-                        }
-                        return t;
-                    });
-                    setTiles(newTiles);
-                    msg += `주변 소리를 들었다. 보스는 타일 #${boss.getPosition()}에 있다.`;
+                    // D-31: 거리별 내레이션.
+                    //   1칸  → 위치 노출 (기존 동작 유지)
+                    //   2칸  → "숨쉬는 소리가 꽤 가까이 들리는 듯 하여 소름이 돋는다"
+                    //   3칸  → "발걸음 소리가 가까워진듯 하다"
+                    //   ≥4칸 → "발걸음 소리가 아주 멀리서 들린다, 당분간은 안심해도 될 것 같다"
+                    // 거리는 BossMonster.calculateDistance(BFS)로 측정.
+                    // 귀 기울이기가 "전방위 탐지"가 아니라 "청각적 감각"이라는 원칙에 맞게,
+                    // 인접 1칸만 revealed로 밝히는 시각 효과는 1칸 분기에서만 유지.
+                    const bossPos = boss.getPosition();
+                    const bossDist = boss.calculateDistance(currentTile, bossPos);
+
+                    if (bossDist === 1) {
+                        // 보스가 바로 옆 — 시야에 잡힐 정도로 근접. 인접 타일 모두 밝힘.
+                        const newTiles = tiles.map(t => {
+                            if (tiles[currentTile].connections.includes(t.id)) {
+                                return { ...t, revealed: true };
+                            }
+                            return t;
+                        });
+                        setTiles(newTiles);
+                        msg += `가쁜 숨소리가 바로 곁에서 들려온다. 보스는 타일 #${bossPos}에 있다.`;
+                    } else if (bossDist === 2) {
+                        msg += '숨쉬는 소리가 꽤 가까이 들리는 듯 하여 소름이 돋는다.';
+                    } else if (bossDist === 3) {
+                        msg += '발걸음 소리가 가까워진듯 하다.';
+                    } else {
+                        msg += '발걸음 소리가 아주 멀리서 들린다, 당분간은 안심해도 될 것 같다.';
+                    }
                 } else if (card.id === 'hide') {
                     msg += '조용히 몸을 숨겼다.';
                 }
