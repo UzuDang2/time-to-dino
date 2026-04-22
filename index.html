@@ -96,11 +96,14 @@
         }
 
         // 손패 카드 컴포넌트
+        // 손패 상한 5장(HAND_SIZE) — 5열 그리드로 한 줄에 표시한다.
+        // 한 줄에 모든 카드가 들어가야 상단 UI가 스크롤 없이 유지됨(기획 원칙: 하단 맵 스크롤만 허용).
+        // 좁은 폭에서는 폰트/패딩이 이미 10~13px이라 5열도 안정.
         function HandCards({ hand, gameOver, victory, useCard }) {
             if (gameOver || victory || hand.length === 0) return null;
-            
+
             return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
                     {hand.map(card => (
                         <div key={card.uid} className="card" onClick={() => useCard(card)}>
                             <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '3px' }}>
@@ -632,6 +635,82 @@
             );
         }
 
+        // 카드로 아이템 사용 — 공통 모달 (프레임워크 D-23의 첫 구현체).
+        //
+        // 역할:
+        //   카드 사용 시 consume 스펙이 있으면, 인벤토리에서 필터를 통과하는 아이템 목록을
+        //   간략히 보여주고, 유저가 하나를 고르면 onSelect(item) 콜백.
+        //
+        // 왜 InventoryModal을 재사용하지 않는가:
+        //   - 인벤 본 UI는 테트리스식 배치/머지/회전/롱프레스까지 복잡. 카드 사용 맥락에서는
+        //     오로지 "필터 통과 아이템 선택"만 필요하므로 경량 리스트 UI가 판단 비용이 적다.
+        //   - 향후 대상 수가 많아지면 이 모달을 grid/sprite로 확장하거나, 공유 셀렉터 컴포넌트로 추출.
+        //
+        // props:
+        //   inventory:      InventorySystem 인스턴스
+        //   filter:         (invItem, notionItem) => bool
+        //   titleText:      상단 라벨 (예: "휴식할 음식 고르기")
+        //   emptyText:      필터 통과 아이템 0개일 때 메시지
+        //   onSelect(item): 확정
+        //   onClose():      취소
+        function CardItemConsumeModal({ inventory, filter, titleText, emptyText, onSelect, onClose }) {
+            const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+            const byName = (name) => notionItems.find(it => it && it['이름'] === name);
+
+            const candidates = (inventory?.items || []).filter(invItem => {
+                const def = InventorySystem.ITEMS[invItem.type] || {};
+                const notionItem = byName(def.name || invItem.name);
+                return filter ? filter(invItem, notionItem, def) : true;
+            });
+
+            return (
+                <div className="modal" style={{ zIndex: 1100 }} onClick={onClose}>
+                    <div
+                        className="modal-content"
+                        style={{ maxWidth: '360px', minWidth: '260px' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h3 style={{ margin: 0, fontSize: '16px' }}>{titleText || '아이템 선택'}</h3>
+                            <button onClick={onClose}>닫기</button>
+                        </div>
+                        {candidates.length === 0 ? (
+                            <div style={{ fontSize: '13px', color: '#aaa', padding: '16px 8px', textAlign: 'center' }}>
+                                {emptyText || '쓸 만한 아이템이 없다.'}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {candidates.map(invItem => {
+                                    const def = InventorySystem.ITEMS[invItem.type] || {};
+                                    const notionItem = byName(def.name || invItem.name);
+                                    const summary = notionItem && notionItem['효과 요약'];
+                                    return (
+                                        <button
+                                            key={invItem.id}
+                                            onClick={() => onSelect(invItem)}
+                                            style={{
+                                                textAlign: 'left',
+                                                padding: '10px 12px',
+                                                background: '#0f3460',
+                                                border: '1px solid #16213e'
+                                            }}
+                                        >
+                                            <div style={{ fontWeight: 600, fontSize: '14px' }}>{def.name || invItem.name}</div>
+                                            {summary && (
+                                                <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                                                    {summary}
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         // 게임 오버/승리 모달
         function GameEndModal({ gameOver, victory }) {
             if (!gameOver && !victory) return null;
@@ -670,6 +749,10 @@
         // 메인 게임 컴포넌트
         // ============================================
 
+        // 손패 상한 — 요한 지시(2026-04-22): 3장 → 5장으로 증가.
+        // 손패 보충 로직·초기 드로우·HandCards 그리드가 모두 이 상수 기준으로 동작한다.
+        const HAND_SIZE = 5;
+
         function Game() {
             // 상태 관리
             const [tiles, setTiles] = useState([]);
@@ -694,6 +777,10 @@
             // 전투 임시 카드(아이템 사용으로 생성) — 전투 진입 시 combat 덱에 병합, 사용 후 소멸.
             // 구조: [{ id:'throw', count:N }, ...]
             const [combatExtraCards, setCombatExtraCards] = useState([]);
+            // D-23 "카드로 아이템 사용" 프레임워크 — 대기 중 consume 요청.
+            // 구조: { card, consume, filter, titleText, emptyText } | null
+            // 모달 활성 판정도 이 state의 truthy로 통일.
+            const [pendingConsume, setPendingConsume] = useState(null);
             const mapRef = useRef(null);
 
             // 게임 초기화
@@ -724,6 +811,10 @@
                 //   시트에서 제거되면 이 필터는 무해(매칭되는 row가 없어짐).
                 const EXCLUDED_CARD_IDS = new Set(['find_weapon']);
                 const sheetBaseCards = (window.TTD_DATA && window.TTD_DATA.BASE_CARDS) || [];
+
+                // D-23: 시트에 consume/extra_effect 컬럼이 생기면 그대로 카드에 싣는다.
+                // 없으면 빈 문자열로 두고 런타임에서 폴백 스펙(rest 등)으로 보강.
+                // 폴백의 휴식 카드는 시트 row가 추가되기 전까지 유저에게 해당 기능을 제공하는 임시 경로.
                 const cards = (sheetBaseCards.length > 0
                     ? sheetBaseCards.map(c => ({
                           id: c.id,
@@ -731,20 +822,39 @@
                           count: Number(c.count) || 0,
                           effect: c.effect || '',
                           detection: Number(c.detection) || 0,
-                          time: Number(c.time) || 1   // 시트에 time 컬럼 추가 시 자동 반영
+                          time: Number(c.time) || 1,
+                          consume: c.consume || '',
+                          extra_effect: c.extra_effect || ''
                       }))
                     : [
-                          // 폴백(데이터 로드 실패 시) — find_weapon 제거됨
+                          // 폴백(데이터 로드 실패 시) — find_weapon 제거됨, 휴식 추가.
                           { id: 'search', name: '뒤져보기', count: 5, effect: '아이템 획득', detection: 5, time: 1 },
                           { id: 'listen', name: '귀 기울이기', count: 2, effect: '몬스터 감지', detection: -5, time: 1 },
                           { id: 'find_food', name: '음식 찾기', count: 1, effect: '음식 획득', detection: 5, time: 1 },
-                          { id: 'hide', name: '숨기', count: 1, effect: '은신', detection: -15, time: 1 }
+                          { id: 'hide', name: '숨기', count: 1, effect: '은신', detection: -15, time: 1 },
+                          { id: 'rest', name: '휴식', count: 1, effect: '음식 1개 소비 · 회복 x2', detection: -10, time: 1,
+                            consume: 'category:음식;scale:recover=2', extra_effect: '' }
                       ]
-                ).filter(c => !EXCLUDED_CARD_IDS.has(c.id));
-                
-                const newDeck = initializeDeck(cards);
-                setDeck(newDeck.slice(3));
-                setHand(newDeck.slice(0, 3));
+                );
+
+                // 휴식 카드 폴백 보강: 시트 기반 카드 로드 경로에 rest id가 없으면 런타임에서 추가한다.
+                // 시트에 휴식 row가 들어오면 이 보강은 자동으로 스킵(id 중복 방지).
+                // 요한 지시(2026-04-22): "시트 쓰기 실패 시 요한 수동 경로" — 시트 row 수동 추가가 끝나면
+                // 이 블록은 시트 값이 덮어쓰는 형태로 무해화됨(시트 SSOT 복귀).
+                const REST_FALLBACK = {
+                    id: 'rest', name: '휴식', count: 1, effect: '음식 1개 소비 · 회복 x2',
+                    detection: -10, time: 1,
+                    consume: 'category:음식;scale:recover=2', extra_effect: ''
+                };
+                if (sheetBaseCards.length > 0 && !cards.some(c => c.id === 'rest')) {
+                    cards.push(REST_FALLBACK);
+                }
+
+                const filteredCards = cards.filter(c => !EXCLUDED_CARD_IDS.has(c.id));
+
+                const newDeck = initializeDeck(filteredCards);
+                setDeck(newDeck.slice(HAND_SIZE));
+                setHand(newDeck.slice(0, HAND_SIZE));
                 
                 const inv = new InventorySystem(6, 5);
                 setInventory(inv);
@@ -834,22 +944,136 @@
                 return result;
             };
 
+            // D-23: "카드로 아이템 사용" 프레임워크의 공통 진입점.
+            // 카드가 아이템을 소비해야 하는 경우(consume 스펙 보유) 이 함수가 모달을 띄우고,
+            // 유저가 아이템을 고른 뒤 확정되면 finalizeCardUse로 실제 효과를 적용한다.
+            // 카드 자체(손패 → 무덤, 시간·발각 증가)는 선결 조건 통과 후에만 소모.
+            //
+            // consume 파싱은 effectParser.parseCardConsume에 위임. 필터는 matchesConsumeFilter.
+            // consume 통과 아이템이 0개면 "쓸 수 없다" 메시지로 조용히 종료(카드도 미소모).
+            const finalizeCardUse = (card, extraMsg) => {
+                // 손패 → 무덤, 시간·발각 처리.
+                setHand(hand.filter(c => c.uid !== card.uid));
+                setGraveyard([...graveyard, card]);
+                setTime(time + card.time);
+                const baseDetection = detection + (Number(card.detection) || 0);
+                const newDetection = Math.min(100, Math.max(0, baseDetection));
+                setDetection(newDetection);
+                const prefix = `${card.name}을(를) 사용했다. (시간 +${card.time}) `;
+                setMessage(prefix + (extraMsg || ''));
+            };
+
+            // consume 카드 → 아이템 선택 모달 오픈.
+            // 필터 통과 아이템이 없으면 조용히 스킵(카드 미소모).
+            const openConsumeForCard = (card) => {
+                const Parser = window.EffectParser;
+                if (!Parser || typeof Parser.parseCardConsume !== 'function') {
+                    setMessage('아이템 사용 프레임워크가 로드되지 않았다.');
+                    return;
+                }
+                const consume = Parser.parseCardConsume(card.consume);
+                if (!consume) {
+                    setMessage('이 카드는 아이템을 소비하지 않는다.');
+                    return;
+                }
+                const filterFn = (invItem, notionItem) =>
+                    Parser.matchesConsumeFilter(consume, invItem, notionItem);
+                const hasAny = (inventory?.items || []).some(invItem => {
+                    const def = InventorySystem.ITEMS[invItem.type] || {};
+                    const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+                    const notionItem = notionItems.find(it => it && it['이름'] === (def.name || invItem.name));
+                    return filterFn(invItem, notionItem);
+                });
+                if (!hasAny) {
+                    setMessage(`${card.name}: 지금 쓸 수 있는 아이템이 없다.`);
+                    return;
+                }
+                setPendingConsume({
+                    card,
+                    consume,
+                    filter: filterFn,
+                    titleText: card.name + ' — 사용할 아이템',
+                    emptyText: '쓸 만한 아이템이 없다.'
+                });
+            };
+
+            // consume 모달에서 아이템 하나 선택 → 실제 효과 적용.
+            // 1) 아이템의 파싱된 effect를 scaleEffect로 변형 (예: 회복 x2)
+            // 2) applyItemEffect로 스탯/카드 액션 디스패치
+            // 3) 아이템 1개 인벤에서 제거 (일회용·비일회용 무관: 카드가 소비하는 맥락)
+            // 4) 카드 본체 소모 + 시간/발각 반영
+            const resolveConsumeChoice = (invItem) => {
+                if (!pendingConsume) return;
+                const Parser = window.EffectParser;
+                const { card, consume } = pendingConsume;
+
+                const def = InventorySystem.ITEMS[invItem.type] || {};
+                const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+                const notionItem = notionItems.find(it => it && it['이름'] === (def.name || invItem.name));
+                const parsedEffect = (notionItem && notionItem.effect) || null;
+
+                let appliedMsg = '';
+                if (parsedEffect && parsedEffect.usable && Parser) {
+                    const scaled = Parser.scaleEffect(parsedEffect, consume.scales || {});
+                    Parser.applyItemEffect(scaled, {
+                        getStat: (name) => (name === 'hunger' ? hunger : name === 'health' ? health : null),
+                        setStat: (name, val) => {
+                            if (name === 'hunger') setHunger(val);
+                            else if (name === 'health') setHealth(val);
+                        },
+                        addThrowCard: (cardId) => {
+                            setCombatExtraCards(prev => {
+                                const next = [...prev];
+                                const idx = next.findIndex(c => c.id === cardId);
+                                if (idx >= 0) next[idx] = { ...next[idx], count: next[idx].count + 1 };
+                                else next.push({ id: cardId, count: 1 });
+                                return next;
+                            });
+                        },
+                        setMessage
+                    });
+                    appliedMsg = `${def.name || invItem.name}을(를) 소모하고 ${Parser.describeEffect(scaled)}.`;
+                } else {
+                    appliedMsg = `${def.name || invItem.name}을(를) 소모했지만 별 효과는 없었다.`;
+                }
+
+                // 아이템 1개 소비
+                if (inventory) {
+                    inventory.removeItem(invItem);
+                    inventory.items = inventory.items.filter(i => i.id !== invItem.id);
+                }
+
+                setPendingConsume(null);
+                finalizeCardUse(card, appliedMsg);
+            };
+
+            const cancelConsume = () => {
+                setPendingConsume(null);
+            };
+
             // 카드 사용
             const useCard = (card) => {
                 if (time + card.time > maxTime) {
                     setMessage('시간이 부족합니다!');
                     return;
                 }
-                
+
+                // D-23: consume 스펙이 있는 카드는 모달을 띄우고 선택 후 효과 적용.
+                // 카드 본체 소모·시간·발각은 finalizeCardUse에서만 발생.
+                if (card.consume) {
+                    openConsumeForCard(card);
+                    return;
+                }
+
                 setHand(hand.filter(c => c.uid !== card.uid));
                 setGraveyard([...graveyard, card]);
                 setTime(time + card.time);
-                
+
                 const newDetection = Math.min(100, Math.max(0, detection + card.detection));
                 setDetection(newDetection);
-                
+
                 let msg = `${card.name}을(를) 사용했다. (시간 +${card.time}) `;
-                
+
                 if (card.id === 'search') {
                     // 2단계 드롭: 현재 타일의 region → 드롭 테이블 추첨
                     const currentRegion = tiles[currentTile]?.region;
@@ -951,14 +1175,14 @@
                 let newDeck = [...deck];
                 let newGraveyard = [...graveyard];
                 
-                while (newHand.length < 3 && newDeck.length > 0) {
+                while (newHand.length < HAND_SIZE && newDeck.length > 0) {
                     newHand.push(newDeck.shift());
                 }
-                
-                if (newHand.length < 3 && newGraveyard.length > 0) {
+
+                if (newHand.length < HAND_SIZE && newGraveyard.length > 0) {
                     newDeck = shuffleDeck(newGraveyard);
                     newGraveyard = [];
-                    while (newHand.length < 3 && newDeck.length > 0) {
+                    while (newHand.length < HAND_SIZE && newDeck.length > 0) {
                         newHand.push(newDeck.shift());
                     }
                 }
@@ -1038,7 +1262,7 @@
                                 {showInventory ? '가방 닫기' : '가방 열기'}
                             </button>
                             <div style={{ fontSize: '12px', color: '#aaa', display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
-                                손패 {hand.length}/3 · 덱 {deck.length} · 무덤 {graveyard.length}
+                                손패 {hand.length}/{HAND_SIZE} · 덱 {deck.length} · 무덤 {graveyard.length}
                             </div>
                         </div>
 
@@ -1073,6 +1297,17 @@
                             setSelectedItem={setSelectedInventoryItem}
                             closeInventory={() => setShowInventory(false)}
                             onUseItem={handleUseItem}
+                        />
+                    )}
+
+                    {pendingConsume && inventory && (
+                        <CardItemConsumeModal
+                            inventory={inventory}
+                            filter={pendingConsume.filter}
+                            titleText={pendingConsume.titleText}
+                            emptyText={pendingConsume.emptyText}
+                            onSelect={resolveConsumeChoice}
+                            onClose={cancelConsume}
                         />
                     )}
 

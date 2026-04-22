@@ -65,6 +65,103 @@
         return { usable: actions.length > 0, actions, raw: s };
     }
 
+    // ─── 효과 스케일링 ────────────────────────────────────────────────
+    //
+    // "카드로 아이템 사용" 프레임워크(D-23)의 일부. 카드가 아이템의 효과를 변형해서
+    // 적용해야 할 때(예: 휴식 카드가 음식의 회복 효과를 2배로) 쓰는 순수 함수.
+    //
+    // 입력: 파싱된 effect({usable, actions, raw}) + scales({recover: N})
+    // 출력: 원본을 건드리지 않은 새 effect 객체. action 단위로 스케일 규칙을 적용.
+    //
+    // 현재 지원하는 스케일 키:
+    //   - recover: 양수 delta의 stat action(배고픔·생명력 회복)에만 곱해 delta를 늘림.
+    //              음수 delta(감소)는 건드리지 않는다 (회복 액션만 증폭하는 의미).
+    //   - 향후 확장: damage, detection 등 action 타입이 늘어나면 여기에 분기 추가.
+    //
+    // 범위 외 action(spawn_card 등)은 그대로 패스스루.
+    function scaleEffect(parsed, scales) {
+        if (!parsed || !parsed.actions) return parsed;
+        const factorRecover = (scales && typeof scales.recover === 'number') ? scales.recover : 1;
+        const scaledActions = parsed.actions.map(a => {
+            if (a.type === 'stat' && a.delta > 0 && factorRecover !== 1) {
+                return { ...a, delta: a.delta * factorRecover };
+            }
+            return a;
+        });
+        return {
+            usable: parsed.usable,
+            actions: scaledActions,
+            raw: parsed.raw
+        };
+    }
+
+    // ─── 카드 consume DSL 파싱 ───────────────────────────────────────
+    //
+    // "카드로 아이템 사용" 프레임워크(D-23): 카드 스펙의 consume 필드를 구조화.
+    // 포맷(세미콜론 체인):
+    //   'category:음식'              → 필터: 아이템의 '카테고리'가 '음식'
+    //   'material_type:음식재료'     → 필터: '재료 타입'이 '음식재료'
+    //   'id:stone'                  → 필터: 인벤토리 아이템 type === 'stone'
+    //   'scale:recover=2'           → 스케일: 회복 delta x2
+    //
+    // 여러 필터가 함께 있으면 AND 조건. scale은 복수 가능.
+    // 파싱 실패 토큰은 조용히 무시(런타임 가드).
+    function parseCardConsume(raw) {
+        const s = String(raw || '').trim();
+        if (!s) return null;
+
+        const filters = {};
+        const scales = {};
+        const tokens = s.split(';').map(t => t.trim()).filter(Boolean);
+        for (const tok of tokens) {
+            // scale:key=value
+            const scaleMatch = tok.match(/^scale\s*:\s*([a-z_]+)\s*=\s*(-?\d+(?:\.\d+)?)$/i);
+            if (scaleMatch) {
+                const key = scaleMatch[1].toLowerCase();
+                const val = parseFloat(scaleMatch[2]);
+                if (Number.isFinite(val)) scales[key] = val;
+                continue;
+            }
+            // filterKey:value  (카테고리/material_type/id 등)
+            const filterMatch = tok.match(/^([a-z_가-힣]+)\s*:\s*(.+)$/i);
+            if (filterMatch) {
+                const key = filterMatch[1].trim().toLowerCase();
+                const val = filterMatch[2].trim();
+                filters[key] = val;
+                continue;
+            }
+        }
+
+        if (Object.keys(filters).length === 0 && Object.keys(scales).length === 0) {
+            return null;
+        }
+        return { filters, scales, raw: s };
+    }
+
+    // 필터 매칭: 인벤 아이템 1개가 consume.filters를 모두 만족하는가?
+    // 아이템 메타는 두 소스에서 조회:
+    //   - inventoryItem.type  (InventorySystem.ITEMS 키, 예: 'mushroom')
+    //   - notionItem          (window.TTD_DATA.ITEMS에서 name으로 매칭된 것)
+    // 둘 다 있어야 더 많은 필터를 확인 가능.
+    function matchesConsumeFilter(consume, inventoryItem, notionItem) {
+        if (!consume || !consume.filters) return true;
+        const f = consume.filters;
+        // id 필터 — inventoryItem.type 기준
+        if (f.id && inventoryItem && inventoryItem.type !== f.id) return false;
+        // category/material_type — notionItem 기준
+        if (f.category || f['카테고리']) {
+            const want = f.category || f['카테고리'];
+            const got = notionItem && notionItem['카테고리'];
+            if (got !== want) return false;
+        }
+        if (f.material_type || f['재료_타입'] || f['재료 타입']) {
+            const want = f.material_type || f['재료_타입'] || f['재료 타입'];
+            const got = notionItem && notionItem['재료 타입'];
+            if (got !== want) return false;
+        }
+        return true;
+    }
+
     // 사람이 읽는 효과 설명 (UI '성능' 필드)
     function describeEffect(parsed) {
         if (!parsed || !parsed.usable) {
@@ -112,7 +209,16 @@
         return { ok: true, consumed: true };
     }
 
-    const api = { parseItemEffect, applyItemEffect, describeEffect, STAT_BOUNDS };
+    const api = {
+        parseItemEffect,
+        applyItemEffect,
+        describeEffect,
+        STAT_BOUNDS,
+        // D-23 프레임워크: 카드로 아이템 사용 공통 헬퍼
+        scaleEffect,
+        parseCardConsume,
+        matchesConsumeFilter
+    };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
