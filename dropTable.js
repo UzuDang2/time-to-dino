@@ -101,7 +101,8 @@ function describeDropCategory(category) {
 
 // 뒤져보기 슬롯 확률 — 유저에게 비공개. 내부 SSOT.
 // 시트 승격 시 window.TTD_DATA.SEARCH_SLOTS(배열)에서 읽어오고, 없으면 폴백.
-const FALLBACK_SEARCH_SLOTS = [100, 30, 30];
+// D-30(요한): 2~3번 슬롯 100→20%로 확률 하향 ("2개씩 나오는게 너무 잦다").
+const FALLBACK_SEARCH_SLOTS = [100, 20, 20];
 
 function resolveSearchSlots() {
     const fromBundle = (typeof window !== 'undefined' && window.TTD_DATA && window.TTD_DATA.SEARCH_SLOTS) || null;

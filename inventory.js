@@ -29,15 +29,19 @@ class InventorySystem {
         branch:   { name: '나뭇가지', shape: [[1]], grade: 1, mergeable: true,  category: 'env',  merge_result: 'wood' },
         stem:     { name: '질긴줄기', shape: [[1]], grade: 1, mergeable: true,  category: 'env',  merge_result: 'plant_fiber' },
 
-        // === 1단계 음식재료 (머지 불가 — 2단계 음식 아이템 없음) ===
-        mushroom: { name: '버섯',     shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
-        berry:    { name: '산딸기',   shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
+        // === 1단계 음식재료 (D-30: 2단계 음식 추가 — 머지 가능) ===
+        mushroom: { name: '버섯',     shape: [[1]], grade: 1, mergeable: true,  category: 'food', merge_result: 'mushroom_mix' },
+        berry:    { name: '산딸기',   shape: [[1]], grade: 1, mergeable: true,  category: 'food', merge_result: 'berry_mix' },
 
         // === 2단계 (조합 결과물) ===
         wood:         { name: '목재',         shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         plant_fiber:  { name: '식물 섬유',    shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         clean_cloth:  { name: '깨끗한 천',    shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         bandage:      { name: '붕대',         shape: [[1]], grade: 2, mergeable: false, category: 'consumable', merge_result: null },
+
+        // === 2단계 음식 (D-30 신규) ===
+        berry_mix:    { name: '딸기모둠',     shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
+        mushroom_mix: { name: '버섯모둠',     shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
 
         // === 레거시 (기존 카드 시스템 참조) — 후속 작업에서 1단계 체계로 흡수 예정 ===
         material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: false, merge_result: null },

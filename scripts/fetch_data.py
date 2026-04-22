@@ -5,8 +5,8 @@
 #
 # 원본:
 #   - 시트: https://docs.google.com/spreadsheets/d/1iS4Lmjx32w0Mu527foFtc8pQn3pw6APcQYnvcKdVM9o/
-#           탭: 베이스탐험카드 / 1차_확정카드 / 전투카드 / 몬스터 / 사냥감 / 빌딩
-#   - Notion 아이템 DB: https://www.notion.so/8c76219106854ea58b6817e6d9bd8042
+#           탭: 베이스탐험카드 / 1차_확정카드 / 전투카드 / 몬스터 / 사냥감 / 빌딩 / 아이템마스터
+#   - Notion 아이템 DB: 레거시(참조용 서사 보관). D-30부터 런타임 SSOT는 시트 '아이템마스터'.
 #
 # 시트 액세스 (D-25 전환):
 #   primary — Google Sheets API (서비스 계정). 읽기 + 쓰기 둘 다 가능.
@@ -101,6 +101,15 @@ SHEET_TABS = {
 # 드롭테이블 전용 탭 이름
 DROP_TABLE_SHEET = "드롭테이블"
 REGION_POOL_SHEET = "드롭풀"
+
+# 아이템마스터 탭 (D-30): 아이템 SSOT 시트 이관
+# Notion DB는 레거시(서사 참조용)로 남기고, 런타임은 여기서만 읽는다.
+ITEM_MASTER_SHEET = "아이템마스터"
+
+# 조합레시피 탭 (D-30): 이원 재료 조합(같은 재료 아닌 것).
+# 헤더: ingredient_a, ingredient_b, result, note
+# 같은 재료 2개 머지는 아이템마스터의 merge_result 컬럼으로 표현.
+COMBO_RECIPE_SHEET = "조합레시피"
 
 
 # ─── 파서 ───────────────────────────────────────────────────────────────
@@ -723,25 +732,187 @@ def build_combos_from_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]
     return combos
 
 
-def export_items() -> None:
-    raw_path = DATA_DIR / "items.raw.json"
-    if not raw_path.exists():
-        print(
-            f"[warn] {raw_path} 없음 — items.json 생성 스킵. "
-            "Notion 아이템을 갱신하려면 리사/요한이 MCP로 items.raw.json을 업데이트해야 함."
-        )
-        return
-    raw = json.loads(raw_path.read_text(encoding="utf-8"))
-    items = transform_notion_items(raw)
+# ─── 시트 '아이템마스터' → items.json / combos.json (D-30 SSOT 이관) ─────
+#
+# 스키마(헤더): id, name, category, material_type, grade, size, weight,
+#              regions, mergeable, merge_result, disposable, effect,
+#              summary, description, durability
+#
+# - mergeable/disposable: 'Y'/'N'
+# - regions: 콤마 구분 CSV ('숲,동굴')
+# - effect: DSL ('hunger+1', 'spawn_card:throw', 공란 = 사용불가)
+# - merge_result: 같은 재료 2개 합쳤을 때 결과 id (Y이면 필수)
+#
+# 런타임 호환 필드(기존 inventory.js / effectParser.js가 읽던 것)를 함께 방출:
+#   이름, 카테고리, 재료 타입, 사용 효과, 머지 가능, 일회용, 나오는 지역, 설명 텍스트, 효과 요약
+#
+# combos.json: 자기 자신 머지(branch+branch→wood)도 포함시킨다.
+#   inventory.js::canMerge는 static ITEMS + TTD_DATA.ITEMS의 merge_result를 보지만,
+#   lookupCombo도 같은 결과를 내주면 회귀 없이 "머지이자 조합"으로 양쪽 호환.
+
+
+def _yn(v: Any) -> bool:
+    s = str(v or "").strip().upper()
+    return s in {"Y", "YES", "TRUE", "1"}
+
+
+def _csv_list(v: Any) -> list[str]:
+    if not v:
+        return []
+    return [s.strip() for s in str(v).split(",") if s.strip()]
+
+
+def rows_to_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        item_id = str(r.get("id") or "").strip()
+        name = str(r.get("name") or "").strip()
+        if not item_id or not name:
+            continue
+        mergeable = _yn(r.get("mergeable"))
+        disposable = _yn(r.get("disposable"))
+        merge_result = str(r.get("merge_result") or "").strip() or None
+        effect_raw = str(r.get("effect") or "").strip()
+        regions = _csv_list(r.get("regions"))
+
+        item: dict[str, Any] = {
+            # 런타임 영문 키 (inventory.js, dropTable.js가 읽는 것)
+            "id": item_id,
+            "name": name,
+            # 런타임 호환: 한글 키 (effectParser.js matchesConsumeFilter, UI)
+            "이름": name,
+            "카테고리": str(r.get("category") or "").strip() or None,
+            "재료 타입": str(r.get("material_type") or "").strip() or None,
+            "아이템 등급": str(r.get("grade") or "").strip() or None,
+            "가방칸수": str(r.get("size") or "").strip() or "1x1",
+            "무게": r.get("weight"),
+            "나오는 지역": regions,
+            "머지 가능": mergeable,
+            "일회용": disposable,
+            "설명 텍스트": str(r.get("description") or "").strip(),
+            "효과 요약": str(r.get("summary") or "").strip(),
+            "사용 효과": effect_raw,
+            # 머지 통합 시스템 (D-24 필드)
+            "merge_result": merge_result,
+            "merge_enabled": mergeable and bool(merge_result),
+            # 내구도 (있을 때만)
+        }
+        durability = r.get("durability")
+        if durability not in (None, "", 0):
+            item["내구도"] = durability
+
+        # 사용 효과 파싱 → { usable, actions, raw }
+        item["effect"] = parse_effect_dsl(effect_raw)
+        out.append(item)
+
+    # grade → id 순 정렬 (2단계가 밑)
+    def _key(it):
+        g = it.get("아이템 등급") or ""
+        g_num = 9
+        m = re.search(r"(\d+)", g)
+        if m:
+            g_num = int(m.group(1))
+        return (g_num, it.get("id", ""))
+    out.sort(key=_key)
+    return out
+
+
+def build_combos_from_sheet(items: list[dict[str, Any]], extra_rows: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """시트 `머지가능` + `merge_result`(같은 재료 머지) + `조합레시피` 탭(이원 조합)을 합쳐 combos.json 생성.
+
+    - 머지(같은 재료 2개): 아이템마스터의 merge_result 컬럼 — ingredients=[id, id]
+    - 이원 조합(다른 재료 2개): 조합레시피 탭 — ingredients=[a, b]
+    - 중복 제거(정렬한 ingredients + result 키).
+    """
+    valid_ids = {it.get("id") for it in items if it.get("id")}
+    seen: set[tuple[tuple[str, ...], str]] = set()
+    combos: list[dict[str, Any]] = []
+
+    # 1) 같은 재료 머지
+    for it in items:
+        if not it.get("merge_enabled"):
+            continue
+        src = it.get("id")
+        dst = it.get("merge_result")
+        if not src or not dst:
+            continue
+        if dst not in valid_ids:
+            print(f"[warn] merge_result '{dst}' 가 items에 없음 (from {src}) — 스킵")
+            continue
+        key = (tuple(sorted([src, src])), dst)
+        if key in seen:
+            continue
+        seen.add(key)
+        combos.append({"ingredients": [src, src], "result": dst})
+
+    # 2) 이원 조합
+    for row in extra_rows or []:
+        a = str(row.get("ingredient_a") or "").strip()
+        b = str(row.get("ingredient_b") or "").strip()
+        r = str(row.get("result") or "").strip()
+        if not (a and b and r):
+            continue
+        if a not in valid_ids or b not in valid_ids or r not in valid_ids:
+            print(f"[warn] 조합레시피 미매핑: {a}+{b}→{r} — 스킵")
+            continue
+        key = (tuple(sorted([a, b])), r)
+        if key in seen:
+            continue
+        seen.add(key)
+        combos.append({"ingredients": [a, b], "result": r})
+
+    return combos
+
+
+def export_items_from_sheet(sh) -> bool:
+    """API로 아이템마스터 + 조합레시피 탭을 읽어 items.json / combos.json 생성."""
+    names = {w.title for w in sh.worksheets()}
+    if ITEM_MASTER_SHEET not in names:
+        print(f"[warn] 탭 '{ITEM_MASTER_SHEET}' 없음 — items 생성 스킵")
+        return False
+    rows = _ws_rows(sh.worksheet(ITEM_MASTER_SHEET))
+    items = rows_to_items(rows)
+    out_path = DATA_DIR / "items.json"
+    write_json(out_path, items)
+    print(f"[api] items        → {out_path.name}  ({len(items)} items)")
+
+    combo_rows: list[dict[str, Any]] = []
+    if COMBO_RECIPE_SHEET in names:
+        combo_rows = _ws_rows(sh.worksheet(COMBO_RECIPE_SHEET))
+    combos = build_combos_from_sheet(items, combo_rows)
+    combos_path = DATA_DIR / "combos.json"
+    write_json(combos_path, combos)
+    print(f"[api] combos       → {combos_path.name}  ({len(combos)} recipes)")
+    return True
+
+
+def export_items_from_xlsx(xlsx_path: Path) -> bool:
+    """xlsx 폴백 — 아이템마스터 + 조합레시피 탭에서 읽기."""
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    if ITEM_MASTER_SHEET not in wb.sheetnames:
+        print(f"[warn] xlsx에 '{ITEM_MASTER_SHEET}' 탭 없음 — items 생성 스킵")
+        return False
+    rows = sheet_to_rows(wb[ITEM_MASTER_SHEET])
+    items = rows_to_items(rows)
     out_path = DATA_DIR / "items.json"
     write_json(out_path, items)
     print(f"[export] items       → {out_path.name}  ({len(items)} items)")
 
-    # D-24: 조합 레시피 — Notion `조합법` 텍스트 전역 파싱 → combos.json
-    combos = build_combos_from_items(items)
+    combo_rows: list[dict[str, Any]] = []
+    if COMBO_RECIPE_SHEET in wb.sheetnames:
+        combo_rows = sheet_to_rows(wb[COMBO_RECIPE_SHEET])
+    combos = build_combos_from_sheet(items, combo_rows)
     combos_path = DATA_DIR / "combos.json"
     write_json(combos_path, combos)
     print(f"[export] combos      → {combos_path.name}  ({len(combos)} recipes)")
+    return True
+
+
+def export_items() -> None:
+    """레거시 경로 — 아이템 SSOT가 시트로 이관되기 전 Notion raw를 읽었던 함수.
+    D-30부터는 쓰이지 않는다. items.raw.json은 레거시 보관만 하고 읽지 않는다.
+    """
+    print("[info] export_items(legacy) — Notion raw 경로는 D-30부터 비활성화됨")
 
 
 # ─── main ──────────────────────────────────────────────────────────────
@@ -829,6 +1000,8 @@ def main() -> int:
             try:
                 export_sheets_via_api(sh)
                 export_drop_table_via_api(sh)
+                if not args.no_items:
+                    export_items_from_sheet(sh)
                 used_api = True
                 print("[api] 시트 읽기 완료 (Sheets API)")
             except Exception as e:  # noqa: BLE001
@@ -850,9 +1023,8 @@ def main() -> int:
                 return 1
         export_sheets(xlsx_cache)
         export_drop_table(xlsx_cache)
-
-    if not args.no_items:
-        export_items()
+        if not args.no_items:
+            export_items_from_xlsx(xlsx_cache)
 
     # 브라우저 로더용 data.js 생성 (file:// 환경에서 fetch 없이 사용)
     export_data_js()
