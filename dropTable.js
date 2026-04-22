@@ -2,13 +2,20 @@
 // 1단계: 지역 → 카테고리 추첨 (환경재료 / 음식재료 / 드롭없음)
 // 2단계: 해당 지역에서 나오는 해당 카테고리 아이템들 중 균등 추첨
 //
-// 확률/매핑의 원본(Source of Truth)은 Notion:
-//   - 지역→카테고리 확률: "🎲 타일 드롭 테이블" DB
-//   - 지역↔아이템 매핑: "🎒 아이템" DB의 "나오는 지역" 컬럼
-// 이 파일은 해당 Notion 상태를 스냅샷한 값이다. Notion을 수정하면 여기도 맞춰 갱신.
+// 확률/매핑의 원본(Source of Truth)은 구글 시트의 두 탭:
+//   - 지역→카테고리 확률: 탭 '드롭테이블'
+//   - 지역×카테고리 → 아이템 풀: 탭 '드롭풀'
+// 시트 → data/drop_table.json → data/data.js → window.TTD_DATA.DROP_TABLE 로
+// 빌드 타임에 주입된다. 이 파일은 런타임에 TTD_DATA를 우선 읽고,
+// 데이터가 비어 있을 때만 아래 폴백 상수를 사용한다.
+// (D-06: 시트 SSOT 전환)
+//
+// 시트 탭이 아직 없거나 make data를 돌리기 전이면 폴백이 사용된다.
+// 폴백 값은 시트 SSOT로 옮기기 전의 마지막 하드코딩 스냅샷이며,
+// 지역별 카테고리 확률·아이템 풀을 수정할 때는 시트를 먼저 고쳐야 한다.
 
-// 지역별 카테고리 드롭 확률 (% 합 = 100)
-const DROP_TABLE = {
+// 폴백 — 시트 탭이 없을 때만 사용. 시트 SSOT가 정상화되면 건드리지 않음.
+const FALLBACK_DROP_TABLE = {
     '숲':    { env: 50, food: 25, none: 25 },
     '덤불':  { env: 40, food: 30, none: 30 },
     '평원':  { env: 35, food: 20, none: 45 },
@@ -16,9 +23,7 @@ const DROP_TABLE = {
     '동굴':  { env: 55, food: 20, none: 25 }
 };
 
-// 지역별 아이템 풀 (카테고리 → 인벤토리 아이템 type 배열)
-// Notion "🎒 아이템" DB의 "나오는 지역" 컬럼과 정합.
-const REGION_ITEM_POOL = {
+const FALLBACK_REGION_ITEM_POOL = {
     '숲':    { env: ['branch'],         food: ['mushroom'] },
     '덤불':  { env: ['stem'],           food: ['berry'] },
     '평원':  { env: ['stone'],          food: ['berry'] },
@@ -26,10 +31,31 @@ const REGION_ITEM_POOL = {
     '동굴':  { env: ['stone'],          food: ['mushroom'] }
 };
 
+// TTD_DATA.DROP_TABLE이 있으면 그걸 쓰고, 없거나 비면 폴백.
+// 반환 형태: { regions, pool } — 각각 DROP_TABLE/REGION_ITEM_POOL에 대응.
+function resolveDropSource() {
+    const bundle = (typeof window !== 'undefined' && window.TTD_DATA && window.TTD_DATA.DROP_TABLE) || null;
+    const fromBundle = bundle && typeof bundle === 'object' && !Array.isArray(bundle) ? bundle : null;
+
+    const regions = (fromBundle && fromBundle.regions && Object.keys(fromBundle.regions).length > 0)
+        ? fromBundle.regions
+        : FALLBACK_DROP_TABLE;
+    const pool = (fromBundle && fromBundle.pool && Object.keys(fromBundle.pool).length > 0)
+        ? fromBundle.pool
+        : FALLBACK_REGION_ITEM_POOL;
+
+    return { regions, pool };
+}
+
+// 이름을 유지해 외부 호환성 (module.exports 경로용)
+const DROP_TABLE = FALLBACK_DROP_TABLE;
+const REGION_ITEM_POOL = FALLBACK_REGION_ITEM_POOL;
+
 // 뒤져보기 1회 결과 추첨
 // 반환: { item: string|null, category: 'env'|'food'|'none' }
 function rollTileDrop(region) {
-    const table = DROP_TABLE[region];
+    const { regions, pool } = resolveDropSource();
+    const table = regions[region];
     if (!table) return { item: null, category: 'none' };
 
     const roll = Math.random() * 100;
@@ -44,10 +70,10 @@ function rollTileDrop(region) {
 
     if (category === 'none') return { item: null, category };
 
-    const pool = REGION_ITEM_POOL[region]?.[category] || [];
-    if (pool.length === 0) return { item: null, category: 'none' };
+    const items = pool[region]?.[category] || [];
+    if (items.length === 0) return { item: null, category: 'none' };
 
-    const item = pool[Math.floor(Math.random() * pool.length)];
+    const item = items[Math.floor(Math.random() * items.length)];
     return { item, category };
 }
 
@@ -59,5 +85,5 @@ function describeDropCategory(category) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { rollTileDrop, DROP_TABLE, REGION_ITEM_POOL, describeDropCategory };
+    module.exports = { rollTileDrop, DROP_TABLE, REGION_ITEM_POOL, describeDropCategory, resolveDropSource };
 }

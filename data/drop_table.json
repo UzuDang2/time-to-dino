@@ -1,0 +1,16 @@
+{
+  "regions": {
+    "숲": { "env": 50, "food": 25, "none": 25 },
+    "덤불": { "env": 40, "food": 30, "none": 30 },
+    "평원": { "env": 35, "food": 20, "none": 45 },
+    "시냇물": { "env": 40, "food": 0, "none": 60 },
+    "동굴": { "env": 55, "food": 20, "none": 25 }
+  },
+  "pool": {
+    "숲": { "env": ["branch"], "food": ["mushroom"] },
+    "덤불": { "env": ["stem"], "food": ["berry"] },
+    "평원": { "env": ["stone"], "food": ["berry"] },
+    "시냇물": { "env": ["stone"], "food": [] },
+    "동굴": { "env": ["stone"], "food": ["mushroom"] }
+  }
+}
