@@ -118,6 +118,13 @@
             );
         }
 
+        // 지역 한글 라벨 (기획상 region은 이미 한글이라 매핑 불필요하지만,
+        // 추후 영어 코드로 바꿀 여지가 있어 맵을 둔다. 일치하면 그대로 노출).
+        const REGION_LABEL = {
+            '숲': '숲', '덤불': '덤불', '평원': '평원', '시냇물': '시냇물', '동굴': '동굴',
+            forest: '숲', thicket: '덤불', plain: '평원', stream: '시냇물', cave: '동굴'
+        };
+
         // 육각형 타일 컴포넌트
         function HexTile({ tile, currentTile, tiles, boss, gameOver, victory, moveTo }) {
             const { x, y } = tile.position;
@@ -125,12 +132,12 @@
             const canMove = tiles[currentTile].connections.includes(tile.id);
             const isBoss = boss && tile.id === boss.position && tile.revealed;
             const isRevealed = tile.revealed || tile.visited;
-            
+
             // 길이 없는 타일 (connections 없음) 판별
-            const hasNoConnections = tile.connections.length === 0 && 
-                                    tile.type !== 'start' && 
+            const hasNoConnections = tile.connections.length === 0 &&
+                                    tile.type !== 'start' &&
                                     tile.type !== 'exit';
-            
+
             const getTileColor = (tile) => {
                 if (!tile.visited && !tile.revealed) return '#1a1f3a';
                 if (tile.type === 'start') return '#4CAF50';
@@ -140,7 +147,7 @@
                 if (boss && tile.id === boss.position && tile.revealed) return '#8B0000';
                 return '#2d3561';
             };
-            
+
             const getTileLabel = () => {
                 if (!isRevealed && !isCurrent) return '?';
                 if (isCurrent) return '내위치';
@@ -150,7 +157,13 @@
                 if (tile.type === 'trap') return '⚠️';
                 return '';
             };
-            
+
+            // 지역 이름 오버레이 — 방문한 타일에만 표시(요한 지시 2026-04-22).
+            // revealed만 된 상태(정찰 등)에서는 스포일러 방지를 위해 숨긴다.
+            const regionLabel = tile.visited && tile.region
+                ? (REGION_LABEL[tile.region] || tile.region)
+                : null;
+
             return (
                 <g key={tile.id} opacity={hasNoConnections ? 0 : 1}>
                     <polygon
@@ -162,12 +175,34 @@
                         opacity={isRevealed || isCurrent ? 1 : 0.6}
                         onClick={() => !gameOver && !victory && canMove && moveTo(tile.id)}
                     />
-                    <text 
-                        x={x} 
-                        y={y + 5} 
-                        textAnchor="middle" 
-                        fill={isCurrent ? '#1a1a2e' : isRevealed ? '#fff' : '#666'} 
-                        fontSize={isRevealed || isCurrent ? '14' : '24'} 
+                    {regionLabel && (
+                        <g className="hex-region-label" pointerEvents="none">
+                            <rect
+                                x={x - 32}
+                                y={y - 44}
+                                width="64"
+                                height="16"
+                                rx="3"
+                                fill="rgba(0,0,0,0.55)"
+                            />
+                            <text
+                                x={x}
+                                y={y - 32}
+                                textAnchor="middle"
+                                fill="#f5f5f5"
+                                fontSize="11"
+                                fontWeight="600"
+                            >
+                                {regionLabel}
+                            </text>
+                        </g>
+                    )}
+                    <text
+                        x={x}
+                        y={y + 5}
+                        textAnchor="middle"
+                        fill={isCurrent ? '#1a1a2e' : isRevealed ? '#fff' : '#666'}
+                        fontSize={isRevealed || isCurrent ? '14' : '24'}
                         fontWeight={isRevealed || isCurrent ? '700' : 'bold'}
                     >
                         {getTileLabel()}
@@ -683,8 +718,13 @@
                 // 카드 데이터는 구글 시트 '베이스탐험카드' 탭이 SSOT.
                 // data/data.js의 TTD_DATA.BASE_CARDS를 읽어 런타임 필드(time 기본값 1)만 덧붙인다.
                 // 시트 갱신 시: 시트 수정 → `make data` 실행 → 새로고침.
+                //
+                // 제외 카드 ID 가드:
+                //   'find_weapon' — 요한 지시(2026-04-22)로 폐기. 시트 row 삭제는 요한 수동 작업 대기.
+                //   시트에서 제거되면 이 필터는 무해(매칭되는 row가 없어짐).
+                const EXCLUDED_CARD_IDS = new Set(['find_weapon']);
                 const sheetBaseCards = (window.TTD_DATA && window.TTD_DATA.BASE_CARDS) || [];
-                const cards = sheetBaseCards.length > 0
+                const cards = (sheetBaseCards.length > 0
                     ? sheetBaseCards.map(c => ({
                           id: c.id,
                           name: c.name,
@@ -694,13 +734,13 @@
                           time: Number(c.time) || 1   // 시트에 time 컬럼 추가 시 자동 반영
                       }))
                     : [
-                          // 폴백(데이터 로드 실패 시) — 기존 하드코딩 그대로
+                          // 폴백(데이터 로드 실패 시) — find_weapon 제거됨
                           { id: 'search', name: '뒤져보기', count: 5, effect: '아이템 획득', detection: 5, time: 1 },
                           { id: 'listen', name: '귀 기울이기', count: 2, effect: '몬스터 감지', detection: -5, time: 1 },
                           { id: 'find_food', name: '음식 찾기', count: 1, effect: '음식 획득', detection: 5, time: 1 },
-                          { id: 'find_weapon', name: '무기 장비 찾기', count: 1, effect: '무기/장비', detection: 10, time: 1 },
                           { id: 'hide', name: '숨기', count: 1, effect: '은신', detection: -15, time: 1 }
-                      ];
+                      ]
+                ).filter(c => !EXCLUDED_CARD_IDS.has(c.id));
                 
                 const newDeck = initializeDeck(cards);
                 setDeck(newDeck.slice(3));
@@ -832,8 +872,26 @@
                         msg += `재료를 발견했다.`;
                     }
                 } else if (card.id === 'find_food') {
-                    inventory.addItem('food');
-                    msg += `음식을 발견했다.`;
+                    // '음식 찾기' 카드 — food 카테고리 강제 드롭(요한 지시 2026-04-22).
+                    // 'food' 독립 아이템은 제거됐으므로, 지역의 음식재료 풀에서 직접 추첨.
+                    // 지역에 food 풀이 비어있으면(시냇물 등) 폴백 메시지.
+                    const currentRegion = tiles[currentTile]?.region;
+                    if (currentRegion) {
+                        const { item } = rollTileDrop(currentRegion, { forceCategory: 'food' });
+                        if (item) {
+                            const def = InventorySystem.ITEMS[item];
+                            const added = inventory.addItem(item);
+                            if (added) {
+                                msg += `[${currentRegion}] ${def?.name || item}을(를) 찾아냈다.`;
+                            } else {
+                                msg += `[${currentRegion}] ${def?.name || item}을(를) 찾았지만 가방이 가득 찼다.`;
+                            }
+                        } else {
+                            msg += `[${currentRegion}] 먹을 만한 건 보이지 않는다.`;
+                        }
+                    } else {
+                        msg += '먹을 만한 건 보이지 않는다.';
+                    }
                 } else if (card.id === 'listen') {
                     const newTiles = tiles.map(t => {
                         if (tiles[currentTile].connections.includes(t.id)) {
@@ -845,9 +903,6 @@
                     msg += `주변 소리를 들었다. 보스는 타일 #${boss.getPosition()}에 있다.`;
                 } else if (card.id === 'hide') {
                     msg += '조용히 몸을 숨겼다.';
-                } else if (card.id === 'find_weapon') {
-                    inventory.addItem('weapon_basic');
-                    msg += '나무창을 발견했다!';
                 }
                 
                 setMessage(msg);
@@ -864,6 +919,12 @@
                 setPlayerMoveCount(newMoveCount);
                 setHunger(hunger - 1);
                 setTime(0);
+
+                // 이동마다 발각률 +5% (요한 지시 2026-04-22).
+                // 카드의 detection 가중치와 별개로, 단순 이동 자체가 보스에게 드러나는 기본 위험.
+                // 상한 100. detection state는 이후 chaseMode 전환 판정(>=80)에 그대로 쓰임.
+                const movedDetection = Math.min(100, detection + 5);
+                setDetection(movedDetection);
                 
                 // getHexNeighbors를 사용하여 물리적으로 인접한 모든 타일을 discovered로 설정
                 const mapGen = new MapGenerator(7);
@@ -916,12 +977,12 @@
                     }
                 }
                 
-                if (detection >= 80 && !boss.chaseMode) {
+                if (movedDetection >= 80 && !boss.chaseMode) {
                     boss.chaseMode = true;
                 }
-                
+
                 if (boss.chaseMode) {
-                    boss.onPlayerMove(targetId, detection);
+                    boss.onPlayerMove(targetId, movedDetection);
                     newBossPos = boss.position;
                 }
                 

@@ -26,7 +26,9 @@ class InventorySystem {
         material_mid:  { name: '일반 재료', shape: [[1]], grade: 2, mergeable: true },
         material_high: { name: '고급 재료', shape: [[1]], grade: 3, mergeable: true },
 
-        food: { name: '음식', shape: [[1]], grade: 1, mergeable: false },
+        // 'food' 독립 아이템 제거 (요한 지시, 2026-04-22):
+        // "음식"은 카테고리(mushroom/berry 등)의 상위 분류이지 직접 드롭되는 아이템이 아님.
+        // 'find_food' 카드는 유지하되 rollTileDrop의 food 카테고리 강제 드롭으로 재배선.
 
         weapon_basic: { name: '나무창', shape: [[1, 1]], grade: 1, mergeable: false },
         weapon_stone: { name: '돌창',   shape: [[1, 1]], grade: 2, mergeable: false },

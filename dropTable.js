@@ -52,20 +52,28 @@ const DROP_TABLE = FALLBACK_DROP_TABLE;
 const REGION_ITEM_POOL = FALLBACK_REGION_ITEM_POOL;
 
 // 뒤져보기 1회 결과 추첨
+// opts.forceCategory: 'env'|'food' — 카테고리 1차 추첨을 건너뛰고 해당 풀에서 직접 추첨.
+//   '음식 찾기' 같은 카드는 이 옵션으로 배선된다. 지역에 food 풀이 비어있으면 none 폴백.
 // 반환: { item: string|null, category: 'env'|'food'|'none' }
-function rollTileDrop(region) {
+function rollTileDrop(region, opts) {
     const { regions, pool } = resolveDropSource();
     const table = regions[region];
     if (!table) return { item: null, category: 'none' };
 
-    const roll = Math.random() * 100;
+    const forceCategory = opts && opts.forceCategory;
+
     let category;
-    if (roll < table.env) {
-        category = 'env';
-    } else if (roll < table.env + table.food) {
-        category = 'food';
+    if (forceCategory === 'env' || forceCategory === 'food') {
+        category = forceCategory;
     } else {
-        category = 'none';
+        const roll = Math.random() * 100;
+        if (roll < table.env) {
+            category = 'env';
+        } else if (roll < table.env + table.food) {
+            category = 'food';
+        } else {
+            category = 'none';
+        }
     }
 
     if (category === 'none') return { item: null, category };
