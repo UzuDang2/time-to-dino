@@ -259,11 +259,15 @@
         };
 
         // 육각형 타일 컴포넌트
-        function HexTile({ tile, currentTile, tiles, boss, gameOver, victory, moveTo }) {
+        //
+        // D-42 (2026-04-23 요한 지시): 보스 아이콘 노출 조건이 "tile.revealed"에서
+        // "bossVisible"로 분리됨. 지형 revealed와 무관하게 bossVisible=true 일 때만
+        // 보스가 있는 타일에 🦖 아이콘이 뜬다. 이동하면 setBossVisible(false).
+        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
             const canMove = tiles[currentTile].connections.includes(tile.id);
-            const isBoss = boss && tile.id === boss.position && tile.revealed;
+            const isBoss = boss && tile.id === boss.position && bossVisible;
             const isRevealed = tile.revealed || tile.visited;
 
             // 길이 없는 타일 (connections 없음) 판별
@@ -277,7 +281,8 @@
                 if (tile.type === 'exit' && tile.revealed) return '#2196F3';
                 if (tile.type === 'good' && tile.revealed) return '#FFC107';
                 if (tile.type === 'trap' && tile.revealed) return '#e94560';
-                if (boss && tile.id === boss.position && tile.revealed) return '#8B0000';
+                // D-42: 보스 타일 배경색도 bossVisible에 연동 — 이동 후엔 평범한 타일로 위장.
+                if (boss && tile.id === boss.position && bossVisible) return '#8B0000';
                 return '#2d3561';
             };
 
@@ -345,9 +350,13 @@
         }
 
         // 게임 맵 컴포넌트
-        function GameMap({ tiles, currentTile, boss, gameOver, victory, moveTo }) {
+        //
+        // D-39 (2026-04-22 요한 지시): LootToast를 맵 컨테이너 내부에 얹어
+        // "맵에서 획득했다"는 공간 의미를 강화. position: absolute + 상단 기준으로
+        // 고정하되 부모 .map-container가 position: relative라 스크롤과 함께 움직이지 않음.
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone }) {
             const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
-            
+
             return (
                 <div className="map-container">
                     <svg className="map-svg" width="1100" height="1000">
@@ -358,12 +367,14 @@
                                 currentTile={currentTile}
                                 tiles={tiles}
                                 boss={boss}
+                                bossVisible={bossVisible}
                                 gameOver={gameOver}
                                 victory={victory}
                                 moveTo={moveTo}
                             />
                         ))}
                     </svg>
+                    <LootToast toast={lootToast} onDone={onLootToastDone} />
                 </div>
             );
         }
@@ -972,9 +983,12 @@
         // - 페이드 인(빠르게) → 1초 노출 → 2초 페이드 아웃.
         // - 여러 아이템 동시 획득 시 하나의 토스트에 목록으로.
         // - 기존 메시지 로그는 유지 (토스트는 보조 강조).
-        // 위치는 화면 상단 중앙 — 맵/하단 UI 시선을 가리지 않으면서 눈에 잘 띈다.
+        // 위치는 맵 컨테이너 상단 중앙(D-39 요한 지시) — "맵에서 획득했다"는 의미 강화.
+        // position: absolute + 부모(.map-container)가 position: relative라 맵 안에 얹힌다.
+        // 스크롤과 함께 움직이지 않도록 부모 기준 top:12px 고정.
         // z-index는 기존 modal(.modal=100, ItemInfoModal=1000, CardListModal=1100)보다
         // 위에 두어 조우 모달 중에도 가려지지 않게 1500.
+        // 배경 불투명도 0.8 (D-39, 이전 0.5).
         function LootToast({ toast, onDone }) {
             const [phase, setPhase] = React.useState('in'); // in → hold → out → done
             React.useEffect(() => {
@@ -999,20 +1013,20 @@
             return (
                 <div
                     style={{
-                        position: 'fixed',
-                        top: '14%',
+                        position: 'absolute',
+                        top: '12px',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         zIndex: 1500,
                         pointerEvents: 'none',
                         opacity,
                         transition,
-                        background: 'rgba(22, 33, 62, 0.5)',
+                        background: 'rgba(22, 33, 62, 0.8)',
                         border: '1px solid rgba(233, 69, 96, 0.55)',
                         padding: '14px 18px',
                         borderRadius: '10px',
                         minWidth: '220px',
-                        maxWidth: '80vw',
+                        maxWidth: '80%',
                         boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
                         color: '#fff',
                         textAlign: 'center'
@@ -1194,6 +1208,11 @@
             // D-28 획득 토스트 — 현재 노출 중인 토스트 1개만 유지.
             // 구조: { id: number, entries: [{ name, count, grade? }] } | null
             const [lootToast, setLootToast] = useState(null);
+            // D-42 (2026-04-23 요한 지시): 보스 위치 가시성은 "지형 revealed"와 분리.
+            // - listen 1칸 분기에서만 bossVisible=true 로 set (그 순간 보스 아이콘 노출)
+            // - 플레이어가 이동하면 즉시 false (지형 revealed는 유지)
+            // 공포 원칙: "한 번 본 보스 위치"가 아니라 "방금 귀기울인 위치"만 신뢰 가능.
+            const [bossVisible, setBossVisible] = useState(false);
             const mapRef = useRef(null);
 
             // 토스트 발사 — entries는 묶음 표시 대상.
@@ -1544,6 +1563,10 @@
                     // '음식 찾기' 카드 — food 카테고리 강제 드롭(요한 지시 2026-04-22).
                     // 'food' 독립 아이템은 제거됐으므로, 지역의 음식재료 풀에서 직접 추첨.
                     // 지역에 food 풀이 비어있으면(시냇물 등) 폴백 메시지.
+                    //
+                    // D-40 (2026-04-23 요한 지시): search와 동일하게 LootToast 노출.
+                    // 단일 아이템이라 entries 배열에 원소 1개. 가방이 찬 경우(added=false)는
+                    // 토스트 생략(기존 search 분기와 동일한 규칙: 실제 획득한 것만).
                     const currentRegion = tiles[currentTile]?.region;
                     if (currentRegion) {
                         const { item } = rollTileDrop(currentRegion, { forceCategory: 'food' });
@@ -1552,6 +1575,11 @@
                             const added = inventory.addItem(item);
                             if (added) {
                                 msg += `[${currentRegion}] ${def?.name || item}을(를) 찾아냈다.`;
+                                const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+                                const displayName = def?.name || item;
+                                const notionItem = notionItems.find(it => it && it['이름'] === displayName);
+                                const grade = notionItem && notionItem['아이템 등급'];
+                                showLootToast([{ name: displayName, count: 1, grade }]);
                             } else {
                                 msg += `[${currentRegion}] ${def?.name || item}을(를) 찾았지만 가방이 가득 찼다.`;
                             }
@@ -1584,6 +1612,8 @@
                     setTiles(newTiles);
 
                     if (bossDist === 1) {
+                        // D-42: 보스 위치 노출은 이 순간만. 이동 시 moveTo에서 다시 false로.
+                        setBossVisible(true);
                         msg += `가쁜 숨소리가 바로 곁에서 들려온다. 보스는 타일 #${bossPos}에 있다.`;
                     } else if (bossDist === 2) {
                         msg += '숨쉬는 소리가 꽤 가까이 들리는 듯 하여 소름이 돋는다.';
@@ -1605,11 +1635,16 @@
                     setMessage('그곳으로는 갈 수 없습니다!');
                     return;
                 }
-                
+
                 const newMoveCount = playerMoveCount + 1;
                 setPlayerMoveCount(newMoveCount);
                 setHunger(hunger - 1);
                 setTime(0);
+
+                // D-42: 이동하는 순간 보스 위치 다시 안개 속으로.
+                // 지형 revealed는 그대로 두고 보스 아이콘만 숨긴다.
+                // (공포 원칙: 한 번 본 위치를 계속 신뢰하지 못하도록.)
+                setBossVisible(false);
 
                 // 이동마다 발각률 +5% (요한 지시 2026-04-22).
                 // 카드의 detection 가중치와 별개로, 단순 이동 자체가 보스에게 드러나는 기본 위험.
@@ -1770,13 +1805,16 @@
                         />
                     </div>
 
-                    <GameMap 
+                    <GameMap
                         tiles={tiles}
                         currentTile={currentTile}
                         boss={boss}
+                        bossVisible={bossVisible}
                         gameOver={gameOver}
                         victory={victory}
                         moveTo={moveTo}
+                        lootToast={lootToast}
+                        onLootToastDone={() => setLootToast(null)}
                     />
 
                     {eventTile && (
@@ -1828,10 +1866,9 @@
                         />
                     )}
 
-                    <LootToast
-                        toast={lootToast}
-                        onDone={() => setLootToast(null)}
-                    />
+                    {/* D-42 (2026-04-23): 최상위 LootToast 제거.
+                        이미 GameMap 내부에서 렌더되므로 중복 마운트였음.
+                        맵 컨테이너 기준 top:12px 하나만 유지. */}
 
                     <GameEndModal gameOver={gameOver} victory={victory} />
                 </div>
@@ -1839,6 +1876,17 @@
         }
 
         ReactDOM.render(<Game />, document.getElementById('root'));
+
+        // D-41 (2026-04-23 요한 지시): 게임 영역 내부의 contextmenu(우클릭/롱프레스)
+        // 기본 동작 차단. CSS user-select:none만으로는 iOS Safari 롱프레스 복사 메뉴가
+        // 뜨는 경우가 있어 JS 레벨에서도 막는다.
+        // input/textarea/contentEditable은 제외 — 텍스트 선택·붙여넣기 컨텍스트가 필요.
+        document.getElementById('root').addEventListener('contextmenu', (e) => {
+            const tag = e.target.tagName;
+            const editable = e.target.isContentEditable;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return;
+            e.preventDefault();
+        });
     </script>
 </body>
 </html>
