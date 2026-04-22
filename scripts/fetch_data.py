@@ -3,10 +3,18 @@
 # ────────────────────────────────────────────────────────────────────────
 # SSOT 데이터(구글 시트 6탭 + Notion 아이템 DB) → data/*.json 추출 파이프라인.
 #
-# 원본(읽기 전용):
+# 원본:
 #   - 시트: https://docs.google.com/spreadsheets/d/1iS4Lmjx32w0Mu527foFtc8pQn3pw6APcQYnvcKdVM9o/
 #           탭: 베이스탐험카드 / 1차_확정카드 / 전투카드 / 몬스터 / 사냥감 / 빌딩
 #   - Notion 아이템 DB: https://www.notion.so/8c76219106854ea58b6817e6d9bd8042
+#
+# 시트 액세스 (D-25 전환):
+#   primary — Google Sheets API (서비스 계정). 읽기 + 쓰기 둘 다 가능.
+#     의존성: gspread, google-auth
+#     키 경로 기본값: .secrets/sheets-sa.json
+#     환경변수: GOOGLE_SHEETS_SA_KEY=/절대/경로.json  (있으면 덮어씀)
+#   fallback — 공개 xlsx export URL (읽기 전용).
+#     API 초기화가 실패하거나 --no-api 플래그 지정 시 사용.
 #
 # 산출물(덮어쓰기):
 #   - data/base_cards.json       (베이스탐험카드)
@@ -18,8 +26,13 @@
 #   - data/items.json            (Notion 아이템 DB 스냅샷)
 #
 # 사용법:
-#   python3 scripts/fetch_data.py              # 시트만
-#   python3 scripts/fetch_data.py --with-notion-items  # 시트 + 아이템(오프라인 스냅샷 필요)
+#   python3 scripts/fetch_data.py                      # API 우선, 실패 시 xlsx 폴백
+#   python3 scripts/fetch_data.py --no-api             # xlsx export만 사용
+#   python3 scripts/fetch_data.py --skip-sheet         # 캐시 xlsx로만 재생성
+#
+#   # 시트 쓰기 (API 전용):
+#   python3 scripts/fetch_data.py --sheet-op=delete-row --tab=베이스탐험카드 --match-col=id --match-val=find_weapon
+#   python3 scripts/fetch_data.py --sheet-op=append-row --tab=베이스탐험카드 --row-json='{"id":"rest",...}'
 #
 # Notion 아이템은 MCP/API 키 없이 로컬에서 동작해야 하므로, 이 스크립트는
 # 이미 리포지토리에 커밋된 data/items.raw.json을 읽어 items.json을 생성한다.
@@ -37,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import urllib.request
@@ -51,13 +65,26 @@ except ImportError:
     )
     sys.exit(1)
 
+# gspread는 옵션. 없으면 xlsx 폴백으로 동작.
+try:
+    import gspread  # type: ignore
+    from google.oauth2.service_account import Credentials  # type: ignore
+    _HAS_GSPREAD = True
+except ImportError:
+    _HAS_GSPREAD = False
+
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
+SHEET_ID = "1iS4Lmjx32w0Mu527foFtc8pQn3pw6APcQYnvcKdVM9o"
 SHEET_XLSX_URL = (
-    "https://docs.google.com/spreadsheets/d/"
-    "1iS4Lmjx32w0Mu527foFtc8pQn3pw6APcQYnvcKdVM9o/export?format=xlsx"
+    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx"
 )
+SA_KEY_DEFAULT = ROOT / ".secrets" / "sheets-sa.json"
+SA_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.readonly",
+]
 
 # 시트 탭 이름 → 산출 JSON 경로 매핑
 # '드롭테이블'은 별도 2-탭 구조(지역×카테고리% + 지역↔아이템 풀)이므로 여기 넣지 않고
@@ -158,6 +185,196 @@ def write_json(path: Path, payload: Any) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
         f.write("\n")
+
+
+# ─── Google Sheets API (gspread) ────────────────────────────────────────
+#
+# D-25 전환: 읽기 + 쓰기를 API로 일원화. xlsx export는 API 실패 시 폴백.
+# 서비스 계정 키는 커밋하지 않으며 기본 경로는 .secrets/sheets-sa.json.
+# 환경변수 GOOGLE_SHEETS_SA_KEY로 절대경로를 덮어쓸 수 있다.
+
+
+def sa_key_path() -> Path:
+    env = os.environ.get("GOOGLE_SHEETS_SA_KEY")
+    if env:
+        return Path(env).expanduser()
+    return SA_KEY_DEFAULT
+
+
+def open_spreadsheet() -> Any | None:
+    """gspread Spreadsheet 핸들 반환. 의존성/키 없으면 None."""
+    if not _HAS_GSPREAD:
+        print("[api] gspread 미설치 — xlsx 폴백")
+        return None
+    key = sa_key_path()
+    if not key.exists():
+        print(f"[api] 서비스 계정 키 없음({key}) — xlsx 폴백")
+        return None
+    try:
+        creds = Credentials.from_service_account_file(str(key), scopes=SA_SCOPES)
+        gc = gspread.authorize(creds)
+        return gc.open_by_key(SHEET_ID)
+    except Exception as e:  # noqa: BLE001
+        print(f"[api] 시트 열기 실패: {e} — xlsx 폴백")
+        return None
+
+
+def _ws_rows(ws) -> list[dict[str, Any]]:
+    """gspread Worksheet → dict row 리스트. 첫 행을 헤더로 사용."""
+    values = ws.get_all_values()
+    if not values:
+        return []
+    header = [normalize_cell(h) for h in values[0]]
+    out: list[dict[str, Any]] = []
+    for row in values[1:]:
+        if not any((c or "").strip() for c in row):
+            continue
+        obj: dict[str, Any] = {}
+        for key, val in zip(header, row):
+            if key is None or key == "":
+                continue
+            v = normalize_cell(val)
+            # gspread는 모두 str로 주므로 숫자처럼 보이면 변환
+            if isinstance(v, str):
+                if re.fullmatch(r"-?\d+", v):
+                    v = int(v)
+                elif re.fullmatch(r"-?\d+\.\d+", v):
+                    fv = float(v)
+                    v = int(fv) if fv.is_integer() else fv
+            obj[str(key)] = v
+        out.append(obj)
+    return out
+
+
+def export_sheets_via_api(sh) -> bool:
+    """API로 모든 탭을 읽어 JSON 덤프. 성공 True."""
+    names = {w.title for w in sh.worksheets()}
+    for tab_name, out_file in SHEET_TABS.items():
+        if tab_name not in names:
+            print(f"[warn] 탭 '{tab_name}' 이 시트에 없음 — 스킵")
+            continue
+        ws = sh.worksheet(tab_name)
+        rows = _ws_rows(ws)
+
+        if tab_name == "빌딩":
+            for row in rows:
+                raw_cost = row.get("cost", "")
+                row["cost_raw"] = raw_cost
+                row["cost"] = parse_cost(raw_cost or "")
+
+        if tab_name == "몬스터":
+            for row in rows:
+                raw = row.get("attack_pattern", "")
+                row["attack_pattern_raw"] = raw
+                row["attack_pattern"] = parse_attack_pattern(raw or "")
+
+        out_path = DATA_DIR / out_file
+        write_json(out_path, rows)
+        print(f"[api] {tab_name:12s} → {out_path.name}  ({len(rows)} rows)")
+    return True
+
+
+def export_drop_table_via_api(sh) -> None:
+    names = {w.title for w in sh.worksheets()}
+    regions: dict[str, dict[str, int]] = {}
+    pool: dict[str, dict[str, list[str]]] = {}
+
+    if DROP_TABLE_SHEET in names:
+        for row in _ws_rows(sh.worksheet(DROP_TABLE_SHEET)):
+            region = row.get("region") or row.get("지역")
+            if not region:
+                continue
+            regions[str(region)] = {
+                "env": int(row.get("env") or 0),
+                "food": int(row.get("food") or 0),
+                "none": int(row.get("none") or 0),
+            }
+    else:
+        print(f"[warn] 탭 '{DROP_TABLE_SHEET}' 이 시트에 없음 — 스킵")
+
+    if REGION_POOL_SHEET in names:
+        for row in _ws_rows(sh.worksheet(REGION_POOL_SHEET)):
+            region = row.get("region") or row.get("지역")
+            category = row.get("category") or row.get("카테고리")
+            items_raw = row.get("items") or row.get("아이템") or ""
+            if not region or not category:
+                continue
+            items = [s.strip() for s in str(items_raw).split(",") if s.strip()]
+            pool.setdefault(str(region), {}).setdefault(str(category), []).extend(items)
+    else:
+        print(f"[warn] 탭 '{REGION_POOL_SHEET}' 이 시트에 없음 — 스킵")
+
+    if not regions and not pool:
+        print("[info] drop_table.json 생성 스킵 (시트 탭 없음)")
+        return
+    payload = {"regions": regions, "pool": pool}
+    out_path = DATA_DIR / "drop_table.json"
+    write_json(out_path, payload)
+    print(f"[api] drop_table  → {out_path.name}  ({len(regions)} regions)")
+
+
+# ─── 시트 쓰기 헬퍼 (API 전용) ────────────────────────────────────────
+#
+# 탭 생성 / row 추가 / row 삭제 / 셀 편집. 모두 서비스 계정 권한 필요(편집자).
+
+
+def sheet_ensure_tab(sh, tab: str, headers: list[str]) -> Any:
+    """탭이 없으면 생성하고 헤더 세팅. Worksheet 반환."""
+    try:
+        ws = sh.worksheet(tab)
+    except gspread.WorksheetNotFound:  # type: ignore[attr-defined]
+        ws = sh.add_worksheet(title=tab, rows=100, cols=max(10, len(headers)))
+        ws.update("A1", [headers])
+        print(f"[write] 탭 생성 '{tab}' with {len(headers)} cols")
+    return ws
+
+
+def sheet_append_row(sh, tab: str, row_obj: dict[str, Any]) -> None:
+    """탭의 첫 행을 헤더로 보고 row_obj를 매핑해 append."""
+    ws = sh.worksheet(tab)
+    header = ws.row_values(1)
+    if not header:
+        raise RuntimeError(f"탭 '{tab}' 헤더가 비어있음 — 먼저 헤더를 세팅하세요")
+    values = [row_obj.get(h, "") for h in header]
+    # None은 빈 문자열
+    values = ["" if v is None else v for v in values]
+    ws.append_row(values, value_input_option="USER_ENTERED")
+    print(f"[write] append_row({tab}): {row_obj}")
+
+
+def sheet_delete_row(sh, tab: str, match_col: str, match_val: str) -> int:
+    """match_col == match_val인 첫 행을 삭제. 삭제한 행 번호 반환(없으면 -1)."""
+    ws = sh.worksheet(tab)
+    header = ws.row_values(1)
+    if match_col not in header:
+        raise RuntimeError(f"탭 '{tab}'에 컬럼 '{match_col}' 없음")
+    col_idx = header.index(match_col) + 1  # gspread는 1-indexed
+    col_values = ws.col_values(col_idx)
+    # col_values[0]은 헤더, 1부터가 데이터
+    for i, v in enumerate(col_values[1:], start=2):
+        if str(v).strip() == str(match_val).strip():
+            ws.delete_rows(i)
+            print(f"[write] delete_row({tab}, {match_col}={match_val}) → row {i}")
+            return i
+    print(f"[write] delete_row: {match_col}={match_val} 없음 — no-op")
+    return -1
+
+
+def sheet_update_cell(sh, tab: str, match_col: str, match_val: str, set_col: str, new_val: Any) -> None:
+    """match 조건 행의 set_col을 new_val로 변경."""
+    ws = sh.worksheet(tab)
+    header = ws.row_values(1)
+    if match_col not in header or set_col not in header:
+        raise RuntimeError(f"탭 '{tab}' 컬럼 누락: {match_col}/{set_col}")
+    m_idx = header.index(match_col) + 1
+    s_idx = header.index(set_col) + 1
+    col_values = ws.col_values(m_idx)
+    for i, v in enumerate(col_values[1:], start=2):
+        if str(v).strip() == str(match_val).strip():
+            ws.update_cell(i, s_idx, new_val)
+            print(f"[write] update_cell({tab}, row{i}, {set_col}={new_val})")
+            return
+    raise RuntimeError(f"match 행 없음: {match_col}={match_val}")
 
 
 # ─── 엔드포인트 ─────────────────────────────────────────────────────────
@@ -530,6 +747,46 @@ def export_items() -> None:
 # ─── main ──────────────────────────────────────────────────────────────
 
 
+def run_sheet_op(args) -> int:
+    """--sheet-op 처리. API 필수."""
+    sh = open_spreadsheet()
+    if sh is None:
+        print("[error] sheet-op은 API 필요 — 서비스 계정 키 세팅 후 재시도")
+        return 2
+    op = args.sheet_op
+    tab = args.tab
+    if not tab and op != "ensure-tab":
+        print("[error] --tab 필요")
+        return 2
+
+    if op == "delete-row":
+        if not (args.match_col and args.match_val):
+            print("[error] delete-row은 --match-col / --match-val 필요")
+            return 2
+        sheet_delete_row(sh, tab, args.match_col, args.match_val)
+    elif op == "append-row":
+        if not args.row_json:
+            print("[error] append-row은 --row-json 필요")
+            return 2
+        row = json.loads(args.row_json)
+        sheet_append_row(sh, tab, row)
+    elif op == "update-cell":
+        if not (args.match_col and args.match_val and args.set_col):
+            print("[error] update-cell은 --match-col/--match-val/--set-col 필요")
+            return 2
+        sheet_update_cell(sh, tab, args.match_col, args.match_val, args.set_col, args.set_val)
+    elif op == "ensure-tab":
+        if not (tab and args.headers):
+            print("[error] ensure-tab은 --tab / --headers 필요")
+            return 2
+        headers = [h.strip() for h in args.headers.split(",") if h.strip()]
+        sheet_ensure_tab(sh, tab, headers)
+    else:
+        print(f"[error] 알 수 없는 sheet-op: {op}")
+        return 2
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -542,26 +799,57 @@ def main() -> int:
         action="store_true",
         help="items.json 생성 건너뛰기",
     )
+    ap.add_argument(
+        "--no-api",
+        action="store_true",
+        help="Sheets API 사용 안 함. xlsx export만 사용",
+    )
+    # 시트 쓰기 명령 (있으면 읽기 파이프라인 대신 이것만 실행)
+    ap.add_argument("--sheet-op", choices=["delete-row", "append-row", "update-cell", "ensure-tab"])
+    ap.add_argument("--tab")
+    ap.add_argument("--match-col")
+    ap.add_argument("--match-val")
+    ap.add_argument("--set-col")
+    ap.add_argument("--set-val")
+    ap.add_argument("--row-json", help="JSON 문자열 (append-row용)")
+    ap.add_argument("--headers", help="콤마 구분 (ensure-tab용)")
     args = ap.parse_args()
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    xlsx_cache = DATA_DIR / ".sheet_cache.xlsx"
 
-    if not args.skip_sheet:
-        try:
-            fetch_sheet(SHEET_XLSX_URL, xlsx_cache)
-        except Exception as e:
-            print(f"[error] 시트 다운로드 실패: {e}")
+    # 쓰기 명령은 읽기 파이프라인과 분리
+    if args.sheet_op:
+        return run_sheet_op(args)
+
+    # 읽기 파이프라인: API 우선, 실패 시 xlsx 폴백
+    used_api = False
+    if not args.no_api:
+        sh = open_spreadsheet()
+        if sh is not None:
+            try:
+                export_sheets_via_api(sh)
+                export_drop_table_via_api(sh)
+                used_api = True
+                print("[api] 시트 읽기 완료 (Sheets API)")
+            except Exception as e:  # noqa: BLE001
+                print(f"[api] 읽기 중 예외: {e} — xlsx 폴백 시도")
+
+    if not used_api:
+        xlsx_cache = DATA_DIR / ".sheet_cache.xlsx"
+        if not args.skip_sheet:
+            try:
+                fetch_sheet(SHEET_XLSX_URL, xlsx_cache)
+            except Exception as e:
+                print(f"[error] 시트 다운로드 실패: {e}")
+                if not xlsx_cache.exists():
+                    return 1
+                print("[warn] 기존 캐시로 진행")
+        else:
             if not xlsx_cache.exists():
+                print(f"[error] --skip-sheet 지정됐지만 캐시({xlsx_cache})가 없음")
                 return 1
-            print("[warn] 기존 캐시로 진행")
-    else:
-        if not xlsx_cache.exists():
-            print(f"[error] --skip-sheet 지정됐지만 캐시({xlsx_cache})가 없음")
-            return 1
-
-    export_sheets(xlsx_cache)
-    export_drop_table(xlsx_cache)
+        export_sheets(xlsx_cache)
+        export_drop_table(xlsx_cache)
 
     if not args.no_items:
         export_items()

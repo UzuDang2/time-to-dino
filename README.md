@@ -17,8 +17,40 @@ Notion 아이템 DB는 각각 `data/*.json`으로 스냅샷되며, 게임은 `da
 ```
 make data
 ```
-→ 구글에서 시트 xlsx를 받아 `data/base_cards.json` 등 6개를 덮어쓰고,
-   브라우저 번들 `data/data.js`도 재생성한다. 브라우저에서 새로고침하면 반영됨.
+→ Google Sheets API(서비스 계정)로 읽어 `data/base_cards.json` 등을 덮어쓰고,
+   브라우저 번들 `data/data.js`도 재생성한다. API 키가 없거나 실패하면 공개 xlsx export로 자동 폴백.
+
+### Google Sheets API 세팅 (1회)
+D-25부터 primary 경로. Chrome MCP 의존을 줄이고 쓰기까지 지원.
+
+1. GCP 콘솔 → 프로젝트 선택/생성
+2. `APIs & Services` → `Enable APIs` → **Google Sheets API** 활성화
+3. `IAM & Admin` → `Service Accounts` → 계정 생성 (이름 자유, 역할 없음이어도 됨)
+4. 생성된 계정 → `Keys` → `Add Key` → JSON 발급 → `.secrets/sheets-sa.json`에 저장
+   - 기본 경로: `.secrets/sheets-sa.json` (이미 `.gitignore` 처리됨)
+   - 다른 경로면 `export GOOGLE_SHEETS_SA_KEY=/절대경로.json`
+5. 시트 공유: 서비스 계정 이메일(예: `xxx@proj.iam.gserviceaccount.com`)을 시트 공유 메뉴에 **편집자**로 추가
+6. 의존성 설치: `make install-deps`
+7. 테스트: `make data`
+
+### 시트 쓰기 (API 전용)
+```
+# 탭 생성
+python3 scripts/fetch_data.py --sheet-op=ensure-tab --tab=베이스탐험카드 \
+    --headers="id,name,count,effect,detection"
+
+# row 추가 (헤더에 맞춰 매핑)
+python3 scripts/fetch_data.py --sheet-op=append-row --tab=베이스탐험카드 \
+    --row-json='{"id":"rest","name":"휴식","count":1,"effect":"체력/배고픔 소폭 회복, 소음 최소","detection":-3}'
+
+# row 삭제 (id 매칭 첫 행)
+python3 scripts/fetch_data.py --sheet-op=delete-row --tab=베이스탐험카드 \
+    --match-col=id --match-val=find_weapon
+
+# 셀 편집
+python3 scripts/fetch_data.py --sheet-op=update-cell --tab=베이스탐험카드 \
+    --match-col=id --match-val=rest --set-col=detection --set-val=-5
+```
 
 ### Notion 아이템 DB를 고쳤을 때
 Notion은 로컬에서 직접 당겨올 수 없으므로 2단계다:

@@ -3,3 +3,10 @@
 
 # 데이터 파이프라인 로컬 캐시 (재생성 가능)
 data/.sheet_cache.xlsx
+
+# 서비스 계정 키 (커밋 절대 금지)
+.secrets/
+*.sa.json
+*-sa.json
+service-account*.json
+google-credentials*.json
