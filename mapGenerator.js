@@ -94,7 +94,13 @@ class MapGenerator {
                 discovered: false,
                 revealed: false,
                 position: positions[i],
-                isEmpty
+                isEmpty,
+                // D-35: 반복 뒤져보기 페널티를 위한 상태.
+                //   searchedCount — 이 타일에서 뒤져보기를 시전한 누적 횟수
+                //   hasBeenLeft   — 플레이어가 이 타일을 한 번이라도 떠난 적 있는가
+                //                   (돌아와도 true 유지 — "이미 쓸고 간" 뉘앙스)
+                searchedCount: 0,
+                hasBeenLeft: false
             });
         }
         

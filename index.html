@@ -803,15 +803,80 @@
         //   emptyText:      필터 통과 아이템 0개일 때 메시지
         //   onSelect(item): 확정
         //   onClose():      취소
-        function CardItemConsumeModal({ inventory, filter, titleText, emptyText, onSelect, onClose }) {
+        // D-36 (2026-04-22, 요한 지시):
+        //   scales({recover: N})이 있으면 "효과가 N배" 임을 시각적으로 강조한다.
+        //   - 제목 아래 안내 문구 (노란색)
+        //   - 각 음식 효과 요약의 "배고픔 +1"을 "배고픔 +1 +1"로 변형하고
+        //     증분 "+1" 만 노란색(#d4b84a)으로 띄운다. 효과가 2개 이상인 아이템은
+        //     각 증분을 같은 방식으로 처리. scale이 걸릴 수 있는 건 양수 delta stat뿐.
+        //   - scale이 없거나 1이면 기존 UI와 동일.
+        //   이 표현은 휴식 외 향후 consume 카드에도 재사용 가능하도록 일반화.
+        function CardItemConsumeModal({ inventory, filter, scales, hintText, titleText, emptyText, onSelect, onClose }) {
             const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
             const byName = (name) => notionItems.find(it => it && it['이름'] === name);
+            const Parser = window.EffectParser;
+
+            const recoverScale = (scales && typeof scales.recover === 'number') ? scales.recover : 1;
+            const hasRecoverScale = recoverScale !== 1;
 
             const candidates = (inventory?.items || []).filter(invItem => {
                 const def = InventorySystem.ITEMS[invItem.type] || {};
                 const notionItem = byName(def.name || invItem.name);
                 return filter ? filter(invItem, notionItem, def) : true;
             });
+
+            // 아이템 효과 요약 표시 — scale이 있으면 원본 delta + 증분을 나란히 보여준다.
+            // 반환: JSX or null
+            function renderEffectRow(notionItem) {
+                const parsedEffect = notionItem && notionItem.effect;
+                const summary = notionItem && notionItem['효과 요약'];
+                const canScale = hasRecoverScale && parsedEffect && parsedEffect.usable && Parser;
+
+                if (!canScale) {
+                    // 폴백: 원본 효과 요약만 표시 (기존 동작)
+                    return summary
+                        ? (
+                            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                                {summary}
+                            </div>
+                        )
+                        : null;
+                }
+
+                // 각 action을 "기본 라벨 + (노란색 증분)" 형태로 렌더.
+                // 예: action {stat:'hunger', delta:1}, recoverScale=2 → '배고픔 +1 +1'
+                //     배고픔(회색) / '+1'(회색) / '+1'(노란색 = 증분)
+                const parts = parsedEffect.actions.map((a, i) => {
+                    if (a.type !== 'stat' || !(a.delta > 0)) {
+                        // scale이 안 걸리는 action(감소/spawn_card 등)은 기본 describe.
+                        const baseLabel = Parser.describeEffect({ usable: true, actions: [a], raw: '' });
+                        return (
+                            <span key={i} style={{ marginRight: '6px' }}>{baseLabel}</span>
+                        );
+                    }
+                    const label = a.stat === 'hunger' ? '배고픔'
+                                : a.stat === 'health' ? '생명력'
+                                : a.stat;
+                    const baseStr = `${label} +${a.delta}`;
+                    const bonus = Math.round(a.delta * recoverScale - a.delta);
+                    return (
+                        <span key={i} style={{ marginRight: '6px' }}>
+                            {baseStr}
+                            {bonus > 0 && (
+                                <span style={{ color: '#d4b84a', fontWeight: 700, marginLeft: '4px' }}>
+                                    +{bonus}
+                                </span>
+                            )}
+                        </span>
+                    );
+                });
+
+                return (
+                    <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                        {parts}
+                    </div>
+                );
+            }
 
             return (
                 <div className="modal" style={{ zIndex: 1100 }} onClick={onClose}>
@@ -820,10 +885,21 @@
                         style={{ maxWidth: '360px', minWidth: '260px' }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                             <h3 style={{ margin: 0, fontSize: '16px' }}>{titleText || '아이템 선택'}</h3>
                             <button onClick={onClose}>닫기</button>
                         </div>
+                        {hintText && (
+                            <div style={{
+                                fontSize: '12px',
+                                color: '#d4b84a',
+                                marginBottom: '10px',
+                                letterSpacing: '0.3px'
+                            }}>
+                                {hintText}
+                            </div>
+                        )}
+                        {!hintText && <div style={{ marginBottom: '8px' }} />}
                         {candidates.length === 0 ? (
                             <div style={{ fontSize: '13px', color: '#aaa', padding: '16px 8px', textAlign: 'center' }}>
                                 {emptyText || '쓸 만한 아이템이 없다.'}
@@ -833,7 +909,6 @@
                                 {candidates.map(invItem => {
                                     const def = InventorySystem.ITEMS[invItem.type] || {};
                                     const notionItem = byName(def.name || invItem.name);
-                                    const summary = notionItem && notionItem['효과 요약'];
                                     return (
                                         <button
                                             key={invItem.id}
@@ -846,11 +921,7 @@
                                             }}
                                         >
                                             <div style={{ fontWeight: 600, fontSize: '14px' }}>{def.name || invItem.name}</div>
-                                            {summary && (
-                                                <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
-                                                    {summary}
-                                                </div>
-                                            )}
+                                            {renderEffectRow(notionItem)}
                                         </button>
                                     );
                                 })}
@@ -1284,10 +1355,18 @@
                     setMessage(`${card.name}: 지금 쓸 수 있는 아이템이 없다.`);
                     return;
                 }
+                // D-36: 휴식 등 scale이 걸린 카드는 모달이 "효과 증폭"을 시각적으로 강조해야 함.
+                // scales(예: {recover: 2})를 그대로 넘겨 모달이 아이템 효과를 미리보기로 스케일.
+                // 카드 이름/효과 텍스트는 카드별 안내 문구의 기본값으로 사용.
+                const hintText = (consume.scales && consume.scales.recover && consume.scales.recover !== 1)
+                    ? `${card.name}으로 인해 음식의 효과가 ${consume.scales.recover}배가 됩니다`
+                    : null;
                 setPendingConsume({
                     card,
                     consume,
                     filter: filterFn,
+                    scales: consume.scales || {},
+                    hintText,
                     titleText: card.name + ' — 사용할 아이템',
                     emptyText: '쓸 만한 아이템이 없다.'
                 });
@@ -1371,12 +1450,18 @@
                 let msg = `${card.name}을(를) 사용했다. (시간 +${card.time}) `;
 
                 if (card.id === 'search') {
-                    // D-28(2026-04-22, 요한 지시): 뒤져보기는 3슬롯 독립 추첨(100/30/30).
+                    // D-28(2026-04-22, 요한 지시): 뒤져보기는 3슬롯 독립 추첨(100/20/20).
                     // 슬롯 확률/개수 자체는 비공개. 결과만 메시지+토스트로 노출.
                     // 여러 개 획득 시 같은 아이템은 개수 누적, 묶음 토스트 1개.
-                    const currentRegion = tiles[currentTile]?.region;
+                    //
+                    // D-34: 타일 type === 'good'이면 슬롯 확률이 상향(100/80/80).
+                    // D-35: 같은 타일 반복·복귀 뒤져보기에는 페널티 곱수가 붙는다
+                    //       (hasBeenLeft 0.5 * 0.5^searchedCount). rollSearchLoot가
+                    //       tile 객체를 받아 안에서 처리한다.
+                    const tile = tiles[currentTile];
+                    const currentRegion = tile?.region;
                     if (currentRegion) {
-                        const drops = rollSearchLoot(currentRegion);
+                        const drops = rollSearchLoot(currentRegion, tile);
                         // 같은 아이템 개수 누적 (토스트/메시지 가독성)
                         const counter = new Map(); // item -> count
                         let overflow = 0; // 가방 포화로 못 담은 수
@@ -1409,6 +1494,14 @@
                         } else {
                             msg += `[${currentRegion}] 이 근처에는 쓸만한 게 없다.`;
                         }
+
+                        // D-35: 이 타일의 뒤져보기 카운터 증가.
+                        // 추첨이 끝난 뒤에 올려야 "첫 사용은 mult=1" 규약이 지켜진다.
+                        setTiles(prev => prev.map(t =>
+                            t.id === currentTile
+                                ? { ...t, searchedCount: (t.searchedCount || 0) + 1 }
+                                : t
+                        ));
                     } else {
                         // 안전망: region 없는 타일(구버전 세이브 등)은 레거시 동작
                         inventory.addItem('material_low');
@@ -1500,6 +1593,16 @@
                     if (t.id === targetId) {
                         // 도착한 타일은 즉시 모든 정보 공개
                         return { ...t, visited: true, discovered: true, revealed: true };
+                    }
+                    // D-35: 플레이어가 직전 타일을 '떠났다'는 사실 기록.
+                    // 이후 돌아오더라도 true로 유지되어 반복 페널티의 초기 0.5 곱수가 적용된다.
+                    if (t.id === currentTile) {
+                        return {
+                            ...t,
+                            hasBeenLeft: true,
+                            // 같은 속성의 인접 타일도 discovered 유지
+                            discovered: targetNeighbors.includes(t.id) ? true : t.discovered
+                        };
                     }
                     // 새로운 위치의 물리적 인접 타일들을 discovered로 설정
                     if (targetNeighbors.includes(t.id)) {
@@ -1683,6 +1786,8 @@
                         <CardItemConsumeModal
                             inventory={inventory}
                             filter={pendingConsume.filter}
+                            scales={pendingConsume.scales}
+                            hintText={pendingConsume.hintText}
                             titleText={pendingConsume.titleText}
                             emptyText={pendingConsume.emptyText}
                             onSelect={resolveConsumeChoice}

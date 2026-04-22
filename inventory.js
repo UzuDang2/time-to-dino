@@ -33,6 +33,12 @@ class InventorySystem {
         mushroom: { name: '버섯',     shape: [[1]], grade: 1, mergeable: true,  category: 'food', merge_result: 'mushroom_mix' },
         berry:    { name: '산딸기',   shape: [[1]], grade: 1, mergeable: true,  category: 'food', merge_result: 'berry_mix' },
 
+        // === 시냇물 음식재료 (D-33: 신규 — 머지 없음, 단독 소비) ===
+        //   water: hunger+1 기본 음식. 80% 비중으로 시냇물에서 자주.
+        //   fish : hunger+2 귀한 음식. 20% 비중. 머지는 없지만 mix와 동급 효과.
+        water:    { name: '맑은 물',  shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
+        fish:     { name: '물고기',   shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
+
         // === 2단계 (조합 결과물) ===
         wood:         { name: '목재',         shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         plant_fiber:  { name: '식물 섬유',    shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },

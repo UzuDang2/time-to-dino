@@ -283,10 +283,25 @@ def export_sheets_via_api(sh) -> bool:
     return True
 
 
+def _parse_weights_csv(raw: Any) -> list[int]:
+    """가중치 CSV(\"80, 20\") → [80, 20]. 숫자 아닌 토큰은 0으로."""
+    if raw is None:
+        return []
+    parts = [p.strip() for p in str(raw).split(",") if p.strip()]
+    out: list[int] = []
+    for p in parts:
+        try:
+            out.append(int(float(p)))
+        except ValueError:
+            out.append(0)
+    return out
+
+
 def export_drop_table_via_api(sh) -> None:
     names = {w.title for w in sh.worksheets()}
     regions: dict[str, dict[str, int]] = {}
     pool: dict[str, dict[str, list[str]]] = {}
+    weights: dict[str, dict[str, list[int]]] = {}
 
     if DROP_TABLE_SHEET in names:
         for row in _ws_rows(sh.worksheet(DROP_TABLE_SHEET)):
@@ -310,13 +325,22 @@ def export_drop_table_via_api(sh) -> None:
                 continue
             items = [s.strip() for s in str(items_raw).split(",") if s.strip()]
             pool.setdefault(str(region), {}).setdefault(str(category), []).extend(items)
+
+            # D-33: weights 컬럼이 있으면 가중치 맵에 반영.
+            # items와 길이가 같아야 의미 있음 — 다를 땐 런타임에서 균등 추첨으로 폴백.
+            weights_raw = row.get("weights") or ""
+            parsed_w = _parse_weights_csv(weights_raw)
+            if parsed_w:
+                weights.setdefault(str(region), {}).setdefault(str(category), []).extend(parsed_w)
     else:
         print(f"[warn] 탭 '{REGION_POOL_SHEET}' 이 시트에 없음 — 스킵")
 
     if not regions and not pool:
         print("[info] drop_table.json 생성 스킵 (시트 탭 없음)")
         return
-    payload = {"regions": regions, "pool": pool}
+    payload: dict[str, Any] = {"regions": regions, "pool": pool}
+    if weights:
+        payload["weights"] = weights
     out_path = DATA_DIR / "drop_table.json"
     write_json(out_path, payload)
     print(f"[api] drop_table  → {out_path.name}  ({len(regions)} regions)")
@@ -460,6 +484,7 @@ def export_drop_table(xlsx_path: Path) -> None:
 
     regions: dict[str, dict[str, int]] = {}
     pool: dict[str, dict[str, list[str]]] = {}
+    weights: dict[str, dict[str, list[int]]] = {}
 
     # 1) 확률 탭
     if DROP_TABLE_SHEET in existing:
@@ -485,6 +510,12 @@ def export_drop_table(xlsx_path: Path) -> None:
                 continue
             items = [s.strip() for s in str(items_raw).split(",") if s.strip()]
             pool.setdefault(str(region), {}).setdefault(str(category), []).extend(items)
+
+            # D-33: weights 컬럼 — CSV 형식. 없으면 균등 추첨 폴백.
+            weights_raw = row.get("weights") or ""
+            parsed_w = _parse_weights_csv(weights_raw)
+            if parsed_w:
+                weights.setdefault(str(region), {}).setdefault(str(category), []).extend(parsed_w)
     else:
         print(f"[warn] 탭 '{REGION_POOL_SHEET}' 이 시트에 없음 — 스킵")
 
@@ -493,7 +524,9 @@ def export_drop_table(xlsx_path: Path) -> None:
         print("[info] drop_table.json 생성 스킵 (시트 탭 없음)")
         return
 
-    payload = {"regions": regions, "pool": pool}
+    payload: dict[str, Any] = {"regions": regions, "pool": pool}
+    if weights:
+        payload["weights"] = weights
     out_path = DATA_DIR / "drop_table.json"
     write_json(out_path, payload)
     print(f"[export] drop_table  → {out_path.name}  ({len(regions)} regions, {sum(len(v) for v in pool.values())} pool entries)")

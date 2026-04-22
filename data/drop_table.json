@@ -16,9 +16,9 @@
       "none": 45
     },
     "시냇물": {
-      "env": 40,
-      "food": 0,
-      "none": 60
+      "env": 30,
+      "food": 40,
+      "none": 30
     },
     "동굴": {
       "env": 55,
@@ -60,6 +60,10 @@
       "env": [
         "stone",
         "stem"
+      ],
+      "food": [
+        "water",
+        "fish"
       ]
     },
     "동굴": {
@@ -70,6 +74,14 @@
       "food": [
         "mushroom",
         "berry"
+      ]
+    }
+  },
+  "weights": {
+    "시냇물": {
+      "food": [
+        80,
+        20
       ]
     }
   }

@@ -711,6 +711,37 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "fish",
+      "name": "물고기",
+      "이름": "물고기",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [
+        "시냇물"
+      ],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "살점이 두툼한 물고기. 한 끼가 되어 준다.",
+      "효과 요약": "배고픔 +2.",
+      "사용 효과": "hunger+2",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 2
+          }
+        ],
+        "raw": "hunger+2"
+      }
+    },
+    {
       "id": "mushroom",
       "name": "버섯",
       "이름": "버섯",
@@ -797,6 +828,37 @@ window.TTD_DATA = {
           }
         ],
         "raw": "spawn_card:throw"
+      }
+    },
+    {
+      "id": "water",
+      "name": "맑은 물",
+      "이름": "맑은 물",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [
+        "시냇물"
+      ],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "시냇가에서 손으로 떠 올린 한 모금. 마른 목을 축인다.",
+      "효과 요약": "배고픔 +1.",
+      "사용 효과": "hunger+1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 1
+          }
+        ],
+        "raw": "hunger+1"
       }
     },
     {
@@ -975,9 +1037,9 @@ window.TTD_DATA = {
         "none": 45
       },
       "시냇물": {
-        "env": 40,
-        "food": 0,
-        "none": 60
+        "env": 30,
+        "food": 40,
+        "none": 30
       },
       "동굴": {
         "env": 55,
@@ -1019,6 +1081,10 @@ window.TTD_DATA = {
         "env": [
           "stone",
           "stem"
+        ],
+        "food": [
+          "water",
+          "fish"
         ]
       },
       "동굴": {
@@ -1029,6 +1095,14 @@ window.TTD_DATA = {
         "food": [
           "mushroom",
           "berry"
+        ]
+      }
+    },
+    "weights": {
+      "시냇물": {
+        "food": [
+          80,
+          20
         ]
       }
     }
