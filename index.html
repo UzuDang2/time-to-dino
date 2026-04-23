@@ -1944,7 +1944,10 @@
                     // (직전 버전에서 2칸 이상일 때 revealed를 끊었으나, 이는 listen의 핵심 기능을
                     //  제거한 회귀였음. 요한 QA 2026-04-22 지시로 복구.)
                     const bossPos = boss.getPosition();
-                    const bossDist = boss.calculateDistance(currentTile, bossPos);
+                    // D-55 (2026-04-23 요한 지시): 청각 거리는 physical hex 거리 사용.
+                    // calculateDistance(path-BFS)는 빈 슬롯·비육각 이웃 영향으로
+                    // 공간적으로 가까워도 "멀다"고 말할 수 있어 listen 용도엔 부적합.
+                    const bossDist = boss.calculateHexDistance(currentTile, bossPos);
 
                     // 인접 타일 revealed — 거리 무관하게 항상 실행되는 listen의 기본 효과.
                     const newTiles = tiles.map(t => {
