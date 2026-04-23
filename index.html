@@ -2173,51 +2173,63 @@
                         setTimeout(() => showLootToast([{ name: '생고기', count: added, grade: 1 }]), 100);
                     }
                 } else if (outcome === 'prey_fled') {
-                    // habitat 맞는 인접 타일 중 이동 가능한 곳 찾기.
+                    // D-47: 반드시 다른 타일로 이동 — 3단계 fallback.
+                    //   1차: habitat 매칭 + 인접 + reserved(빈/보스/탈출구/다른prey) 제외
+                    //   2차: habitat 무관 인접 + reserved 제외
+                    //   3차: 인접 무관 (맵 전체 non-reserved) — "멀리 놓친 것처럼" 이동
+                    // 그리고 도망간 새 타일에 trace(👣) 추가 — 플레이어에게 단서 제공.
                     const preyData = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
                     const preyDef = preyData.find(p => p.id === prey.preyType) || {};
                     const habitat = (Array.isArray(preyDef.habitat) && preyDef.habitat.length > 0)
                         ? preyDef.habitat
                         : (PREY_HABITAT[prey.preyType] || []);
                     const bossPos = boss ? boss.getPosition() : -1;
-                    // 현재 살아있는 preys 중 자기 자신 제외한 점유 타일 Set
                     const occupiedByOther = new Set(
                         (preys || []).filter(p => p.id !== prey.id).map(p => p.tileId)
                     );
-                    const currentPreyTile = tiles[prey.tileId];
-                    const neighborIds = (currentPreyTile && currentPreyTile.connections) || [];
-                    const candidates = neighborIds.filter(nid => {
+                    const notReserved = (nid) => {
+                        if (nid === prey.tileId) return false;
                         const t = tiles[nid];
                         if (!t || t.isEmpty) return false;
-                        if (habitat.length > 0 && !habitat.includes(t.region)) return false;
                         if (nid === bossPos) return false;
                         if (t.type === 'exit') return false;
                         if (occupiedByOther.has(nid)) return false;
                         return true;
+                    };
+                    const currentPreyTile = tiles[prey.tileId];
+                    const neighborIds = (currentPreyTile && currentPreyTile.connections) || [];
+                    let candidates = neighborIds.filter(nid => {
+                        if (!notReserved(nid)) return false;
+                        if (habitat.length > 0 && !habitat.includes(tiles[nid].region)) return false;
+                        return true;
                     });
+                    if (candidates.length === 0) {
+                        candidates = neighborIds.filter(notReserved);
+                    }
+                    if (candidates.length === 0) {
+                        candidates = tiles.map((_, i) => i).filter(notReserved);
+                    }
 
-                    // D-47: 도망 후에도 누적 데미지 유지. result.preyHpFinal을 hpCurrent로 저장.
                     const hpFinal = (typeof result.preyHpFinal === 'number') ? result.preyHpFinal : prey.hp;
                     if (candidates.length > 0) {
                         const dest = candidates[Math.floor(Math.random() * candidates.length)];
                         const fromTile = prey.tileId;
-                        // preys 업데이트 — tileId + hpCurrent 동시 반영
                         setPreys(prev => prev.map(p =>
                             p.id === prey.id ? { ...p, tileId: dest, hpCurrent: hpFinal } : p
                         ));
-                        // 발자국 기록
                         setPreyFootprints(prev => ({
                             ...prev,
                             [fromTile]: { fromTile, toTile: dest }
                         }));
-                        // trace 제거 (원 타일 기척 소멸)
+                        // 원 타일 trace 제거 + 도망간 새 타일에 trace 추가.
                         setPreyTraceTiles(prev => {
                             const next = new Set(prev);
                             next.delete(fromTile);
+                            next.add(dest);
                             return next;
                         });
                     } else {
-                        // 이동 여지가 없어도 hpCurrent는 유지해야 함 (다음 조우 시 누적 활용).
+                        // 이론상 도달 불가 (맵 전체에 non-reserved 타일이 하나도 없는 경우). 안전망.
                         setPreys(prev => prev.map(p =>
                             p.id === prey.id ? { ...p, hpCurrent: hpFinal } : p
                         ));
