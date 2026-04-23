@@ -236,10 +236,17 @@
         function HandCards({ hand, gameOver, victory, useCard }) {
             if (gameOver || victory || hand.length === 0) return null;
 
+            // D-48: 타일 이동마다 hand이 전부 교체되므로 각 카드 uid가 새 값.
+            //   새로 마운트된 카드에 card-draw 클래스 + stagger delay로 순차 페이드인.
             return (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
-                    {hand.map(card => (
-                        <div key={card.uid} className="card" onClick={() => useCard(card)}>
+                    {hand.map((card, i) => (
+                        <div
+                            key={card.uid}
+                            className="card card-draw"
+                            style={{ animationDelay: `${i * 60}ms` }}
+                            onClick={() => useCard(card)}
+                        >
                             <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '3px' }}>
                                 {card.name}
                             </div>
@@ -272,12 +279,11 @@
         // 표현하던 방식을 폐기하고 SVG 오버레이 "말"(piece)로 분리. 타일은
         // 지형 속성만 표현. 말 렌더링은 GameMap에서 HexTile 위에 SVG text로 수행.
         //
-        // D-46 (2026-04-23, 9차): 사냥감 3가지 오버레이 추가. (※ prey는 아직 말로
-        // 분리되지 않고 HexTile 라벨/오버레이로 렌더 — 추후 D-50 패턴으로 이관 예정)
-        //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스 있으면 보스 우선)
+        // D-46/D-48: 사냥감 오버레이.
+        //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스가 있으면 보스 우선)
         //   - 흔적(👣 우상단): preyTraceTiles.has(tile.id) — visited 무관 (청각 단서).
-        //   - 발자국(방향 화살표 좌하단): preyFootprints[tile.id] — fromTile→toTile 델타 기준.
-        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, preys, preyTraceTiles, preyFootprints }) {
+        //   - D-48: 발자국 방향 화살표 제거 — 흔적(👣)만으로 단서 제공.
+        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, preys, preyTraceTiles }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
             const canMove = tiles[currentTile].connections.includes(tile.id);
@@ -288,31 +294,6 @@
             const showPrey = tile.visited && preyOnTile && !isBoss;
             const preyEmoji = showPrey ? (PREY_EMOJI[preyOnTile.preyType] || '❓') : null;
             const hasTrace = preyTraceTiles && preyTraceTiles.has && preyTraceTiles.has(tile.id);
-            const footprint = preyFootprints ? preyFootprints[tile.id] : null;
-
-            // 발자국 방향 화살표 계산 — fromTile→toTile의 tile.position 델타로 8방향 매핑.
-            let footprintArrow = null;
-            if (footprint && tiles[footprint.fromTile] && tiles[footprint.toTile]) {
-                const from = tiles[footprint.fromTile].position;
-                const to = tiles[footprint.toTile].position;
-                if (from && to) {
-                    const dx = to.x - from.x;
-                    const dy = to.y - from.y;
-                    const absX = Math.abs(dx);
-                    const absY = Math.abs(dy);
-                    const diag = absX > 5 && absY > 5;
-                    if (diag) {
-                        if (dx > 0 && dy < 0) footprintArrow = '↗';
-                        else if (dx > 0 && dy > 0) footprintArrow = '↘';
-                        else if (dx < 0 && dy < 0) footprintArrow = '↖';
-                        else footprintArrow = '↙';
-                    } else if (absX > absY) {
-                        footprintArrow = dx > 0 ? '→' : '←';
-                    } else {
-                        footprintArrow = dy > 0 ? '↓' : '↑';
-                    }
-                }
-            }
 
             // 길이 없는 타일 (connections 없음) 판별
             const hasNoConnections = tile.connections.length === 0 &&
@@ -414,24 +395,6 @@
                             👣
                         </text>
                     )}
-                    {/* D-46: 발자국(좌하단 방향 화살표) — 도망간 prey 경로.
-                        D-47: fontSize·stroke 상향 + 아웃라인으로 어두운 타일에서도 식별. */}
-                    {footprintArrow && (
-                        <text
-                            x={x - 20}
-                            y={y + 26}
-                            textAnchor="middle"
-                            fontSize="24"
-                            fill="#ffd84a"
-                            pointerEvents="none"
-                            fontWeight="900"
-                            stroke="#0a1020"
-                            strokeWidth="3"
-                            paintOrder="stroke"
-                        >
-                            {footprintArrow}
-                        </text>
-                    )}
                 </g>
             );
         }
@@ -444,7 +407,7 @@
         // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
         // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
         // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, preyFootprints }) {
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles }) {
             const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
             const containerRef = React.useRef(null);
 
@@ -487,7 +450,6 @@
                                     moveTo={moveTo}
                                     preys={preys}
                                     preyTraceTiles={preyTraceTiles}
-                                    preyFootprints={preyFootprints}
                                 />
                             ))}
                             {playerPos && (
@@ -1970,23 +1932,27 @@
                             </div>
                         </div>
 
-                        {/* 적 패턴 3슬롯 (readonly) */}
+                        {/* 적 패턴 3슬롯 — D-48 개정: 3턴 모두 '회피' (동적 evade_rate).
+                            3턴 소진 후 hp>0이면 자동 도망. */}
                         <div style={{ marginBottom: '10px' }}>
                             <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>적 행동</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                                {['회피 20%', '회피 20%', '빠르게 도망 100%'].map((txt, i) => (
-                                    <div key={i} style={{
-                                        padding: '8px 4px',
-                                        background: '#2a2a3e',
-                                        border: '1px solid #444',
-                                        borderRadius: '6px',
-                                        fontSize: '11px',
-                                        textAlign: 'center',
-                                        opacity: logs.find(l => l.turn === i + 1) ? 0.5 : 1
-                                    }}>
-                                        T{i + 1}<br/>{txt}
-                                    </div>
-                                ))}
+                                {[0, 1, 2].map((i) => {
+                                    const evadePct = (typeof prey.evade_rate === 'number') ? prey.evade_rate : 20;
+                                    return (
+                                        <div key={i} style={{
+                                            padding: '8px 4px',
+                                            background: '#2a2a3e',
+                                            border: '1px solid #444',
+                                            borderRadius: '6px',
+                                            fontSize: '11px',
+                                            textAlign: 'center',
+                                            opacity: logs.find(l => l.turn === i + 1) ? 0.5 : 1
+                                        }}>
+                                            T{i + 1}<br/>회피 {evadePct}%
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -2170,6 +2136,8 @@
             // D-27 HUD 리뉴얼: 덱/무덤 목록 모달 표시 플래그.
             const [showDeckList, setShowDeckList] = useState(false);
             const [showGraveyardList, setShowGraveyardList] = useState(false);
+            // D-48: 무덤 버튼 펄스 트리거 — moveTo에서 증가 → key remount로 CSS 애니메이션 재생.
+            const [graveyardFlashKey, setGraveyardFlashKey] = useState(0);
             // D-53: 인게임 [플레이방법] 모달.
             const [showHelp, setShowHelp] = useState(false);
             const [eventTile, setEventTile] = useState(null);
@@ -2190,14 +2158,13 @@
             // - 플레이어가 이동하면 즉시 false (지형 revealed는 유지)
             // 공포 원칙: "한 번 본 보스 위치"가 아니라 "방금 귀기울인 위치"만 신뢰 가능.
             const [bossVisible, setBossVisible] = useState(false);
-            // D-46 (2026-04-23): 사냥감 전투 1단계 상태.
-            //   preys            — 맵에 살아있는 사냥감 배열 [{id, tileId, preyType}].
-            //   preyTraceTiles   — listen으로 감지된 "기척" 타일 id Set (visited 무관 표시).
-            //   preyFootprints   — 도망친 prey의 발자국 {tileId: {fromTile, toTile}}.
-            //   activeHunt       — 전투 모달 활성화 시 {prey, card}, 미활성 null.
+            // D-46/D-48: 사냥감 전투 상태.
+            //   preys          — 맵에 살아있는 사냥감 배열 [{id, tileId, preyType, hpCurrent?}].
+            //   preyTraceTiles — listen/도망 결과로 감지된 "기척" 타일 id Set (visited 무관 표시).
+            //   activeHunt     — 전투 모달 활성화 시 {prey}, 미활성 null.
+            //   D-48: 발자국 방향 화살표(preyFootprints) 제거 — 흔적(👣)만으로 단서 제공.
             const [preys, setPreys] = useState([]);
             const [preyTraceTiles, setPreyTraceTiles] = useState(new Set());
-            const [preyFootprints, setPreyFootprints] = useState({});
             const [activeHunt, setActiveHunt] = useState(null);
             const mapRef = useRef(null);
 
@@ -2338,10 +2305,6 @@
                         setPreys(prev => prev.map(p =>
                             p.id === prey.id ? { ...p, tileId: dest, hpCurrent: hpFinal } : p
                         ));
-                        setPreyFootprints(prev => ({
-                            ...prev,
-                            [fromTile]: { fromTile, toTile: dest }
-                        }));
                         // 원 타일 trace 제거 + 도망간 새 타일에 trace 추가.
                         setPreyTraceTiles(prev => {
                             const next = new Set(prev);
@@ -2444,7 +2407,6 @@
                     : [];
                 setPreys(spawned);
                 setPreyTraceTiles(new Set());
-                setPreyFootprints({});
                 setActiveHunt(null);
                 // 콘솔 검증용 — 릴리스 시 제거해도 무방.
                 if (typeof window !== 'undefined') window.__preys = spawned;
@@ -2975,31 +2937,29 @@
                 setTiles(newTiles);
                 setCurrentTile(targetId);
 
-                // D-46 (2026-04-23): 새 타일 도착 시 prey 조우/이탈 처리.
-                //   1) 이전 타일 대상 hunt_start 카드는 무조건 증발 (타일 이동했으므로 무효).
-                //      무덤 X — 재조우 시 다시 생성된다는 요한 확정 규칙.
-                //   2) HAND_SIZE 카운트는 `overflow` 플래그 없는 카드만 세도록 조정
-                //      (hunt_start가 손패에 있어도 5/5 카운터 유지).
-                //   3) 보충 끝난 뒤 preyHere 있으면 HUNT_START_CARD를 target 메타와 함께 append.
+                // D-48: 카드 규칙 개정 — 타일 이동 시 손패 전부 무덤으로 보내고 덱에서
+                //   HAND_SIZE(5)장 새로 드로우. 덱 소진 시 무덤 셔플해서 덱 재구성.
+                //   이전 '미사용 카드 유지' 규칙 폐기. hunt_start 카드도 자연 소멸 (손패에
+                //   있던 hunt_start가 무덤행 — 재조우 시 새로 생성되므로 무덤 쪽에서 빼둘 필요 없음).
+                //   단, hunt_start는 overflow로 HAND_SIZE 카운트에서 제외.
                 const preyHere = (preys || []).find(p => p.tileId === targetId);
 
-                // 손패 보충 (hunt_start overflow 카드는 항상 필터아웃 후 재생성)
-                let newHand = hand.filter(c => c.id !== 'hunt_start');
+                // 1) 손패 전부 무덤으로 (hunt_start 포함 — 재생성 규칙이라 상실 OK).
+                let newGraveyard = [...graveyard, ...hand];
                 let newDeck = [...deck];
-                let newGraveyard = [...graveyard];
+                let newHand = [];
 
-                while (newHand.filter(c => !c.overflow).length < HAND_SIZE && newDeck.length > 0) {
+                // 2) 덱에서 HAND_SIZE 드로우. 덱 소진 시 무덤 셔플.
+                while (newHand.length < HAND_SIZE) {
+                    if (newDeck.length === 0) {
+                        if (newGraveyard.length === 0) break;
+                        newDeck = shuffleDeck(newGraveyard);
+                        newGraveyard = [];
+                    }
                     newHand.push(newDeck.shift());
                 }
 
-                if (newHand.filter(c => !c.overflow).length < HAND_SIZE && newGraveyard.length > 0) {
-                    newDeck = shuffleDeck(newGraveyard);
-                    newGraveyard = [];
-                    while (newHand.filter(c => !c.overflow).length < HAND_SIZE && newDeck.length > 0) {
-                        newHand.push(newDeck.shift());
-                    }
-                }
-
+                // 3) 도착 타일에 사냥감 있으면 hunt_start 카드 overflow로 추가 + 토스트.
                 if (preyHere) {
                     newHand.push({
                         ...HUNT_START_CARD,
@@ -3010,7 +2970,6 @@
                             preyType: preyHere.preyType
                         }
                     });
-                    // D-47: 사냥감 발견 토스트 — 아이콘 + 이름으로 즉시 안내.
                     const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
                     const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
                     const hpNote = (typeof preyHere.hpCurrent === 'number' && preyHere.hpCurrent < (foundDef.hp || 0))
@@ -3027,6 +2986,8 @@
                 setHand(newHand);
                 setDeck(newDeck);
                 setGraveyard(newGraveyard);
+                // D-48: 이동으로 손패가 전부 무덤행임을 시각적으로 안내.
+                setGraveyardFlashKey(k => k + 1);
                 
                 // 보스 이동 로직
                 let newBossPos = boss.position;
@@ -3129,7 +3090,11 @@
                                 <button onClick={() => setShowDeckList(true)}>
                                     덱 {deck.length}
                                 </button>
-                                <button onClick={() => setShowGraveyardList(true)}>
+                                <button
+                                    key={`graveyard-${graveyardFlashKey}`}
+                                    className={graveyardFlashKey > 0 ? 'graveyard-flash' : ''}
+                                    onClick={() => setShowGraveyardList(true)}
+                                >
                                     무덤 {graveyard.length}
                                 </button>
                             </div>
@@ -3157,7 +3122,6 @@
                         onTileEventToastDone={() => setTileEventToast(null)}
                         preys={preys}
                         preyTraceTiles={preyTraceTiles}
-                        preyFootprints={preyFootprints}
                     />
 
                     {eventTile && (

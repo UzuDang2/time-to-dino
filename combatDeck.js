@@ -101,21 +101,16 @@
         return deck;
     }
 
-    // D-46 (2026-04-23) — 사냥 전투 해결 로직.
-    //   3턴 고정. 3턴차는 prey가 '빠르게 도망' → prey_fled (카드 무관).
-    //   각 턴: 플레이어 카드 → success_rate 판정 → run_away 성공 시 즉시 player_fled 종료
-    //   → damage>0이면 prey.evade_rate 판정 → 명중 시 hp 차감 → hp<=0이면 victory 즉시 종료.
-    //   evade_rate는 prey별 개별 설정(시트 '사냥감' 탭), 누락 시 20 폴백.
-    //   turns 배열은 모달 로그 단위로 순차 표시할 수 있게 구조화.
+    // D-48 개정: 사냥 전투 해결 로직.
+    //   3턴 고정. 모든 턴 공통으로 prey는 '회피' (evade_rate 판정, prey별 개별).
+    //   각 턴: 플레이어 카드 success_rate 판정 → run_away 성공 시 player_fled
+    //   → damage>0이면 prey.evade_rate 판정 → 명중 시 hp 차감 → hp<=0 victory.
+    //   3턴 모두 소진했는데 hp>0이면 prey_fled (사냥감이 도망). 이전의 '3턴차 자동 도망' 폐기.
     function resolveHunt(prey, userSlots) {
         let hp = prey.hp;
         const evadeRate = (Number(prey.evade_rate) >= 0) ? Number(prey.evade_rate) : 20;
         const turns = [];
         for (let t = 0; t < 3; t++) {
-            if (t === 2) {
-                turns.push({ turn: t + 1, preyAction: '빠르게 도망', outcome: 'flee_signal' });
-                return { outcome: 'prey_fled', turns, preyHpFinal: hp };
-            }
             const card = userSlots[t];
             if (!card) {
                 turns.push({ turn: t + 1, preyAction: '회피', userCard: null, hit: false, preyHpAfter: hp });
@@ -151,7 +146,7 @@
                 });
             }
         }
-        // 논리적으로 안 닿음 (t===2에서 return). 안전망.
+        // 3턴 다 지났는데 hp>0 → 사냥감 도망.
         return { outcome: 'prey_fled', turns, preyHpFinal: hp };
     }
 

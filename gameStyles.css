@@ -88,9 +88,38 @@ button:active {
     touch-action: manipulation;
 }
 
-.card:active { 
+.card:active {
     transform: scale(0.95);
     box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+}
+
+/* D-48: 새로 뽑힌 카드 draw-in 애니메이션.
+   타일 이동마다 손패가 전체 교체되므로 각 카드 uid가 새 값 → remount → 애니메이션 재생. */
+@keyframes cardDrawIn {
+    from {
+        opacity: 0;
+        transform: translateY(-22px) scale(0.82);
+    }
+    60% {
+        opacity: 1;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+.card-draw {
+    animation: cardDrawIn 0.36s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* D-48: 이동 직후 무덤 버튼에 노란 펄스 — 버려진 카드가 쌓였음을 암시. */
+@keyframes graveyardFlash {
+    0%   { box-shadow: 0 0 0 0 rgba(212, 184, 74, 0.0); }
+    30%  { box-shadow: 0 0 0 8px rgba(212, 184, 74, 0.55); }
+    100% { box-shadow: 0 0 0 14px rgba(212, 184, 74, 0); }
+}
+.graveyard-flash {
+    animation: graveyardFlash 0.6s ease-out;
 }
 
 /* 맵 영역 — D-46 (2026-04-22 요한 지시):
