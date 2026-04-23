@@ -2172,6 +2172,44 @@
                 const prey = activeHunt.prey;
                 const outcome = result && result.outcome;
 
+                // D-47: 사용된 아이템 요구 카드만큼 인벤에서 차감.
+                //   turn.userCard.requirement가 '없음'이 아니면 그 이름의 아이템을 1개씩 소비.
+                //   outcome 무관(victory/prey_fled/player_fled) — 실제 손에 올라간 턴만 반영.
+                //   consumedSummary는 victory 메시지에 "소모: 돌맹이 2개" 형태로 덧붙임.
+                const consumedSummary = [];
+                if (inventory && Array.isArray(result && result.turns)) {
+                    const consumeByName = {};
+                    for (const turn of result.turns) {
+                        const uc = turn && turn.userCard;
+                        if (!uc) continue;
+                        const req = uc.requirement;
+                        if (!req || req === '없음' || String(req).indexOf('없음') === 0) continue;
+                        consumeByName[req] = (consumeByName[req] || 0) + 1;
+                    }
+                    for (const [reqName, count] of Object.entries(consumeByName)) {
+                        let remaining = count;
+                        const keep = [];
+                        for (const it of inventory.items) {
+                            if (remaining > 0) {
+                                const def = InventorySystem.resolveDef(it.type) || {};
+                                if ((def.name || '') === reqName) {
+                                    inventory.removeItem(it);
+                                    remaining -= 1;
+                                    continue;
+                                }
+                            }
+                            keep.push(it);
+                        }
+                        inventory.items = keep;
+                        const actuallyConsumed = count - remaining;
+                        if (actuallyConsumed > 0) {
+                            consumedSummary.push(`${reqName} ${actuallyConsumed}개`);
+                        }
+                    }
+                }
+                const withConsumed = (msg) =>
+                    consumedSummary.length > 0 ? `${msg} (소모: ${consumedSummary.join(', ')})` : msg;
+
                 if (outcome === 'victory') {
                     // preys 제거
                     setPreys(prev => prev.filter(p => p.id !== prey.id));
@@ -2192,7 +2230,7 @@
                     }
                     let msg = `사냥에 성공했다. 생고기 ${added}을(를) 얻었다.`;
                     if (overflow > 0) msg += ` (가방이 가득 차 ${overflow}개는 두고 왔다.)`;
-                    setMessage(msg);
+                    setMessage(withConsumed(msg));
                     setActiveHunt(null);
                     if (added > 0) {
                         // z-index 충돌 방지 — 모달 unmount 후 토스트 띄움.
@@ -2260,7 +2298,7 @@
                             p.id === prey.id ? { ...p, hpCurrent: hpFinal } : p
                         ));
                     }
-                    setMessage('사냥감이 도망쳤다. 발자국이 남아있다.');
+                    setMessage(withConsumed('사냥감이 도망쳤다. 발자국이 남아있다.'));
                     setActiveHunt(null);
                 } else if (outcome === 'player_fled') {
                     // 플레이어 도주 — prey는 제자리지만 준 데미지는 유지.
@@ -2268,7 +2306,7 @@
                     setPreys(prev => prev.map(p =>
                         p.id === prey.id ? { ...p, hpCurrent: hpFinal } : p
                     ));
-                    setMessage('사냥을 포기하고 물러섰다.');
+                    setMessage(withConsumed('사냥을 포기하고 물러섰다.'));
                     setActiveHunt(null);
                 } else {
                     setActiveHunt(null);
