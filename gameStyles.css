@@ -93,12 +93,24 @@ button:active {
     box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
 }
 
+/* 맵 영역 — D-46 (2026-04-22 요한 지시):
+   LootToast가 맵 스크롤과 함께 밀려 시야에서 사라지던 문제 해결.
+   .map-container(스크롤 영역)와 LootToast를 형제로 두고
+   .map-area를 positioned ancestor로 잡아 토스트가 HUD 바로 아래
+   고정 위치에 뜨도록 한다. */
+.map-area {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
 /* 맵 컨테이너 */
 .map-container {
     flex: 1;
     overflow: auto;
     background: #0a0e27;
-    position: relative;
 }
 
 .map-svg { 
@@ -115,8 +127,34 @@ button:active {
     filter: brightness(1.2); 
 }
 
-.hex-tile.current { 
-    filter: drop-shadow(0 0 8px #e94560); 
+/* D-50 (2026-04-23 요한 지시): 엔티티 "말"(piece) 공통 스타일.
+   타일 위에 얹히는 SVG text 오버레이(플레이어·보스·향후 사냥감).
+   클릭 방해 방지(pointer-events:none)·선택 방지. */
+.piece {
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+    /* 체스말 이동처럼 부드러운 슬라이딩 — 브라우저 지원 시 x/y 전환. */
+    transition: x 0.25s ease, y 0.25s ease;
+}
+
+.piece-player {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+}
+
+/* 보스 말 — 타일 대신 말 자체에 펄스 강조(D-50, 기존 .hex-tile.boss 이관). */
+.piece-boss {
+    filter: drop-shadow(0 0 8px #ff2c4b) drop-shadow(0 0 14px #8B0000);
+    animation: boss-piece-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes boss-piece-pulse {
+    from {
+        filter: drop-shadow(0 0 4px #e94560) drop-shadow(0 0 8px #8B0000);
+    }
+    to {
+        filter: drop-shadow(0 0 12px #ff2c4b) drop-shadow(0 0 20px #ff2c4b);
+    }
 }
 
 /* 인벤토리 */

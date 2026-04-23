@@ -268,7 +268,12 @@
         // "bossVisible"로 분리됨. 지형 revealed와 무관하게 bossVisible=true 일 때만
         // 보스가 있는 타일에 🦖 아이콘이 뜬다. 이동하면 setBossVisible(false).
         //
-        // D-46 (2026-04-23, 9차): 사냥감 3가지 오버레이 추가.
+        // D-50 (2026-04-23 요한 지시): 플레이어·보스를 타일 배경/라벨로 섞어
+        // 표현하던 방식을 폐기하고 SVG 오버레이 "말"(piece)로 분리. 타일은
+        // 지형 속성만 표현. 말 렌더링은 GameMap에서 HexTile 위에 SVG text로 수행.
+        //
+        // D-46 (2026-04-23, 9차): 사냥감 3가지 오버레이 추가. (※ prey는 아직 말로
+        // 분리되지 않고 HexTile 라벨/오버레이로 렌더 — 추후 D-50 패턴으로 이관 예정)
         //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스 있으면 보스 우선)
         //   - 흔적(👣 우상단): preyTraceTiles.has(tile.id) — visited 무관 (청각 단서).
         //   - 발자국(방향 화살표 좌하단): preyFootprints[tile.id] — fromTile→toTile 델타 기준.
@@ -318,39 +323,44 @@
                 if (!tile.visited && !tile.revealed) return '#1a1f3a';
                 if (tile.type === 'start') return '#4CAF50';
                 if (tile.type === 'exit' && tile.revealed) return '#2196F3';
-                if (tile.type === 'good' && tile.revealed) return '#FFC107';
                 if (tile.type === 'trap' && tile.revealed) return '#e94560';
-                // D-42: 보스 타일 배경색도 bossVisible에 연동 — 이동 후엔 평범한 타일로 위장.
-                if (boss && tile.id === boss.position && bossVisible) return '#8B0000';
+                if (tile.type === 'good' && tile.revealed) return '#FFC107';
                 return '#2d3561';
             };
 
             const getTileLabel = () => {
-                if (!isRevealed && !isCurrent) return '?';
-                if (isCurrent) return '내위치';
+                if (!isRevealed) return '?';
+                // D-50: 말이 올라온 타일은 중앙 라벨 숨김 — 말 아이콘이 그 자리를 차지.
+                // 타일 속성은 배경색으로 계속 보이므로 지형 정보 손실 없음.
+                if (isCurrent || isBoss) return '';
                 if (tile.type === 'exit') return '탈출구';
-                if (isBoss) return '🦖';
                 if (showPrey) return preyEmoji;
-                if (tile.type === 'good') return '👍';
+                if (tile.type === 'good') return '🌾';
                 if (tile.type === 'trap') return '⚠️';
                 return '';
             };
 
-            // 지역 이름 오버레이 — 방문한 타일에만 표시(요한 지시 2026-04-22).
-            // revealed만 된 상태(정찰 등)에서는 스포일러 방지를 위해 숨긴다.
-            const regionLabel = tile.visited && tile.region
+            // 지역 이름 오버레이.
+            // D-51 (2026-04-23 요한 지시): revealed(귀기울이기 등)도 지형 이름 노출.
+            // 이전(D-27~): visited만 표시. 이제 listen으로 주변 지형 파악이 가능해짐.
+            // 방문(visited)과 정찰(revealed only) 구분:
+            // - visited: 초록 동그란 마커 + 지형 이름, 타일 밝음(opacity 1)
+            // - revealed only: 지형 이름만 (마커 없음), 타일 약간 어두움(opacity 0.7)
+            // - 미공개: 아무것도 없음, 타일 매우 어두움(opacity 0.55)
+            const regionLabel = (tile.visited || tile.revealed) && tile.region
                 ? (REGION_LABEL[tile.region] || tile.region)
                 : null;
+            const tileOpacity = tile.visited ? 1 : tile.revealed ? 0.7 : 0.55;
 
             return (
                 <g key={tile.id} opacity={hasNoConnections ? 0 : 1}>
                     <polygon
-                        className={`hex-tile ${isCurrent ? 'current' : ''}`}
+                        className="hex-tile"
                         points={`${x},${y-50} ${x+43},${y-25} ${x+43},${y+25} ${x},${y+50} ${x-43},${y+25} ${x-43},${y-25}`}
-                        fill={isCurrent ? '#f5f5f5' : getTileColor(tile)}
-                        stroke={isCurrent ? 'none' : canMove ? '#4CAF50' : '#0f3460'}
+                        fill={getTileColor(tile)}
+                        stroke={canMove ? '#4CAF50' : '#0f3460'}
                         strokeWidth={canMove ? '3' : '2'}
-                        opacity={isRevealed || isCurrent ? 1 : 0.6}
+                        opacity={tileOpacity}
                         onClick={() => !gameOver && !victory && canMove && moveTo(tile.id)}
                     />
                     {regionLabel && (
@@ -363,6 +373,9 @@
                                 rx="3"
                                 fill="rgba(0,0,0,0.55)"
                             />
+                            {tile.visited && (
+                                <circle cx={x - 22} cy={y - 36} r="3" fill="#4CAF50" />
+                            )}
                             <text
                                 x={x}
                                 y={y - 32}
@@ -379,9 +392,9 @@
                         x={x}
                         y={y + 5}
                         textAnchor="middle"
-                        fill={isCurrent ? '#1a1a2e' : isRevealed ? '#fff' : '#666'}
-                        fontSize={isRevealed || isCurrent ? '14' : '24'}
-                        fontWeight={isRevealed || isCurrent ? '700' : 'bold'}
+                        fill={isRevealed ? '#fff' : '#666'}
+                        fontSize={isRevealed ? '14' : '24'}
+                        fontWeight={isRevealed ? '700' : 'bold'}
                     >
                         {getTileLabel()}
                     </text>
@@ -418,51 +431,101 @@
 
         // 게임 맵 컴포넌트
         //
-        // D-39 (2026-04-22 요한 지시): LootToast를 맵 컨테이너 내부에 얹어
-        // "맵에서 획득했다"는 공간 의미를 강화. position: absolute + 상단 기준으로
-        // 고정하되 부모 .map-container가 position: relative라 스크롤과 함께 움직이지 않음.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, preys, preyTraceTiles, preyFootprints }) {
+        // D-46 (2026-04-22 요한 지시): LootToast를 .map-container(스크롤 영역)
+        // 밖으로 빼고 .map-area 래퍼의 형제로 둔다. 이전(D-39)에는 맵 안에 넣어
+        // "맵에서 획득" 공간감을 살렸지만, 모바일에서 맵을 스크롤하면 absolute
+        // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
+        // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
+        // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, preyFootprints }) {
             const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
+            const containerRef = React.useRef(null);
+
+            // D-47 (2026-04-22 요한 지시): 게임 시작 시 현재 위치 타일이 스크롤
+            // 뷰포트 중앙에 오도록 1회 정렬. 이전엔 항상 (0,0)에서 시작해 매번
+            // 시작 위치를 찾아야 했음.
+            // useLayoutEffect로 paint 전에 스크롤을 잡아 깜빡임 없음.
+            // 마운트 시 1회만 — 이후 이동 자유, 자동 추적은 안 함.
+            React.useLayoutEffect(() => {
+                const el = containerRef.current;
+                if (!el) return;
+                const cur = tiles[currentTile];
+                if (!cur || !cur.position) return;
+                el.scrollLeft = cur.position.x - el.clientWidth / 2;
+                el.scrollTop = cur.position.y - el.clientHeight / 2;
+            }, []);
+
+            // D-50: 엔티티 말(piece) — 타일 위에 얹히는 SVG text 오버레이.
+            // 체스말처럼 타일 사이를 옮겨다니는 "엔티티" 표현. 배경(지형)은 그대로.
+            // 나중에 사냥감(prey) 아이콘도 같은 패턴으로 추가될 예정.
+            const playerPos = tiles[currentTile] && tiles[currentTile].position;
+            const bossPiecePos = (boss && bossVisible && tiles[boss.position])
+                ? tiles[boss.position].position
+                : null;
 
             return (
-                <div className="map-container">
-                    <svg className="map-svg" width="1100" height="1000">
-                        {visibleTiles.map(tile => (
-                            <HexTile
-                                key={tile.id}
-                                tile={tile}
-                                currentTile={currentTile}
-                                tiles={tiles}
-                                boss={boss}
-                                bossVisible={bossVisible}
-                                gameOver={gameOver}
-                                victory={victory}
-                                moveTo={moveTo}
-                                preys={preys}
-                                preyTraceTiles={preyTraceTiles}
-                                preyFootprints={preyFootprints}
-                                positions={positions}
-                            />
-                        ))}
-                    </svg>
+                <div className="map-area">
+                    <div className="map-container" ref={containerRef}>
+                        <svg className="map-svg" width="1100" height="1000">
+                            {visibleTiles.map(tile => (
+                                <HexTile
+                                    key={tile.id}
+                                    tile={tile}
+                                    currentTile={currentTile}
+                                    tiles={tiles}
+                                    boss={boss}
+                                    bossVisible={bossVisible}
+                                    gameOver={gameOver}
+                                    victory={victory}
+                                    moveTo={moveTo}
+                                    preys={preys}
+                                    preyTraceTiles={preyTraceTiles}
+                                    preyFootprints={preyFootprints}
+                                />
+                            ))}
+                            {playerPos && (
+                                <text
+                                    className="piece piece-player"
+                                    x={playerPos.x}
+                                    y={playerPos.y + 11}
+                                    textAnchor="middle"
+                                    fontSize="32"
+                                    fontWeight="700"
+                                    fill="#fff"
+                                    stroke="#1a1a2e"
+                                    strokeWidth="1.5"
+                                    paintOrder="stroke"
+                                >
+                                    ♟
+                                </text>
+                            )}
+                            {bossPiecePos && (
+                                <text
+                                    className="piece piece-boss"
+                                    x={bossPiecePos.x}
+                                    y={bossPiecePos.y + 11}
+                                    textAnchor="middle"
+                                    fontSize="30"
+                                >
+                                    🦖
+                                </text>
+                            )}
+                        </svg>
+                    </div>
                     <LootToast toast={lootToast} onDone={onLootToastDone} />
+                    <TileEventToast toast={tileEventToast} onDone={onTileEventToastDone} />
                 </div>
             );
         }
 
-        // 타일 이벤트 모달 컴포넌트
+        // 타일 이벤트 모달 컴포넌트 — 함정만 사용.
+        // D-52 (2026-04-23 요한 지시): '풍족한 땅(구 좋은 곳)'은 모달 → 토스트로 이관.
+        // 함정은 피해 정보가 있어 명시적 확인이 필요하므로 모달 유지.
         function TileEventModal({ tile, onClose }) {
             if (!tile) return null;
-            
+
             const getEventInfo = () => {
                 switch(tile.type) {
-                    case 'good':
-                        return {
-                            emoji: '✨',
-                            title: '좋은 곳 발견!',
-                            message: '이곳은 휴식하기 좋은 장소입니다.',
-                            color: '#FFC107'
-                        };
                     case 'trap':
                         return {
                             emoji: '⚠️',
@@ -1082,9 +1145,11 @@
         // - 페이드 인(빠르게) → 1초 노출 → 2초 페이드 아웃.
         // - 여러 아이템 동시 획득 시 하나의 토스트에 목록으로.
         // - 기존 메시지 로그는 유지 (토스트는 보조 강조).
-        // 위치는 맵 컨테이너 상단 중앙(D-39 요한 지시) — "맵에서 획득했다"는 의미 강화.
-        // position: absolute + 부모(.map-container)가 position: relative라 맵 안에 얹힌다.
-        // 스크롤과 함께 움직이지 않도록 부모 기준 top:12px 고정.
+        // D-46(2026-04-22, 요한 지시): 위치를 .map-area(HUD 바로 아래 영역)
+        // 상단 중앙에 absolute로 고정. 이전엔 .map-container(스크롤 영역) 안이라
+        // 맵을 스크롤하면 토스트가 시야 밖으로 밀렸음.
+        // .map-area는 스크롤하지 않으므로 토스트는 항상 같은 위치(HUD 직하단)에 노출되고,
+        // 좌·우·상단 모두 다른 상태 UI(HUD 패널, 카드, 인벤 버튼)와 겹치지 않는다.
         // z-index는 기존 modal(.modal=100, ItemInfoModal=1000, CardListModal=1100)보다
         // 위에 두어 조우 모달 중에도 가려지지 않게 1500.
         // 배경 불투명도 0.8 (D-39, 이전 0.5).
@@ -1163,6 +1228,176 @@
             );
         }
 
+        // 타일 이벤트 토스트 — 풍족한 땅 등 타일 발견 시 팝업 대신 토스트로 안내.
+        // D-52 (2026-04-23 요한 지시): TileEventModal의 'good' 케이스를 이관.
+        // LootToast와 동일한 페이드 타이밍(in 0.2s → hold 1s → out 2s).
+        // 함정은 피해 정보 확인이 필요하므로 모달 유지 (이 토스트는 'good' 전용).
+        function TileEventToast({ toast, onDone }) {
+            const [phase, setPhase] = React.useState('in');
+            React.useEffect(() => {
+                if (!toast) return;
+                setPhase('in');
+                const t1 = setTimeout(() => setPhase('hold'), 200);
+                const t2 = setTimeout(() => setPhase('out'), 200 + 1000);
+                const t3 = setTimeout(() => {
+                    setPhase('done');
+                    onDone && onDone();
+                }, 200 + 1000 + 2000);
+                return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+            }, [toast && toast.id]);
+
+            if (!toast || phase === 'done') return null;
+
+            const opacity = phase === 'in' ? 0 : phase === 'hold' ? 1 : 0;
+            const transition = phase === 'in' ? 'opacity 0.2s ease-out'
+                             : phase === 'out' ? 'opacity 2s ease-in'
+                             : 'opacity 0.2s';
+
+            return (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '12px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 1500,
+                        pointerEvents: 'none',
+                        opacity,
+                        transition,
+                        background: 'rgba(22, 33, 62, 0.85)',
+                        border: `1px solid ${toast.color || '#FFC107'}`,
+                        padding: '14px 18px',
+                        borderRadius: '10px',
+                        minWidth: '240px',
+                        maxWidth: '80%',
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
+                        color: '#fff',
+                        textAlign: 'center'
+                    }}
+                >
+                    <div style={{ fontSize: '22px', marginBottom: '4px' }}>
+                        {toast.emoji}
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: toast.color || '#FFC107', marginBottom: '4px' }}>
+                        {toast.title}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#ddd' }}>
+                        {toast.message}
+                    </div>
+                </div>
+            );
+        }
+
+        // 플레이 가이드 모달 — 인게임 [플레이방법] 버튼으로 호출.
+        // D-53 (2026-04-23 요한 지시): 게임을 처음 만나는 사람도 바로 이해할 수 있는
+        // 간소화 가이드. GUIDE.md(외부 공유용 상세본)와 별도로, 인게임에서는 핵심만.
+        function HelpModal({ onClose }) {
+            const sectionTitle = {
+                fontSize: '14px',
+                fontWeight: 700,
+                color: '#d4b84a',
+                marginTop: '14px',
+                marginBottom: '6px',
+                letterSpacing: '0.5px'
+            };
+            const para = { fontSize: '13px', lineHeight: 1.55, color: '#ddd', marginBottom: '6px' };
+            const list = { fontSize: '13px', lineHeight: 1.6, color: '#ddd', paddingLeft: '18px', marginBottom: '6px' };
+            const link = { color: '#4CAF50', textDecoration: 'none', fontWeight: 600 };
+
+            return (
+                <div className="modal" onClick={onClose}>
+                    <div
+                        className="modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ maxWidth: '460px', width: '90vw', textAlign: 'left' }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <div style={{ fontSize: '18px', fontWeight: 700 }}>타임 투 다이노</div>
+                            <button onClick={onClose} style={{ fontSize: '12px', padding: '4px 10px' }}>닫기</button>
+                        </div>
+
+                        <div style={para}>
+                            카드로 행동하며 숲에서 살아남아 탈출구를 찾는 생존 게임입니다.
+                        </div>
+                        <div style={para}>
+                            <a href="https://uzudang2.github.io/time-to-dino/" target="_blank" rel="noopener" style={link}>
+                                플레이하기 ↗
+                            </a>
+                        </div>
+
+                        <div style={sectionTitle}>🎯 목표</div>
+                        <div style={para}>
+                            지도 어딘가의 <b style={{ color: '#2196F3' }}>파란 탈출구 타일</b>에 도착하면 승리.
+                        </div>
+                        <div style={para}>다만,</div>
+                        <ul style={list}>
+                            <li>체력이 0이 되거나</li>
+                            <li>배고픔이 0이 되거나</li>
+                            <li>보스에게 잡히면 게임 오버</li>
+                        </ul>
+
+                        <div style={sectionTitle}>🃏 기본 흐름</div>
+                        <div style={para}>한 턴마다 카드를 써서 행동합니다.</div>
+                        <div style={para}>주로 하는 일은 세 가지:</div>
+                        <ul style={list}>
+                            <li>이동하기</li>
+                            <li>아이템 모으기</li>
+                            <li>보스에게 들키지 않기</li>
+                        </ul>
+
+                        <div style={sectionTitle}>⚠️ 꼭 알아야 할 3가지</div>
+                        <ul style={list}>
+                            <li><b>배고픔</b>은 이동할 때마다 줄어듭니다.</li>
+                            <li><b>발각률 80% 이상</b>이 되면 보스가 추격합니다.</li>
+                            <li>귀 기울이기 / 숨기 / 휴식으로 위험을 낮출 수 있습니다.</li>
+                        </ul>
+
+                        <div style={sectionTitle}>🎴 카드 설명</div>
+                        <ul style={list}>
+                            <li><b>뒤져보기</b>: 현재 위치에서 아이템 탐색</li>
+                            <li><b>귀 기울이기</b>: 주변 타일 확인, 보스 거리 파악, 발각률 감소</li>
+                            <li><b>음식 찾기</b>: 음식 획득 시도</li>
+                            <li><b>숨기</b>: 발각률 크게 감소</li>
+                            <li><b>휴식</b>: 음식 소비 후 체력·배고픔 회복</li>
+                        </ul>
+
+                        <div style={sectionTitle}>🎒 아이템</div>
+                        <div style={para}>
+                            아이템은 가방에 들어가며, 서로 합치거나 조합할 수 있습니다.
+                        </div>
+                        <ul style={list}>
+                            <li><b>같은 아이템 2개</b>: 머지</li>
+                            <li><b>다른 재료 2개</b>: 조합</li>
+                        </ul>
+
+                        <div style={sectionTitle}>💡 생존 팁</div>
+                        <ul style={list}>
+                            <li>이동 전에 <b>귀 기울이기</b>를 먼저 쓰세요.</li>
+                            <li><b>풍족한 땅</b>에서는 아이템이 잘 나옵니다.</li>
+                            <li>배고픔이 바닥나기 전에 음식을 챙기세요.</li>
+                            <li>발각률이 높아지면 숨기나 휴식으로 조절하세요.</li>
+                        </ul>
+
+                        <div style={sectionTitle}>🛠️ 곧 추가될 요소</div>
+                        <ul style={list}>
+                            <li><b>전투 시스템</b> — 몬스터와 카드 전투</li>
+                            <li><b>사냥감 시스템</b> — 지도에 동물이 나타남</li>
+                            <li><b>재료 아이템 용도</b> — 돌멩이·나뭇가지 등으로 무기·덫·거처 제작</li>
+                            <li><b>빌딩/거점</b> — 임시 거처로 회복 거점 운영</li>
+                        </ul>
+
+                        <div style={{ ...para, marginTop: '12px', fontStyle: 'italic', color: '#aaa' }}>
+                            한 줄 요약 — 탐색하고, 모으고, 들키지 말고, 탈출구까지 가면 됩니다.
+                        </div>
+
+                        <div style={{ marginTop: '14px', textAlign: 'center' }}>
+                            <button onClick={onClose} style={{ padding: '8px 22px', fontSize: '13px' }}>닫기</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // 카드 더미(덱/무덤) 목록 모달
         //
         // D-27 HUD 리뉴얼 (요한 지시 2026-04-22):
@@ -1232,30 +1467,90 @@
         }
 
         // 게임 오버/승리 모달
-        function GameEndModal({ gameOver, victory }) {
+        // D-54 (2026-04-23 요한 지시): 게임오버 팝업에 사망 사유별 감성 문구 + 가이드.
+        // 사유: 'starvation' | 'health' | 'boss' | null(승리·미지정)
+        const DEATH_NARRATIVE = {
+            starvation: {
+                subtitle: '배고픔에 지쳐 쓰러지고 말았다...',
+                guide: '음식을 꾸준히 섭취하세요. 더 높은 등급의 음식과 휴식을 함께 사용하면 배고픔을 이겨내기 쉽습니다.'
+            },
+            health: {
+                subtitle: '상처가 깊어, 더는 일어설 수 없었다...',
+                guide: '함정을 피하고, 위험한 타일 앞에서는 귀 기울이기로 상황을 먼저 살피세요. 풍족한 땅에서 회복에 쓸 재료를 꾸준히 모아두는 것도 좋습니다.'
+            },
+            boss: {
+                subtitle: '그림자가 덮치는 순간, 아무것도 할 수 없었다...',
+                guide: '발각률이 80%를 넘으면 보스가 추격해 옵니다. 귀 기울이기로 거리를 파악하고, 숨기·휴식으로 발각률을 낮추세요. 보스 위치가 드러나면 반대 방향으로 우회하는 편이 안전합니다.'
+            }
+        };
+
+        function GameEndModal({ gameOver, victory, deathReason }) {
             if (!gameOver && !victory) return null;
-            
+
+            const narrative = !victory && deathReason ? DEATH_NARRATIVE[deathReason] : null;
+            const bgColor = victory ? '#4CAF50' : '#2a2a3e';
+            const accentColor = victory ? '#fff' : '#e94560';
+
             return (
                 <div className="modal">
-                    <div style={{ 
-                        background: victory ? '#4CAF50' : '#e94560', 
+                    <div style={{
+                        background: bgColor,
                         color: 'white',
-                        padding: '40px', 
-                        borderRadius: '12px', 
-                        textAlign: 'center'
+                        padding: '32px 28px',
+                        borderRadius: '12px',
+                        textAlign: 'center',
+                        maxWidth: '420px',
+                        width: '90vw',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.55)'
                     }}>
-                        <div style={{ fontSize: '28px', fontWeight: '600', marginBottom: '20px' }}>
+                        <div style={{
+                            fontSize: '26px',
+                            fontWeight: 700,
+                            marginBottom: narrative ? '14px' : '24px',
+                            color: accentColor
+                        }}>
                             {victory ? '🎉 승리!' : '💀 게임 오버'}
                         </div>
-                        <button 
+
+                        {narrative && (
+                            <>
+                                <div style={{
+                                    fontSize: '17px',
+                                    fontWeight: 700,
+                                    lineHeight: 1.45,
+                                    marginBottom: '16px',
+                                    color: '#fff'
+                                }}>
+                                    {narrative.subtitle}
+                                </div>
+                                <div style={{
+                                    fontSize: '13px',
+                                    fontWeight: 400,
+                                    lineHeight: 1.6,
+                                    color: '#d8d8d8',
+                                    background: 'rgba(0,0,0,0.25)',
+                                    padding: '12px 14px',
+                                    borderRadius: '8px',
+                                    textAlign: 'left',
+                                    marginBottom: '22px'
+                                }}>
+                                    <span style={{ color: '#d4b84a', fontWeight: 700 }}>가이드 · </span>
+                                    {narrative.guide}
+                                </div>
+                            </>
+                        )}
+
+                        <button
                             onClick={() => window.location.reload()}
-                            style={{ 
+                            style={{
                                 background: 'white',
                                 color: '#333',
                                 border: 'none',
-                                padding: '15px 30px',
-                                fontSize: '16px',
-                                fontWeight: '600'
+                                padding: '12px 28px',
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
                             }}
                         >
                             다시 시작
@@ -1562,12 +1857,16 @@
             const [boss, setBoss] = useState(null);
             const [gameOver, setGameOver] = useState(false);
             const [victory, setVictory] = useState(false);
+            // D-54: 사망 사유 — GameEndModal이 감성 문구·가이드를 선택하는 키.
+            const [deathReason, setDeathReason] = useState(null);
             const [message, setMessage] = useState('눈을 뜨자 낯선 숲이 펼쳐졌다.');
             const [showInventory, setShowInventory] = useState(false);
             const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
             // D-27 HUD 리뉴얼: 덱/무덤 목록 모달 표시 플래그.
             const [showDeckList, setShowDeckList] = useState(false);
             const [showGraveyardList, setShowGraveyardList] = useState(false);
+            // D-53: 인게임 [플레이방법] 모달.
+            const [showHelp, setShowHelp] = useState(false);
             const [eventTile, setEventTile] = useState(null);
             // 전투 임시 카드(아이템 사용으로 생성) — 전투 진입 시 combat 덱에 병합, 사용 후 소멸.
             // 구조: [{ id:'throw', count:N }, ...]
@@ -1579,6 +1878,8 @@
             // D-28 획득 토스트 — 현재 노출 중인 토스트 1개만 유지.
             // 구조: { id: number, entries: [{ name, count, grade? }] } | null
             const [lootToast, setLootToast] = useState(null);
+            // D-52: 풍족한 땅(구 좋은 곳) 등 타일 이벤트는 토스트로 안내.
+            const [tileEventToast, setTileEventToast] = useState(null);
             // D-42 (2026-04-23 요한 지시): 보스 위치 가시성은 "지형 revealed"와 분리.
             // - listen 1칸 분기에서만 bossVisible=true 로 set (그 순간 보스 아이콘 노출)
             // - 플레이어가 이동하면 즉시 false (지형 revealed는 유지)
@@ -1600,6 +1901,12 @@
             const showLootToast = (entries) => {
                 if (!entries || entries.length === 0) return;
                 setLootToast({ id: Date.now() + Math.random(), entries });
+            };
+
+            // 타일 이벤트 토스트 발사 — emoji/title/message/color 사양.
+            const showTileEventToast = (payload) => {
+                if (!payload) return;
+                setTileEventToast({ id: Date.now() + Math.random(), ...payload });
             };
 
             // D-46 (2026-04-23) — 전투 결과 후처리.
@@ -1796,10 +2103,16 @@
             }
 
             // 게임 오버/승리 체크
+            // D-54: 사유 구분 — 체력이 먼저 0이면 'health', 배고픔 먼저면 'starvation'.
             useEffect(() => {
-                if (health <= 0 || hunger <= 0) {
+                if (health <= 0) {
                     setGameOver(true);
-                    setMessage(health <= 0 ? '생명력이 다했다...' : '배고픔을 이기지 못했다...');
+                    setDeathReason('health');
+                    setMessage('생명력이 다했다...');
+                } else if (hunger <= 0) {
+                    setGameOver(true);
+                    setDeathReason('starvation');
+                    setMessage('배고픔을 이기지 못했다...');
                 }
             }, [health, hunger]);
 
@@ -2125,7 +2438,10 @@
                     // (직전 버전에서 2칸 이상일 때 revealed를 끊었으나, 이는 listen의 핵심 기능을
                     //  제거한 회귀였음. 요한 QA 2026-04-22 지시로 복구.)
                     const bossPos = boss.getPosition();
-                    const bossDist = boss.calculateDistance(currentTile, bossPos);
+                    // D-55 (2026-04-23 요한 지시): 청각 거리는 physical hex 거리 사용.
+                    // calculateDistance(path-BFS)는 빈 슬롯·비육각 이웃 영향으로
+                    // 공간적으로 가까워도 "멀다"고 말할 수 있어 listen 용도엔 부적합.
+                    const bossDist = boss.calculateHexDistance(currentTile, bossPos);
 
                     // 인접 타일 revealed — 거리 무관하게 항상 실행되는 listen의 기본 효과.
                     const newTiles = tiles.map(t => {
@@ -2136,6 +2452,9 @@
                     });
                     setTiles(newTiles);
 
+                    // D-49 (2026-04-23 요한 지시): D-48에서 ⚠️·직설적 문구로 바꿨던
+                    // listen 메시지 원복. 간접적·서사적 톤이 게임 분위기에 더 맞는다는 판단.
+                    // 보스 경고는 시각 신호(타일 색·펄스·라벨 우선순위, D-48에서 격상)로 충분.
                     if (bossDist === 1) {
                         // D-42: 보스 위치 노출은 이 순간만. 이동 시 moveTo에서 다시 false로.
                         setBossVisible(true);
@@ -2290,13 +2609,20 @@
                 
                 if (encounter) {
                     setGameOver(true);
+                    setDeathReason('boss');
                     msg = '보스 몬스터와 조우했다! 게임 오버...';
                 } else if (tile.type === 'normal') {
                     msg = '평범한 숲길이다.';
                 } else if (tile.type === 'good') {
-                    msg = '좋은 곳을 발견했다!';
-                    // 이벤트 모달 표시
-                    setEventTile({ ...tile });
+                    // D-52 (2026-04-23 요한 지시): '좋은 곳' → '풍족한 땅'으로 의미 재정의.
+                    // 팝업 모달 → 토스트 알림으로 전환(흐름 끊김 완화).
+                    msg = '풍족한 땅을 발견했다!';
+                    showTileEventToast({
+                        emoji: '🌾',
+                        title: '풍족한 땅',
+                        message: '자원과 먹거리가 풍부한 곳이다.',
+                        color: '#FFC107'
+                    });
                 } else if (tile.type === 'trap') {
                     const damage = Math.floor(Math.random() * 2) + 1;
                     setHealth(health - damage);
@@ -2341,8 +2667,14 @@
                             <button onClick={() => setShowInventory(!showInventory)}>
                                 {showInventory ? '가방 닫기' : '가방 열기'}
                             </button>
+                            {/* D-53: 가운데 정렬은 양쪽 marginLeft/Right auto. 좌(가방)와 우(덱/무덤) 사이 등분. */}
+                            <button
+                                onClick={() => setShowHelp(true)}
+                                style={{ marginLeft: 'auto', marginRight: 'auto' }}
+                            >
+                                플레이방법
+                            </button>
                             <div style={{
-                                marginLeft: 'auto',
                                 display: 'flex',
                                 gap: '6px',
                                 alignItems: 'center'
@@ -2377,6 +2709,8 @@
                         moveTo={moveTo}
                         lootToast={lootToast}
                         onLootToastDone={() => setLootToast(null)}
+                        tileEventToast={tileEventToast}
+                        onTileEventToastDone={() => setTileEventToast(null)}
                         preys={preys}
                         preyTraceTiles={preyTraceTiles}
                         preyFootprints={preyFootprints}
@@ -2398,6 +2732,10 @@
                             onUseItem={handleUseItem}
                             onFlashMessage={setMessage}
                         />
+                    )}
+
+                    {showHelp && (
+                        <HelpModal onClose={() => setShowHelp(false)} />
                     )}
 
                     {showDeckList && (
@@ -2446,7 +2784,7 @@
                         />
                     )}
 
-                    <GameEndModal gameOver={gameOver} victory={victory} />
+                    <GameEndModal gameOver={gameOver} victory={victory} deathReason={deathReason} />
                 </div>
             );
         }

@@ -25,16 +25,16 @@ class BossMonster {
         return chosen.index;
     }
 
-    // 거리 계산 (BFS)
+    // 거리 계산 (BFS) — path 기반. 보스 AI(추격·스폰 위치)에 사용.
     calculateDistance(from, to) {
         const queue = [{ tile: from, dist: 0 }];
         const visited = new Set([from]);
-        
+
         while (queue.length > 0) {
             const { tile, dist } = queue.shift();
-            
+
             if (tile === to) return dist;
-            
+
             for (const conn of this.tiles[tile].connections) {
                 if (!visited.has(conn)) {
                     visited.add(conn);
@@ -42,8 +42,32 @@ class BossMonster {
                 }
             }
         }
-        
+
         return Infinity;
+    }
+
+    // D-55 (2026-04-23 요한 지시): 청각(listen) 전용 '물리적 육각 거리'.
+    // 기존 calculateDistance는 connections(길 있는 이웃)만 세기 때문에
+    // 물리적으로 바로 옆이어도 사이에 빈 슬롯이 끼면 거리 3+로 잡히고,
+    // 또 offset-row 그리드에서 '대각선 위'가 실제 hex 이웃이 아닌 경우
+    // 2+로 잡혀 listen이 "멀리서 들린다"고 잘못 보고하던 문제.
+    // 소리는 걸어갈 수 있는지와 무관하게 공간적 거리로 전달되므로
+    // axial 좌표 변환 후 표준 hex 거리 공식 사용.
+    calculateHexDistance(fromId, toId) {
+        const a = this._toAxial(fromId);
+        const b = this._toAxial(toId);
+        if (!a || !b) return Infinity;
+        const dq = a.q - b.q;
+        const dr = a.r - b.r;
+        return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+    }
+
+    _toAxial(tileId) {
+        const pos = this.tiles[tileId] && this.tiles[tileId].position;
+        if (!pos || typeof pos.row !== 'number' || typeof pos.col !== 'number') return null;
+        // odd-r offset (홀수 행이 우측으로 반칸 밀림) → axial
+        const q = pos.col - ((pos.row - (pos.row & 1)) >> 1);
+        return { q, r: pos.row };
     }
 
     // 플레이어 이동 시 호출
