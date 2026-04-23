@@ -89,15 +89,15 @@ window.TTD_DATA = {
     {
       "id": "throw_stone",
       "name": "돌 던지기",
-      "damage": 1,
-      "success_rate": 70,
-      "requirement": "돌멩이"
+      "damage": 2,
+      "success_rate": 90,
+      "requirement": "돌맹이"
     },
     {
       "id": "stab_weapon",
-      "name": "무기로 찌르기",
+      "name": "창으로 찌르기",
       "damage": 2,
-      "success_rate": 90,
+      "success_rate": 100,
       "requirement": "나무창"
     },
     {
@@ -113,6 +113,13 @@ window.TTD_DATA = {
       "damage": 0,
       "success_rate": 25,
       "requirement": "없음"
+    },
+    {
+      "id": "throw_spear",
+      "name": "창던지기",
+      "damage": 4,
+      "success_rate": 100,
+      "requirement": "나무창"
     }
   ],
   "MONSTERS": [
@@ -145,7 +152,7 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 2,
       "attack": 0,
-      "evade_rate": 20,
+      "evade_rate": 40,
       "type": "회피형",
       "meat": 3
     },
@@ -155,7 +162,7 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 1,
       "attack": 0,
-      "evade_rate": 20,
+      "evade_rate": 30,
       "type": "회피형",
       "meat": 2
     },
@@ -165,7 +172,7 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 1,
       "attack": 0,
-      "evade_rate": 20,
+      "evade_rate": 50,
       "type": "회피형",
       "meat": 2
     },
@@ -205,7 +212,7 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 1,
       "attack": 0,
-      "evade_rate": 20,
+      "evade_rate": 50,
       "type": "회피형",
       "meat": 2
     },
@@ -225,7 +232,7 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 1,
       "attack": 0,
-      "evade_rate": 20,
+      "evade_rate": 50,
       "type": "회피형",
       "meat": 1
     },

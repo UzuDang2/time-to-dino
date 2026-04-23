@@ -5,7 +5,7 @@
     "level": 1,
     "hp": 2,
     "attack": 0,
-    "evade_rate": 20,
+    "evade_rate": 40,
     "type": "회피형",
     "meat": 3
   },
@@ -15,7 +15,7 @@
     "level": 1,
     "hp": 1,
     "attack": 0,
-    "evade_rate": 20,
+    "evade_rate": 30,
     "type": "회피형",
     "meat": 2
   },
@@ -25,7 +25,7 @@
     "level": 1,
     "hp": 1,
     "attack": 0,
-    "evade_rate": 20,
+    "evade_rate": 50,
     "type": "회피형",
     "meat": 2
   },
@@ -65,7 +65,7 @@
     "level": 1,
     "hp": 1,
     "attack": 0,
-    "evade_rate": 20,
+    "evade_rate": 50,
     "type": "회피형",
     "meat": 2
   },
@@ -85,7 +85,7 @@
     "level": 1,
     "hp": 1,
     "attack": 0,
-    "evade_rate": 20,
+    "evade_rate": 50,
     "type": "회피형",
     "meat": 1
   },
