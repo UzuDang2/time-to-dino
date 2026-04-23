@@ -92,22 +92,40 @@ class InventorySystem {
     };
 
     // 런타임에 TTD_DATA.ITEMS(Notion 기반)이 덮어쓰는 값 조회.
-    // 우선 순위: TTD_DATA.ITEMS(id 매칭) → static ITEMS(type 매칭).
+    // 우선 순위: TTD_DATA.ITEMS(id 매칭) → TTD_DATA.WEAPONS(id 매칭) → static ITEMS(type 매칭).
     // D-24: 이 함수가 있어야 시트·Notion 편집이 코드 재배포 없이 반영됨.
+    // D-47: 무기 탭 분리 — 무기는 ITEMS에 없으므로 WEAPONS에서 찾아 name/내구도/공격력 등 덮어씀.
+    //       shape은 static ITEMS의 값 유지 (weapon_basic은 [[1,1]] 등).
     static resolveDef(type) {
         const staticDef = InventorySystem.ITEMS[type] || {};
-        const bundle = (typeof window !== 'undefined' && window.TTD_DATA && Array.isArray(window.TTD_DATA.ITEMS))
-            ? window.TTD_DATA.ITEMS
-            : null;
-        if (!bundle) return staticDef;
-        const notionDef = bundle.find(it => it && it.id === type);
-        if (!notionDef) return staticDef;
-        // Notion 우선: merge_enabled + merge_result만 덮어씀. name/shape 등은 static 유지.
-        return {
-            ...staticDef,
-            mergeable: notionDef.merge_enabled === true,
-            merge_result: notionDef.merge_result || null,
-        };
+        const td = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : null;
+        const itemsBundle = td && Array.isArray(td.ITEMS) ? td.ITEMS : null;
+        const weaponsBundle = td && Array.isArray(td.WEAPONS) ? td.WEAPONS : null;
+
+        if (itemsBundle) {
+            const itemDef = itemsBundle.find(it => it && it.id === type);
+            if (itemDef) {
+                return {
+                    ...staticDef,
+                    mergeable: itemDef.merge_enabled === true,
+                    merge_result: itemDef.merge_result || null,
+                };
+            }
+        }
+        if (weaponsBundle) {
+            const wDef = weaponsBundle.find(w => w && w.id === type);
+            if (wDef) {
+                // 무기 메타를 static 위에 덮어씀. 조합/분해 불가는 static 기본값 유지.
+                return {
+                    ...staticDef,
+                    name: wDef.name || staticDef.name,
+                    category: wDef['카테고리'] || staticDef.category || '무기',
+                    durability: wDef['내구도'] != null ? Number(wDef['내구도']) : undefined,
+                    attack: wDef['공격력'] != null ? Number(wDef['공격력']) : undefined,
+                };
+            }
+        }
+        return staticDef;
     }
 
     // 두 아이템의 2종 조합 레시피 조회 (TTD_DATA.COMBOS 전역 리스트).

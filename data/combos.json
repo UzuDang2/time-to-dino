@@ -47,5 +47,14 @@
       "berry_mix"
     ],
     "result": "clean_berry"
+  },
+  {
+    "ingredients": [
+      "stone",
+      "stone",
+      "wood",
+      "plant_fiber"
+    ],
+    "result": "weapon_basic"
   }
 ]

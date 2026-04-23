@@ -110,6 +110,7 @@ REGION_POOL_SHEET = "드롭풀"
 # 아이템마스터 탭 (D-30): 아이템 SSOT 시트 이관
 # Notion DB는 레거시(서사 참조용)로 남기고, 런타임은 여기서만 읽는다.
 ITEM_MASTER_SHEET = "아이템마스터"
+WEAPON_MASTER_SHEET = "무기"
 
 # 조합레시피 탭 (D-30): 이원 재료 조합(같은 재료 아닌 것).
 # 헤더: ingredient_a, ingredient_b, result, note
@@ -855,14 +856,22 @@ def rows_to_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def build_combos_from_sheet(items: list[dict[str, Any]], extra_rows: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
-    """시트 `머지가능` + `merge_result`(같은 재료 머지) + `조합레시피` 탭(이원 조합)을 합쳐 combos.json 생성.
+def build_combos_from_sheet(
+    items: list[dict[str, Any]],
+    extra_rows: list[dict[str, Any]] | None = None,
+    extra_valid_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """시트 `머지가능` + `merge_result`(같은 재료 머지) + `조합레시피` 탭(이원/삼원/사원 조합)을 합쳐 combos.json 생성.
 
     - 머지(같은 재료 2개): 아이템마스터의 merge_result 컬럼 — ingredients=[id, id]
-    - 이원 조합(다른 재료 2개): 조합레시피 탭 — ingredients=[a, b]
+    - 이원 조합: 조합레시피 탭 a/b → ingredients=[a, b]
+    - 삼원/사원 조합(D-47): c/d 옵션 채움 → ingredients=[a, b, c(, d)]
     - 중복 제거(정렬한 ingredients + result 키).
+    - extra_valid_ids: 아이템 외 유효 id(예: 무기). result 검증용 — wood+stone+plant_fiber=weapon_basic 같은 레시피 지원.
     """
     valid_ids = {it.get("id") for it in items if it.get("id")}
+    if extra_valid_ids:
+        valid_ids.update(extra_valid_ids)
     seen: set[tuple[tuple[str, ...], str]] = set()
     combos: list[dict[str, Any]] = []
 
@@ -883,17 +892,21 @@ def build_combos_from_sheet(items: list[dict[str, Any]], extra_rows: list[dict[s
         seen.add(key)
         combos.append({"ingredients": [src, src], "result": dst})
 
-    # 2) 이원·삼원 조합 — ingredient_a/b는 필수, ingredient_c는 옵션(비우면 2종 조합).
+    # 2) 이원·삼원·사원 조합 — a/b 필수, c/d 옵션.
+    #    D-47: ingredient_d 추가 — 4재료 레시피(예: stone+stone+wood+plant_fiber=weapon_basic).
     for row in extra_rows or []:
         a = str(row.get("ingredient_a") or "").strip()
         b = str(row.get("ingredient_b") or "").strip()
         c = str(row.get("ingredient_c") or "").strip()
+        d = str(row.get("ingredient_d") or "").strip()
         r = str(row.get("result") or "").strip()
         if not (a and b and r):
             continue
         ingredients = [a, b]
         if c:
             ingredients.append(c)
+        if d:
+            ingredients.append(d)
         missing = [x for x in ingredients + [r] if x not in valid_ids]
         if missing:
             print(f"[warn] 조합레시피 미매핑: {'+'.join(ingredients)}→{r} (미정의 id: {missing}) — 스킵")
@@ -907,8 +920,37 @@ def build_combos_from_sheet(items: list[dict[str, Any]], extra_rows: list[dict[s
     return combos
 
 
+def rows_to_weapons(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """D-47 무기 탭 파서. 스키마(헤더):
+    id, name, size, weight, grade, durability, attack, description, summary
+    출력은 items.json 스타일과 키 네이밍을 맞춤(한글 키 병행) — inventory.js
+    resolveDef가 동일 경로에서 덮어쓰기로 사용할 수 있도록.
+    """
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        wid = str(r.get("id") or "").strip()
+        name = str(r.get("name") or "").strip()
+        if not wid or not name:
+            continue
+        weapon: dict[str, Any] = {
+            "id": wid,
+            "name": name,
+            "이름": name,
+            "카테고리": "무기",
+            "가방칸수": str(r.get("size") or "").strip() or "1x1",
+            "무게": r.get("weight"),
+            "아이템 등급": str(r.get("grade") or "").strip() or None,
+            "내구도": r.get("durability"),
+            "공격력": r.get("attack"),
+            "설명 텍스트": str(r.get("description") or "").strip(),
+            "효과 요약": str(r.get("summary") or "").strip(),
+        }
+        out.append(weapon)
+    return out
+
+
 def export_items_from_sheet(sh) -> bool:
-    """API로 아이템마스터 + 조합레시피 탭을 읽어 items.json / combos.json 생성."""
+    """API로 아이템마스터 + 무기 + 조합레시피 탭을 읽어 items/weapons/combos 생성."""
     names = {w.title for w in sh.worksheets()}
     if ITEM_MASTER_SHEET not in names:
         print(f"[warn] 탭 '{ITEM_MASTER_SHEET}' 없음 — items 생성 스킵")
@@ -919,10 +961,20 @@ def export_items_from_sheet(sh) -> bool:
     write_json(out_path, items)
     print(f"[api] items        → {out_path.name}  ({len(items)} items)")
 
+    # D-47 무기 탭
+    weapons: list[dict[str, Any]] = []
+    if WEAPON_MASTER_SHEET in names:
+        w_rows = _ws_rows(sh.worksheet(WEAPON_MASTER_SHEET))
+        weapons = rows_to_weapons(w_rows)
+    weapons_path = DATA_DIR / "weapons.json"
+    write_json(weapons_path, weapons)
+    print(f"[api] weapons      → {weapons_path.name}  ({len(weapons)} weapons)")
+
     combo_rows: list[dict[str, Any]] = []
     if COMBO_RECIPE_SHEET in names:
         combo_rows = _ws_rows(sh.worksheet(COMBO_RECIPE_SHEET))
-    combos = build_combos_from_sheet(items, combo_rows)
+    extra_ids = {w["id"] for w in weapons if w.get("id")}
+    combos = build_combos_from_sheet(items, combo_rows, extra_valid_ids=extra_ids)
     combos_path = DATA_DIR / "combos.json"
     write_json(combos_path, combos)
     print(f"[api] combos       → {combos_path.name}  ({len(combos)} recipes)")
@@ -930,7 +982,7 @@ def export_items_from_sheet(sh) -> bool:
 
 
 def export_items_from_xlsx(xlsx_path: Path) -> bool:
-    """xlsx 폴백 — 아이템마스터 + 조합레시피 탭에서 읽기."""
+    """xlsx 폴백 — 아이템마스터 + 무기 + 조합레시피 탭에서 읽기."""
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     if ITEM_MASTER_SHEET not in wb.sheetnames:
         print(f"[warn] xlsx에 '{ITEM_MASTER_SHEET}' 탭 없음 — items 생성 스킵")
@@ -941,10 +993,19 @@ def export_items_from_xlsx(xlsx_path: Path) -> bool:
     write_json(out_path, items)
     print(f"[export] items       → {out_path.name}  ({len(items)} items)")
 
+    weapons: list[dict[str, Any]] = []
+    if WEAPON_MASTER_SHEET in wb.sheetnames:
+        w_rows = sheet_to_rows(wb[WEAPON_MASTER_SHEET])
+        weapons = rows_to_weapons(w_rows)
+    weapons_path = DATA_DIR / "weapons.json"
+    write_json(weapons_path, weapons)
+    print(f"[export] weapons     → {weapons_path.name}  ({len(weapons)} weapons)")
+
     combo_rows: list[dict[str, Any]] = []
     if COMBO_RECIPE_SHEET in wb.sheetnames:
         combo_rows = sheet_to_rows(wb[COMBO_RECIPE_SHEET])
-    combos = build_combos_from_sheet(items, combo_rows)
+    extra_ids = {w["id"] for w in weapons if w.get("id")}
+    combos = build_combos_from_sheet(items, combo_rows, extra_valid_ids=extra_ids)
     combos_path = DATA_DIR / "combos.json"
     write_json(combos_path, combos)
     print(f"[export] combos      → {combos_path.name}  ({len(combos)} recipes)")
@@ -1087,6 +1148,7 @@ BROWSER_BUNDLE_KEYS = {
     "prey.json": "PREY",
     "buildings.json": "BUILDINGS",
     "items.json": "ITEMS",
+    "weapons.json": "WEAPONS",  # D-47: 무기 테이블 (별도 탭 '무기')
     "drop_table.json": "DROP_TABLE",
     "combos.json": "COMBOS",  # D-24: 머지·조합 통합 시스템
 }

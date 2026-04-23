@@ -1089,6 +1089,21 @@ window.TTD_DATA = {
       }
     }
   ],
+  "WEAPONS": [
+    {
+      "id": "weapon_basic",
+      "name": "나무창",
+      "이름": "나무창",
+      "카테고리": "무기",
+      "가방칸수": "2x1",
+      "무게": 2,
+      "아이템 등급": "1단계",
+      "내구도": 10,
+      "공격력": 0,
+      "설명 텍스트": "나뭇가지와 돌을 엮어 만든 단순한 창. 창으로 찌르기·창던지기 카드 사용.",
+      "효과 요약": "기본 무기. 전투 카드 '창으로 찌르기' / '창던지기' 소지 조건."
+    }
+  ],
   "DROP_TABLE": {
     "regions": {
       "숲": {
@@ -1226,6 +1241,15 @@ window.TTD_DATA = {
         "berry_mix"
       ],
       "result": "clean_berry"
+    },
+    {
+      "ingredients": [
+        "stone",
+        "stone",
+        "wood",
+        "plant_fiber"
+      ],
+      "result": "weapon_basic"
     }
   ]
 };
