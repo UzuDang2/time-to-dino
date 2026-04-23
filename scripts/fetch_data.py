@@ -65,12 +65,17 @@ except ImportError:
     )
     sys.exit(1)
 
-# gspread는 옵션. 없으면 xlsx 폴백으로 동작.
+# gspread는 옵션. 없거나 native 의존성(cryptography/pyo3 등) 충돌로
+# import 자체가 실패할 수 있다 → Exception 전부 잡아 xlsx 폴백으로 전환.
 try:
     import gspread  # type: ignore
     from google.oauth2.service_account import Credentials  # type: ignore
     _HAS_GSPREAD = True
-except ImportError:
+except BaseException as _gspread_err:
+    # pyo3 PanicException·native 의존성 충돌은 Exception 하위가 아닐 수 있어
+    # BaseException까지 확장. 단 사용자 인터럽트(Ctrl+C)·SystemExit은 그대로 전파.
+    if isinstance(_gspread_err, (KeyboardInterrupt, SystemExit)):
+        raise
     _HAS_GSPREAD = False
 
 
