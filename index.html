@@ -297,7 +297,7 @@
                 // 타일 속성은 배경색으로 계속 보이므로 지형 정보 손실 없음.
                 if (isCurrent || isBoss) return '';
                 if (tile.type === 'exit') return '탈출구';
-                if (tile.type === 'good') return '👍';
+                if (tile.type === 'good') return '🌾';
                 if (tile.type === 'trap') return '⚠️';
                 return '';
             };
@@ -372,7 +372,7 @@
         // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
         // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
         // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone }) {
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone }) {
             const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
             const containerRef = React.useRef(null);
 
@@ -445,23 +445,19 @@
                         </svg>
                     </div>
                     <LootToast toast={lootToast} onDone={onLootToastDone} />
+                    <TileEventToast toast={tileEventToast} onDone={onTileEventToastDone} />
                 </div>
             );
         }
 
-        // 타일 이벤트 모달 컴포넌트
+        // 타일 이벤트 모달 컴포넌트 — 함정만 사용.
+        // D-52 (2026-04-23 요한 지시): '풍족한 땅(구 좋은 곳)'은 모달 → 토스트로 이관.
+        // 함정은 피해 정보가 있어 명시적 확인이 필요하므로 모달 유지.
         function TileEventModal({ tile, onClose }) {
             if (!tile) return null;
-            
+
             const getEventInfo = () => {
                 switch(tile.type) {
-                    case 'good':
-                        return {
-                            emoji: '✨',
-                            title: '좋은 곳 발견!',
-                            message: '이곳은 휴식하기 좋은 장소입니다.',
-                            color: '#FFC107'
-                        };
                     case 'trap':
                         return {
                             emoji: '⚠️',
@@ -1164,6 +1160,66 @@
             );
         }
 
+        // 타일 이벤트 토스트 — 풍족한 땅 등 타일 발견 시 팝업 대신 토스트로 안내.
+        // D-52 (2026-04-23 요한 지시): TileEventModal의 'good' 케이스를 이관.
+        // LootToast와 동일한 페이드 타이밍(in 0.2s → hold 1s → out 2s).
+        // 함정은 피해 정보 확인이 필요하므로 모달 유지 (이 토스트는 'good' 전용).
+        function TileEventToast({ toast, onDone }) {
+            const [phase, setPhase] = React.useState('in');
+            React.useEffect(() => {
+                if (!toast) return;
+                setPhase('in');
+                const t1 = setTimeout(() => setPhase('hold'), 200);
+                const t2 = setTimeout(() => setPhase('out'), 200 + 1000);
+                const t3 = setTimeout(() => {
+                    setPhase('done');
+                    onDone && onDone();
+                }, 200 + 1000 + 2000);
+                return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+            }, [toast && toast.id]);
+
+            if (!toast || phase === 'done') return null;
+
+            const opacity = phase === 'in' ? 0 : phase === 'hold' ? 1 : 0;
+            const transition = phase === 'in' ? 'opacity 0.2s ease-out'
+                             : phase === 'out' ? 'opacity 2s ease-in'
+                             : 'opacity 0.2s';
+
+            return (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '12px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 1500,
+                        pointerEvents: 'none',
+                        opacity,
+                        transition,
+                        background: 'rgba(22, 33, 62, 0.85)',
+                        border: `1px solid ${toast.color || '#FFC107'}`,
+                        padding: '14px 18px',
+                        borderRadius: '10px',
+                        minWidth: '240px',
+                        maxWidth: '80%',
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
+                        color: '#fff',
+                        textAlign: 'center'
+                    }}
+                >
+                    <div style={{ fontSize: '22px', marginBottom: '4px' }}>
+                        {toast.emoji}
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: toast.color || '#FFC107', marginBottom: '4px' }}>
+                        {toast.title}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#ddd' }}>
+                        {toast.message}
+                    </div>
+                </div>
+            );
+        }
+
         // 카드 더미(덱/무덤) 목록 모달
         //
         // D-27 HUD 리뉴얼 (요한 지시 2026-04-22):
@@ -1308,6 +1364,8 @@
             // D-28 획득 토스트 — 현재 노출 중인 토스트 1개만 유지.
             // 구조: { id: number, entries: [{ name, count, grade? }] } | null
             const [lootToast, setLootToast] = useState(null);
+            // D-52: 풍족한 땅(구 좋은 곳) 등 타일 이벤트는 토스트로 안내.
+            const [tileEventToast, setTileEventToast] = useState(null);
             // D-42 (2026-04-23 요한 지시): 보스 위치 가시성은 "지형 revealed"와 분리.
             // - listen 1칸 분기에서만 bossVisible=true 로 set (그 순간 보스 아이콘 노출)
             // - 플레이어가 이동하면 즉시 false (지형 revealed는 유지)
@@ -1320,6 +1378,12 @@
             const showLootToast = (entries) => {
                 if (!entries || entries.length === 0) return;
                 setLootToast({ id: Date.now() + Math.random(), entries });
+            };
+
+            // 타일 이벤트 토스트 발사 — emoji/title/message/color 사양.
+            const showTileEventToast = (payload) => {
+                if (!payload) return;
+                setTileEventToast({ id: Date.now() + Math.random(), ...payload });
             };
 
             // 게임 초기화
@@ -1835,9 +1899,15 @@
                 } else if (tile.type === 'normal') {
                     msg = '평범한 숲길이다.';
                 } else if (tile.type === 'good') {
-                    msg = '좋은 곳을 발견했다!';
-                    // 이벤트 모달 표시
-                    setEventTile({ ...tile });
+                    // D-52 (2026-04-23 요한 지시): '좋은 곳' → '풍족한 땅'으로 의미 재정의.
+                    // 팝업 모달 → 토스트 알림으로 전환(흐름 끊김 완화).
+                    msg = '풍족한 땅을 발견했다!';
+                    showTileEventToast({
+                        emoji: '🌾',
+                        title: '풍족한 땅',
+                        message: '자원과 먹거리가 풍부한 곳이다.',
+                        color: '#FFC107'
+                    });
                 } else if (tile.type === 'trap') {
                     const damage = Math.floor(Math.random() * 2) + 1;
                     setHealth(health - damage);
@@ -1918,6 +1988,8 @@
                         moveTo={moveTo}
                         lootToast={lootToast}
                         onLootToastDone={() => setLootToast(null)}
+                        tileEventToast={tileEventToast}
+                        onTileEventToastDone={() => setTileEventToast(null)}
                     />
 
                     {eventTile && (
