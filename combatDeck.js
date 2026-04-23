@@ -66,34 +66,37 @@
     function buildHuntDeck(combatCardsJson, inventory) {
         const cards = Array.isArray(combatCardsJson) ? combatCardsJson : [];
         const items = (inventory && Array.isArray(inventory.items)) ? inventory.items : [];
-        // inventory는 InventorySystem 인스턴스. ITEMS 사전은 InventorySystem.ITEMS.
-        // 런타임에 전역으로 접근 가능. TTD_DATA.ITEMS는 이름 치환용(이미 ITEMS에 반영됨).
         const ITEM_DEFS = (typeof window !== 'undefined' && window.InventorySystem && window.InventorySystem.ITEMS)
             ? window.InventorySystem.ITEMS
             : (typeof InventorySystem !== 'undefined' && InventorySystem.ITEMS) || {};
 
-        const ownedNames = new Set(
-            items.map(it => (ITEM_DEFS[it.type] || {}).name).filter(Boolean)
-        );
+        // 아이템 이름별 보유 개수 맵 — 요구 아이템 카드의 slotLimit 산출에 사용.
+        const ownedCountByName = {};
+        for (const it of items) {
+            const name = (ITEM_DEFS[it.type] || {}).name;
+            if (name) ownedCountByName[name] = (ownedCountByName[name] || 0) + 1;
+        }
 
         const deck = [];
         let idx = 0;
         for (const card of cards) {
             const req = card && card.requirement;
             const isFree = typeof req === 'string' && (req === '없음' || req.indexOf('없음') === 0);
-            const pass = isFree || (typeof req === 'string' && ownedNames.has(req));
-            if (!pass) continue;
-            // D-46 보강: requirement 없는 기본 카드(주먹/회피/도망 등)는 '무한카드'.
-            // 손패에 1장만 두고 infinite=true로 표시 — 슬롯 배치 시 손패에서 소진되지 않음.
-            // 요구 아이템이 있는 카드(돌 던지기 등)는 기존대로 count만큼 복제 후 1회성 소비.
+            // D-46: requirement 없는 기본 카드(주먹/회피/도망) — 무한카드.
             if (isFree) {
                 deck.push({ ...card, infinite: true, uid: `combat:${card.id}:${idx++}` });
                 continue;
             }
-            const copies = Number(card.count) || 1;
-            for (let i = 0; i < copies; i++) {
-                deck.push({ ...card, uid: `combat:${card.id}:${idx++}` });
-            }
+            // D-47: 요구 아이템 카드(돌 던지기/창으로 찌르기/창던지기) — 손패에 1장만 두고
+            //   slotLimit=보유 개수로 슬롯 재사용 허용. 보유 0이면 덱에서 제외.
+            //   (기존 count 복제 로직은 폐기 — 보유량 기반으로 통일.)
+            const owned = (typeof req === 'string') ? (ownedCountByName[req] || 0) : 0;
+            if (owned <= 0) continue;
+            deck.push({
+                ...card,
+                slotLimit: owned,
+                uid: `combat:${card.id}:${idx++}`
+            });
         }
         return deck;
     }

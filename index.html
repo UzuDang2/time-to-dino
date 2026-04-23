@@ -1799,19 +1799,26 @@
 
             const allFilled = slots.every(s => s !== null);
 
-            // D-46 보강: infinite 카드(기본 스킬 — 주먹/회피/도망)는 슬롯 배치해도
-            // 손패에서 소진되지 않는다. 같은 카드를 3턴 전부 채우는 것도 허용.
-            // 슬롯에 놓을 때 uid를 슬롯 고유값으로 재부여해 React key 충돌 방지.
+            // D-46/D-47: 카드 재사용 규칙.
+            //   - infinite 카드(주먹/회피/도망): 손패 1장, 슬롯 무제한 배치.
+            //   - slotLimit 카드(돌 던지기/창 등): 손패 1장, 슬롯 배치는 가방 내 아이템 개수만큼.
+            //     예: 돌 3개 → 돌 던지기 슬롯에 최대 3번.
+            //   - 둘 다 손패에서 사라지지 않고, 슬롯에 놓을 때 uid 고유값 재부여.
             const handleHandClick = (card) => {
                 if (phase !== 'select') return;
                 const emptyIdx = slots.findIndex(s => s === null);
                 if (emptyIdx < 0) return;
+                const isReusable = !!(card.infinite || card.slotLimit);
+                if (card.slotLimit) {
+                    const usedInSlots = slots.filter(s => s && s.id === card.id).length;
+                    if (usedInSlots >= card.slotLimit) return;
+                }
                 const newSlots = [...slots];
-                newSlots[emptyIdx] = card.infinite
+                newSlots[emptyIdx] = isReusable
                     ? { ...card, uid: `${card.uid}:slot:${emptyIdx}:${Date.now()}` }
                     : card;
                 setSlots(newSlots);
-                if (!card.infinite) {
+                if (!isReusable) {
                     setHand(hand.filter(c => c.uid !== card.uid));
                 }
             };
@@ -1823,7 +1830,8 @@
                 const newSlots = [...slots];
                 newSlots[slotIdx] = null;
                 setSlots(newSlots);
-                if (!card.infinite) {
+                const isReusable = !!(card.infinite || card.slotLimit);
+                if (!isReusable) {
                     setHand([...hand, card]);
                 }
             };
@@ -1993,25 +2001,43 @@
                                     </div>
                                 ) : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                                        {hand.map(card => (
-                                            <div key={card.uid}
-                                                onClick={() => handleHandClick(card)}
-                                                style={{
-                                                    padding: '8px 4px',
-                                                    background: '#2a2a4e',
-                                                    border: '1px solid #555',
-                                                    borderRadius: '6px',
-                                                    fontSize: '11px',
-                                                    textAlign: 'center',
-                                                    cursor: 'pointer',
-                                                    minHeight: '44px'
-                                                }}>
-                                                <div style={{ fontWeight: '600' }}>{card.name}</div>
-                                                <div style={{ fontSize: '10px', color: '#aaa' }}>
-                                                    {card.damage > 0 ? `공${card.damage} ` : ''}{card.success_rate}%
+                                        {hand.map(card => {
+                                            // D-47: slotLimit 카드(아이템 요구)는 현재 슬롯 사용량으로 잔여 횟수 계산.
+                                            const usedInSlots = card.slotLimit
+                                                ? slots.filter(s => s && s.id === card.id).length
+                                                : 0;
+                                            const exhausted = !!(card.slotLimit && usedInSlots >= card.slotLimit);
+                                            return (
+                                                <div key={card.uid}
+                                                    onClick={() => handleHandClick(card)}
+                                                    style={{
+                                                        padding: '8px 4px',
+                                                        background: exhausted ? '#1a1a2a' : '#2a2a4e',
+                                                        border: `1px solid ${exhausted ? '#333' : '#555'}`,
+                                                        borderRadius: '6px',
+                                                        fontSize: '11px',
+                                                        textAlign: 'center',
+                                                        cursor: exhausted ? 'not-allowed' : 'pointer',
+                                                        minHeight: '44px',
+                                                        opacity: exhausted ? 0.45 : 1
+                                                    }}>
+                                                    <div style={{ fontWeight: '600' }}>
+                                                        {card.name}
+                                                        {card.infinite && (
+                                                            <span style={{ color: '#3dd68c', marginLeft: '4px' }}>∞</span>
+                                                        )}
+                                                        {card.slotLimit && (
+                                                            <span style={{ color: '#d4b84a', marginLeft: '4px' }}>
+                                                                ×{card.slotLimit - usedInSlots}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: '10px', color: '#aaa' }}>
+                                                        {card.damage > 0 ? `공${card.damage} ` : ''}{card.success_rate}%
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
