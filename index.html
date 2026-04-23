@@ -1586,14 +1586,21 @@
 
             const allFilled = slots.every(s => s !== null);
 
+            // D-46 보강: infinite 카드(기본 스킬 — 주먹/회피/도망)는 슬롯 배치해도
+            // 손패에서 소진되지 않는다. 같은 카드를 3턴 전부 채우는 것도 허용.
+            // 슬롯에 놓을 때 uid를 슬롯 고유값으로 재부여해 React key 충돌 방지.
             const handleHandClick = (card) => {
                 if (phase !== 'select') return;
                 const emptyIdx = slots.findIndex(s => s === null);
                 if (emptyIdx < 0) return;
                 const newSlots = [...slots];
-                newSlots[emptyIdx] = card;
+                newSlots[emptyIdx] = card.infinite
+                    ? { ...card, uid: `${card.uid}:slot:${emptyIdx}:${Date.now()}` }
+                    : card;
                 setSlots(newSlots);
-                setHand(hand.filter(c => c.uid !== card.uid));
+                if (!card.infinite) {
+                    setHand(hand.filter(c => c.uid !== card.uid));
+                }
             };
 
             const handleSlotClick = (slotIdx) => {
@@ -1603,7 +1610,9 @@
                 const newSlots = [...slots];
                 newSlots[slotIdx] = null;
                 setSlots(newSlots);
-                setHand([...hand, card]);
+                if (!card.infinite) {
+                    setHand([...hand, card]);
+                }
             };
 
             const handleConfirm = () => {

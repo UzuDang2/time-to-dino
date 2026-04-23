@@ -83,6 +83,13 @@
             const isFree = typeof req === 'string' && (req === '없음' || req.indexOf('없음') === 0);
             const pass = isFree || (typeof req === 'string' && ownedNames.has(req));
             if (!pass) continue;
+            // D-46 보강: requirement 없는 기본 카드(주먹/회피/도망 등)는 '무한카드'.
+            // 손패에 1장만 두고 infinite=true로 표시 — 슬롯 배치 시 손패에서 소진되지 않음.
+            // 요구 아이템이 있는 카드(돌 던지기 등)는 기존대로 count만큼 복제 후 1회성 소비.
+            if (isFree) {
+                deck.push({ ...card, infinite: true, uid: `combat:${card.id}:${idx++}` });
+                continue;
+            }
             const copies = Number(card.count) || 1;
             for (let i = 0; i < copies; i++) {
                 deck.push({ ...card, uid: `combat:${card.id}:${idx++}` });
