@@ -1,0 +1,11 @@
+{
+  "rabbit": ["덤불"],
+  "mouse": ["덤불"],
+  "snake": ["덤불"],
+  "frog": ["덤불"],
+  "squirrel": ["숲"],
+  "salamander": ["숲"],
+  "bird": ["평원"],
+  "grasshopper": ["평원"],
+  "crab": ["시냇물"]
+}

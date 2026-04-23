@@ -54,6 +54,11 @@ class InventorySystem {
         //   clean_berry: water + berry_mix 조합 결과. hunger+3. 최종형(머지 불가).
         clean_berry:  { name: '깨끗한 딸기',  shape: [[1]], grade: 3, mergeable: false, category: 'food', merge_result: null },
 
+        // === 사냥감 전투 1단계 생고기 (D-46 신규) ===
+        //   승리 시 prey.meat 수만큼 지급. Notion 아이템 DB 승격 전까지 런타임 폴백.
+        //   REST_FALLBACK 패턴(D-23) 준용 — items.raw.json 동기화 + make data 후 자연 스왑.
+        meat:         { name: '생고기',       shape: [[1]], grade: 1, mergeable: false, category: '음식',  merge_result: null },
+
         // === 레거시 (기존 카드 시스템 참조) — 후속 작업에서 1단계 체계로 흡수 예정 ===
         material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: false, merge_result: null },
         material_mid:  { name: '일반 재료', shape: [[1]], grade: 2, mergeable: false, merge_result: null },
