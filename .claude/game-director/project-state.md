@@ -1,8 +1,9 @@
 # project-state.md
 
-마지막 검증: 2026-04-23 (**10th session — 웹 세션, claude.ai/code Linux 샌드박스**).
-`사냥시작(hunt_start)` 카드 잔존 버그 수정 + 동굴/평원 env 돌멩이 가중치 70:30 상향.
-변경 파일: `data/drop_table.json`·`data/data.js`·`index.html` 3개. 커밋 `a4a5688`, main 반영.
+마지막 검증: 2026-04-23 (**10th session — 웹 세션, claude.ai/code Linux 샌드박스**, UI 이터레이션 포함).
+라운드 1(`a4a5688`): hunt_start 카드 잔존 버그 수정 + 동굴/평원 돌멩이 가중치 70:30 상향.
+라운드 2(UI): 토스트 fade-out 0.25s easeOutCirc로 단축, listen 보스 감지 → 공룡 토스트 + 거리별 테두리 색(빨강/노랑/초록), 보스 인접 시 BossJumpscare 연출, 승리 시 [맵 보기] 모드 + moveHistory 기반 방문 순서 번호 + 플로팅 재시작/승리화면 버튼.
+변경 파일: `gameStyles.css`, `index.html`, `.claude/game-director/*.md`.
 이번 세션은 웹 환경 특성상 Notion MCP 미연결 + `*.notion.site` 방화벽 차단 상태였음. Notion 스펙 조회는 불가했고, repo 내 SSOT(JSON·코드)만으로 작업 완수.
 **시트 SSOT 불일치 잔여**: `weights.동굴.env`/`weights.평원.env`는 시트에 없고 JSON에만 있음. 다음 `make data` 시 롤백 위험 — 로컬 Mac 후속(`pending.md` 10차 세션 블록 참조).
 

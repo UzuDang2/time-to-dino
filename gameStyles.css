@@ -331,3 +331,40 @@ button:disabled {
     max-height: 90vh;
     overflow: auto;
 }
+
+/* 보스 인접(1칸) 감지 시 점프스케어 오버레이 — listen 분기에서 트리거. */
+/* 공룡 아이콘이 화면 중앙에서 빠르게 커지며 가득 찼다가 사라진다. */
+.boss-jumpscare-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(140, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.9) 70%);
+    animation: boss-jumpscare-bg 0.55s ease-out forwards;
+}
+
+.boss-jumpscare-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 72px;
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+    filter: drop-shadow(0 0 12px rgba(255, 30, 30, 0.8));
+    animation: boss-jumpscare-pop 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes boss-jumpscare-bg {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    70%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes boss-jumpscare-pop {
+    0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; filter: blur(4px) drop-shadow(0 0 12px rgba(255, 30, 30, 0.8)); }
+    18%  { transform: translate(-50%, -50%) scale(2.6); opacity: 1; filter: blur(0) drop-shadow(0 0 14px rgba(255, 30, 30, 0.9)); }
+    55%  { transform: translate(-50%, -50%) scale(7);   opacity: 1; filter: blur(0) drop-shadow(0 0 18px rgba(255, 30, 30, 1)); }
+    85%  { transform: translate(-50%, -50%) scale(10);  opacity: 0.85; filter: blur(1px) drop-shadow(0 0 20px rgba(255, 30, 30, 0.9)); }
+    100% { transform: translate(-50%, -50%) scale(12);  opacity: 0; filter: blur(3px) drop-shadow(0 0 20px rgba(255, 30, 30, 0.6)); }
+}

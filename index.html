@@ -283,7 +283,7 @@
         //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스가 있으면 보스 우선)
         //   - 흔적(👣 우상단): preyTraceTiles.has(tile.id) — visited 무관 (청각 단서).
         //   - D-48: 발자국 방향 화살표 제거 — 흔적(👣)만으로 단서 제공.
-        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, preys, preyTraceTiles }) {
+        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, preys, preyTraceTiles, moveHistory, showPathView }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
             const canMove = tiles[currentTile].connections.includes(tile.id);
@@ -395,6 +395,26 @@
                             👣
                         </text>
                     )}
+                    {/* 맵 보기 모드 — 플레이어가 방문한 순서 번호. 첫 방문 기준(indexOf). */}
+                    {showPathView && moveHistory && (() => {
+                        const pathIdx = moveHistory.indexOf(tile.id);
+                        if (pathIdx < 0) return null;
+                        return (
+                            <g pointerEvents="none">
+                                <circle cx={x - 28} cy={y - 2} r="11" fill="#d4b84a" stroke="#000" strokeWidth="0.8" />
+                                <text
+                                    x={x - 28}
+                                    y={y + 3}
+                                    textAnchor="middle"
+                                    fill="#1a1a2e"
+                                    fontSize="12"
+                                    fontWeight="800"
+                                >
+                                    {pathIdx + 1}
+                                </text>
+                            </g>
+                        );
+                    })()}
                 </g>
             );
         }
@@ -407,7 +427,7 @@
         // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
         // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
         // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles }) {
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, moveHistory, showPathView }) {
             const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
             const containerRef = React.useRef(null);
 
@@ -450,6 +470,8 @@
                                     moveTo={moveTo}
                                     preys={preys}
                                     preyTraceTiles={preyTraceTiles}
+                                    moveHistory={moveHistory}
+                                    showPathView={showPathView}
                                 />
                             ))}
                             {playerPos && (
@@ -1342,10 +1364,10 @@
                 setPhase('in');
                 const t1 = setTimeout(() => setPhase('hold'), 200);   // 페이드 인 0.2s
                 const t2 = setTimeout(() => setPhase('out'), 200 + 1000); // 유지 1s
-                const t3 = setTimeout(() => {                         // 페이드 아웃 2s
+                const t3 = setTimeout(() => {                         // 페이드 아웃 0.25s (easeOutCirc)
                     setPhase('done');
                     onDone && onDone();
-                }, 200 + 1000 + 2000);
+                }, 200 + 1000 + 250);
                 return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
             }, [toast && toast.id]);
 
@@ -1353,7 +1375,7 @@
 
             const opacity = phase === 'in' ? 0 : phase === 'hold' ? 1 : 0;
             const transition = phase === 'in' ? 'opacity 0.2s ease-out'
-                             : phase === 'out' ? 'opacity 2s ease-in'
+                             : phase === 'out' ? 'opacity 0.25s cubic-bezier(0.075, 0.82, 0.165, 1)'
                              : 'opacity 0.2s';
 
             return (
@@ -1424,7 +1446,7 @@
                 const t3 = setTimeout(() => {
                     setPhase('done');
                     onDone && onDone();
-                }, 200 + 1000 + 2000);
+                }, 200 + 1000 + 250);
                 return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
             }, [toast && toast.id]);
 
@@ -1432,7 +1454,7 @@
 
             const opacity = phase === 'in' ? 0 : phase === 'hold' ? 1 : 0;
             const transition = phase === 'in' ? 'opacity 0.2s ease-out'
-                             : phase === 'out' ? 'opacity 2s ease-in'
+                             : phase === 'out' ? 'opacity 0.25s cubic-bezier(0.075, 0.82, 0.165, 1)'
                              : 'opacity 0.2s';
 
             return (
@@ -1466,6 +1488,23 @@
                     <div style={{ fontSize: '13px', color: '#ddd' }}>
                         {toast.message}
                     </div>
+                </div>
+            );
+        }
+
+        // 보스 점프스케어 — listen 거리=1 감지 시 화면 전체 공룡 아이콘이 빠르게 확대/소실.
+        // 의도: 공포 원칙 강화. 테두리 색(빨강) 토스트만으로는 인접 경고가 약하다는 판단.
+        // CSS animation 0.55s 단일 재생. active=false로 내려주면 즉시 제거.
+        function BossJumpscare({ active, onDone }) {
+            React.useEffect(() => {
+                if (!active) return;
+                const t = setTimeout(() => { onDone && onDone(); }, 550);
+                return () => clearTimeout(t);
+            }, [active]);
+            if (!active) return null;
+            return (
+                <div className="boss-jumpscare-overlay">
+                    <div className="boss-jumpscare-icon">🦖</div>
                 </div>
             );
         }
@@ -1666,8 +1705,9 @@
             }
         };
 
-        function GameEndModal({ gameOver, victory, deathReason }) {
-            if (!gameOver && !victory) return null;
+        function GameEndModal({ gameOver, victory, deathReason, showPathView, onViewPath }) {
+            // 승리 후 '맵 보기' 모드일 때 모달 숨김 — 경로를 볼 수 있게.
+            if ((!gameOver && !victory) || showPathView) return null;
 
             const narrative = !victory && deathReason ? DEATH_NARRATIVE[deathReason] : null;
             const bgColor = victory ? '#4CAF50' : '#2a2a3e';
@@ -1722,21 +1762,40 @@
                             </>
                         )}
 
-                        <button
-                            onClick={() => window.location.reload()}
-                            style={{
-                                background: 'white',
-                                color: '#333',
-                                border: 'none',
-                                padding: '12px 28px',
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                borderRadius: '6px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            다시 시작
-                        </button>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {victory && (
+                                <button
+                                    onClick={() => onViewPath && onViewPath()}
+                                    style={{
+                                        background: '#d4b84a',
+                                        color: '#333',
+                                        border: 'none',
+                                        padding: '12px 24px',
+                                        fontSize: '15px',
+                                        fontWeight: '600',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    🗺️ 맵 보기
+                                </button>
+                            )}
+                            <button
+                                onClick={() => window.location.reload()}
+                                style={{
+                                    background: 'white',
+                                    color: '#333',
+                                    border: 'none',
+                                    padding: '12px 24px',
+                                    fontSize: '15px',
+                                    fontWeight: '600',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                다시 시작
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
@@ -2158,6 +2217,16 @@
             // - 플레이어가 이동하면 즉시 false (지형 revealed는 유지)
             // 공포 원칙: "한 번 본 보스 위치"가 아니라 "방금 귀기울인 위치"만 신뢰 가능.
             const [bossVisible, setBossVisible] = useState(false);
+
+            // 보스 점프스케어 active flag (listen 거리=1 트리거). onDone에서 false.
+            const [bossJumpscare, setBossJumpscare] = useState(false);
+
+            // 플레이어 이동 경로 기록. 맵 보기 모드에서 방문 순서를 숫자로 표시.
+            // 초기값은 게임 시작 시 setTiles 직후 [startTileId]로 채운다.
+            const [moveHistory, setMoveHistory] = useState([]);
+
+            // 승리 후 [맵 보기] 모드. true면 GameEndModal 숨기고 맵에 경로 숫자 표시.
+            const [showPathView, setShowPathView] = useState(false);
             // D-46/D-48: 사냥감 전투 상태.
             //   preys          — 맵에 살아있는 사냥감 배열 [{id, tileId, preyType, hpCurrent?}].
             //   preyTraceTiles — listen/도망 결과로 감지된 "기척" 타일 id Set (visited 무관 표시).
@@ -2351,7 +2420,9 @@
                 
                 setTiles(newTiles);
                 setCurrentTile(playerStart);
-                
+                // 경로 기록 초기화 — 시작 타일이 첫 방문지.
+                setMoveHistory([playerStart]);
+
                 // 카드 데이터는 구글 시트 '베이스탐험카드' 탭이 SSOT.
                 // data/data.js의 TTD_DATA.BASE_CARDS를 읽어 런타임 필드(time 기본값 1)만 덧붙인다.
                 // 시트 갱신 시: 시트 수정 → `make data` 실행 → 새로고침.
@@ -2865,19 +2936,41 @@
                     });
                     setTiles(newTiles);
 
-                    // D-49 (2026-04-23 요한 지시): D-48에서 ⚠️·직설적 문구로 바꿨던
-                    // listen 메시지 원복. 간접적·서사적 톤이 게임 분위기에 더 맞는다는 판단.
-                    // 보스 경고는 시각 신호(타일 색·펄스·라벨 우선순위, D-48에서 격상)로 충분.
+                    // listen 보스 감지 → TileEventToast로 시각화 (공룡 아이콘 + 단계별 테두리 색).
+                    // 색 코드: 빨강(인접 1칸, 즉사 경고) / 노랑(2~3칸, 경계) / 초록(≥4칸, 안심).
+                    // 1칸은 추가로 점프스케어 오버레이를 터뜨려 공포감 강화.
+                    // (기존 하단 메시지 패널은 서사적 톤과 어울리지 않아 시인성 떨어진다는 요한 피드백.)
                     if (bossDist === 1) {
                         // D-42: 보스 위치 노출은 이 순간만. 이동 시 moveTo에서 다시 false로.
                         setBossVisible(true);
-                        msg += `가쁜 숨소리가 바로 곁에서 들려온다. 보스는 타일 #${bossPos}에 있다.`;
+                        setBossJumpscare(true);
+                        showTileEventToast({
+                            emoji: '🦖',
+                            title: '보스 근접',
+                            message: `가쁜 숨소리가 바로 곁에서 들려온다. 보스는 타일 #${bossPos}에 있다.`,
+                            color: '#ff3b3b'
+                        });
                     } else if (bossDist === 2) {
-                        msg += '숨쉬는 소리가 꽤 가까이 들리는 듯 하여 소름이 돋는다.';
+                        showTileEventToast({
+                            emoji: '🦖',
+                            title: '보스 경계',
+                            message: '숨쉬는 소리가 꽤 가까이 들리는 듯 하여 소름이 돋는다.',
+                            color: '#ffb300'
+                        });
                     } else if (bossDist === 3) {
-                        msg += '발걸음 소리가 가까워진듯 하다.';
+                        showTileEventToast({
+                            emoji: '🦖',
+                            title: '보스 감지',
+                            message: '발걸음 소리가 가까워진듯 하다.',
+                            color: '#ffb300'
+                        });
                     } else {
-                        msg += '발걸음 소리가 아주 멀리서 들린다, 당분간은 안심해도 될 것 같다.';
+                        showTileEventToast({
+                            emoji: '🦖',
+                            title: '보스 탐지',
+                            message: '발걸음 소리가 아주 멀리서 들린다, 당분간은 안심해도 될 것 같다.',
+                            color: '#4CAF50'
+                        });
                     }
 
                     // D-46 (2026-04-23): listen 인접 사냥감 흔적 감지.
@@ -2955,6 +3048,7 @@
                 
                 setTiles(newTiles);
                 setCurrentTile(targetId);
+                setMoveHistory(prev => [...prev, targetId]);
 
                 // D-48: 카드 규칙 개정 — 타일 이동 시 손패 전부 무덤으로 보내고 덱에서
                 //   HAND_SIZE(5)장 새로 드로우. 덱 소진 시 무덤 셔플해서 덱 재구성.
@@ -3141,6 +3235,8 @@
                         onTileEventToastDone={() => setTileEventToast(null)}
                         preys={preys}
                         preyTraceTiles={preyTraceTiles}
+                        moveHistory={moveHistory}
+                        showPathView={showPathView}
                     />
 
                     {eventTile && (
@@ -3213,7 +3309,57 @@
                         />
                     )}
 
-                    <GameEndModal gameOver={gameOver} victory={victory} deathReason={deathReason} />
+                    <GameEndModal
+                        gameOver={gameOver}
+                        victory={victory}
+                        deathReason={deathReason}
+                        showPathView={showPathView}
+                        onViewPath={() => setShowPathView(true)}
+                    />
+
+                    <BossJumpscare active={bossJumpscare} onDone={() => setBossJumpscare(false)} />
+
+                    {/* 맵 보기 모드 플로팅 컨트롤 — 승리 후 경로를 들여다볼 때 */}
+                    {showPathView && (
+                        <div style={{
+                            position: 'fixed',
+                            bottom: '20px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 200,
+                            display: 'flex',
+                            gap: '10px'
+                        }}>
+                            <button
+                                onClick={() => setShowPathView(false)}
+                                style={{
+                                    background: '#2a2a3e',
+                                    color: '#d4b84a',
+                                    border: '1px solid #d4b84a',
+                                    padding: '10px 20px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                }}
+                            >
+                                ← 승리 화면
+                            </button>
+                            <button
+                                onClick={() => window.location.reload()}
+                                style={{
+                                    background: '#4CAF50',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '10px 20px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600
+                                }}
+                            >
+                                다시 시작
+                            </button>
+                        </div>
+                    )}
                 </div>
             );
         }
