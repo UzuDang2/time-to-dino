@@ -264,9 +264,12 @@
 
         // 육각형 타일 컴포넌트
         //
-        // D-42 (2026-04-23 요한 지시): 보스 아이콘 노출 조건이 "tile.revealed"에서
-        // "bossVisible"로 분리됨. 지형 revealed와 무관하게 bossVisible=true 일 때만
-        // 보스가 있는 타일에 🦖 아이콘이 뜬다. 이동하면 setBossVisible(false).
+        // D-50 (2026-04-23 요한 지시): 엔티티(플레이어·보스·사냥감)를
+        // 타일 배경/라벨로 섞어 표현하던 방식을 폐기하고,
+        // SVG 오버레이 "말"(piece)로 분리. 타일은 지형 속성만 표현.
+        // - getTileColor: boss/isCurrent 조건 제거. 지형(good/trap/exit/start/...)만.
+        // - getTileLabel: '내위치'/'🦖' 제거. 말이 있는 타일은 중앙 라벨 숨김(말이 대신 차지).
+        // - 말 렌더링은 GameMap에서 HexTile 위에 SVG text로 수행 (체스말 느낌).
         function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
@@ -281,10 +284,6 @@
 
             const getTileColor = (tile) => {
                 if (!tile.visited && !tile.revealed) return '#1a1f3a';
-                // D-48 (2026-04-23 요한 지시): 보스 경고는 최고 우선순위.
-                // 이전 순서(good/trap이 먼저)였다면 "good+boss 겹침" 시 노랑(good)이 이겨
-                // 🦖 레이블만 작게 덮이는 혼동. 보스 가시성이 있을 때는 무조건 다크레드로.
-                if (boss && tile.id === boss.position && bossVisible) return '#8B0000';
                 if (tile.type === 'start') return '#4CAF50';
                 if (tile.type === 'exit' && tile.revealed) return '#2196F3';
                 if (tile.type === 'trap' && tile.revealed) return '#e94560';
@@ -293,11 +292,10 @@
             };
 
             const getTileLabel = () => {
-                if (!isRevealed && !isCurrent) return '?';
-                // D-48: 보스는 내위치·탈출구·good·trap보다 먼저 표시.
-                // 단 '내위치' 는 플레이어 인식이 더 우선(이동·현재 상태 파악용).
-                if (isCurrent) return '내위치';
-                if (isBoss) return '🦖';
+                if (!isRevealed) return '?';
+                // D-50: 말이 올라온 타일은 중앙 라벨 숨김 — 말 아이콘이 그 자리를 차지.
+                // 타일 속성은 배경색으로 계속 보이므로 지형 정보 손실 없음.
+                if (isCurrent || isBoss) return '';
                 if (tile.type === 'exit') return '탈출구';
                 if (tile.type === 'good') return '👍';
                 if (tile.type === 'trap') return '⚠️';
@@ -313,12 +311,12 @@
             return (
                 <g key={tile.id} opacity={hasNoConnections ? 0 : 1}>
                     <polygon
-                        className={`hex-tile ${isCurrent ? 'current' : ''} ${isBoss ? 'boss' : ''}`}
+                        className="hex-tile"
                         points={`${x},${y-50} ${x+43},${y-25} ${x+43},${y+25} ${x},${y+50} ${x-43},${y+25} ${x-43},${y-25}`}
-                        fill={isCurrent ? '#f5f5f5' : getTileColor(tile)}
-                        stroke={isBoss ? '#ff2c4b' : isCurrent ? 'none' : canMove ? '#4CAF50' : '#0f3460'}
-                        strokeWidth={isBoss ? '4' : canMove ? '3' : '2'}
-                        opacity={isRevealed || isCurrent ? 1 : 0.6}
+                        fill={getTileColor(tile)}
+                        stroke={canMove ? '#4CAF50' : '#0f3460'}
+                        strokeWidth={canMove ? '3' : '2'}
+                        opacity={isRevealed ? 1 : 0.6}
                         onClick={() => !gameOver && !victory && canMove && moveTo(tile.id)}
                     />
                     {regionLabel && (
@@ -347,9 +345,9 @@
                         x={x}
                         y={y + 5}
                         textAnchor="middle"
-                        fill={isCurrent ? '#1a1a2e' : isRevealed ? '#fff' : '#666'}
-                        fontSize={isRevealed || isCurrent ? '14' : '24'}
-                        fontWeight={isRevealed || isCurrent ? '700' : 'bold'}
+                        fill={isRevealed ? '#fff' : '#666'}
+                        fontSize={isRevealed ? '14' : '24'}
+                        fontWeight={isRevealed ? '700' : 'bold'}
                     >
                         {getTileLabel()}
                     </text>
@@ -383,6 +381,14 @@
                 el.scrollTop = cur.position.y - el.clientHeight / 2;
             }, []);
 
+            // D-50: 엔티티 말(piece) — 타일 위에 얹히는 SVG text 오버레이.
+            // 체스말처럼 타일 사이를 옮겨다니는 "엔티티" 표현. 배경(지형)은 그대로.
+            // 나중에 사냥감(prey) 아이콘도 같은 패턴으로 추가될 예정.
+            const playerPos = tiles[currentTile] && tiles[currentTile].position;
+            const bossPiecePos = (boss && bossVisible && tiles[boss.position])
+                ? tiles[boss.position].position
+                : null;
+
             return (
                 <div className="map-area">
                     <div className="map-container" ref={containerRef}>
@@ -400,6 +406,33 @@
                                     moveTo={moveTo}
                                 />
                             ))}
+                            {playerPos && (
+                                <text
+                                    className="piece piece-player"
+                                    x={playerPos.x}
+                                    y={playerPos.y + 11}
+                                    textAnchor="middle"
+                                    fontSize="32"
+                                    fontWeight="700"
+                                    fill="#fff"
+                                    stroke="#1a1a2e"
+                                    strokeWidth="1.5"
+                                    paintOrder="stroke"
+                                >
+                                    ♟
+                                </text>
+                            )}
+                            {bossPiecePos && (
+                                <text
+                                    className="piece piece-boss"
+                                    x={bossPiecePos.x}
+                                    y={bossPiecePos.y + 11}
+                                    textAnchor="middle"
+                                    fontSize="30"
+                                >
+                                    🦖
+                                </text>
+                            )}
                         </svg>
                     </div>
                     <LootToast toast={lootToast} onDone={onLootToastDone} />
