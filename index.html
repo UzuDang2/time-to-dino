@@ -1017,7 +1017,7 @@
         //     각 증분을 같은 방식으로 처리. scale이 걸릴 수 있는 건 양수 delta stat뿐.
         //   - scale이 없거나 1이면 기존 UI와 동일.
         //   이 표현은 휴식 외 향후 consume 카드에도 재사용 가능하도록 일반화.
-        function CardItemConsumeModal({ inventory, filter, scales, hintText, titleText, emptyText, onSelect, onClose }) {
+        function CardItemConsumeModal({ inventory, filter, scales, hintText, titleText, emptyText, extraOptions, onSelect, onExtraSelect, onClose }) {
             const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
             const byName = (name) => notionItems.find(it => it && it['이름'] === name);
             const Parser = window.EffectParser;
@@ -1030,6 +1030,10 @@
                 const notionItem = byName(def.name || invItem.name);
                 return filter ? filter(invItem, notionItem, def) : true;
             });
+            // D-46: extraOptions는 아이템이 아닌 "가상 선택지" (예: 바베큐 조합).
+            // 일반 아이템 목록 위에 노출되며, onExtraSelect(opt.id)로 분기.
+            const extras = Array.isArray(extraOptions) ? extraOptions : [];
+            const hasAny = candidates.length > 0 || extras.length > 0;
 
             // 아이템 효과 요약 표시 — scale이 있으면 원본 delta + 증분을 나란히 보여준다.
             // 반환: JSX or null
@@ -1106,12 +1110,31 @@
                             </div>
                         )}
                         {!hintText && <div style={{ marginBottom: '8px' }} />}
-                        {candidates.length === 0 ? (
+                        {!hasAny ? (
                             <div style={{ fontSize: '13px', color: '#aaa', padding: '16px 8px', textAlign: 'center' }}>
                                 {emptyText || '쓸 만한 아이템이 없다.'}
                             </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {extras.map(opt => (
+                                    <button
+                                        key={`extra:${opt.id}`}
+                                        onClick={() => onExtraSelect && onExtraSelect(opt.id)}
+                                        style={{
+                                            textAlign: 'left',
+                                            padding: '10px 12px',
+                                            background: '#2d3a1f',
+                                            border: '1px solid #3d5a2f'
+                                        }}
+                                    >
+                                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{opt.name}</div>
+                                        {opt.summary && (
+                                            <div style={{ fontSize: '11px', color: '#c8d4a8', marginTop: '2px' }}>
+                                                {opt.summary}
+                                            </div>
+                                        )}
+                                    </button>
+                                ))}
                                 {candidates.map(invItem => {
                                     const def = InventorySystem.ITEMS[invItem.type] || {};
                                     const notionItem = byName(def.name || invItem.name);
@@ -1133,6 +1156,46 @@
                                 })}
                             </div>
                         )}
+                    </div>
+                </div>
+            );
+        }
+
+        // D-46 (2026-04-23 요한 지시): 🍖 생고기 바베큐 조합 선택 모달.
+        //   휴식 카드 소비 모달에서 '바베큐' extra option을 고르면 마운트된다.
+        //   options: [{ id, label, items: [type, type] }] — 두 조합 모두 가능할 때만 선택지 제시.
+        //   하나만 가능하면 상위에서 바로 confirmBbq로 건너뛴다(이 모달 안 뜸).
+        function BbqComboModal({ options, onPick, onClose }) {
+            return (
+                <div className="modal" style={{ zIndex: 1200 }} onClick={onClose}>
+                    <div
+                        className="modal-content"
+                        style={{ maxWidth: '360px', minWidth: '260px' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <h3 style={{ margin: 0, fontSize: '16px' }}>🍖 바베큐 — 어떤 재료로?</h3>
+                            <button onClick={onClose}>닫기</button>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {options.map(opt => (
+                                <button
+                                    key={opt.id}
+                                    onClick={() => onPick(opt)}
+                                    style={{
+                                        textAlign: 'left',
+                                        padding: '10px 12px',
+                                        background: '#0f3460',
+                                        border: '1px solid #16213e'
+                                    }}
+                                >
+                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{opt.label}</div>
+                                    <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                                        배고픔 +3 (고정)
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             );
@@ -1884,6 +1947,9 @@
             // 구조: { card, consume, filter, titleText, emptyText } | null
             // 모달 활성 판정도 이 state의 truthy로 통일.
             const [pendingConsume, setPendingConsume] = useState(null);
+            // D-46 🍖 바베큐 조합 선택 대기. { card, options: [{ id, label, items }] } | null.
+            // 두 조합(나뭇가지×2 / 목재+생고기) 모두 가능할 때만 사용자에게 선택지 제시.
+            const [pendingBbq, setPendingBbq] = useState(null);
             // D-28 획득 토스트 — 현재 노출 중인 토스트 1개만 유지.
             // 구조: { id: number, entries: [{ name, count, grade? }] } | null
             const [lootToast, setLootToast] = useState(null);
@@ -2218,7 +2284,26 @@
                     const notionItem = notionItems.find(it => it && it['이름'] === (def.name || invItem.name));
                     return filterFn(invItem, notionItem);
                 });
-                if (!hasAny) {
+                // D-46: rest 카드 전용 — 🍖 바베큐 가상 옵션.
+                //   나뭇가지 2개 OR (목재 1 + 생고기 1) 보유 시 모달에 '바베큐' 항목 추가.
+                //   일반 음식 소비(scale x2)와 독립 — 선택 시 재료 소비 + 고정 hunger+3.
+                let extraOptions = null;
+                if (card.id === 'rest') {
+                    const invItems = (inventory && inventory.items) || [];
+                    const branches = invItems.filter(i => i.type === 'branch').length;
+                    const woods = invItems.filter(i => i.type === 'wood').length;
+                    const meats = invItems.filter(i => i.type === 'meat').length;
+                    const canBranch = branches >= 2;
+                    const canWoodMeat = woods >= 1 && meats >= 1;
+                    if (canBranch || canWoodMeat) {
+                        extraOptions = [{
+                            id: 'bbq',
+                            name: '🍖 생고기 바베큐',
+                            summary: '재료 소비 · 배고픔 +3 (고정)'
+                        }];
+                    }
+                }
+                if (!hasAny && !extraOptions) {
                     setMessage(`${card.name}: 지금 쓸 수 있는 아이템이 없다.`);
                     return;
                 }
@@ -2235,8 +2320,59 @@
                     scales: consume.scales || {},
                     hintText,
                     titleText: card.name + ' — 사용할 아이템',
-                    emptyText: '쓸 만한 아이템이 없다.'
+                    emptyText: '쓸 만한 아이템이 없다.',
+                    extraOptions
                 });
+            };
+
+            // D-46: 소비 모달의 extra option(가상 선택지) 클릭 핸들러.
+            //   현재 rest 카드의 '바베큐'만 처리. 두 조합 모두 가능하면 BbqComboModal로 분기,
+            //   하나만 가능하면 즉시 confirmBbq.
+            const handleExtraConsume = (id) => {
+                if (!pendingConsume) return;
+                if (id !== 'bbq') return;
+                const card = pendingConsume.card;
+                const invItems = (inventory && inventory.items) || [];
+                const branches = invItems.filter(i => i.type === 'branch').length;
+                const woods = invItems.filter(i => i.type === 'wood').length;
+                const meats = invItems.filter(i => i.type === 'meat').length;
+                const options = [];
+                if (branches >= 2) {
+                    options.push({ id: 'branch2', label: '나뭇가지 2개', items: ['branch', 'branch'] });
+                }
+                if (woods >= 1 && meats >= 1) {
+                    options.push({ id: 'wood_meat', label: '목재 1 + 생고기 1', items: ['wood', 'meat'] });
+                }
+                if (options.length === 0) {
+                    setMessage('바베큐 재료가 부족하다.');
+                    return;
+                }
+                if (options.length === 1) {
+                    confirmBbq(card, options[0]);
+                    return;
+                }
+                setPendingConsume(null);
+                setPendingBbq({ card, options });
+            };
+
+            // D-46: 바베큐 재료 실제 소비 + hunger +3 + 카드 본체 소모.
+            //   items 배열에서 각 type 1개씩 제거. STAT_BOUNDS.hunger.max로 상한 고정.
+            const confirmBbq = (card, option) => {
+                if (inventory) {
+                    for (const type of option.items) {
+                        const target = inventory.items.find(i => i.type === type);
+                        if (!target) continue;
+                        inventory.removeItem(target);
+                        inventory.items = inventory.items.filter(i => i.id !== target.id);
+                    }
+                }
+                const maxH = (window.EffectParser && window.EffectParser.STAT_BOUNDS
+                    && window.EffectParser.STAT_BOUNDS.hunger
+                    && window.EffectParser.STAT_BOUNDS.hunger.max) || 12;
+                setHunger(Math.min(maxH, hunger + 3));
+                setPendingBbq(null);
+                setPendingConsume(null);
+                finalizeCardUse(card, `${option.label}로 🍖 바베큐를 만들었다. 배고픔 +3.`);
             };
 
             // consume 모달에서 아이템 하나 선택 → 실제 효과 적용.
@@ -2773,8 +2909,19 @@
                             hintText={pendingConsume.hintText}
                             titleText={pendingConsume.titleText}
                             emptyText={pendingConsume.emptyText}
+                            extraOptions={pendingConsume.extraOptions}
                             onSelect={resolveConsumeChoice}
+                            onExtraSelect={handleExtraConsume}
                             onClose={cancelConsume}
+                        />
+                    )}
+
+                    {/* D-46: 🍖 바베큐 조합 선택 모달 — 두 조합 모두 가능할 때만 마운트. */}
+                    {pendingBbq && (
+                        <BbqComboModal
+                            options={pendingBbq.options}
+                            onPick={(opt) => confirmBbq(pendingBbq.card, opt)}
+                            onClose={() => setPendingBbq(null)}
                         />
                     )}
 

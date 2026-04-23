@@ -742,6 +742,40 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "meat",
+      "name": "생고기",
+      "이름": "생고기",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "피가 아직 남은 날것의 고기. 배를 채울 수 있지만 탈이 날 수 있다.",
+      "효과 요약": "배고픔 +1, 생명력 -1.",
+      "사용 효과": "hunger+1;health-1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 1
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -1
+          }
+        ],
+        "raw": "hunger+1;health-1"
+      }
+    },
+    {
       "id": "mushroom",
       "name": "버섯",
       "이름": "버섯",
@@ -1051,19 +1085,19 @@ window.TTD_DATA = {
   "DROP_TABLE": {
     "regions": {
       "숲": {
-        "env": 50,
-        "food": 25,
+        "env": 25,
+        "food": 50,
         "none": 25
       },
       "덤불": {
-        "env": 40,
-        "food": 30,
-        "none": 30
+        "env": 70,
+        "food": 10,
+        "none": 20
       },
       "평원": {
-        "env": 35,
-        "food": 20,
-        "none": 45
+        "env": 40,
+        "food": 10,
+        "none": 50
       },
       "시냇물": {
         "env": 30,
