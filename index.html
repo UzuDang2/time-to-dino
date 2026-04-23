@@ -398,29 +398,36 @@
                     >
                         {getTileLabel()}
                     </text>
-                    {/* D-46: 흔적(우상단 👣) — visited 무관, listen 청각 단서. */}
+                    {/* D-46: 흔적(우상단 👣) — visited 무관, listen 청각 단서.
+                        D-47: 어두운 타일에서도 확실히 보이도록 크기·대비 상향. */}
                     {hasTrace && (
                         <text
-                            x={x + 22}
-                            y={y - 22}
+                            x={x + 20}
+                            y={y - 18}
                             textAnchor="middle"
-                            fontSize="14"
+                            fontSize="22"
                             pointerEvents="none"
-                            opacity="0.85"
+                            stroke="#0a1020"
+                            strokeWidth="3"
+                            paintOrder="stroke"
                         >
                             👣
                         </text>
                     )}
-                    {/* D-46: 발자국(좌하단 방향 화살표) — 도망간 prey 경로. */}
+                    {/* D-46: 발자국(좌하단 방향 화살표) — 도망간 prey 경로.
+                        D-47: fontSize·stroke 상향 + 아웃라인으로 어두운 타일에서도 식별. */}
                     {footprintArrow && (
                         <text
-                            x={x - 22}
-                            y={y + 28}
+                            x={x - 20}
+                            y={y + 26}
                             textAnchor="middle"
-                            fontSize="16"
-                            fill="#d4b84a"
+                            fontSize="24"
+                            fill="#ffd84a"
                             pointerEvents="none"
-                            fontWeight="700"
+                            fontWeight="900"
+                            stroke="#0a1020"
+                            strokeWidth="3"
+                            paintOrder="stroke"
                         >
                             {footprintArrow}
                         </text>
@@ -2232,12 +2239,14 @@
                         return true;
                     });
 
+                    // D-47: 도망 후에도 누적 데미지 유지. result.preyHpFinal을 hpCurrent로 저장.
+                    const hpFinal = (typeof result.preyHpFinal === 'number') ? result.preyHpFinal : prey.hp;
                     if (candidates.length > 0) {
                         const dest = candidates[Math.floor(Math.random() * candidates.length)];
                         const fromTile = prey.tileId;
-                        // preys 업데이트
+                        // preys 업데이트 — tileId + hpCurrent 동시 반영
                         setPreys(prev => prev.map(p =>
-                            p.id === prey.id ? { ...p, tileId: dest } : p
+                            p.id === prey.id ? { ...p, tileId: dest, hpCurrent: hpFinal } : p
                         ));
                         // 발자국 기록
                         setPreyFootprints(prev => ({
@@ -2250,11 +2259,20 @@
                             next.delete(fromTile);
                             return next;
                         });
+                    } else {
+                        // 이동 여지가 없어도 hpCurrent는 유지해야 함 (다음 조우 시 누적 활용).
+                        setPreys(prev => prev.map(p =>
+                            p.id === prey.id ? { ...p, hpCurrent: hpFinal } : p
+                        ));
                     }
-                    // 이동 여지가 없어도 메시지는 동일 (제자리, 발자국도 없음)
                     setMessage('사냥감이 도망쳤다. 발자국이 남아있다.');
                     setActiveHunt(null);
                 } else if (outcome === 'player_fled') {
+                    // 플레이어 도주 — prey는 제자리지만 준 데미지는 유지.
+                    const hpFinal = (typeof result.preyHpFinal === 'number') ? result.preyHpFinal : prey.hp;
+                    setPreys(prev => prev.map(p =>
+                        p.id === prey.id ? { ...p, hpCurrent: hpFinal } : p
+                    ));
                     setMessage('사냥을 포기하고 물러섰다.');
                     setActiveHunt(null);
                 } else {
@@ -2643,7 +2661,8 @@
                             tileId: prey.tileId,
                             preyType: prey.preyType,
                             name: preyDef.name || prey.preyType,
-                            hp: preyDef.hp || 1,
+                            // D-47: 이전 전투에서 준 데미지 누적 유지. hpCurrent가 있으면 그 값으로 시작.
+                            hp: (typeof prey.hpCurrent === 'number') ? prey.hpCurrent : (preyDef.hp || 1),
                             meat: preyDef.meat || 1,
                             evade_rate: preyDef.evade_rate || 20
                         }
@@ -2906,6 +2925,18 @@
                             preyId: preyHere.id,
                             preyType: preyHere.preyType
                         }
+                    });
+                    // D-47: 사냥감 발견 토스트 — 아이콘 + 이름으로 즉시 안내.
+                    const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                    const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
+                    const hpNote = (typeof preyHere.hpCurrent === 'number' && preyHere.hpCurrent < (foundDef.hp || 0))
+                        ? ` (HP ${preyHere.hpCurrent}/${foundDef.hp})`
+                        : '';
+                    showTileEventToast({
+                        emoji: PREY_EMOJI[preyHere.preyType] || '❓',
+                        title: '사냥감 발견',
+                        message: (foundDef.name || preyHere.preyType) + hpNote,
+                        color: '#3dd68c'
                     });
                 }
 
