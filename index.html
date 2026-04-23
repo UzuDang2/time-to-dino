@@ -1602,10 +1602,99 @@
                 setLootToast({ id: Date.now() + Math.random(), entries });
             };
 
-            // D-46 (2026-04-23) — 전투 결과 후처리. step 7에서 본체 구현.
-            // 여기서는 모달 닫기만 (스캐폴딩).
+            // D-46 (2026-04-23) — 전투 결과 후처리.
+            //   victory: preys 제거 + preyTraceTiles 해당 tileId 삭제 + meat 인벤 추가(overflow 집계)
+            //            + LootToast(z-index 충돌 방지로 setTimeout 100ms) + 메시지.
+            //   prey_fled: habitat 맞는 인접 타일 중 reserved(보스/탈출구/다른 prey) 제외하고 랜덤 이동.
+            //              없으면 제자리. 이동 시 preyFootprints[원]={fromTile:원, toTile:새},
+            //              preyTraceTiles에서 원 타일 제거. 메시지: "사냥감이 도망쳤다. 발자국이 남아있다."
+            //   player_fled: prey 제자리. 메시지: "사냥을 포기하고 물러섰다."
             const handleHuntResolve = (result) => {
-                setActiveHunt(null);
+                if (!activeHunt || !activeHunt.prey) {
+                    setActiveHunt(null);
+                    return;
+                }
+                const prey = activeHunt.prey;
+                const outcome = result && result.outcome;
+
+                if (outcome === 'victory') {
+                    // preys 제거
+                    setPreys(prev => prev.filter(p => p.id !== prey.id));
+                    // trace 제거
+                    setPreyTraceTiles(prev => {
+                        const next = new Set(prev);
+                        next.delete(prey.tileId);
+                        return next;
+                    });
+                    // meat 인벤 추가 — 실패분(가방 포화)은 overflow로 집계.
+                    const meatCount = prey.meat || 0;
+                    let added = 0;
+                    let overflow = 0;
+                    for (let i = 0; i < meatCount; i++) {
+                        const ok = inventory.addItem('meat');
+                        if (ok) added += 1;
+                        else overflow += 1;
+                    }
+                    let msg = `사냥에 성공했다. 생고기 ${added}을(를) 얻었다.`;
+                    if (overflow > 0) msg += ` (가방이 가득 차 ${overflow}개는 두고 왔다.)`;
+                    setMessage(msg);
+                    setActiveHunt(null);
+                    if (added > 0) {
+                        // z-index 충돌 방지 — 모달 unmount 후 토스트 띄움.
+                        setTimeout(() => showLootToast([{ name: '생고기', count: added, grade: 1 }]), 100);
+                    }
+                } else if (outcome === 'prey_fled') {
+                    // habitat 맞는 인접 타일 중 이동 가능한 곳 찾기.
+                    const preyData = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                    const preyDef = preyData.find(p => p.id === prey.preyType) || {};
+                    const habitat = (Array.isArray(preyDef.habitat) && preyDef.habitat.length > 0)
+                        ? preyDef.habitat
+                        : (PREY_HABITAT[prey.preyType] || []);
+                    const bossPos = boss ? boss.getPosition() : -1;
+                    // 현재 살아있는 preys 중 자기 자신 제외한 점유 타일 Set
+                    const occupiedByOther = new Set(
+                        (preys || []).filter(p => p.id !== prey.id).map(p => p.tileId)
+                    );
+                    const currentPreyTile = tiles[prey.tileId];
+                    const neighborIds = (currentPreyTile && currentPreyTile.connections) || [];
+                    const candidates = neighborIds.filter(nid => {
+                        const t = tiles[nid];
+                        if (!t || t.isEmpty) return false;
+                        if (habitat.length > 0 && !habitat.includes(t.region)) return false;
+                        if (nid === bossPos) return false;
+                        if (t.type === 'exit') return false;
+                        if (occupiedByOther.has(nid)) return false;
+                        return true;
+                    });
+
+                    if (candidates.length > 0) {
+                        const dest = candidates[Math.floor(Math.random() * candidates.length)];
+                        const fromTile = prey.tileId;
+                        // preys 업데이트
+                        setPreys(prev => prev.map(p =>
+                            p.id === prey.id ? { ...p, tileId: dest } : p
+                        ));
+                        // 발자국 기록
+                        setPreyFootprints(prev => ({
+                            ...prev,
+                            [fromTile]: { fromTile, toTile: dest }
+                        }));
+                        // trace 제거 (원 타일 기척 소멸)
+                        setPreyTraceTiles(prev => {
+                            const next = new Set(prev);
+                            next.delete(fromTile);
+                            return next;
+                        });
+                    }
+                    // 이동 여지가 없어도 메시지는 동일 (제자리, 발자국도 없음)
+                    setMessage('사냥감이 도망쳤다. 발자국이 남아있다.');
+                    setActiveHunt(null);
+                } else if (outcome === 'player_fled') {
+                    setMessage('사냥을 포기하고 물러섰다.');
+                    setActiveHunt(null);
+                } else {
+                    setActiveHunt(null);
+                }
             };
 
             // 게임 초기화
