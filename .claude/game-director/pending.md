@@ -4,6 +4,39 @@
 
 ---
 
+## 대기: 요한/Mac 로컬 측 작업 (10차 세션 — 웹 세션 2026-04-23)
+
+> 🌐 이 블록은 **claude.ai/code 웹 환경(Linux 샌드박스)**에서 작업된 내용이다.
+> 웹 세션은 Notion MCP 미연결 + `*.notion.site` 방화벽 차단 상태였기 때문에
+> SSOT(시트/Notion) 직접 편집이 불가능. repo 내 JSON만 수정한 변경이 포함되어 있다.
+> **Mac 로컬 세션에서 이 블록을 읽고, 아래 시트/파이프라인 정리 항목을 처리해야 한다.**
+
+### 이번 세션 완료 (웹, 커밋 `a4a5688` → main)
+
+- [x] **[디렉터/웹]** ✅ `사냥시작(hunt_start)` 카드 잔존 버그 수정 (`index.html`)
+  - 원인: `useCard('hunt_start')`의 `!prey` early return이 카드를 손패에 남겨두고 종료. prey가 처치·도망으로 사라져도 자동 정리 로직이 없었음. 이동하지 않고 머무는 동안 계속 손에 남음.
+  - 조치:
+    1. `preys`/`currentTile` 감시 useEffect 추가 — 현재 타일에 해당 preyId가 없으면 손패에서 즉시 무덤행.
+    2. `useCard('hunt_start')` early return 경로에도 `setHand(... filter)` + `setGraveyard(...card)` 보강(방어적).
+
+- [x] **[디렉터/웹]** ✅ 동굴·평원 돌멩이 획득 확률 상향 (`data/drop_table.json` + `data/data.js`)
+  - 현재 JSON 상태: `weights.동굴.env = [70, 30]`, `weights.평원.env = [70, 30]` 추가 (stone:다른재료 = 7:3).
+  - 효과: 동굴 stone 확률 **27.5% → 38.5%** (+11%p), 평원 **20% → 28%** (+8%p).
+
+### 🚨 Mac 로컬 후속 (SSOT 불일치 해소)
+
+- [ ] **[요한/로컬]** ✍️ **시트 `드롭테이블`/`드롭풀` 또는 weights 영역에 동굴·평원 env 가중치 70:30 반영**
+  - **이슈**: 현재 시트에는 `weights` 구조가 `시냇물.food` 하나만 존재. `동굴/평원.env`는 JSON에 직접 적었기 때문에, 다음 `make data` 실행 시 시트 값으로 **덮어쓰여 롤백될 위험**이 있다.
+  - **조치 옵션 A (권장)**: 시트에 weights 탭/컬럼 체계가 어떻게 잡혀 있는지 로컬 세션에서 `scripts/fetch_data.py` 확인 후, 동굴/평원 env 가중치 행을 시트에 추가 → `make data` → diff로 `drop_table.json`이 같은 값으로 유지되는지 확인 후 커밋.
+  - **조치 옵션 B**: 파이프라인에 weights 시트 탭이 없다면, `fetch_data.py`에 weights 시트 파싱 추가 구현. 시트 구조는 가벼운 `(지역, 카테고리, 인덱스, 가중치)` 4열이면 충분.
+  - **빠른 체크**: `make data` 후 `data/drop_table.json`의 `weights.동굴`/`weights.평원` 키가 사라지면 SSOT 반영이 안 된 것.
+
+- [ ] **[요한/로컬]** ✍️ **(선택) 현 세션 범위 Notion 기록이 필요하면 design-decisions.md에 D-XX 소급 append**
+  - 이번 변경은 밸런스 조정 + 버그 픽스라 별도 D번호 없이 커밋 메시지만 남김.
+  - 만약 `동굴/평원 돌멩이 가중치`가 장기 원칙이면 D-XX로 정식화 가능.
+
+---
+
 ## 대기: 요한 측 작업 (9차 세션 — D-46 사냥감 전투 1단계)
 
 - [ ] **[요한]** 🧪 **QA: D-46 사냥감 전투 1단계**

@@ -1,6 +1,14 @@
 # project-state.md
 
-마지막 검증: 2026-04-23 (8th session — D-39 LootToast 맵 내부 + 불투명 0.8, D-40 find_food 토스트,
+마지막 검증: 2026-04-23 (**10th session — 웹 세션, claude.ai/code Linux 샌드박스**).
+`사냥시작(hunt_start)` 카드 잔존 버그 수정 + 동굴/평원 env 돌멩이 가중치 70:30 상향.
+변경 파일: `data/drop_table.json`·`data/data.js`·`index.html` 3개. 커밋 `a4a5688`, main 반영.
+이번 세션은 웹 환경 특성상 Notion MCP 미연결 + `*.notion.site` 방화벽 차단 상태였음. Notion 스펙 조회는 불가했고, repo 내 SSOT(JSON·코드)만으로 작업 완수.
+**시트 SSOT 불일치 잔여**: `weights.동굴.env`/`weights.평원.env`는 시트에 없고 JSON에만 있음. 다음 `make data` 시 롤백 위험 — 로컬 Mac 후속(`pending.md` 10차 세션 블록 참조).
+
+9th session — D-43~D-55 범위(사냥감 전투 1단계 포함)는 main에 병합돼있으나 이 파일에는 직접 요약 누락. 보강은 다음 로컬 세션에서.
+
+8th session — D-39 LootToast 맵 내부 + 불투명 0.8, D-40 find_food 토스트,
 D-41 롱프레스/컨텍스트 메뉴 차단, D-42 보스 가시성 분리. 4건 모두 UI/상태 변경만, 시트/드롭 로직 무영향.
 `bossVisible` state 도입으로 listen 1칸 → 이동 시 보스 아이콘 자동 은닉(지형 revealed 유지). LootToast 최상위 중복 마운트 제거.
 CSS+JS 이중으로 롱프레스 텍스트 선택/컨텍스트 메뉴 차단, input/textarea 예외. 로컬 python 서버 200 응답 확인,
