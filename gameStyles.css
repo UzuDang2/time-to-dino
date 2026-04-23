@@ -127,8 +127,25 @@ button:active {
     filter: brightness(1.2); 
 }
 
-.hex-tile.current { 
-    filter: drop-shadow(0 0 8px #e94560); 
+.hex-tile.current {
+    filter: drop-shadow(0 0 8px #e94560);
+}
+
+/* D-48 (2026-04-23 요한 지시): 보스 타일 시각 경고 최대치.
+   good/trap 색상보다 먼저 체크되는 다크레드 배경 위에, 펄스 그림자로
+   "즉각 인지"를 강제. 플레이어가 놓치지 않도록. */
+.hex-tile.boss {
+    filter: drop-shadow(0 0 10px #ff2c4b) drop-shadow(0 0 18px #8B0000);
+    animation: boss-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes boss-pulse {
+    from {
+        filter: drop-shadow(0 0 6px #e94560) drop-shadow(0 0 12px #8B0000);
+    }
+    to {
+        filter: drop-shadow(0 0 14px #ff2c4b) drop-shadow(0 0 24px #ff2c4b);
+    }
 }
 
 /* 인벤토리 */

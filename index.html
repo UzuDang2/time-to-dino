@@ -281,20 +281,24 @@
 
             const getTileColor = (tile) => {
                 if (!tile.visited && !tile.revealed) return '#1a1f3a';
+                // D-48 (2026-04-23 요한 지시): 보스 경고는 최고 우선순위.
+                // 이전 순서(good/trap이 먼저)였다면 "good+boss 겹침" 시 노랑(good)이 이겨
+                // 🦖 레이블만 작게 덮이는 혼동. 보스 가시성이 있을 때는 무조건 다크레드로.
+                if (boss && tile.id === boss.position && bossVisible) return '#8B0000';
                 if (tile.type === 'start') return '#4CAF50';
                 if (tile.type === 'exit' && tile.revealed) return '#2196F3';
-                if (tile.type === 'good' && tile.revealed) return '#FFC107';
                 if (tile.type === 'trap' && tile.revealed) return '#e94560';
-                // D-42: 보스 타일 배경색도 bossVisible에 연동 — 이동 후엔 평범한 타일로 위장.
-                if (boss && tile.id === boss.position && bossVisible) return '#8B0000';
+                if (tile.type === 'good' && tile.revealed) return '#FFC107';
                 return '#2d3561';
             };
 
             const getTileLabel = () => {
                 if (!isRevealed && !isCurrent) return '?';
+                // D-48: 보스는 내위치·탈출구·good·trap보다 먼저 표시.
+                // 단 '내위치' 는 플레이어 인식이 더 우선(이동·현재 상태 파악용).
                 if (isCurrent) return '내위치';
-                if (tile.type === 'exit') return '탈출구';
                 if (isBoss) return '🦖';
+                if (tile.type === 'exit') return '탈출구';
                 if (tile.type === 'good') return '👍';
                 if (tile.type === 'trap') return '⚠️';
                 return '';
@@ -309,11 +313,11 @@
             return (
                 <g key={tile.id} opacity={hasNoConnections ? 0 : 1}>
                     <polygon
-                        className={`hex-tile ${isCurrent ? 'current' : ''}`}
+                        className={`hex-tile ${isCurrent ? 'current' : ''} ${isBoss ? 'boss' : ''}`}
                         points={`${x},${y-50} ${x+43},${y-25} ${x+43},${y+25} ${x},${y+50} ${x-43},${y+25} ${x-43},${y-25}`}
                         fill={isCurrent ? '#f5f5f5' : getTileColor(tile)}
-                        stroke={isCurrent ? 'none' : canMove ? '#4CAF50' : '#0f3460'}
-                        strokeWidth={canMove ? '3' : '2'}
+                        stroke={isBoss ? '#ff2c4b' : isCurrent ? 'none' : canMove ? '#4CAF50' : '#0f3460'}
+                        strokeWidth={isBoss ? '4' : canMove ? '3' : '2'}
                         opacity={isRevealed || isCurrent ? 1 : 0.6}
                         onClick={() => !gameOver && !victory && canMove && moveTo(tile.id)}
                     />
@@ -1665,14 +1669,18 @@
                     });
                     setTiles(newTiles);
 
+                    // D-48 (2026-04-23 요한 지시): 보스 경고는 최고 우선순위.
+                    // 서사 문장("숨쉬는 소리...")만으론 플레이어가 무심코 지나쳐
+                    // 좋은곳으로 이동 → 조우하는 사고가 있었음. 거리 1~3은 ⚠️ 프리픽스로
+                    // "경고"임을 명시. 4칸 이상만 서사 톤 유지.
                     if (bossDist === 1) {
                         // D-42: 보스 위치 노출은 이 순간만. 이동 시 moveTo에서 다시 false로.
                         setBossVisible(true);
-                        msg += `가쁜 숨소리가 바로 곁에서 들려온다. 보스는 타일 #${bossPos}에 있다.`;
+                        msg += `⚠️ 보스 바로 옆! 타일 #${bossPos}에서 가쁜 숨소리가 들린다.`;
                     } else if (bossDist === 2) {
-                        msg += '숨쉬는 소리가 꽤 가까이 들리는 듯 하여 소름이 돋는다.';
+                        msg += '⚠️ 보스가 아주 가깝다. 숨쉬는 소리가 들릴 만큼.';
                     } else if (bossDist === 3) {
-                        msg += '발걸음 소리가 가까워진듯 하다.';
+                        msg += '⚠️ 보스가 다가오는 듯, 발걸음 소리가 가까워졌다.';
                     } else {
                         msg += '발걸음 소리가 아주 멀리서 들린다, 당분간은 안심해도 될 것 같다.';
                     }
