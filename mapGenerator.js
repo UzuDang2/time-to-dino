@@ -145,8 +145,46 @@ class MapGenerator {
         return Infinity;
     }
 
-    // 완전한 맵 생성
+    // D-47 맵 생성 — 검증·재시도 래퍼.
+    //   빈 슬롯 랜덤 배치로 인해 플레이어↔탈출구가 분리된 섬에 놓이거나 시작점이
+    //   모든 인접을 빈 슬롯에 둘러싸여 고립되는 케이스가 간헐적으로 발생했다.
+    //   MAX_RETRIES 내에서 _isValidMap을 통과할 때까지 재생성, 초과 시에도 마지막
+    //   결과를 반환(게임 진행은 최대한 막지 않도록 fallback).
     generate() {
+        const MAX_RETRIES = 40;
+        let lastResult = null;
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            const result = this._generateOnce();
+            if (this._isValidMap(result)) return result;
+            lastResult = result;
+        }
+        console.warn('[mapGen] 검증 실패 맵 ' + MAX_RETRIES + '회 재생성 초과 — 마지막 결과 반환');
+        return lastResult || this._generateOnce();
+    }
+
+    // 맵 유효성 검증.
+    //   1) playerStart 타일에 1개 이상의 connection 보장
+    //   2) playerStart에서 BFS로 exitPos 도달 가능
+    //   3) 도달 가능 타일 수가 비어있지 않은 전체 타일의 70% 이상 (섬 고립 완화)
+    _isValidMap({ tiles, playerStart, exitPos }) {
+        if (!tiles[playerStart] || tiles[playerStart].connections.length === 0) return false;
+        const reachable = new Set([playerStart]);
+        const queue = [playerStart];
+        while (queue.length > 0) {
+            const cur = queue.shift();
+            for (const n of tiles[cur].connections) {
+                if (!reachable.has(n)) {
+                    reachable.add(n);
+                    queue.push(n);
+                }
+            }
+        }
+        if (!reachable.has(exitPos)) return false;
+        const nonEmpty = tiles.filter(t => !t.isEmpty).length;
+        return reachable.size >= Math.floor(nonEmpty * 0.7);
+    }
+
+    _generateOnce() {
         const cornerCandidates = [0, 6, 42, 48, 3, 45];
         const playerStart = cornerCandidates[Math.floor(Math.random() * cornerCandidates.length)];
         
