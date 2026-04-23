@@ -1857,24 +1857,44 @@
                 
                 setTiles(newTiles);
                 setCurrentTile(targetId);
-                
-                // 손패 보충
-                let newHand = [...hand];
+
+                // D-46 (2026-04-23): 새 타일 도착 시 prey 조우/이탈 처리.
+                //   1) 이전 타일 대상 hunt_start 카드는 무조건 증발 (타일 이동했으므로 무효).
+                //      무덤 X — 재조우 시 다시 생성된다는 요한 확정 규칙.
+                //   2) HAND_SIZE 카운트는 `overflow` 플래그 없는 카드만 세도록 조정
+                //      (hunt_start가 손패에 있어도 5/5 카운터 유지).
+                //   3) 보충 끝난 뒤 preyHere 있으면 HUNT_START_CARD를 target 메타와 함께 append.
+                const preyHere = (preys || []).find(p => p.tileId === targetId);
+
+                // 손패 보충 (hunt_start overflow 카드는 항상 필터아웃 후 재생성)
+                let newHand = hand.filter(c => c.id !== 'hunt_start');
                 let newDeck = [...deck];
                 let newGraveyard = [...graveyard];
-                
-                while (newHand.length < HAND_SIZE && newDeck.length > 0) {
+
+                while (newHand.filter(c => !c.overflow).length < HAND_SIZE && newDeck.length > 0) {
                     newHand.push(newDeck.shift());
                 }
 
-                if (newHand.length < HAND_SIZE && newGraveyard.length > 0) {
+                if (newHand.filter(c => !c.overflow).length < HAND_SIZE && newGraveyard.length > 0) {
                     newDeck = shuffleDeck(newGraveyard);
                     newGraveyard = [];
-                    while (newHand.length < HAND_SIZE && newDeck.length > 0) {
+                    while (newHand.filter(c => !c.overflow).length < HAND_SIZE && newDeck.length > 0) {
                         newHand.push(newDeck.shift());
                     }
                 }
-                
+
+                if (preyHere) {
+                    newHand.push({
+                        ...HUNT_START_CARD,
+                        uid: `hunt_start_${preyHere.id}_${Date.now()}`,
+                        target: {
+                            tileId: targetId,
+                            preyId: preyHere.id,
+                            preyType: preyHere.preyType
+                        }
+                    });
+                }
+
                 setHand(newHand);
                 setDeck(newDeck);
                 setGraveyard(newGraveyard);
@@ -1962,7 +1982,7 @@
                                 alignItems: 'center'
                             }}>
                                 <div style={{ fontSize: '12px', color: '#aaa' }}>
-                                    손패 {hand.length}/{HAND_SIZE}
+                                    손패 {hand.filter(c => !c.overflow).length}/{HAND_SIZE}
                                 </div>
                                 <button onClick={() => setShowDeckList(true)}>
                                     덱 {deck.length}
