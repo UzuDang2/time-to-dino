@@ -1206,6 +1206,39 @@
         // 손패 보충 로직·초기 드로우·HandCards 그리드가 모두 이 상수 기준으로 동작한다.
         const HAND_SIZE = 5;
 
+        // D-46 (2026-04-23, 9차 세션): 사냥감 전투 1단계.
+        // PREY_HABITAT — 각 prey id의 서식 region 폴백.
+        //   시트 `사냥감` 탭에 habitat 컬럼이 추가되면 prey.habitat가 우선, 없으면 이 상수.
+        //   (SSOT 원칙: 편집은 시트 쪽에서. 이 상수는 파이프라인 승격 전 런타임 안전망.)
+        const PREY_HABITAT = {
+            rabbit:      ['덤불'],
+            mouse:       ['덤불'],
+            snake:       ['덤불'],
+            frog:        ['덤불'],
+            squirrel:    ['숲'],
+            salamander:  ['숲'],
+            bird:        ['평원'],
+            grasshopper: ['평원'],
+            crab:        ['시냇물']
+        };
+        // PREY_EMOJI — 런타임 UI 매핑 (SSOT와 무관, 아이콘만).
+        const PREY_EMOJI = {
+            rabbit: '🐰', mouse: '🐭', squirrel: '🐿️', bird: '🐦', salamander: '🦎',
+            snake: '🐍', frog: '🐸', crab: '🦀', grasshopper: '🦗'
+        };
+        // 사냥시작 카드 — 사냥감 타일 진입 시 손패에 자동 추가되는 overflow 카드.
+        //   `overflow:true` 플래그로 HAND_SIZE 카운트에서 제외(손패가 5장이어도 이 카드는 추가됨).
+        //   클릭 시 useCard('hunt_start')에서 즉시 소모 + 전투 모달 오픈.
+        const HUNT_START_CARD = {
+            id: 'hunt_start',
+            name: '사냥시작',
+            time: 1,
+            detection: 2,
+            effect: '사냥감과의 전투를 시작한다',
+            overflow: true,
+            count: 1
+        };
+
         function Game() {
             // 상태 관리
             const [tiles, setTiles] = useState([]);
@@ -1245,6 +1278,15 @@
             // - 플레이어가 이동하면 즉시 false (지형 revealed는 유지)
             // 공포 원칙: "한 번 본 보스 위치"가 아니라 "방금 귀기울인 위치"만 신뢰 가능.
             const [bossVisible, setBossVisible] = useState(false);
+            // D-46 (2026-04-23): 사냥감 전투 1단계 상태.
+            //   preys            — 맵에 살아있는 사냥감 배열 [{id, tileId, preyType}].
+            //   preyTraceTiles   — listen으로 감지된 "기척" 타일 id Set (visited 무관 표시).
+            //   preyFootprints   — 도망친 prey의 발자국 {tileId: {fromTile, toTile}}.
+            //   activeHunt       — 전투 모달 활성화 시 {prey, card}, 미활성 null.
+            const [preys, setPreys] = useState([]);
+            const [preyTraceTiles, setPreyTraceTiles] = useState(new Set());
+            const [preyFootprints, setPreyFootprints] = useState({});
+            const [activeHunt, setActiveHunt] = useState(null);
             const mapRef = useRef(null);
 
             // 토스트 발사 — entries는 묶음 표시 대상.
@@ -1313,6 +1355,24 @@
                 const newBoss = new BossMonster(newTiles, playerStart);
                 newBoss.position = bossPos;
                 setBoss(newBoss);
+
+                // D-46: 사냥감 5마리 스폰 (habitat region 매칭).
+                //   reserved = 플레이어 시작/보스/탈출구. preyData는 TTD_DATA.PREY.
+                //   habitatFallback은 prey.habitat 없을 때만 사용.
+                const preyData = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                const spawned = (typeof window.spawnPrey === 'function')
+                    ? window.spawnPrey(newTiles, preyData, 5, {
+                        playerStartId: playerStart,
+                        bossPosId: bossPos,
+                        exitPosId: exitPos
+                    }, PREY_HABITAT)
+                    : [];
+                setPreys(spawned);
+                setPreyTraceTiles(new Set());
+                setPreyFootprints({});
+                setActiveHunt(null);
+                // 콘솔 검증용 — 릴리스 시 제거해도 무방.
+                if (typeof window !== 'undefined') window.__preys = spawned;
             }
 
             function initializeDeck(cards) {

@@ -225,8 +225,67 @@ class MapGenerator {
     }
 }
 
+// D-46 사냥감 스폰 (2026-04-23, 9차 세션):
+//   level 1 사냥감 9종 중 무작위로 `count`마리 스폰. habitat region과 일치하는 타일에만 배치.
+//   reserved 타일(플레이어 시작/보스/탈출구)과 이미 다른 prey 있는 타일은 제외.
+//   habitat 필드는 prey.habitat → window.TTD_PREY_HABITAT → habitatFallback 순서로 fallback.
+//
+// 인자:
+//   tiles          — 생성된 타일 배열
+//   preyData       — window.TTD_DATA.PREY (배열)
+//   count          — 스폰 마릿수 (기본 5)
+//   reserved       — { playerStartId, bossPosId, exitPosId } (다른 prey 이미 있는 타일은 내부에서 추적)
+//   habitatFallback— 외부에서 주입하는 habitat 매핑 (index.html의 PREY_HABITAT 상수)
+//
+// 반환: [{ id: 'prey_0', tileId, preyType: 'rabbit' }, ...]
+function spawnPrey(tiles, preyData, count = 5, reserved = {}, habitatFallback = {}) {
+    if (!Array.isArray(preyData) || preyData.length === 0) return [];
+    const level1 = preyData.filter(p => p && p.level === 1);
+    if (level1.length === 0) return [];
+
+    const reservedSet = new Set(
+        [reserved.playerStartId, reserved.bossPosId, reserved.exitPosId].filter(v => v !== undefined && v !== null)
+    );
+    const occupied = new Set();
+    const spawned = [];
+
+    const MAX_SPECIES_ATTEMPTS = 10;
+    for (let i = 0; i < count; i++) {
+        let placed = false;
+        const triedTypes = new Set();
+        for (let attempt = 0; attempt < MAX_SPECIES_ATTEMPTS && !placed; attempt++) {
+            const pool = level1.filter(p => !triedTypes.has(p.id));
+            if (pool.length === 0) break;
+            const prey = pool[Math.floor(Math.random() * pool.length)];
+            triedTypes.add(prey.id);
+
+            const habitat = (Array.isArray(prey.habitat) && prey.habitat.length > 0)
+                ? prey.habitat
+                : (habitatFallback[prey.id] || []);
+            if (habitat.length === 0) continue;
+
+            const candidates = tiles.filter(t =>
+                !t.isEmpty &&
+                habitat.includes(t.region) &&
+                !reservedSet.has(t.id) &&
+                !occupied.has(t.id)
+            );
+            if (candidates.length === 0) continue;
+
+            const tile = candidates[Math.floor(Math.random() * candidates.length)];
+            occupied.add(tile.id);
+            spawned.push({ id: `prey_${i}`, tileId: tile.id, preyType: prey.id });
+            placed = true;
+        }
+    }
+
+    return spawned;
+}
+
 // Export
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { MapGenerator, REGIONS, REGION_WEIGHTS, pickWeightedRegion };
+    module.exports = { MapGenerator, REGIONS, REGION_WEIGHTS, pickWeightedRegion, spawnPrey };
     module.exports.default = MapGenerator;
+} else if (typeof window !== 'undefined') {
+    window.spawnPrey = spawnPrey;
 }
