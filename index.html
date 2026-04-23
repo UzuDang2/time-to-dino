@@ -1220,6 +1220,115 @@
             );
         }
 
+        // 플레이 가이드 모달 — 인게임 [플레이방법] 버튼으로 호출.
+        // D-53 (2026-04-23 요한 지시): 게임을 처음 만나는 사람도 바로 이해할 수 있는
+        // 간소화 가이드. GUIDE.md(외부 공유용 상세본)와 별도로, 인게임에서는 핵심만.
+        function HelpModal({ onClose }) {
+            const sectionTitle = {
+                fontSize: '14px',
+                fontWeight: 700,
+                color: '#d4b84a',
+                marginTop: '14px',
+                marginBottom: '6px',
+                letterSpacing: '0.5px'
+            };
+            const para = { fontSize: '13px', lineHeight: 1.55, color: '#ddd', marginBottom: '6px' };
+            const list = { fontSize: '13px', lineHeight: 1.6, color: '#ddd', paddingLeft: '18px', marginBottom: '6px' };
+            const link = { color: '#4CAF50', textDecoration: 'none', fontWeight: 600 };
+
+            return (
+                <div className="modal" onClick={onClose}>
+                    <div
+                        className="modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ maxWidth: '460px', width: '90vw', textAlign: 'left' }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <div style={{ fontSize: '18px', fontWeight: 700 }}>타임 투 다이노</div>
+                            <button onClick={onClose} style={{ fontSize: '12px', padding: '4px 10px' }}>닫기</button>
+                        </div>
+
+                        <div style={para}>
+                            카드로 행동하며 숲에서 살아남아 탈출구를 찾는 생존 게임입니다.
+                        </div>
+                        <div style={para}>
+                            <a href="https://uzudang2.github.io/time-to-dino/" target="_blank" rel="noopener" style={link}>
+                                플레이하기 ↗
+                            </a>
+                        </div>
+
+                        <div style={sectionTitle}>🎯 목표</div>
+                        <div style={para}>
+                            지도 어딘가의 <b style={{ color: '#2196F3' }}>파란 탈출구 타일</b>에 도착하면 승리.
+                        </div>
+                        <div style={para}>다만,</div>
+                        <ul style={list}>
+                            <li>체력이 0이 되거나</li>
+                            <li>보스에게 잡히면 게임 오버</li>
+                        </ul>
+
+                        <div style={sectionTitle}>🃏 기본 흐름</div>
+                        <div style={para}>한 턴마다 카드를 써서 행동합니다.</div>
+                        <div style={para}>주로 하는 일은 세 가지:</div>
+                        <ul style={list}>
+                            <li>이동하기</li>
+                            <li>아이템 모으기</li>
+                            <li>보스에게 들키지 않기</li>
+                        </ul>
+
+                        <div style={sectionTitle}>⚠️ 꼭 알아야 할 3가지</div>
+                        <ul style={list}>
+                            <li><b>배고픔</b>은 이동할 때마다 줄어듭니다.</li>
+                            <li><b>발각률 80% 이상</b>이 되면 보스가 추격합니다.</li>
+                            <li>귀 기울이기 / 숨기 / 휴식으로 위험을 낮출 수 있습니다.</li>
+                        </ul>
+
+                        <div style={sectionTitle}>🎴 카드 설명</div>
+                        <ul style={list}>
+                            <li><b>뒤져보기</b>: 현재 위치에서 아이템 탐색</li>
+                            <li><b>귀 기울이기</b>: 주변 타일 확인, 보스 거리 파악, 발각률 감소</li>
+                            <li><b>음식 찾기</b>: 음식 획득 시도</li>
+                            <li><b>숨기</b>: 발각률 크게 감소</li>
+                            <li><b>휴식</b>: 음식 소비 후 체력·배고픔 회복</li>
+                        </ul>
+
+                        <div style={sectionTitle}>🎒 아이템</div>
+                        <div style={para}>
+                            아이템은 가방에 들어가며, 서로 합치거나 조합할 수 있습니다.
+                        </div>
+                        <ul style={list}>
+                            <li><b>같은 아이템 2개</b>: 머지</li>
+                            <li><b>다른 재료 2개</b>: 조합</li>
+                        </ul>
+
+                        <div style={sectionTitle}>💡 생존 팁</div>
+                        <ul style={list}>
+                            <li>이동 전에 <b>귀 기울이기</b>를 먼저 쓰세요.</li>
+                            <li><b>풍족한 땅</b>에서는 아이템이 잘 나옵니다.</li>
+                            <li>배고픔이 바닥나기 전에 음식을 챙기세요.</li>
+                            <li>발각률이 높아지면 숨기나 휴식으로 조절하세요.</li>
+                        </ul>
+
+                        <div style={sectionTitle}>🛠️ 곧 추가될 요소</div>
+                        <ul style={list}>
+                            <li><b>전투 시스템</b> — 몬스터와 카드 전투</li>
+                            <li><b>사냥감 시스템</b> — 지도에 동물이 나타남</li>
+                            <li><b>재료 아이템 용도</b> — 돌멩이·나뭇가지 등으로 무기·덫·거처 제작</li>
+                            <li><b>빌딩/거점</b> — 임시 거처로 회복 거점 운영</li>
+                        </ul>
+
+                        <div style={{ ...para, marginTop: '12px', fontStyle: 'italic', color: '#aaa' }}>
+                            한 줄 요약 — 탐색하고, 모으고, 들키지 말고, 탈출구까지 가면 됩니다.
+                        </div>
+
+                        <div style={{ marginTop: '14px', textAlign: 'center' }}>
+                            <button onClick={onClose} style={{ padding: '8px 22px', fontSize: '13px' }}>닫기</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // 카드 더미(덱/무덤) 목록 모달
         //
         // D-27 HUD 리뉴얼 (요한 지시 2026-04-22):
@@ -1353,6 +1462,8 @@
             // D-27 HUD 리뉴얼: 덱/무덤 목록 모달 표시 플래그.
             const [showDeckList, setShowDeckList] = useState(false);
             const [showGraveyardList, setShowGraveyardList] = useState(false);
+            // D-53: 인게임 [플레이방법] 모달.
+            const [showHelp, setShowHelp] = useState(false);
             const [eventTile, setEventTile] = useState(null);
             // 전투 임시 카드(아이템 사용으로 생성) — 전투 진입 시 combat 덱에 병합, 사용 후 소멸.
             // 구조: [{ id:'throw', count:N }, ...]
@@ -1952,8 +2063,14 @@
                             <button onClick={() => setShowInventory(!showInventory)}>
                                 {showInventory ? '가방 닫기' : '가방 열기'}
                             </button>
+                            {/* D-53: 가운데 정렬은 양쪽 marginLeft/Right auto. 좌(가방)와 우(덱/무덤) 사이 등분. */}
+                            <button
+                                onClick={() => setShowHelp(true)}
+                                style={{ marginLeft: 'auto', marginRight: 'auto' }}
+                            >
+                                플레이방법
+                            </button>
                             <div style={{
-                                marginLeft: 'auto',
                                 display: 'flex',
                                 gap: '6px',
                                 alignItems: 'center'
@@ -2008,6 +2125,10 @@
                             onUseItem={handleUseItem}
                             onFlashMessage={setMessage}
                         />
+                    )}
+
+                    {showHelp && (
+                        <HelpModal onClose={() => setShowHelp(false)} />
                     )}
 
                     {showDeckList && (
