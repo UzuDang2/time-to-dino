@@ -101,10 +101,12 @@
     // D-46 (2026-04-23) — 사냥 전투 해결 로직.
     //   3턴 고정. 3턴차는 prey가 '빠르게 도망' → prey_fled (카드 무관).
     //   각 턴: 플레이어 카드 → success_rate 판정 → run_away 성공 시 즉시 player_fled 종료
-    //   → damage>0이면 prey evade_rate 20% 판정 → 명중 시 hp 차감 → hp<=0이면 victory 즉시 종료.
+    //   → damage>0이면 prey.evade_rate 판정 → 명중 시 hp 차감 → hp<=0이면 victory 즉시 종료.
+    //   evade_rate는 prey별 개별 설정(시트 '사냥감' 탭), 누락 시 20 폴백.
     //   turns 배열은 모달 로그 단위로 순차 표시할 수 있게 구조화.
     function resolveHunt(prey, userSlots) {
         let hp = prey.hp;
+        const evadeRate = (Number(prey.evade_rate) >= 0) ? Number(prey.evade_rate) : 20;
         const turns = [];
         for (let t = 0; t < 3; t++) {
             if (t === 2) {
@@ -125,7 +127,7 @@
                 return { outcome: 'player_fled', turns, preyHpFinal: hp };
             }
             if (cardHit && (card.damage || 0) > 0) {
-                const preyEvaded = Math.random() * 100 < 20;
+                const preyEvaded = Math.random() * 100 < evadeRate;
                 if (!preyEvaded) {
                     hp -= card.damage;
                     turns.push({
