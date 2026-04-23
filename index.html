@@ -302,11 +302,17 @@
                 return '';
             };
 
-            // 지역 이름 오버레이 — 방문한 타일에만 표시(요한 지시 2026-04-22).
-            // revealed만 된 상태(정찰 등)에서는 스포일러 방지를 위해 숨긴다.
-            const regionLabel = tile.visited && tile.region
+            // 지역 이름 오버레이.
+            // D-51 (2026-04-23 요한 지시): revealed(귀기울이기 등)도 지형 이름 노출.
+            // 이전(D-27~): visited만 표시. 이제 listen으로 주변 지형 파악이 가능해짐.
+            // 방문(visited)과 정찰(revealed only) 구분:
+            // - visited: 초록 동그란 마커 + 지형 이름, 타일 밝음(opacity 1)
+            // - revealed only: 지형 이름만 (마커 없음), 타일 약간 어두움(opacity 0.7)
+            // - 미공개: 아무것도 없음, 타일 매우 어두움(opacity 0.55)
+            const regionLabel = (tile.visited || tile.revealed) && tile.region
                 ? (REGION_LABEL[tile.region] || tile.region)
                 : null;
+            const tileOpacity = tile.visited ? 1 : tile.revealed ? 0.7 : 0.55;
 
             return (
                 <g key={tile.id} opacity={hasNoConnections ? 0 : 1}>
@@ -316,7 +322,7 @@
                         fill={getTileColor(tile)}
                         stroke={canMove ? '#4CAF50' : '#0f3460'}
                         strokeWidth={canMove ? '3' : '2'}
-                        opacity={isRevealed ? 1 : 0.6}
+                        opacity={tileOpacity}
                         onClick={() => !gameOver && !victory && canMove && moveTo(tile.id)}
                     />
                     {regionLabel && (
@@ -329,6 +335,9 @@
                                 rx="3"
                                 fill="rgba(0,0,0,0.55)"
                             />
+                            {tile.visited && (
+                                <circle cx={x - 22} cy={y - 36} r="3" fill="#4CAF50" />
+                            )}
                             <text
                                 x={x}
                                 y={y - 32}
