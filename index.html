@@ -1266,6 +1266,245 @@
         }
 
         // ============================================
+        // 사냥 전투 모달 (D-46, 2026-04-23)
+        // ============================================
+        //
+        // 구조:
+        //   - 상단: prey 이름 + HP 바 + meat 표시
+        //   - 적 패턴 3슬롯(readonly): 회피 / 회피 / 빠르게 도망
+        //   - 내 슬롯 3칸: 비었으면 "비었음", 카드 있으면 카드 렌더(탭→손패 복귀)
+        //   - 확정 버튼: 3슬롯 모두 차야 활성
+        //   - 내 손패: buildHuntDeck 결과. 탭 시 가장 왼쪽 빈 슬롯에 배치.
+        //
+        // 슬롯↔손패 이동은 uid 기준. "뒤 슬롯 고정" 원칙 — 슬롯→손패 복귀 시 다른 슬롯 위치 유지.
+        // 확정 시 resolveHunt(prey, slots) → 턴 로그 순차 표시(500ms) → onResolve(result) 콜백.
+        function HuntCombatModal({ prey, inventory, combatCards, onResolve, onCancel }) {
+            const [slots, setSlots] = useState([null, null, null]);
+            const [hand, setHand] = useState(() => CombatDeck.buildHuntDeck(combatCards, inventory));
+            const [phase, setPhase] = useState('select');     // 'select' | 'resolve' | 'done'
+            const [logs, setLogs] = useState([]);             // 표시된 턴 로그
+            const [result, setResult] = useState(null);
+
+            const hpPct = Math.max(0, Math.min(100, ((prey.hp - (prey.hp - (prey.hpCurrent ?? prey.hp))) / prey.hp) * 100));
+            // 전투 시작 시 hpCurrent = prey.hp. 이후 표시용으로만 사용.
+            const [hpCurrent, setHpCurrent] = useState(prey.hp);
+
+            const allFilled = slots.every(s => s !== null);
+
+            const handleHandClick = (card) => {
+                if (phase !== 'select') return;
+                const emptyIdx = slots.findIndex(s => s === null);
+                if (emptyIdx < 0) return;
+                const newSlots = [...slots];
+                newSlots[emptyIdx] = card;
+                setSlots(newSlots);
+                setHand(hand.filter(c => c.uid !== card.uid));
+            };
+
+            const handleSlotClick = (slotIdx) => {
+                if (phase !== 'select') return;
+                const card = slots[slotIdx];
+                if (!card) return;
+                const newSlots = [...slots];
+                newSlots[slotIdx] = null;
+                setSlots(newSlots);
+                setHand([...hand, card]);
+            };
+
+            const handleConfirm = () => {
+                if (!allFilled || phase !== 'select') return;
+                const res = CombatDeck.resolveHunt(prey, slots);
+                setResult(res);
+                setPhase('resolve');
+
+                // 턴 로그 500ms 간격 순차 표시
+                res.turns.forEach((turn, idx) => {
+                    setTimeout(() => {
+                        setLogs(prev => [...prev, turn]);
+                        if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
+                    }, 500 * (idx + 1));
+                });
+                // 마지막 로그 후 500ms + 마무리 딜레이
+                setTimeout(() => {
+                    setPhase('done');
+                    onResolve(res);
+                }, 500 * (res.turns.length + 1));
+            };
+
+            const hpDisplayPct = Math.max(0, Math.min(100, (hpCurrent / prey.hp) * 100));
+            const preyName = prey.name || prey.preyType;
+
+            return (
+                <div className="modal">
+                    <div style={{
+                        background: '#1a1a2e',
+                        color: '#eee',
+                        padding: '20px',
+                        borderRadius: '12px',
+                        width: '92%',
+                        maxWidth: '480px',
+                        maxHeight: '90vh',
+                        overflowY: 'auto'
+                    }}>
+                        {/* 상단: prey 정보 */}
+                        <div style={{ marginBottom: '14px' }}>
+                            <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '6px' }}>
+                                사냥: {preyName} 🥩×{prey.meat}
+                            </div>
+                            <div style={{
+                                height: '14px',
+                                background: '#333',
+                                borderRadius: '7px',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{
+                                    width: `${hpDisplayPct}%`,
+                                    height: '100%',
+                                    background: '#b24656',
+                                    transition: 'width 0.3s ease'
+                                }} />
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px' }}>
+                                HP {hpCurrent}/{prey.hp}
+                            </div>
+                        </div>
+
+                        {/* 적 패턴 3슬롯 (readonly) */}
+                        <div style={{ marginBottom: '10px' }}>
+                            <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>적 행동</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                                {['회피 20%', '회피 20%', '빠르게 도망 100%'].map((txt, i) => (
+                                    <div key={i} style={{
+                                        padding: '8px 4px',
+                                        background: '#2a2a3e',
+                                        border: '1px solid #444',
+                                        borderRadius: '6px',
+                                        fontSize: '11px',
+                                        textAlign: 'center',
+                                        opacity: logs.find(l => l.turn === i + 1) ? 0.5 : 1
+                                    }}>
+                                        T{i + 1}<br/>{txt}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 내 슬롯 3칸 */}
+                        <div style={{ marginBottom: '10px' }}>
+                            <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>내 슬롯</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                                {slots.map((card, i) => (
+                                    <div key={i}
+                                        onClick={() => handleSlotClick(i)}
+                                        style={{
+                                            padding: '10px 4px',
+                                            background: card ? '#3a3a5e' : '#222',
+                                            border: card ? '1px solid #6a6aaa' : '1px dashed #444',
+                                            borderRadius: '6px',
+                                            fontSize: '12px',
+                                            textAlign: 'center',
+                                            cursor: phase === 'select' && card ? 'pointer' : 'default',
+                                            minHeight: '48px'
+                                        }}>
+                                        {card ? (
+                                            <div>
+                                                <div style={{ fontWeight: '600' }}>{card.name}</div>
+                                                <div style={{ fontSize: '10px', color: '#aaa' }}>
+                                                    {card.damage > 0 ? `공${card.damage}` : ''} {card.success_rate}%
+                                                </div>
+                                            </div>
+                                        ) : <span style={{ color: '#666' }}>비었음</span>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 확정 버튼 */}
+                        <button
+                            disabled={!allFilled || phase !== 'select'}
+                            onClick={handleConfirm}
+                            style={{
+                                width: '100%',
+                                padding: '10px',
+                                marginBottom: '10px',
+                                background: allFilled && phase === 'select' ? '#4CAF50' : '#444',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                cursor: allFilled && phase === 'select' ? 'pointer' : 'not-allowed'
+                            }}
+                        >
+                            {phase === 'select' ? '확정' : phase === 'resolve' ? '전투 중...' : '완료'}
+                        </button>
+
+                        {/* 턴 로그 (resolve/done 페이즈) */}
+                        {logs.length > 0 && (
+                            <div style={{
+                                background: '#0f0f1a',
+                                padding: '8px',
+                                borderRadius: '6px',
+                                marginBottom: '10px',
+                                fontSize: '11px',
+                                maxHeight: '110px',
+                                overflowY: 'auto'
+                            }}>
+                                {logs.map((log, i) => (
+                                    <div key={i} style={{ marginBottom: '3px' }}>
+                                        T{log.turn}: {log.userCard ? `${log.userCard.name} → ` : '빈 슬롯 → '}
+                                        {log.outcome === 'flee_signal' && '사냥감이 빠르게 도망친다!'}
+                                        {log.outcome === 'player_flee' && '물러섰다.'}
+                                        {log.outcome === undefined && (
+                                            log.userCard == null ? `prey ${log.preyAction}`
+                                            : !log.hit ? '빗나감'
+                                            : log.preyEvaded ? `명중했지만 회피당함`
+                                            : `데미지 ${log.damage} (HP ${log.preyHpAfter})`
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* 내 손패 */}
+                        {phase === 'select' && (
+                            <div>
+                                <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>내 손패</div>
+                                {hand.length === 0 ? (
+                                    <div style={{ color: '#666', fontSize: '11px', padding: '10px' }}>
+                                        사용할 수 있는 전투 카드가 없다.
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                                        {hand.map(card => (
+                                            <div key={card.uid}
+                                                onClick={() => handleHandClick(card)}
+                                                style={{
+                                                    padding: '8px 4px',
+                                                    background: '#2a2a4e',
+                                                    border: '1px solid #555',
+                                                    borderRadius: '6px',
+                                                    fontSize: '11px',
+                                                    textAlign: 'center',
+                                                    cursor: 'pointer',
+                                                    minHeight: '44px'
+                                                }}>
+                                                <div style={{ fontWeight: '600' }}>{card.name}</div>
+                                                <div style={{ fontSize: '10px', color: '#aaa' }}>
+                                                    {card.damage > 0 ? `공${card.damage} ` : ''}{card.success_rate}%
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // ============================================
         // 메인 게임 컴포넌트
         // ============================================
 
@@ -1361,6 +1600,12 @@
             const showLootToast = (entries) => {
                 if (!entries || entries.length === 0) return;
                 setLootToast({ id: Date.now() + Math.random(), entries });
+            };
+
+            // D-46 (2026-04-23) — 전투 결과 후처리. step 7에서 본체 구현.
+            // 여기서는 모달 닫기만 (스캐폴딩).
+            const handleHuntResolve = (result) => {
+                setActiveHunt(null);
             };
 
             // 게임 초기화
@@ -1641,6 +1886,38 @@
             const useCard = (card) => {
                 if (time + card.time > maxTime) {
                     setMessage('시간이 부족합니다!');
+                    return;
+                }
+
+                // D-46 (2026-04-23): hunt_start 카드 분기.
+                //   현재 preys에서 target.preyId로 prey 찾기. 없으면 "사라졌다" 메시지 + 자원 미소모.
+                //   있으면 즉시 소모(time+1/detection+2/손패 제거/무덤 추가) 후 activeHunt set.
+                if (card.id === 'hunt_start') {
+                    const targetId = card.target && card.target.preyId;
+                    const prey = (preys || []).find(p => p.id === targetId);
+                    if (!prey) {
+                        setMessage('사냥감이 사라졌다.');
+                        return;
+                    }
+                    const preyData = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                    const preyDef = preyData.find(p => p.id === prey.preyType) || {};
+                    setHand(hand.filter(c => c.uid !== card.uid));
+                    setGraveyard([...graveyard, card]);
+                    setTime(time + card.time);
+                    const newDetection = Math.min(100, Math.max(0, detection + card.detection));
+                    setDetection(newDetection);
+                    setActiveHunt({
+                        prey: {
+                            id: prey.id,
+                            tileId: prey.tileId,
+                            preyType: prey.preyType,
+                            name: preyDef.name || prey.preyType,
+                            hp: preyDef.hp || 1,
+                            meat: preyDef.meat || 1,
+                            evade_rate: preyDef.evade_rate || 20
+                        }
+                    });
+                    setMessage(`${preyDef.name || '사냥감'}과 전투를 시작한다.`);
                     return;
                 }
 
@@ -2068,6 +2345,17 @@
                     {/* D-42 (2026-04-23): 최상위 LootToast 제거.
                         이미 GameMap 내부에서 렌더되므로 중복 마운트였음.
                         맵 컨테이너 기준 top:12px 하나만 유지. */}
+
+                    {/* D-46 (2026-04-23): 사냥 전투 모달. activeHunt 설정되면 마운트. */}
+                    {activeHunt && (
+                        <HuntCombatModal
+                            prey={activeHunt.prey}
+                            inventory={inventory}
+                            combatCards={(window.TTD_DATA && window.TTD_DATA.COMBAT_CARDS) || []}
+                            onResolve={handleHuntResolve}
+                            onCancel={() => setActiveHunt(null)}
+                        />
+                    )}
 
                     <GameEndModal gameOver={gameOver} victory={victory} />
                 </div>

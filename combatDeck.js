@@ -57,7 +57,93 @@
         return next;
     }
 
-    const api = { buildCombatDeck, consumeExtraCard, RUNTIME_CARDS };
+    // D-46 (2026-04-23) — 사냥감 전투 덱 빌드.
+    //   보스 전투와 별개 파이프라인. 손패 구성은 간단:
+    //     - `requirement === '없음'` 또는 '없음 (항상 사용 가능)' 포함: 무조건 포함.
+    //     - 그 외: 인벤 아이템 중 하나의 `ITEMS[type].name`이 requirement와 일치해야 포함.
+    //   통과한 카드를 `count || 1`만큼 복제하고 uid `combat:{id}:{idx}` 부여.
+    //   기존 buildCombatDeck / RUNTIME_CARDS / consumeExtraCard는 건드리지 않음 (보스 전투 경로).
+    function buildHuntDeck(combatCardsJson, inventory) {
+        const cards = Array.isArray(combatCardsJson) ? combatCardsJson : [];
+        const items = (inventory && Array.isArray(inventory.items)) ? inventory.items : [];
+        // inventory는 InventorySystem 인스턴스. ITEMS 사전은 InventorySystem.ITEMS.
+        // 런타임에 전역으로 접근 가능. TTD_DATA.ITEMS는 이름 치환용(이미 ITEMS에 반영됨).
+        const ITEM_DEFS = (typeof window !== 'undefined' && window.InventorySystem && window.InventorySystem.ITEMS)
+            ? window.InventorySystem.ITEMS
+            : (typeof InventorySystem !== 'undefined' && InventorySystem.ITEMS) || {};
+
+        const ownedNames = new Set(
+            items.map(it => (ITEM_DEFS[it.type] || {}).name).filter(Boolean)
+        );
+
+        const deck = [];
+        let idx = 0;
+        for (const card of cards) {
+            const req = card && card.requirement;
+            const isFree = typeof req === 'string' && (req === '없음' || req.indexOf('없음') === 0);
+            const pass = isFree || (typeof req === 'string' && ownedNames.has(req));
+            if (!pass) continue;
+            const copies = Number(card.count) || 1;
+            for (let i = 0; i < copies; i++) {
+                deck.push({ ...card, uid: `combat:${card.id}:${idx++}` });
+            }
+        }
+        return deck;
+    }
+
+    // D-46 (2026-04-23) — 사냥 전투 해결 로직.
+    //   3턴 고정. 3턴차는 prey가 '빠르게 도망' → prey_fled (카드 무관).
+    //   각 턴: 플레이어 카드 → success_rate 판정 → run_away 성공 시 즉시 player_fled 종료
+    //   → damage>0이면 prey evade_rate 20% 판정 → 명중 시 hp 차감 → hp<=0이면 victory 즉시 종료.
+    //   turns 배열은 모달 로그 단위로 순차 표시할 수 있게 구조화.
+    function resolveHunt(prey, userSlots) {
+        let hp = prey.hp;
+        const turns = [];
+        for (let t = 0; t < 3; t++) {
+            if (t === 2) {
+                turns.push({ turn: t + 1, preyAction: '빠르게 도망', outcome: 'flee_signal' });
+                return { outcome: 'prey_fled', turns, preyHpFinal: hp };
+            }
+            const card = userSlots[t];
+            if (!card) {
+                turns.push({ turn: t + 1, preyAction: '회피', userCard: null, hit: false, preyHpAfter: hp });
+                continue;
+            }
+            const cardHit = Math.random() * 100 < (card.success_rate || 0);
+            if (card.id === 'run_away' && cardHit) {
+                turns.push({
+                    turn: t + 1, preyAction: '회피', userCard: card,
+                    outcome: 'player_flee', preyHpAfter: hp
+                });
+                return { outcome: 'player_fled', turns, preyHpFinal: hp };
+            }
+            if (cardHit && (card.damage || 0) > 0) {
+                const preyEvaded = Math.random() * 100 < 20;
+                if (!preyEvaded) {
+                    hp -= card.damage;
+                    turns.push({
+                        turn: t + 1, preyAction: '회피', userCard: card,
+                        hit: true, preyEvaded: false, damage: card.damage, preyHpAfter: hp
+                    });
+                    if (hp <= 0) return { outcome: 'victory', turns, preyHpFinal: hp };
+                } else {
+                    turns.push({
+                        turn: t + 1, preyAction: '회피', userCard: card,
+                        hit: true, preyEvaded: true, preyHpAfter: hp
+                    });
+                }
+            } else {
+                turns.push({
+                    turn: t + 1, preyAction: '회피', userCard: card,
+                    hit: false, preyHpAfter: hp
+                });
+            }
+        }
+        // 논리적으로 안 닿음 (t===2에서 return). 안전망.
+        return { outcome: 'prey_fled', turns, preyHpFinal: hp };
+    }
+
+    const api = { buildCombatDeck, consumeExtraCard, RUNTIME_CARDS, buildHuntDeck, resolveHunt };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
