@@ -1363,11 +1363,11 @@
                 if (!toast) return;
                 setPhase('in');
                 const t1 = setTimeout(() => setPhase('hold'), 200);   // 페이드 인 0.2s
-                const t2 = setTimeout(() => setPhase('out'), 200 + 1000); // 유지 1s
+                const t2 = setTimeout(() => setPhase('out'), 200 + 2000); // 유지 2s
                 const t3 = setTimeout(() => {                         // 페이드 아웃 0.25s (easeOutCirc)
                     setPhase('done');
                     onDone && onDone();
-                }, 200 + 1000 + 250);
+                }, 200 + 2000 + 250);
                 return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
             }, [toast && toast.id]);
 
@@ -1442,11 +1442,11 @@
                 if (!toast) return;
                 setPhase('in');
                 const t1 = setTimeout(() => setPhase('hold'), 200);
-                const t2 = setTimeout(() => setPhase('out'), 200 + 1000);
+                const t2 = setTimeout(() => setPhase('out'), 200 + 2000);
                 const t3 = setTimeout(() => {
                     setPhase('done');
                     onDone && onDone();
-                }, 200 + 1000 + 250);
+                }, 200 + 2000 + 250);
                 return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
             }, [toast && toast.id]);
 
