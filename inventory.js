@@ -7,12 +7,31 @@
 // 시그니처는 기존과 동일(canMerge/mergeItems/confirmPlacement). 호출부 회귀 없음.
 
 class InventorySystem {
-    constructor(rows = 6, cols = 5) {
+    // D-47: 기본 가방 모양 5x5, 위 2행의 좌우 구석 4칸은 disabled (배치 불가).
+    //   시각적으로는 "위 2x3 + 아래 5x3 연결"처럼 보임.
+    //   options.disabled = [{x,y}, ...] 로 커스텀 레이아웃 주입 가능.
+    static DEFAULT_DISABLED = [
+        { x: 0, y: 0 }, { x: 4, y: 0 },
+        { x: 0, y: 1 }, { x: 4, y: 1 }
+    ];
+
+    constructor(rows = 5, cols = 5, options = {}) {
         this.rows = rows;
         this.cols = cols;
         this.grid = Array(rows).fill(null).map(() => Array(cols).fill(null));
+        this.disabled = new Set();
+        const defs = Array.isArray(options.disabled) ? options.disabled : InventorySystem.DEFAULT_DISABLED;
+        for (const { x, y } of defs) {
+            if (typeof x === 'number' && typeof y === 'number') {
+                this.disabled.add(`${x},${y}`);
+            }
+        }
         this.selectedItem = null;
         this.items = [];
+    }
+
+    isDisabled(x, y) {
+        return this.disabled.has(`${x},${y}`);
     }
 
     // 머지 수량 N — 전역 상수(D-24). 같은 재료를 N개 겹쳐야 머지 성립.
@@ -216,7 +235,10 @@ class InventorySystem {
         for (let dy = 0; dy < height; dy++) {
             for (let dx = 0; dx < width; dx++) {
                 if (shape[dy][dx] === 1) {
-                    const cell = this.grid[y + dy][x + dx];
+                    const cellX = x + dx, cellY = y + dy;
+                    // D-47: disabled 셀(가방 구석 비활성 영역)에는 배치 불가.
+                    if (this.isDisabled(cellX, cellY)) return false;
+                    const cell = this.grid[cellY][cellX];
                     if (cell !== null && cell !== ignoreItemId) {
                         return false;
                     }

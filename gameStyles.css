@@ -160,8 +160,10 @@ button:active {
 /* 인벤토리 */
 .inventory-grid {
     display: grid;
+    /* D-47: 5x5 기반. 위 2행 좌우 구석(x=0/4, y=0/1) 4칸은 .inventory-cell.disabled로
+       비활성 처리 — 시각적으로 "위 2x3 + 아래 5x3 연결" 가방 모양. */
     grid-template-columns: repeat(5, 45px);
-    grid-template-rows: repeat(6, 45px);
+    grid-template-rows: repeat(5, 45px);
     gap: 2px;
     background: #0f3460;
     padding: 4px;
@@ -173,8 +175,33 @@ button:active {
     border: 1px solid #0f3460;
 }
 
-.inventory-cell.occupied { 
-    background: #2a4365; 
+.inventory-cell.occupied {
+    background: #2a4365;
+}
+
+/* D-47 비활성 셀 — 가방 구석. 배치 불가 + 클릭 무시 + 시각적으로 어둡게 */
+.inventory-cell.disabled {
+    background: transparent;
+    border: 1px dashed rgba(255,255,255,0.05);
+    pointer-events: none;
+}
+
+/* D-47 머지 가능 체크 배지 — 같은 재료 2개 이상 보유 시 아이템 우상단에 표시 */
+.inventory-merge-check {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #3dd68c;
+    color: #0c2414;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 14px;
+    text-align: center;
+    box-shadow: 0 0 0 1.5px #0f3460;
+    pointer-events: none;
 }
 
 .inventory-item {

@@ -667,7 +667,8 @@
             // 다른 재료 2개 겹침 + 관련 레시피 존재 시 세팅 → 하단 CraftPanel 렌더.
             const [pendingCraft, setPendingCraft] = React.useState(null);
 
-            const ROWS = 6, COLS = 5, CELL = 47, PAD = 4;
+            // D-47: 가방 크기는 inventory 인스턴스 기준. disabled 셀은 inventory.isDisabled로.
+            const ROWS = inventory.rows, COLS = inventory.cols, CELL = 47, PAD = 4;
             const LONG_PRESS_MS = 400;
 
             // 프레스 상태를 ref로 관리해 재렌더 없이 타이머/가드 갱신.
@@ -875,12 +876,20 @@
             // 미리보기 가능 여부 (현재 pendingPos에 selectedItem이 들어갈 수 있는가)
             //   D-47: 'combine' kind 폐기 — 조합은 이제 합성 패널 경유. 다른 재료 +
             //         관련 레시피 있음 = 'craft' kind, 아니면 'swap'.
+            //   disabled 셀(가방 구석 비활성)을 하나라도 침범하면 'blocked'.
             const previewInfo = (() => {
                 if (!selectedItem || !pendingPos) return null;
                 const { x, y } = pendingPos;
                 const shape = selectedItem.shape;
                 if (y + shape.length > ROWS || x + shape[0].length > COLS) {
                     return { ok: false, kind: 'oob' };
+                }
+                for (let dy = 0; dy < shape.length; dy++) {
+                    for (let dx = 0; dx < shape[0].length; dx++) {
+                        if (shape[dy][dx] === 1 && inventory.isDisabled(x + dx, y + dy)) {
+                            return { ok: false, kind: 'blocked' };
+                        }
+                    }
                 }
                 const overlap = inventory.getItemsOverlapping(shape, x, y);
                 if (overlap.length === 0) return { ok: true, kind: 'place' };
@@ -900,19 +909,26 @@
                 <div className="modal">
                     <div className="modal-content">
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                            <h3>가방 (5x6)</h3>
+                            <h3>가방</h3>
                             <button onClick={closeInventory}>닫기</button>
                         </div>
                         <div style={{ position: 'relative' }}>
                             <div className="inventory-grid">
                                 {Array(ROWS).fill(null).map((_, row) =>
-                                    Array(COLS).fill(null).map((_, col) => (
-                                        <div
-                                            key={`${row}-${col}`}
-                                            className={`inventory-cell ${inventory.grid[row][col] ? 'occupied' : ''}`}
-                                            onClick={() => handleCellClick(row, col)}
-                                        />
-                                    ))
+                                    Array(COLS).fill(null).map((_, col) => {
+                                        const disabled = inventory.isDisabled(col, row);
+                                        const occupied = !disabled && inventory.grid[row][col];
+                                        return (
+                                            <div
+                                                key={`${row}-${col}`}
+                                                className={`inventory-cell ${occupied ? 'occupied' : ''} ${disabled ? 'disabled' : ''}`}
+                                                onClick={() => {
+                                                    if (disabled) return;
+                                                    handleCellClick(row, col);
+                                                }}
+                                            />
+                                        );
+                                    })
                                 )}
                             </div>
 
@@ -931,26 +947,37 @@
                                 />
                             )}
 
-                            {/* 그리드에 배치된 아이템들 */}
-                            {inventory.items.filter(i => !selectedItem || i.id !== selectedItem.id).map(item => (
-                                <div
-                                    key={item.id}
-                                    className="inventory-item"
-                                    style={{
-                                        left: `${item.x * CELL + PAD}px`,
-                                        top: `${item.y * CELL + PAD}px`,
-                                        width: `${item.shape[0].length * CELL - PAD}px`,
-                                        height: `${item.shape.length * CELL - PAD}px`
-                                    }}
-                                    onPointerDown={(e) => onItemPointerDown(e, item)}
-                                    onPointerUp={(e) => onItemPointerUp(e, item)}
-                                    onPointerCancel={onItemPointerCancel}
-                                    onPointerLeave={onItemPointerCancel}
-                                    onContextMenu={(e) => e.preventDefault()}
-                                >
-                                    {item.name}
-                                </div>
-                            ))}
+                            {/* 그리드에 배치된 아이템들.
+                                D-47: 머지 가능(같은 type 2개 이상 + mergeable) 시 우상단 체크 아이콘. */}
+                            {inventory.items.filter(i => !selectedItem || i.id !== selectedItem.id).map(item => {
+                                const def = InventorySystem.resolveDef(item.type) || {};
+                                const sameTypeCount = inventory.items.filter(i => i.type === item.type).length;
+                                const canAutoMerge = !!def.mergeable && !!def.merge_result && sameTypeCount >= 2;
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className="inventory-item"
+                                        style={{
+                                            left: `${item.x * CELL + PAD}px`,
+                                            top: `${item.y * CELL + PAD}px`,
+                                            width: `${item.shape[0].length * CELL - PAD}px`,
+                                            height: `${item.shape.length * CELL - PAD}px`
+                                        }}
+                                        onPointerDown={(e) => onItemPointerDown(e, item)}
+                                        onPointerUp={(e) => onItemPointerUp(e, item)}
+                                        onPointerCancel={onItemPointerCancel}
+                                        onPointerLeave={onItemPointerCancel}
+                                        onContextMenu={(e) => e.preventDefault()}
+                                    >
+                                        {item.name}
+                                        {canAutoMerge && (
+                                            <span className="inventory-merge-check" title="같은 재료가 있어 머지 가능">
+                                                ✓
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })}
 
                             {/* 공중에 뜬 선택 아이템 (pendingPos를 따라감) */}
                             {selectedItem && pendingPos && (
@@ -2288,7 +2315,8 @@
                 setDeck(newDeck.slice(HAND_SIZE));
                 setHand(newDeck.slice(0, HAND_SIZE));
                 
-                const inv = new InventorySystem(6, 5);
+                // D-47: 기본 가방 모양(5x5, 위 2행 구석 4칸 disabled) — InventorySystem 기본값 사용.
+                const inv = new InventorySystem();
                 setInventory(inv);
                 
                 const newBoss = new BossMonster(newTiles, playerStart);
