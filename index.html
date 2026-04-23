@@ -2452,6 +2452,23 @@
                 }
             }, [currentTile, tiles]);
 
+            // hunt_start 카드 자동 정리 — 사냥감이 처치되거나 도망으로 현재 타일을
+            // 떠난 순간 손패에 남는 사냥시작 카드를 즉시 무덤으로 보낸다.
+            // 이동 시점의 손패 교체(moveTo)로도 정리되지만, 그 타일에 머물며 전투가
+            // 끝난 경우엔 잡을 길이 없어 별도 감시가 필요.
+            useEffect(() => {
+                const orphan = (hand || []).filter(c => {
+                    if (c.id !== 'hunt_start') return false;
+                    const t = c.target;
+                    if (!t) return true;
+                    return !(preys || []).some(p => p.id === t.preyId && p.tileId === currentTile);
+                });
+                if (orphan.length === 0) return;
+                const orphanUids = new Set(orphan.map(c => c.uid));
+                setHand(prev => prev.filter(c => !orphanUids.has(c.uid)));
+                setGraveyard(prev => [...prev, ...orphan]);
+            }, [preys, currentTile]);
+
             // 아이템 사용 — 인벤토리 정보창에서 '사용' 버튼을 누를 때 호출.
             // EffectParser가 파싱한 Notion '사용 효과' DSL을 런타임에 적용하고,
             // 소비형(consumed) 판정은 effectParser가 내려준 값을 그대로 따른다.
@@ -2692,6 +2709,8 @@
                     const prey = (preys || []).find(p => p.id === targetId);
                     if (!prey) {
                         setMessage('사냥감이 사라졌다.');
+                        setHand(prev => prev.filter(c => c.uid !== card.uid));
+                        setGraveyard(prev => [...prev, card]);
                         return;
                     }
                     const preyData = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
