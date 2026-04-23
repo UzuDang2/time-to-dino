@@ -1781,6 +1781,23 @@
                     } else {
                         msg += '발걸음 소리가 아주 멀리서 들린다, 당분간은 안심해도 될 것 같다.';
                     }
+
+                    // D-46 (2026-04-23): listen 인접 사냥감 흔적 감지.
+                    //   현재 타일의 인접 타일 ∩ preys tileId = "기척이 느껴지는 타일".
+                    //   종류는 비공개(👣 마커만). preyTraceTiles Set에 해당 tileId 누적.
+                    //   보스 내레이션·D-42 bossVisible과 독립된 섹션 — 기존 로직 건드리지 않음.
+                    const neighborIds = tiles[currentTile].connections;
+                    const traceHits = (preys || [])
+                        .filter(p => neighborIds.includes(p.tileId))
+                        .map(p => p.tileId);
+                    if (traceHits.length > 0) {
+                        setPreyTraceTiles(prev => {
+                            const next = new Set(prev);
+                            traceHits.forEach(id => next.add(id));
+                            return next;
+                        });
+                        msg += '\n근처에서 희미한 기척이 느껴진다.';
+                    }
                 } else if (card.id === 'hide') {
                     msg += '조용히 몸을 숨겼다.';
                 }
