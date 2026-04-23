@@ -3,5 +3,6 @@
     "allow": [
       "Bash(git push origin main:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": ["notion"]
 }
