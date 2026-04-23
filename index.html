@@ -267,12 +267,47 @@
         // D-42 (2026-04-23 요한 지시): 보스 아이콘 노출 조건이 "tile.revealed"에서
         // "bossVisible"로 분리됨. 지형 revealed와 무관하게 bossVisible=true 일 때만
         // 보스가 있는 타일에 🦖 아이콘이 뜬다. 이동하면 setBossVisible(false).
-        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo }) {
+        //
+        // D-46 (2026-04-23, 9차): 사냥감 3가지 오버레이 추가.
+        //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스 있으면 보스 우선)
+        //   - 흔적(👣 우상단): preyTraceTiles.has(tile.id) — visited 무관 (청각 단서).
+        //   - 발자국(방향 화살표 좌하단): preyFootprints[tile.id] — fromTile→toTile 델타 기준.
+        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, preys, preyTraceTiles, preyFootprints }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
             const canMove = tiles[currentTile].connections.includes(tile.id);
             const isBoss = boss && tile.id === boss.position && bossVisible;
             const isRevealed = tile.revealed || tile.visited;
+
+            const preyOnTile = (preys || []).find(p => p.tileId === tile.id);
+            const showPrey = tile.visited && preyOnTile && !isBoss;
+            const preyEmoji = showPrey ? (PREY_EMOJI[preyOnTile.preyType] || '❓') : null;
+            const hasTrace = preyTraceTiles && preyTraceTiles.has && preyTraceTiles.has(tile.id);
+            const footprint = preyFootprints ? preyFootprints[tile.id] : null;
+
+            // 발자국 방향 화살표 계산 — fromTile→toTile의 tile.position 델타로 8방향 매핑.
+            let footprintArrow = null;
+            if (footprint && tiles[footprint.fromTile] && tiles[footprint.toTile]) {
+                const from = tiles[footprint.fromTile].position;
+                const to = tiles[footprint.toTile].position;
+                if (from && to) {
+                    const dx = to.x - from.x;
+                    const dy = to.y - from.y;
+                    const absX = Math.abs(dx);
+                    const absY = Math.abs(dy);
+                    const diag = absX > 5 && absY > 5;
+                    if (diag) {
+                        if (dx > 0 && dy < 0) footprintArrow = '↗';
+                        else if (dx > 0 && dy > 0) footprintArrow = '↘';
+                        else if (dx < 0 && dy < 0) footprintArrow = '↖';
+                        else footprintArrow = '↙';
+                    } else if (absX > absY) {
+                        footprintArrow = dx > 0 ? '→' : '←';
+                    } else {
+                        footprintArrow = dy > 0 ? '↓' : '↑';
+                    }
+                }
+            }
 
             // 길이 없는 타일 (connections 없음) 판별
             const hasNoConnections = tile.connections.length === 0 &&
@@ -295,6 +330,7 @@
                 if (isCurrent) return '내위치';
                 if (tile.type === 'exit') return '탈출구';
                 if (isBoss) return '🦖';
+                if (showPrey) return preyEmoji;
                 if (tile.type === 'good') return '👍';
                 if (tile.type === 'trap') return '⚠️';
                 return '';
@@ -349,6 +385,33 @@
                     >
                         {getTileLabel()}
                     </text>
+                    {/* D-46: 흔적(우상단 👣) — visited 무관, listen 청각 단서. */}
+                    {hasTrace && (
+                        <text
+                            x={x + 22}
+                            y={y - 22}
+                            textAnchor="middle"
+                            fontSize="14"
+                            pointerEvents="none"
+                            opacity="0.85"
+                        >
+                            👣
+                        </text>
+                    )}
+                    {/* D-46: 발자국(좌하단 방향 화살표) — 도망간 prey 경로. */}
+                    {footprintArrow && (
+                        <text
+                            x={x - 22}
+                            y={y + 28}
+                            textAnchor="middle"
+                            fontSize="16"
+                            fill="#d4b84a"
+                            pointerEvents="none"
+                            fontWeight="700"
+                        >
+                            {footprintArrow}
+                        </text>
+                    )}
                 </g>
             );
         }
@@ -358,7 +421,7 @@
         // D-39 (2026-04-22 요한 지시): LootToast를 맵 컨테이너 내부에 얹어
         // "맵에서 획득했다"는 공간 의미를 강화. position: absolute + 상단 기준으로
         // 고정하되 부모 .map-container가 position: relative라 스크롤과 함께 움직이지 않음.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone }) {
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, preys, preyTraceTiles, preyFootprints }) {
             const visibleTiles = tiles.filter(t => t.visited || t.discovered || t.revealed);
 
             return (
@@ -375,6 +438,10 @@
                                 gameOver={gameOver}
                                 victory={victory}
                                 moveTo={moveTo}
+                                preys={preys}
+                                preyTraceTiles={preyTraceTiles}
+                                preyFootprints={preyFootprints}
+                                positions={positions}
                             />
                         ))}
                     </svg>
@@ -1907,6 +1974,9 @@
                         moveTo={moveTo}
                         lootToast={lootToast}
                         onLootToastDone={() => setLootToast(null)}
+                        preys={preys}
+                        preyTraceTiles={preyTraceTiles}
+                        preyFootprints={preyFootprints}
                     />
 
                     {eventTile && (
