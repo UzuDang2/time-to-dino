@@ -91,12 +91,11 @@ class InventorySystem {
         };
     }
 
-    // 두 아이템의 조합 레시피 조회 (TTD_DATA.COMBOS 전역 리스트).
-    // ingredients 순서 무관 비교. 2종 매칭만 지원(3종 이상은 후속 이터레이션).
+    // 두 아이템의 2종 조합 레시피 조회 (TTD_DATA.COMBOS 전역 리스트).
+    // ingredients 순서 무관 비교. **2종 레시피만** 매칭 — 3종은 합성 패널 경유.
+    // (D-24 자동 조합 경로에서 쓰던 API. 현재는 fallback 용으로만 유지.)
     static lookupCombo(typeA, typeB) {
-        const bundle = (typeof window !== 'undefined' && window.TTD_DATA && Array.isArray(window.TTD_DATA.COMBOS))
-            ? window.TTD_DATA.COMBOS
-            : [];
+        const bundle = InventorySystem._combosBundle();
         const target = [typeA, typeB].sort();
         for (const recipe of bundle) {
             if (!recipe || !Array.isArray(recipe.ingredients)) continue;
@@ -107,6 +106,64 @@ class InventorySystem {
             }
         }
         return null;
+    }
+
+    static _combosBundle() {
+        return (typeof window !== 'undefined' && window.TTD_DATA && Array.isArray(window.TTD_DATA.COMBOS))
+            ? window.TTD_DATA.COMBOS
+            : [];
+    }
+
+    // D-47 합성 패널용: typeA 또는 typeB 중 하나라도 ingredients에 포함된 모든 레시피.
+    // - 2종/3종 모두 지원.
+    // - 머지형(같은 재료 중복 ingredients, 예: [branch, branch])은 제외 — 다른 재료 드롭
+    //   맥락에서는 추천 대상 아님. 머지는 별도 즉시 실행 경로.
+    static findRecipesContainingAny(typeA, typeB) {
+        const bundle = InventorySystem._combosBundle();
+        const hits = [];
+        for (const recipe of bundle) {
+            if (!recipe || !Array.isArray(recipe.ingredients)) continue;
+            const uniq = new Set(recipe.ingredients);
+            if (uniq.size <= 1) continue; // 머지형 제외
+            if (uniq.has(typeA) || uniq.has(typeB)) {
+                hits.push(recipe);
+            }
+        }
+        return hits;
+    }
+
+    // 레시피의 재료별 필요 수량 맵. 중복 재료(예: 섬유 x2) 지원.
+    static recipeRequirements(recipe) {
+        const req = {};
+        if (!recipe || !Array.isArray(recipe.ingredients)) return req;
+        for (const t of recipe.ingredients) {
+            req[t] = (req[t] || 0) + 1;
+        }
+        return req;
+    }
+
+    // 인벤 보유량으로 레시피 완성 가능 여부 + 부족 재료 계산.
+    //   inventoryItems: [{ type, id, ... }, ...]
+    //   excludeIds: 이번 합성에서 "제외할 아이템 id" (선택) — 예: 드래그 중인 아이템 중복 계산 방지.
+    // 반환: { canCraft, need:{type:count}, have:{type:count}, shortage:{type:count} }
+    static evaluateRecipe(recipe, inventoryItems, excludeIds) {
+        const need = InventorySystem.recipeRequirements(recipe);
+        const excl = excludeIds ? new Set(excludeIds) : null;
+        const have = {};
+        for (const it of (inventoryItems || [])) {
+            if (excl && excl.has(it.id)) continue;
+            have[it.type] = (have[it.type] || 0) + 1;
+        }
+        const shortage = {};
+        let canCraft = true;
+        for (const [type, count] of Object.entries(need)) {
+            const h = have[type] || 0;
+            if (h < count) {
+                shortage[type] = count - h;
+                canCraft = false;
+            }
+        }
+        return { canCraft, need, have, shortage };
     }
 
     // 아이템 추가
@@ -421,7 +478,12 @@ class InventorySystem {
     }
 
     // 선택된 아이템을 (x, y)에 확정 배치
-    // 반환: { ok: boolean, action: 'place'|'merge'|'combine'|'swap'|'none', mergedTo?: item, resultType?: string }
+    // 반환: { ok, action: 'place'|'merge'|'craft_prompt'|'swap'|'none', ... }
+    //   - merge: 같은 재료 → 즉시 상위 재료로 자동 합성 (기존 유지).
+    //   - craft_prompt: 다른 재료 + 관련 레시피 존재 → **자동 합성 안 함**. 선택 아이템
+    //     원위치 복귀시키고 UI에 "합성 패널 오픈" 신호 + 후보 레시피/페어 정보 반환.
+    //     만들기 확정은 UI 쪽 [만들기] 버튼 경유 (재료 소비는 이 함수 밖).
+    //   - swap: 다른 재료 + 관련 레시피 없음 → 교체 (기존 유지).
     confirmPlacement(x, y) {
         if (!this.selectedItem) return { ok: false, action: 'none' };
         const item = this.selectedItem;
@@ -446,7 +508,7 @@ class InventorySystem {
         if (overlapped.length === 1) {
             const target = overlapped[0];
 
-            // 2a) 머지 (같은 재료 2개 → merge_result)
+            // 2a) 머지 (같은 재료 2개 → merge_result, 즉시 실행)
             if (this.canMerge(item, target)) {
                 const newType = this.getMergeResult(item);
                 this.removeItem(target);
@@ -457,18 +519,24 @@ class InventorySystem {
                 return { ok: true, action: 'merge', resultType: newType };
             }
 
-            // 2b) 조합 (다른 재료 2개 → combos 레시피)
-            if (this.canCombine(item, target)) {
-                const newType = this.getCombineResult(item, target);
-                this.removeItem(target);
-                this.items = this.items.filter(i => i.id !== target.id && i.id !== item.id);
-                this.selectedItem = null;
-                if (!newType) return { ok: true, action: 'combine' };
-                this._placeDerivedItem(newType, target.x, target.y);
-                return { ok: true, action: 'combine', resultType: newType };
+            // 2b) 다른 재료 + 관련 레시피 존재 → 합성 패널 신호.
+            //     선택 아이템을 원위치로 복귀, 두 아이템 모두 그대로 둔다.
+            //     UI가 [만들기] 버튼을 통해 수동으로 재료 소비·결과 배치 처리.
+            if (item.type !== target.type) {
+                const candidates = InventorySystem.findRecipesContainingAny(item.type, target.type);
+                if (candidates.length > 0) {
+                    this.cancelSelection();
+                    return {
+                        ok: true,
+                        action: 'craft_prompt',
+                        pair: [item.type, target.type],
+                        pairItemIds: [item.id, target.id],
+                        candidates
+                    };
+                }
             }
 
-            // 2c) 교체: 선택 중이던 item을 target 자리에 두고, target을 선택 모드로 전환
+            // 2c) 교체
             this.removeItem(target);
             if (this.canPlace(item.shape, x, y)) {
                 item.x = x;
@@ -484,6 +552,50 @@ class InventorySystem {
 
         // 3) 2개 이상 겹침 — 기획상 불가
         return { ok: false, action: 'none' };
+    }
+
+    // D-47 합성 확정: 레시피의 ingredients를 인벤에서 개별 제거 후 결과 아이템을 배치.
+    //   - preferredPos가 있으면 해당 자리 우선, 실패 시 빈 공간 자동 탐색.
+    //   - 결과 배치 실패(공간 없음)면 재료 소비도 하지 않고 실패 반환.
+    // 반환: { ok, reason?, resultType?, shortage? }
+    craftRecipe(recipe, preferredPos) {
+        if (!recipe || !Array.isArray(recipe.ingredients) || !recipe.result) {
+            return { ok: false, reason: 'invalid_recipe' };
+        }
+        const evalResult = InventorySystem.evaluateRecipe(recipe, this.items);
+        if (!evalResult.canCraft) {
+            return { ok: false, reason: 'short_ingredients', shortage: evalResult.shortage };
+        }
+        // 결과물 배치 가능 여부 선검사 — 실제 소비 전에 공간 체크.
+        const resultDef = InventorySystem.ITEMS[recipe.result];
+        if (!resultDef) return { ok: false, reason: 'unknown_result' };
+        const canPlaceAtPreferred = preferredPos
+            && this.canPlace(resultDef.shape, preferredPos.x, preferredPos.y);
+        const placementPos = canPlaceAtPreferred
+            ? preferredPos
+            : this.findEmptySpace(resultDef.shape);
+        if (!placementPos) {
+            return { ok: false, reason: 'no_space' };
+        }
+        // 재료 소비 — 각 type에 대해 필요 개수만큼 items 앞에서부터 제거.
+        const need = InventorySystem.recipeRequirements(recipe);
+        for (const [type, count] of Object.entries(need)) {
+            let remaining = count;
+            const keep = [];
+            for (const it of this.items) {
+                if (remaining > 0 && it.type === type) {
+                    this.removeItem(it);
+                    remaining -= 1;
+                    continue;
+                }
+                keep.push(it);
+            }
+            this.items = keep;
+        }
+        // 결과 배치.
+        const ok = this._placeDerivedItem(recipe.result, placementPos.x, placementPos.y);
+        if (!ok) return { ok: false, reason: 'place_failed' };
+        return { ok: true, resultType: recipe.result };
     }
 }
 

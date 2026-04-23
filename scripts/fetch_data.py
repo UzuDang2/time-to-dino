@@ -883,21 +883,26 @@ def build_combos_from_sheet(items: list[dict[str, Any]], extra_rows: list[dict[s
         seen.add(key)
         combos.append({"ingredients": [src, src], "result": dst})
 
-    # 2) 이원 조합
+    # 2) 이원·삼원 조합 — ingredient_a/b는 필수, ingredient_c는 옵션(비우면 2종 조합).
     for row in extra_rows or []:
         a = str(row.get("ingredient_a") or "").strip()
         b = str(row.get("ingredient_b") or "").strip()
+        c = str(row.get("ingredient_c") or "").strip()
         r = str(row.get("result") or "").strip()
         if not (a and b and r):
             continue
-        if a not in valid_ids or b not in valid_ids or r not in valid_ids:
-            print(f"[warn] 조합레시피 미매핑: {a}+{b}→{r} — 스킵")
+        ingredients = [a, b]
+        if c:
+            ingredients.append(c)
+        missing = [x for x in ingredients + [r] if x not in valid_ids]
+        if missing:
+            print(f"[warn] 조합레시피 미매핑: {'+'.join(ingredients)}→{r} (미정의 id: {missing}) — 스킵")
             continue
-        key = (tuple(sorted([a, b])), r)
+        key = (tuple(sorted(ingredients)), r)
         if key in seen:
             continue
         seen.add(key)
-        combos.append({"ingredients": [a, b], "result": r})
+        combos.append({"ingredients": ingredients, "result": r})
 
     return combos
 

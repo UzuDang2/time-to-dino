@@ -663,6 +663,9 @@
             const [pendingPos, setPendingPos] = React.useState(null);
             // 정보창으로 띄울 아이템 (null이면 정보창 닫힘)
             const [infoItem, setInfoItem] = React.useState(null);
+            // D-47 합성 패널 대기 상태: { pair, pairItemIds, candidates } | null.
+            // 다른 재료 2개 겹침 + 관련 레시피 존재 시 세팅 → 하단 CraftPanel 렌더.
+            const [pendingCraft, setPendingCraft] = React.useState(null);
 
             const ROWS = 6, COLS = 5, CELL = 47, PAD = 4;
             const LONG_PRESS_MS = 400;
@@ -696,6 +699,56 @@
             //   - 같은 type & 머지 가능 → 즉시 머지.
             //   - 다른 type & 조합 매칭 → 즉시 조합.
             //   - 그 외: 기존대로 selectItem 경로(선택 전환) — 드래그로 빈 칸에 옮기는 기존 UX는 살림.
+            // D-47: confirmPlacement 결과를 UI state에 반영하는 공통 헬퍼.
+            //   - craft_prompt: 합성 패널 오픈 (재료 소비 안 함, [만들기] 대기).
+            //   - merge/place: 선택 해제 + 메시지.
+            //   - swap: 새로 선택된 아이템으로 전환.
+            const applyDropResult = (res) => {
+                if (!res || !res.ok) return false;
+                if (res.action === 'craft_prompt') {
+                    setPendingCraft({
+                        pair: res.pair || [],
+                        pairItemIds: res.pairItemIds || [],
+                        candidates: res.candidates || []
+                    });
+                    setSelectedItem(null);
+                    setPendingPos(null);
+                    return true;
+                }
+                if (res.action === 'swap') {
+                    setSelectedItem(inventory.selectedItem);
+                    setPendingPos(inventory.selectedItem
+                        ? { x: inventory.selectedItem.x, y: inventory.selectedItem.y }
+                        : null);
+                    return true;
+                }
+                setSelectedItem(null);
+                setPendingPos(null);
+                if (onFlashMessage && res.resultType && res.action === 'merge') {
+                    const resultDef = InventorySystem.ITEMS[res.resultType];
+                    const resultName = resultDef ? resultDef.name : res.resultType;
+                    onFlashMessage(`두 재료를 합쳐 ${resultName}을(를) 얻었다.`);
+                }
+                return true;
+            };
+
+            // D-47 [만들기] 버튼 핸들러 — 실제 재료 소비·결과 배치는 inventory.craftRecipe.
+            const handleCraft = (recipe) => {
+                const res = inventory.craftRecipe(recipe);
+                if (res.ok) {
+                    if (onFlashMessage) {
+                        const resultDef = InventorySystem.ITEMS[res.resultType] || {};
+                        onFlashMessage(`재료를 조합해 ${resultDef.name || res.resultType}을(를) 만들었다.`);
+                    }
+                    setPendingCraft(null);
+                } else if (res.reason === 'no_space') {
+                    if (onFlashMessage) onFlashMessage('가방이 가득 차 만들 수 없다.');
+                } else if (res.reason === 'short_ingredients') {
+                    if (onFlashMessage) onFlashMessage('재료가 부족하다.');
+                }
+                bump();
+            };
+
             const openInfo = (item) => {
                 if (selectedItem) {
                     if (selectedItem.id === item.id) {
@@ -708,30 +761,19 @@
                     }
 
                     const canMerge = inventory.canMerge(selectedItem, item);
-                    const canCombine = inventory.canCombine && inventory.canCombine(selectedItem, item);
+                    // D-47: "다른 재료 + 관련 레시피 존재" 감지 → confirmPlacement가
+                    //   craft_prompt 반환 → 합성 패널 오픈.
+                    const hasCraftCandidate = selectedItem.type !== item.type
+                        && InventorySystem.findRecipesContainingAny(selectedItem.type, item.type).length > 0;
 
-                    if (canMerge || canCombine) {
-                        // 타깃 아이템의 좌표로 확정 배치 → confirmPlacement 내부에서
-                        // overlap 1개 = target → merge/combine 분기가 자동 적용.
+                    if (canMerge || hasCraftCandidate) {
                         const res = inventory.confirmPlacement(item.x, item.y);
-                        if (res.ok) {
-                            setSelectedItem(null);
-                            setPendingPos(null);
-                            if (onFlashMessage && res.resultType) {
-                                const resultDef = InventorySystem.ITEMS[res.resultType];
-                                const resultName = resultDef ? resultDef.name : res.resultType;
-                                if (res.action === 'merge') {
-                                    onFlashMessage(`두 재료를 합쳐 ${resultName}을(를) 얻었다.`);
-                                } else if (res.action === 'combine') {
-                                    onFlashMessage(`재료를 조합해 ${resultName}을(를) 만들었다.`);
-                                }
-                            }
-                        }
+                        applyDropResult(res);
                         bump();
                         return;
                     }
 
-                    // 머지/조합 둘 다 불가 — 기존대로 선택 전환(활성화 경로).
+                    // 머지/조합 후보 없음 — 선택 전환.
                     activateSelect(item);
                     return;
                 }
@@ -804,30 +846,7 @@
             const handleConfirm = () => {
                 if (!selectedItem || !pendingPos) return;
                 const res = inventory.confirmPlacement(pendingPos.x, pendingPos.y);
-                if (!res.ok) {
-                    bump();
-                    return;
-                }
-                if (res.action === 'swap') {
-                    // 새로 공중에 뜬 아이템으로 선택 전환
-                    setSelectedItem(inventory.selectedItem);
-                    setPendingPos(inventory.selectedItem
-                        ? { x: inventory.selectedItem.x, y: inventory.selectedItem.y }
-                        : null);
-                } else {
-                    setSelectedItem(null);
-                    setPendingPos(null);
-                }
-                // D-24: 머지/조합 결과 메시지. 실패 시(resultType 없음)엔 조용히 넘어감.
-                if (onFlashMessage && res.resultType) {
-                    const resultDef = InventorySystem.ITEMS[res.resultType];
-                    const resultName = resultDef ? resultDef.name : res.resultType;
-                    if (res.action === 'merge') {
-                        onFlashMessage(`두 재료를 합쳐 ${resultName}을(를) 얻었다.`);
-                    } else if (res.action === 'combine') {
-                        onFlashMessage(`재료를 조합해 ${resultName}을(를) 만들었다.`);
-                    }
-                }
+                applyDropResult(res);
                 bump();
             };
 
@@ -854,6 +873,8 @@
             };
 
             // 미리보기 가능 여부 (현재 pendingPos에 selectedItem이 들어갈 수 있는가)
+            //   D-47: 'combine' kind 폐기 — 조합은 이제 합성 패널 경유. 다른 재료 +
+            //         관련 레시피 있음 = 'craft' kind, 아니면 'swap'.
             const previewInfo = (() => {
                 if (!selectedItem || !pendingPos) return null;
                 const { x, y } = pendingPos;
@@ -864,8 +885,12 @@
                 const overlap = inventory.getItemsOverlapping(shape, x, y);
                 if (overlap.length === 0) return { ok: true, kind: 'place' };
                 if (overlap.length === 1) {
-                    if (inventory.canMerge(selectedItem, overlap[0])) return { ok: true, kind: 'merge' };
-                    if (inventory.canCombine && inventory.canCombine(selectedItem, overlap[0])) return { ok: true, kind: 'combine' };
+                    const t = overlap[0];
+                    if (inventory.canMerge(selectedItem, t)) return { ok: true, kind: 'merge' };
+                    if (selectedItem.type !== t.type
+                        && InventorySystem.findRecipesContainingAny(selectedItem.type, t.type).length > 0) {
+                        return { ok: true, kind: 'craft' };
+                    }
                     return { ok: true, kind: 'swap' };
                 }
                 return { ok: false, kind: 'blocked' };
@@ -953,7 +978,7 @@
                                 >
                                     확정{previewInfo && previewInfo.ok && previewInfo.kind !== 'place'
                                         ? ` (${previewInfo.kind === 'merge' ? '머지'
-                                              : previewInfo.kind === 'combine' ? '조합'
+                                              : previewInfo.kind === 'craft' ? '합성'
                                               : '교체'})`
                                         : ''}
                                 </button>
@@ -977,6 +1002,15 @@
                             <div style={{ marginTop: '10px', fontSize: '11px', color: '#aaa' }}>
                                 짧게 탭 = 정보 · 길게 누르면 선택해서 이동/머지
                             </div>
+                        )}
+                        {/* D-47 합성 패널 — 다른 재료 2개 겹친 순간 관련 레시피 노출 */}
+                        {pendingCraft && (
+                            <CraftPanel
+                                recipes={pendingCraft.candidates}
+                                inventory={inventory}
+                                onCraft={handleCraft}
+                                onClose={() => setPendingCraft(null)}
+                            />
                         )}
                     </div>
 
@@ -1196,6 +1230,128 @@
                                 </button>
                             ))}
                         </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // D-47 합성 패널 — 인벤 모달 하단에 고정된 바 형태.
+        //   - 드롭된 두 재료(pair) 중 하나 이상 포함된 모든 레시피 카드 노출.
+        //   - 각 카드: 재료(필요 수량) + 결과, 보유량으로 완성 가능 여부·부족 재료 표기.
+        //   - [만들기] 버튼: 재료 충분 + 결과물 놓을 빈 슬롯 있을 때만 활성.
+        //   - 같은 재료 머지는 이 패널에 안 뜸 (즉시 실행 경로).
+        function CraftPanel({ recipes, inventory, onCraft, onClose }) {
+            if (!recipes || recipes.length === 0) return null;
+            const items = (inventory && inventory.items) || [];
+            const defOf = (type) => InventorySystem.ITEMS[type] || {};
+            const nameOf = (type) => defOf(type).name || type;
+
+            // 각 레시피 상태 계산: 재료 충분 + 결과 배치 공간 여부.
+            const cards = recipes.map(recipe => {
+                const evalR = InventorySystem.evaluateRecipe(recipe, items);
+                const resultDef = defOf(recipe.result);
+                const hasSpace = !!inventory.findEmptySpace(resultDef.shape || [[1]]);
+                let disabledReason = null;
+                if (!evalR.canCraft) disabledReason = 'short';
+                else if (!hasSpace) disabledReason = 'no_space';
+                return { recipe, evalR, hasSpace, disabledReason };
+            });
+            // 만들 수 있는 것 먼저, 공간부족, 재료부족 순.
+            cards.sort((a, b) => {
+                const rank = { null: 0, 'no_space': 1, 'short': 2 };
+                return (rank[a.disabledReason] ?? 0) - (rank[b.disabledReason] ?? 0);
+            });
+
+            return (
+                <div style={{
+                    position: 'sticky',
+                    bottom: 0,
+                    background: '#0f1a2e',
+                    border: '1px solid #2a3a5e',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    marginTop: '8px',
+                    maxHeight: '35vh',
+                    overflowY: 'auto'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4b84a' }}>
+                            🔨 만들 수 있는 조합
+                        </div>
+                        <button
+                            onClick={onClose}
+                            style={{ padding: '3px 8px', fontSize: '11px' }}
+                        >
+                            닫기
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {cards.map(({ recipe, evalR, disabledReason }, idx) => {
+                            const need = evalR.need;
+                            const shortage = evalR.shortage;
+                            const buttonDisabled = disabledReason !== null;
+                            const buttonLabel = disabledReason === 'no_space'
+                                ? '공간부족'
+                                : disabledReason === 'short'
+                                    ? '재료부족'
+                                    : '만들기';
+                            return (
+                                <div
+                                    key={`recipe:${idx}:${recipe.result}`}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '8px',
+                                        background: buttonDisabled ? '#1a1f2e' : '#1a2f3e',
+                                        borderRadius: '6px',
+                                        border: `1px solid ${buttonDisabled ? '#333' : '#2e5a6e'}`
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, flexWrap: 'wrap' }}>
+                                        {Object.entries(need).map(([type, count], i) => {
+                                            const short = shortage[type] || 0;
+                                            const has = (evalR.have[type] || 0);
+                                            return (
+                                                <React.Fragment key={`${type}:${i}`}>
+                                                    {i > 0 && <span style={{ color: '#666' }}>+</span>}
+                                                    <span style={{
+                                                        fontSize: '12px',
+                                                        color: short > 0 ? '#ff7777' : '#fff',
+                                                        fontWeight: 500
+                                                    }}>
+                                                        {nameOf(type)}
+                                                        <span style={{ fontSize: '10px', color: short > 0 ? '#ff9999' : '#aaa', marginLeft: '2px' }}>
+                                                            {has}/{count}
+                                                        </span>
+                                                    </span>
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                        <span style={{ color: '#666', margin: '0 4px' }}>=</span>
+                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#d4b84a' }}>
+                                            {nameOf(recipe.result)}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => onCraft(recipe)}
+                                        disabled={buttonDisabled}
+                                        style={{
+                                            padding: '6px 10px',
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            background: buttonDisabled ? '#333' : '#4CAF50',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: buttonDisabled ? 'not-allowed' : 'pointer'
+                                        }}
+                                    >
+                                        {buttonLabel}
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             );
