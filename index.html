@@ -1398,30 +1398,90 @@
         }
 
         // 게임 오버/승리 모달
-        function GameEndModal({ gameOver, victory }) {
+        // D-54 (2026-04-23 요한 지시): 게임오버 팝업에 사망 사유별 감성 문구 + 가이드.
+        // 사유: 'starvation' | 'health' | 'boss' | null(승리·미지정)
+        const DEATH_NARRATIVE = {
+            starvation: {
+                subtitle: '배고픔에 지쳐 쓰러지고 말았다...',
+                guide: '음식을 꾸준히 섭취하세요. 더 높은 등급의 음식과 휴식을 함께 사용하면 배고픔을 이겨내기 쉽습니다.'
+            },
+            health: {
+                subtitle: '상처가 깊어, 더는 일어설 수 없었다...',
+                guide: '함정을 피하고, 위험한 타일 앞에서는 귀 기울이기로 상황을 먼저 살피세요. 풍족한 땅에서 회복에 쓸 재료를 꾸준히 모아두는 것도 좋습니다.'
+            },
+            boss: {
+                subtitle: '그림자가 덮치는 순간, 아무것도 할 수 없었다...',
+                guide: '발각률이 80%를 넘으면 보스가 추격해 옵니다. 귀 기울이기로 거리를 파악하고, 숨기·휴식으로 발각률을 낮추세요. 보스 위치가 드러나면 반대 방향으로 우회하는 편이 안전합니다.'
+            }
+        };
+
+        function GameEndModal({ gameOver, victory, deathReason }) {
             if (!gameOver && !victory) return null;
-            
+
+            const narrative = !victory && deathReason ? DEATH_NARRATIVE[deathReason] : null;
+            const bgColor = victory ? '#4CAF50' : '#2a2a3e';
+            const accentColor = victory ? '#fff' : '#e94560';
+
             return (
                 <div className="modal">
-                    <div style={{ 
-                        background: victory ? '#4CAF50' : '#e94560', 
+                    <div style={{
+                        background: bgColor,
                         color: 'white',
-                        padding: '40px', 
-                        borderRadius: '12px', 
-                        textAlign: 'center'
+                        padding: '32px 28px',
+                        borderRadius: '12px',
+                        textAlign: 'center',
+                        maxWidth: '420px',
+                        width: '90vw',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.55)'
                     }}>
-                        <div style={{ fontSize: '28px', fontWeight: '600', marginBottom: '20px' }}>
+                        <div style={{
+                            fontSize: '26px',
+                            fontWeight: 700,
+                            marginBottom: narrative ? '14px' : '24px',
+                            color: accentColor
+                        }}>
                             {victory ? '🎉 승리!' : '💀 게임 오버'}
                         </div>
-                        <button 
+
+                        {narrative && (
+                            <>
+                                <div style={{
+                                    fontSize: '17px',
+                                    fontWeight: 700,
+                                    lineHeight: 1.45,
+                                    marginBottom: '16px',
+                                    color: '#fff'
+                                }}>
+                                    {narrative.subtitle}
+                                </div>
+                                <div style={{
+                                    fontSize: '13px',
+                                    fontWeight: 400,
+                                    lineHeight: 1.6,
+                                    color: '#d8d8d8',
+                                    background: 'rgba(0,0,0,0.25)',
+                                    padding: '12px 14px',
+                                    borderRadius: '8px',
+                                    textAlign: 'left',
+                                    marginBottom: '22px'
+                                }}>
+                                    <span style={{ color: '#d4b84a', fontWeight: 700 }}>가이드 · </span>
+                                    {narrative.guide}
+                                </div>
+                            </>
+                        )}
+
+                        <button
                             onClick={() => window.location.reload()}
-                            style={{ 
+                            style={{
                                 background: 'white',
                                 color: '#333',
                                 border: 'none',
-                                padding: '15px 30px',
-                                fontSize: '16px',
-                                fontWeight: '600'
+                                padding: '12px 28px',
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
                             }}
                         >
                             다시 시작
@@ -1456,6 +1516,8 @@
             const [boss, setBoss] = useState(null);
             const [gameOver, setGameOver] = useState(false);
             const [victory, setVictory] = useState(false);
+            // D-54: 사망 사유 — GameEndModal이 감성 문구·가이드를 선택하는 키.
+            const [deathReason, setDeathReason] = useState(null);
             const [message, setMessage] = useState('눈을 뜨자 낯선 숲이 펼쳐졌다.');
             const [showInventory, setShowInventory] = useState(false);
             const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
@@ -1578,10 +1640,16 @@
             }
 
             // 게임 오버/승리 체크
+            // D-54: 사유 구분 — 체력이 먼저 0이면 'health', 배고픔 먼저면 'starvation'.
             useEffect(() => {
-                if (health <= 0 || hunger <= 0) {
+                if (health <= 0) {
                     setGameOver(true);
-                    setMessage(health <= 0 ? '생명력이 다했다...' : '배고픔을 이기지 못했다...');
+                    setDeathReason('health');
+                    setMessage('생명력이 다했다...');
+                } else if (hunger <= 0) {
+                    setGameOver(true);
+                    setDeathReason('starvation');
+                    setMessage('배고픔을 이기지 못했다...');
                 }
             }, [health, hunger]);
 
@@ -2006,6 +2074,7 @@
                 
                 if (encounter) {
                     setGameOver(true);
+                    setDeathReason('boss');
                     msg = '보스 몬스터와 조우했다! 게임 오버...';
                 } else if (tile.type === 'normal') {
                     msg = '평범한 숲길이다.';
@@ -2166,7 +2235,7 @@
                         이미 GameMap 내부에서 렌더되므로 중복 마운트였음.
                         맵 컨테이너 기준 top:12px 하나만 유지. */}
 
-                    <GameEndModal gameOver={gameOver} victory={victory} />
+                    <GameEndModal gameOver={gameOver} victory={victory} deathReason={deathReason} />
                 </div>
             );
         }
