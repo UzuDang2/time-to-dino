@@ -1849,22 +1849,44 @@
                 setResult(res);
                 setPhase('resolve');
 
-                // 턴 로그 500ms 간격 순차 표시
+                // 턴 로그 500ms 간격 순차 표시.
                 res.turns.forEach((turn, idx) => {
                     setTimeout(() => {
                         setLogs(prev => [...prev, turn]);
                         if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
                     }, 500 * (idx + 1));
                 });
-                // 마지막 로그 후 500ms + 마무리 딜레이
+                // 마지막 로그 후 결과 페이즈 전환. onResolve는 '결과 확인' 버튼에서 호출.
                 setTimeout(() => {
                     setPhase('done');
-                    onResolve(res);
                 }, 500 * (res.turns.length + 1));
+            };
+
+            // D-48: '결과 확인' 버튼 — 유저가 결과를 읽고 수동으로 닫을 때 onResolve 호출.
+            const handleCloseResult = () => {
+                if (phase !== 'done' || !result) return;
+                onResolve(result);
             };
 
             const hpDisplayPct = Math.max(0, Math.min(100, (hpCurrent / prey.hp) * 100));
             const preyName = prey.name || prey.preyType;
+
+            // D-48: 결과 메시지 — 한글 조사(을/를, 이/가) 받침 유무로 자동 선택.
+            const hasBatchim = (word) => {
+                if (!word) return false;
+                const code = word.charCodeAt(word.length - 1);
+                if (code < 0xAC00 || code > 0xD7A3) return false;
+                return (code - 0xAC00) % 28 !== 0;
+            };
+            const particleEul = hasBatchim(preyName) ? '을' : '를';
+            const particleI = hasBatchim(preyName) ? '이' : '가';
+            const resultMessage = result ? (
+                result.outcome === 'victory' ? `${preyName}${particleEul} 잡았다!`
+                : result.outcome === 'prey_fled' ? `${preyName}${particleI} 도망치고 말았다...!`
+                : result.outcome === 'player_fled' ? '사냥을 포기하고 물러섰다.'
+                : ''
+            ) : '';
+            const resultTone = result && result.outcome === 'victory' ? 'victory' : 'fail';
 
             return (
                 <div className="modal">
@@ -1901,27 +1923,24 @@
                             </div>
                         </div>
 
-                        {/* 적 패턴 3슬롯 (readonly) */}
-                        <div style={{ marginBottom: '10px' }}>
-                            <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>적 행동</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                                {['회피 20%', '회피 20%', '빠르게 도망 100%'].map((txt, i) => (
-                                    <div key={i} style={{
-                                        padding: '8px 4px',
-                                        background: '#2a2a3e',
-                                        border: '1px solid #444',
-                                        borderRadius: '6px',
-                                        fontSize: '11px',
-                                        textAlign: 'center',
-                                        opacity: logs.find(l => l.turn === i + 1) ? 0.5 : 1
-                                    }}>
-                                        T{i + 1}<br/>{txt}
-                                    </div>
-                                ))}
+                        {/* D-48: 전투 결과 배너 — phase='done'에서만 노출. */}
+                        {phase === 'done' && resultMessage && (
+                            <div style={{
+                                padding: '14px 12px',
+                                marginBottom: '12px',
+                                background: resultTone === 'victory' ? '#1f3a24' : '#3a1f24',
+                                border: `1px solid ${resultTone === 'victory' ? '#4CAF50' : '#b24656'}`,
+                                borderRadius: '8px',
+                                textAlign: 'center',
+                                fontSize: '16px',
+                                fontWeight: 700,
+                                color: resultTone === 'victory' ? '#a5d18f' : '#ff9999'
+                            }}>
+                                {resultMessage}
                             </div>
-                        </div>
+                        )}
 
-                        {/* 내 슬롯 3칸 */}
+                        {/* D-48: 내 슬롯을 적 행동 위로 — 유저 턴 먼저 보이도록. */}
                         <div style={{ marginBottom: '10px' }}>
                             <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>내 슬롯</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
@@ -1951,24 +1970,55 @@
                             </div>
                         </div>
 
-                        {/* 확정 버튼 */}
+                        {/* 적 패턴 3슬롯 (readonly) */}
+                        <div style={{ marginBottom: '10px' }}>
+                            <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>적 행동</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                                {['회피 20%', '회피 20%', '빠르게 도망 100%'].map((txt, i) => (
+                                    <div key={i} style={{
+                                        padding: '8px 4px',
+                                        background: '#2a2a3e',
+                                        border: '1px solid #444',
+                                        borderRadius: '6px',
+                                        fontSize: '11px',
+                                        textAlign: 'center',
+                                        opacity: logs.find(l => l.turn === i + 1) ? 0.5 : 1
+                                    }}>
+                                        T{i + 1}<br/>{txt}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* D-48: 확정 / 결과 확인 버튼 — phase에 따라 분기.
+                            select: 슬롯 모두 채워지면 확정(전투 시작).
+                            resolve: 애니메이션 중 비활성.
+                            done:  결과 확인 → onResolve 호출, 모달 닫힘. */}
                         <button
-                            disabled={!allFilled || phase !== 'select'}
-                            onClick={handleConfirm}
+                            disabled={
+                                (phase === 'select' && !allFilled)
+                                || phase === 'resolve'
+                            }
+                            onClick={() => {
+                                if (phase === 'select') handleConfirm();
+                                else if (phase === 'done') handleCloseResult();
+                            }}
                             style={{
                                 width: '100%',
                                 padding: '10px',
                                 marginBottom: '10px',
-                                background: allFilled && phase === 'select' ? '#4CAF50' : '#444',
+                                background: ((phase === 'select' && allFilled) || phase === 'done')
+                                    ? '#4CAF50' : '#444',
                                 color: '#fff',
                                 border: 'none',
                                 borderRadius: '6px',
                                 fontSize: '14px',
                                 fontWeight: '600',
-                                cursor: allFilled && phase === 'select' ? 'pointer' : 'not-allowed'
+                                cursor: ((phase === 'select' && allFilled) || phase === 'done')
+                                    ? 'pointer' : 'not-allowed'
                             }}
                         >
-                            {phase === 'select' ? '확정' : phase === 'resolve' ? '전투 중...' : '완료'}
+                            {phase === 'select' ? '확정' : phase === 'resolve' ? '전투 중...' : '결과 확인'}
                         </button>
 
                         {/* 턴 로그 (resolve/done 페이즈) */}
