@@ -518,12 +518,11 @@ class InventorySystem {
     }
 
     // 선택된 아이템을 (x, y)에 확정 배치
-    // 반환: { ok, action: 'place'|'merge'|'craft_prompt'|'swap'|'none', ... }
-    //   - merge: 같은 재료 → 즉시 상위 재료로 자동 합성 (기존 유지).
-    //   - craft_prompt: 다른 재료 + 관련 레시피 존재 → **자동 합성 안 함**. 선택 아이템
-    //     원위치 복귀시키고 UI에 "합성 패널 오픈" 신호 + 후보 레시피/페어 정보 반환.
-    //     만들기 확정은 UI 쪽 [만들기] 버튼 경유 (재료 소비는 이 함수 밖).
-    //   - swap: 다른 재료 + 관련 레시피 없음 → 교체 (기존 유지).
+    // 반환: { ok, action: 'place'|'merge'|'swap'|'none', ... }
+    //   - merge: 같은 재료 → 즉시 상위 재료 자동 합성.
+    //   - swap: 다른 재료 → 교체 (선택 전환).
+    // D-48: 합성 패널은 '선택된 아이템 기준'으로 UI가 자동 노출 — 이 함수가 craft_prompt를
+    //   반환하던 경로는 폐기. 드롭 상호작용은 단순 머지/swap/배치에 집중.
     confirmPlacement(x, y) {
         if (!this.selectedItem) return { ok: false, action: 'none' };
         const item = this.selectedItem;
@@ -559,24 +558,7 @@ class InventorySystem {
                 return { ok: true, action: 'merge', resultType: newType };
             }
 
-            // 2b) 다른 재료 + 관련 레시피 존재 → 합성 패널 신호.
-            //     선택 아이템을 원위치로 복귀, 두 아이템 모두 그대로 둔다.
-            //     UI가 [만들기] 버튼을 통해 수동으로 재료 소비·결과 배치 처리.
-            if (item.type !== target.type) {
-                const candidates = InventorySystem.findRecipesContainingAny(item.type, target.type);
-                if (candidates.length > 0) {
-                    this.cancelSelection();
-                    return {
-                        ok: true,
-                        action: 'craft_prompt',
-                        pair: [item.type, target.type],
-                        pairItemIds: [item.id, target.id],
-                        candidates
-                    };
-                }
-            }
-
-            // 2c) 교체
+            // 2b) 교체 (swap) — 다른 재료는 무조건 swap. 합성은 선택 시점에 UI가 패널로 안내.
             this.removeItem(target);
             if (this.canPlace(item.shape, x, y)) {
                 item.x = x;

@@ -670,9 +670,6 @@
             const [pendingPos, setPendingPos] = React.useState(null);
             // 정보창으로 띄울 아이템 (null이면 정보창 닫힘)
             const [infoItem, setInfoItem] = React.useState(null);
-            // D-47 합성 패널 대기 상태: { pair, pairItemIds, candidates } | null.
-            // 다른 재료 2개 겹침 + 관련 레시피 존재 시 세팅 → 하단 CraftPanel 렌더.
-            const [pendingCraft, setPendingCraft] = React.useState(null);
 
             // D-47: 가방 크기는 inventory 인스턴스 기준. disabled 셀은 inventory.isDisabled로.
             const ROWS = inventory.rows, COLS = inventory.cols, CELL = 47, PAD = 4;
@@ -707,22 +704,13 @@
             //   - 같은 type & 머지 가능 → 즉시 머지.
             //   - 다른 type & 조합 매칭 → 즉시 조합.
             //   - 그 외: 기존대로 selectItem 경로(선택 전환) — 드래그로 빈 칸에 옮기는 기존 UX는 살림.
-            // D-47: confirmPlacement 결과를 UI state에 반영하는 공통 헬퍼.
-            //   - craft_prompt: 합성 패널 오픈 (재료 소비 안 함, [만들기] 대기).
-            //   - merge/place: 선택 해제 + 메시지.
-            //   - swap: 새로 선택된 아이템으로 전환.
+            // D-48: confirmPlacement 결과 반영 공통 헬퍼.
+            //   - merge: 즉시 실행 (기존 동작).
+            //   - swap: 새 아이템으로 선택 전환.
+            //   - place: 배치 후 선택 해제.
+            //   합성 패널은 이제 '선택된 아이템 기준'으로 자동 노출되므로 craft_prompt 경로 폐기.
             const applyDropResult = (res) => {
                 if (!res || !res.ok) return false;
-                if (res.action === 'craft_prompt') {
-                    setPendingCraft({
-                        pair: res.pair || [],
-                        pairItemIds: res.pairItemIds || [],
-                        candidates: res.candidates || []
-                    });
-                    setSelectedItem(null);
-                    setPendingPos(null);
-                    return true;
-                }
                 if (res.action === 'swap') {
                     setSelectedItem(inventory.selectedItem);
                     setPendingPos(inventory.selectedItem
@@ -741,6 +729,8 @@
             };
 
             // D-47 [만들기] 버튼 핸들러 — 실제 재료 소비·결과 배치는 inventory.craftRecipe.
+            // D-48: 성공 시 선택 해제 (재료가 선택된 아이템이었을 수 있음). 패널은 selectedItem
+            //   기반이라 해제만 해도 자동으로 닫힘.
             const handleCraft = (recipe) => {
                 const res = inventory.craftRecipe(recipe);
                 if (res.ok) {
@@ -748,7 +738,9 @@
                         const resultDef = InventorySystem.ITEMS[res.resultType] || {};
                         onFlashMessage(`재료를 조합해 ${resultDef.name || res.resultType}을(를) 만들었다.`);
                     }
-                    setPendingCraft(null);
+                    inventory.selectedItem = null;
+                    setSelectedItem(null);
+                    setPendingPos(null);
                 } else if (res.reason === 'no_space') {
                     if (onFlashMessage) onFlashMessage('가방이 가득 차 만들 수 없다.');
                 } else if (res.reason === 'short_ingredients') {
@@ -903,13 +895,23 @@
                 if (overlap.length === 1) {
                     const t = overlap[0];
                     if (inventory.canMerge(selectedItem, t)) return { ok: true, kind: 'merge' };
-                    if (selectedItem.type !== t.type
-                        && InventorySystem.findRecipesContainingAny(selectedItem.type, t.type).length > 0) {
-                        return { ok: true, kind: 'craft' };
-                    }
                     return { ok: true, kind: 'swap' };
                 }
                 return { ok: false, kind: 'blocked' };
+            })();
+
+            // D-48: 선택된 아이템의 type이 포함된 모든 레시피 → 하단 CraftPanel에 노출.
+            //   선택 해제 시 null이 되어 패널도 자동으로 닫힘.
+            //   매 렌더마다 계산 (combos 수가 적어 비용 무시 가능).
+            const pendingCraft = (() => {
+                if (!selectedItem) return null;
+                const candidates = InventorySystem.findRecipesContainingAny(selectedItem.type, selectedItem.type);
+                if (!candidates || candidates.length === 0) return null;
+                return {
+                    pair: [selectedItem.type],
+                    pairItemIds: [selectedItem.id],
+                    candidates
+                };
             })();
 
             return (
@@ -1011,9 +1013,7 @@
                                     disabled={!previewInfo || !previewInfo.ok}
                                 >
                                     확정{previewInfo && previewInfo.ok && previewInfo.kind !== 'place'
-                                        ? ` (${previewInfo.kind === 'merge' ? '머지'
-                                              : previewInfo.kind === 'craft' ? '합성'
-                                              : '교체'})`
+                                        ? ` (${previewInfo.kind === 'merge' ? '머지' : '교체'})`
                                         : ''}
                                 </button>
                                 <button onClick={handleCancel}>취소</button>
@@ -1037,13 +1037,19 @@
                                 짧게 탭 = 정보 · 길게 누르면 선택해서 이동/머지
                             </div>
                         )}
-                        {/* D-47 합성 패널 — 다른 재료 2개 겹친 순간 관련 레시피 노출 */}
+                        {/* D-48 합성 패널 — 선택된 아이템 기준으로 관련 레시피 자동 노출.
+                            닫기 = 선택 해제 (패널은 selectedItem이 null이면 자동으로 닫힘). */}
                         {pendingCraft && (
                             <CraftPanel
                                 recipes={pendingCraft.candidates}
                                 inventory={inventory}
                                 onCraft={handleCraft}
-                                onClose={() => setPendingCraft(null)}
+                                onClose={() => {
+                                    inventory.cancelSelection();
+                                    setSelectedItem(null);
+                                    setPendingPos(null);
+                                    bump();
+                                }}
                             />
                         )}
                     </div>
@@ -1265,8 +1271,9 @@
                     borderRadius: '8px',
                     padding: '10px',
                     marginTop: '8px',
-                    maxHeight: '35vh',
-                    overflowY: 'auto'
+                    maxHeight: '55vh',
+                    overflowY: 'auto',
+                    WebkitOverflowScrolling: 'touch'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4b84a' }}>
