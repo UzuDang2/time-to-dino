@@ -604,6 +604,14 @@ ITEM_NAME_TO_ID: dict[str, str] = {
     "물고기꼬치": "fish_skewer",
     "고기꼬치구이": "grilled_meat_skewer",
     "생선꼬치구이": "grilled_fish_skewer",
+    # D-71 사냥감 확장 1단계 — 게·메뚜기 보상 다양화 + 조합·요리 체인.
+    # 아이템 '메뚜기'는 사냥감 id 'grasshopper'와 한글명이 겹치지만
+    # ITEM/PREY는 별개 namespace. 여기선 아이템 id만 `grasshopper_whole`로 매핑.
+    "게": "crab_whole",
+    "발라낸 게살": "crab_meat",
+    "게살꼬치": "crab_skewer",
+    "구운게살꼬치": "grilled_crab_skewer",
+    "메뚜기": "grasshopper_whole",
 }
 
 
@@ -928,7 +936,19 @@ def build_combos_from_sheet(
         if key in seen:
             continue
         seen.add(key)
-        combos.append({"ingredients": ingredients, "result": r})
+        # D-71: result_count — 1회 조합으로 생성되는 결과물 수량. 빈칸/파싱실패=1 폴백.
+        #   돌맹이+게 → 발라낸 게살 x2처럼 "한 재료에서 여러 개 산출" 케이스 지원.
+        rc_raw = row.get("result_count")
+        try:
+            rc = int(rc_raw) if rc_raw not in (None, "") else 1
+        except (TypeError, ValueError):
+            rc = 1
+        if rc < 1:
+            rc = 1
+        combo: dict[str, Any] = {"ingredients": ingredients, "result": r}
+        if rc > 1:
+            combo["count"] = rc
+        combos.append(combo)
 
     return combos
 

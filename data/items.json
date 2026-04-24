@@ -57,6 +57,29 @@
     }
   },
   {
+    "id": "crab_whole",
+    "name": "게",
+    "이름": "게",
+    "카테고리": "재료",
+    "재료 타입": "음식재료",
+    "아이템 등급": "1단계",
+    "가방칸수": "1x1",
+    "무게": 1,
+    "나오는 지역": [],
+    "머지 가능": false,
+    "일회용": false,
+    "설명 텍스트": "딱딱한 등껍질을 가진 작은 갑각류. 돌로 깨부숴야 살을 꺼낼 수 있다.",
+    "효과 요약": "조합으로 게살을 바를 수 있다.",
+    "사용 효과": "",
+    "merge_result": null,
+    "merge_enabled": false,
+    "effect": {
+      "usable": false,
+      "actions": [],
+      "raw": ""
+    }
+  },
+  {
     "id": "fish",
     "name": "물고기",
     "이름": "물고기",
@@ -85,6 +108,35 @@
         }
       ],
       "raw": "hunger+2"
+    }
+  },
+  {
+    "id": "grasshopper_whole",
+    "name": "메뚜기",
+    "이름": "메뚜기",
+    "카테고리": "음식",
+    "재료 타입": "음식재료",
+    "아이템 등급": "1단계",
+    "가방칸수": "1x1",
+    "무게": 1,
+    "나오는 지역": [],
+    "머지 가능": false,
+    "일회용": true,
+    "설명 텍스트": "통통한 메뚜기. 날것으로도 허기를 달래 준다.",
+    "효과 요약": "배고픔 +1.",
+    "사용 효과": "hunger+1",
+    "merge_result": null,
+    "merge_enabled": false,
+    "effect": {
+      "usable": true,
+      "actions": [
+        {
+          "type": "stat",
+          "stat": "hunger",
+          "delta": 1
+        }
+      ],
+      "raw": "hunger+1"
     }
   },
   {
@@ -348,6 +400,64 @@
     }
   },
   {
+    "id": "crab_meat",
+    "name": "발라낸 게살",
+    "이름": "발라낸 게살",
+    "카테고리": "음식",
+    "재료 타입": "음식재료",
+    "아이템 등급": "2단계",
+    "가방칸수": "1x1",
+    "무게": 1,
+    "나오는 지역": [],
+    "머지 가능": false,
+    "일회용": true,
+    "설명 텍스트": "껍질을 깨고 꺼낸 희멀건 게살. 조금이나마 허기를 달래 준다.",
+    "효과 요약": "배고픔 +1.",
+    "사용 효과": "hunger+1",
+    "merge_result": null,
+    "merge_enabled": false,
+    "effect": {
+      "usable": true,
+      "actions": [
+        {
+          "type": "stat",
+          "stat": "hunger",
+          "delta": 1
+        }
+      ],
+      "raw": "hunger+1"
+    }
+  },
+  {
+    "id": "crab_skewer",
+    "name": "게살꼬치",
+    "이름": "게살꼬치",
+    "카테고리": "음식",
+    "재료 타입": "음식재료",
+    "아이템 등급": "2단계",
+    "가방칸수": "1x1",
+    "무게": 1,
+    "나오는 지역": [],
+    "머지 가능": false,
+    "일회용": true,
+    "설명 텍스트": "게살을 나뭇가지에 꿴 꼬치. 불에 구우면 한결 든든해질 듯하다.",
+    "효과 요약": "배고픔 +1.",
+    "사용 효과": "hunger+1",
+    "merge_result": null,
+    "merge_enabled": false,
+    "effect": {
+      "usable": true,
+      "actions": [
+        {
+          "type": "stat",
+          "stat": "hunger",
+          "delta": 1
+        }
+      ],
+      "raw": "hunger+1"
+    }
+  },
+  {
     "id": "fish_skewer",
     "name": "물고기꼬치",
     "이름": "물고기꼬치",
@@ -517,6 +627,40 @@
         }
       ],
       "raw": "hunger+3"
+    }
+  },
+  {
+    "id": "grilled_crab_skewer",
+    "name": "구운게살꼬치",
+    "이름": "구운게살꼬치",
+    "카테고리": "음식",
+    "재료 타입": "음식재료",
+    "아이템 등급": "3단계",
+    "가방칸수": "1x1",
+    "무게": 1,
+    "나오는 지역": [],
+    "머지 가능": false,
+    "일회용": true,
+    "설명 텍스트": "불향이 밴 게살 꼬치. 바다 내음이 입 안에 번진다.",
+    "효과 요약": "배고픔 +2, 생명력 +1.",
+    "사용 효과": "hunger+2;health+1",
+    "merge_result": null,
+    "merge_enabled": false,
+    "effect": {
+      "usable": true,
+      "actions": [
+        {
+          "type": "stat",
+          "stat": "hunger",
+          "delta": 2
+        },
+        {
+          "type": "stat",
+          "stat": "health",
+          "delta": 1
+        }
+      ],
+      "raw": "hunger+2;health+1"
     }
   },
   {

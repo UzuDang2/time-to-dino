@@ -9,7 +9,8 @@
     "type": "회피형",
     "meat": 3,
     "habitat": "덤불",
-    "evade_per_turn": "30,30,20"
+    "evade_per_turn": "30,30,20",
+    "drop_item": ""
   },
   {
     "id": "mouse",
@@ -21,7 +22,8 @@
     "type": "회피형",
     "meat": 2,
     "habitat": "덤불",
-    "evade_per_turn": "20,20,10"
+    "evade_per_turn": "20,20,10",
+    "drop_item": ""
   },
   {
     "id": "squirrel",
@@ -33,7 +35,8 @@
     "type": "회피형",
     "meat": 2,
     "habitat": "숲",
-    "evade_per_turn": "40,40,25"
+    "evade_per_turn": "40,40,25",
+    "drop_item": ""
   },
   {
     "id": "bird",
@@ -45,7 +48,8 @@
     "type": "회피형",
     "meat": 3,
     "habitat": "평원",
-    "evade_per_turn": "40,40,25"
+    "evade_per_turn": "40,40,25",
+    "drop_item": ""
   },
   {
     "id": "salamander",
@@ -57,7 +61,8 @@
     "type": "회피형",
     "meat": 2,
     "habitat": "숲",
-    "evade_per_turn": "20,20,10"
+    "evade_per_turn": "20,20,10",
+    "drop_item": ""
   },
   {
     "id": "snake",
@@ -69,7 +74,8 @@
     "type": "회피형",
     "meat": 2,
     "habitat": "덤불",
-    "evade_per_turn": "20,20,10"
+    "evade_per_turn": "20,20,10",
+    "drop_item": ""
   },
   {
     "id": "frog",
@@ -81,7 +87,8 @@
     "type": "회피형",
     "meat": 2,
     "habitat": "덤불",
-    "evade_per_turn": "30,30,20"
+    "evade_per_turn": "30,30,20",
+    "drop_item": ""
   },
   {
     "id": "crab",
@@ -93,7 +100,8 @@
     "type": "회피형",
     "meat": 2,
     "habitat": "시냇물",
-    "evade_per_turn": "20,20,10"
+    "evade_per_turn": "20,20,10",
+    "drop_item": "crab_whole"
   },
   {
     "id": "grasshopper",
@@ -105,7 +113,8 @@
     "type": "회피형",
     "meat": 1,
     "habitat": "평원",
-    "evade_per_turn": "50,50,30"
+    "evade_per_turn": "50,50,30",
+    "drop_item": "grasshopper_whole"
   },
   {
     "id": "boar",
@@ -117,7 +126,8 @@
     "type": "반격형",
     "meat": 5,
     "habitat": "",
-    "evade_per_turn": ""
+    "evade_per_turn": "",
+    "drop_item": ""
   },
   {
     "id": "dinosaur",
@@ -129,7 +139,8 @@
     "type": "반격형",
     "meat": 4,
     "habitat": "",
-    "evade_per_turn": ""
+    "evade_per_turn": "",
+    "drop_item": ""
   },
   {
     "id": "deer",
@@ -141,7 +152,8 @@
     "type": "회피형",
     "meat": 7,
     "habitat": "",
-    "evade_per_turn": ""
+    "evade_per_turn": "",
+    "drop_item": ""
   },
   {
     "id": "badger",
@@ -153,7 +165,8 @@
     "type": "반격형",
     "meat": 6,
     "habitat": "",
-    "evade_per_turn": ""
+    "evade_per_turn": "",
+    "drop_item": ""
   },
   {
     "id": "fox",
@@ -165,7 +178,8 @@
     "type": "회피형",
     "meat": 5,
     "habitat": "",
-    "evade_per_turn": ""
+    "evade_per_turn": "",
+    "drop_item": ""
   },
   {
     "id": "turkey",
@@ -177,7 +191,8 @@
     "type": "반격형",
     "meat": 4,
     "habitat": "",
-    "evade_per_turn": ""
+    "evade_per_turn": "",
+    "drop_item": ""
   },
   {
     "id": "armadillo",
@@ -189,6 +204,7 @@
     "type": "방어형",
     "meat": 5,
     "habitat": "",
-    "evade_per_turn": ""
+    "evade_per_turn": "",
+    "drop_item": ""
   }
 ]

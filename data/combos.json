@@ -89,5 +89,26 @@
       "fish_skewer"
     ],
     "result": "grilled_fish_skewer"
+  },
+  {
+    "ingredients": [
+      "stone",
+      "crab_whole"
+    ],
+    "result": "crab_meat",
+    "count": 2
+  },
+  {
+    "ingredients": [
+      "crab_meat",
+      "branch"
+    ],
+    "result": "crab_skewer"
+  },
+  {
+    "ingredients": [
+      "crab_skewer"
+    ],
+    "result": "grilled_crab_skewer"
   }
 ]
