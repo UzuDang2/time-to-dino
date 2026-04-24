@@ -56,5 +56,12 @@
       "plant_fiber"
     ],
     "result": "weapon_basic"
+  },
+  {
+    "ingredients": [
+      "branch",
+      "plant_fiber"
+    ],
+    "result": "slingshot"
   }
 ]

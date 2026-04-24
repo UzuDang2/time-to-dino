@@ -5,7 +5,9 @@
     "damage": 1,
     "success_rate": 100,
     "requirement": "없음",
-    "count": 1
+    "count": 1,
+    "accuracy": 0,
+    "full_loss": "N"
   },
   {
     "id": "throw_stone",
@@ -13,7 +15,9 @@
     "damage": 2,
     "success_rate": 90,
     "requirement": "돌맹이",
-    "count": 1
+    "count": 1,
+    "accuracy": 20,
+    "full_loss": "N"
   },
   {
     "id": "stab_weapon",
@@ -21,7 +25,9 @@
     "damage": 2,
     "success_rate": 100,
     "requirement": "나무창",
-    "count": 1
+    "count": 1,
+    "accuracy": 30,
+    "full_loss": "N"
   },
   {
     "id": "dodge",
@@ -29,7 +35,9 @@
     "damage": 0,
     "success_rate": 75,
     "requirement": "없음",
-    "count": 3
+    "count": 3,
+    "accuracy": 0,
+    "full_loss": "N"
   },
   {
     "id": "run_away",
@@ -37,7 +45,9 @@
     "damage": 0,
     "success_rate": 25,
     "requirement": "없음",
-    "count": 1
+    "count": 1,
+    "accuracy": 0,
+    "full_loss": "N"
   },
   {
     "id": "throw_spear",
@@ -45,6 +55,18 @@
     "damage": 4,
     "success_rate": 100,
     "requirement": "나무창",
-    "count": 1
+    "count": 1,
+    "accuracy": 20,
+    "full_loss": "Y"
+  },
+  {
+    "id": "slingshot_shot",
+    "name": "새총 쏘기",
+    "damage": 3,
+    "success_rate": 100,
+    "requirement": "새총 + 돌맹이",
+    "count": 1,
+    "accuracy": 90,
+    "full_loss": "N"
   }
 ]

@@ -945,6 +945,8 @@ def rows_to_weapons(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "아이템 등급": str(r.get("grade") or "").strip() or None,
             "내구도": r.get("durability"),
             "공격력": r.get("attack"),
+            # D-50: accuracy — 카드에 합산될 무기 명중 보너스. 없으면 0.
+            "accuracy": int(r.get("accuracy") or 0),
             "설명 텍스트": str(r.get("description") or "").strip(),
             "효과 요약": str(r.get("summary") or "").strip(),
         }

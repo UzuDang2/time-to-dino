@@ -85,7 +85,9 @@ window.TTD_DATA = {
       "damage": 1,
       "success_rate": 100,
       "requirement": "없음",
-      "count": 1
+      "count": 1,
+      "accuracy": 0,
+      "full_loss": "N"
     },
     {
       "id": "throw_stone",
@@ -93,7 +95,9 @@ window.TTD_DATA = {
       "damage": 2,
       "success_rate": 90,
       "requirement": "돌맹이",
-      "count": 1
+      "count": 1,
+      "accuracy": 20,
+      "full_loss": "N"
     },
     {
       "id": "stab_weapon",
@@ -101,7 +105,9 @@ window.TTD_DATA = {
       "damage": 2,
       "success_rate": 100,
       "requirement": "나무창",
-      "count": 1
+      "count": 1,
+      "accuracy": 30,
+      "full_loss": "N"
     },
     {
       "id": "dodge",
@@ -109,7 +115,9 @@ window.TTD_DATA = {
       "damage": 0,
       "success_rate": 75,
       "requirement": "없음",
-      "count": 3
+      "count": 3,
+      "accuracy": 0,
+      "full_loss": "N"
     },
     {
       "id": "run_away",
@@ -117,7 +125,9 @@ window.TTD_DATA = {
       "damage": 0,
       "success_rate": 25,
       "requirement": "없음",
-      "count": 1
+      "count": 1,
+      "accuracy": 0,
+      "full_loss": "N"
     },
     {
       "id": "throw_spear",
@@ -125,7 +135,19 @@ window.TTD_DATA = {
       "damage": 4,
       "success_rate": 100,
       "requirement": "나무창",
-      "count": 1
+      "count": 1,
+      "accuracy": 20,
+      "full_loss": "Y"
+    },
+    {
+      "id": "slingshot_shot",
+      "name": "새총 쏘기",
+      "damage": 3,
+      "success_rate": 100,
+      "requirement": "새총 + 돌맹이",
+      "count": 1,
+      "accuracy": 90,
+      "full_loss": "N"
     }
   ],
   "MONSTERS": [
@@ -847,6 +869,30 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "slingshot",
+      "name": "새총",
+      "이름": "새총",
+      "카테고리": "무기",
+      "재료 타입": null,
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "나뭇가지와 끈을 엮어 만든 소형 투척 무기. '새총 쏘기' 카드 사용 조건.",
+      "효과 요약": "돌맹이를 장전해 날리는 소형 무기.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "내구도": 3,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
       "id": "stem",
       "name": "줄기",
       "이름": "줄기",
@@ -1130,10 +1176,25 @@ window.TTD_DATA = {
       "가방칸수": "2x1",
       "무게": 2,
       "아이템 등급": "1단계",
-      "내구도": 10,
+      "내구도": 5,
       "공격력": 0,
+      "accuracy": 10,
       "설명 텍스트": "나뭇가지와 돌을 엮어 만든 단순한 창. 창으로 찌르기·창던지기 카드 사용.",
       "효과 요약": "기본 무기. 전투 카드 '창으로 찌르기' / '창던지기' 소지 조건."
+    },
+    {
+      "id": "slingshot",
+      "name": "새총",
+      "이름": "새총",
+      "카테고리": "무기",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "아이템 등급": "1단계",
+      "내구도": 3,
+      "공격력": 0,
+      "accuracy": 90,
+      "설명 텍스트": "돌맹이를 장전해 날리는 소형 무기. 새총 쏘기 카드 사용.",
+      "효과 요약": "새총 쏘기 카드 소지 조건."
     }
   ],
   "DROP_TABLE": {
@@ -1288,6 +1349,13 @@ window.TTD_DATA = {
         "plant_fiber"
       ],
       "result": "weapon_basic"
+    },
+    {
+      "ingredients": [
+        "branch",
+        "plant_fiber"
+      ],
+      "result": "slingshot"
     }
   ]
 };
