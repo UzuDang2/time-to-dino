@@ -2554,6 +2554,10 @@
         // 손패 보충 로직·초기 드로우·HandCards 그리드가 모두 이 상수 기준으로 동작한다.
         const HAND_SIZE = 5;
 
+        // D-76: 사냥감 스폰 수량 상수 — 요한이 시트 이관 전까진 여기서 조정.
+        //   level1/level2 각각 별도 풀에서 `spawnPrey`가 뽑아 배치.
+        const PREY_SPAWN = { level1: 5, level2: 5 };
+
         // D-46 (2026-04-23, 9차 세션): 사냥감 전투 1단계.
         // PREY_HABITAT — 각 prey id의 서식 region 폴백.
         //   시트 `사냥감` 탭에 habitat 컬럼이 추가되면 prey.habitat가 우선, 없으면 이 상수.
@@ -2571,8 +2575,12 @@
         };
         // PREY_EMOJI — 런타임 UI 매핑 (SSOT와 무관, 아이콘만).
         const PREY_EMOJI = {
+            // Level 1
             rabbit: '🐰', mouse: '🐭', squirrel: '🐿️', bird: '🐦', salamander: '🦎',
-            snake: '🐍', frog: '🐸', crab: '🦀', grasshopper: '🦗'
+            snake: '🐍', frog: '🐸', crab: '🦀', grasshopper: '🦗',
+            // Level 2 (D-76)
+            boar: '🐗', dinosaur: '🦕', deer: '🦌', badger: '🦡',
+            fox: '🦊', turkey: '🦃', armadillo: '🦔'
         };
         // 사냥시작 카드 — 사냥감 타일 진입 시 손패에 자동 추가되는 overflow 카드.
         //   `overflow:true` 플래그로 HAND_SIZE 카운트에서 제외(손패가 5장이어도 이 카드는 추가됨).
@@ -2982,12 +2990,12 @@
                 // D-53: 보스 이동 history 초기화 (시작 위치가 B1).
                 setBossMoveHistory([bossPos]);
 
-                // D-46: 사냥감 5마리 스폰 (habitat region 매칭).
+                // D-46/D-76: 사냥감 스폰. level1/level2 각각 PREY_SPAWN 만큼.
                 //   reserved = 플레이어 시작/보스/탈출구. preyData는 TTD_DATA.PREY.
                 //   habitatFallback은 prey.habitat 없을 때만 사용.
                 const preyData = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
                 const spawned = (typeof window.spawnPrey === 'function')
-                    ? window.spawnPrey(newTiles, preyData, 5, {
+                    ? window.spawnPrey(newTiles, preyData, PREY_SPAWN, {
                         playerStartId: playerStart,
                         bossPosId: bossPos,
                         exitPosId: exitPos

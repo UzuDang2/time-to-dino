@@ -362,58 +362,117 @@ class MapGenerator {
     }
 }
 
-// D-46 사냥감 스폰 (2026-04-23, 9차 세션):
-//   level 1 사냥감 9종 중 무작위로 `count`마리 스폰. habitat region과 일치하는 타일에만 배치.
-//   reserved 타일(플레이어 시작/보스/탈출구)과 이미 다른 prey 있는 타일은 제외.
-//   habitat 필드는 prey.habitat → window.TTD_PREY_HABITAT → habitatFallback 순서로 fallback.
+// D-46/D-76 사냥감 스폰:
+//   level 1/2 사냥감을 counts.level1 / counts.level2 만큼 별도 풀에서 스폰.
+//   habitat region 매칭, reserved/occupied 제외.
+//   habitat 필드가 시트에서 CSV("덤불,숲")면 런타임에서 split — prey.habitat이
+//   string이면 배열로 변환. 없으면 habitatFallback[prey.id] 사용.
+//
+//   D-76: Level 2 간 타일거리 3~5 보장.
+//     한 L2 prey 배치 후, 그로부터 BFS 거리 3 이내 타일은 다음 L2 spawn
+//     candidates에서 제외(최소 거리 3). 거리 5 상한은 "충분히 떨어져 있으면 OK"
+//     로 해석하므로 상한 체크 없이 min 거리만 보장(공간 부족 시 완화).
 //
 // 인자:
 //   tiles          — 생성된 타일 배열
 //   preyData       — window.TTD_DATA.PREY (배열)
-//   count          — 스폰 마릿수 (기본 5)
-//   reserved       — { playerStartId, bossPosId, exitPosId } (다른 prey 이미 있는 타일은 내부에서 추적)
-//   habitatFallback— 외부에서 주입하는 habitat 매핑 (index.html의 PREY_HABITAT 상수)
+//   counts         — { level1, level2 } (기본 {5,5}). 구버전 호환: number면 level1 마릿수.
+//   reserved       — { playerStartId, bossPosId, exitPosId }
+//   habitatFallback— 외부에서 주입하는 habitat 매핑 (index.html의 PREY_HABITAT)
 //
 // 반환: [{ id: 'prey_0', tileId, preyType: 'rabbit' }, ...]
-function spawnPrey(tiles, preyData, count = 5, reserved = {}, habitatFallback = {}) {
+function spawnPrey(tiles, preyData, counts = { level1: 5, level2: 5 }, reserved = {}, habitatFallback = {}) {
     if (!Array.isArray(preyData) || preyData.length === 0) return [];
+    // 구버전 호환: counts가 number면 level1 전용.
+    if (typeof counts === 'number') counts = { level1: counts, level2: 0 };
+    const count1 = Math.max(0, Number(counts.level1) || 0);
+    const count2 = Math.max(0, Number(counts.level2) || 0);
+
     const level1 = preyData.filter(p => p && p.level === 1);
-    if (level1.length === 0) return [];
+    const level2 = preyData.filter(p => p && p.level === 2);
 
     const reservedSet = new Set(
-        [reserved.playerStartId, reserved.bossPosId, reserved.exitPosId].filter(v => v !== undefined && v !== null)
+        [reserved.playerStartId, reserved.bossPosId, reserved.exitPosId]
+            .filter(v => v !== undefined && v !== null)
     );
     const occupied = new Set();
     const spawned = [];
+    let idCounter = 0;
+
+    // habitat 정규화: CSV string → array.
+    const habitatOf = (prey) => {
+        const h = prey && prey.habitat;
+        if (Array.isArray(h) && h.length > 0) return h;
+        if (typeof h === 'string' && h.trim()) {
+            return h.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        return habitatFallback[prey.id] || [];
+    };
+
+    // BFS 거리 (connections 기반).
+    const bfsDist = (fromId, toId) => {
+        if (fromId === toId) return 0;
+        const visited = new Set([fromId]);
+        const q = [{ tile: fromId, d: 0 }];
+        while (q.length > 0) {
+            const { tile, d } = q.shift();
+            for (const n of (tiles[tile].connections || [])) {
+                if (visited.has(n)) continue;
+                if (n === toId) return d + 1;
+                visited.add(n);
+                q.push({ tile: n, d: d + 1 });
+            }
+        }
+        return Infinity;
+    };
 
     const MAX_SPECIES_ATTEMPTS = 10;
-    for (let i = 0; i < count; i++) {
-        let placed = false;
-        const triedTypes = new Set();
-        for (let attempt = 0; attempt < MAX_SPECIES_ATTEMPTS && !placed; attempt++) {
-            const pool = level1.filter(p => !triedTypes.has(p.id));
-            if (pool.length === 0) break;
-            const prey = pool[Math.floor(Math.random() * pool.length)];
-            triedTypes.add(prey.id);
 
-            const habitat = (Array.isArray(prey.habitat) && prey.habitat.length > 0)
-                ? prey.habitat
-                : (habitatFallback[prey.id] || []);
+    const spawnOne = (pool, extraFilter) => {
+        const triedTypes = new Set();
+        for (let attempt = 0; attempt < MAX_SPECIES_ATTEMPTS; attempt++) {
+            const available = pool.filter(p => !triedTypes.has(p.id));
+            if (available.length === 0) return null;
+            const prey = available[Math.floor(Math.random() * available.length)];
+            triedTypes.add(prey.id);
+            const habitat = habitatOf(prey);
             if (habitat.length === 0) continue;
 
-            const candidates = tiles.filter(t =>
+            let candidates = tiles.filter(t =>
                 !t.isEmpty &&
                 habitat.includes(t.region) &&
                 !reservedSet.has(t.id) &&
                 !occupied.has(t.id)
             );
+            if (extraFilter) candidates = candidates.filter(extraFilter);
             if (candidates.length === 0) continue;
 
             const tile = candidates[Math.floor(Math.random() * candidates.length)];
             occupied.add(tile.id);
-            spawned.push({ id: `prey_${i}`, tileId: tile.id, preyType: prey.id });
-            placed = true;
+            const rec = { id: `prey_${idCounter++}`, tileId: tile.id, preyType: prey.id };
+            spawned.push(rec);
+            return rec;
         }
+        return null;
+    };
+
+    // Level 1 — 기존 동작 그대로.
+    for (let i = 0; i < count1; i++) spawnOne(level1, null);
+
+    // Level 2 — 상호 거리 3 이상 강제. 공간이 부족하면 거리 제약 완화.
+    const placedL2 = [];
+    const MIN_L2_DIST = 3;
+    for (let i = 0; i < count2; i++) {
+        const filter = (t) => {
+            for (const other of placedL2) {
+                if (bfsDist(t.id, other.tileId) < MIN_L2_DIST) return false;
+            }
+            return true;
+        };
+        let rec = spawnOne(level2, filter);
+        // 거리 제약으로 실패했다면 완화된 조건으로 재시도.
+        if (!rec) rec = spawnOne(level2, null);
+        if (rec) placedL2.push(rec);
     }
 
     return spawned;
