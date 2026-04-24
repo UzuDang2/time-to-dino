@@ -4,7 +4,7 @@
 
 ---
 
-## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 + D-81 consume 유령 + D-82 맵 드래그·줌 + D-83 가방 탭/롱프레스 스왑 + D-84 가방 landscape 레이아웃)
+## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 + D-81 consume 유령 + D-82 맵 드래그·줌 + D-83 가방 탭/롱프레스 스왑 + D-84 가방 landscape 레이아웃 + D-84b 합성 패널 별도 카드)
 
 > 🌐 claude.ai/code 웹 환경(Linux 샌드박스). Notion MCP 미연결 + `notion.site` 방화벽 차단 상태.
 > 이번 라운드는 repo 내 코드만 수정.
@@ -99,6 +99,19 @@
   - 세로 모바일(폭 < 720px 또는 portrait) — 기존대로 가방 아래에 합성 패널 스택, 회귀 없음.
   - 가로 PC/태블릿(폭 ≥ 720px + landscape) — 가방 grid 오른쪽에 합성 패널. 선택 해제 시 패널 자동 사라지며 레이아웃 폭 축소.
   - 두 모드 모두에서 [만들기] 클릭 → 기존과 동일하게 재료 소비·결과물 배치.
+
+- [x] **[디렉터/웹]** ✅ **D-84b 합성 패널을 landscape에서 별도 카드로 분리 — 가방 높이만큼 세로 확보**
+  - 배경: D-84 landscape 구현은 CraftPanel을 가방 모달 내부 우측에 붙였는데, CraftPanel 자체의 인라인 `maxHeight: 55vh` + `position: sticky` 때문에 landscape에서 세로 스크롤 영역이 심하게 눌림.
+  - 요한 지시: "가방 UI와 합친 형태 말고 우측에 새 창 띄우는 느낌으로. 가방 UI 사이즈 길이만큼 확보."
+  - 구현:
+    - JSX: `.inventory-layout/.inventory-main/.inventory-side` 구조 폐기 → `.inventory-stage` wrapper 아래에 `.inventory-modal`(가방 카드)과 `.inventory-craft-side`(우측 카드)를 **형제**로 배치. portrait 폴백용으로 기존 위치에는 `.inventory-craft-inline`을 남겨 동일 CraftPanel을 한 번 더 렌더. CSS로 둘 중 하나만 노출(택일).
+    - CSS: `.inventory-stage`가 column(portrait) / row+stretch(landscape) 전환. landscape에서 `.inventory-craft-inline { display: none }` + `.inventory-craft-side { display: flex; flex: 0 1 360px; min 280 / max 380 }`. 그리고 우측 카드 자식(CraftPanel 루트)의 인라인 스타일을 `position: static / margin-top: 0 / max-height: none / height: 100%` 로 `!important` 덮기 — 가방 카드 높이와 동일하게 stretch되고 자체 스크롤.
+  - 중복 렌더 안전성: CraftPanel은 props-driven이고 내부 state/effect 없음 → 두 인스턴스 동시 마운트되어도 부작용 없음. display:none 쪽은 상호작용 불가.
+
+- [ ] **[요한]** 🧪 **QA: D-84b 합성 패널 별도 카드**
+  - landscape(폭 ≥ 720px): 가방 오른쪽에 **독립 카드**로 레시피 노출. 가방 모달과 같은 세로 높이. 레시피 많을 때 카드 내부에서 세로 스크롤.
+  - portrait(폭 < 720px 또는 세로): 기존대로 가방 모달 내부 하단에 sticky 스택. 회귀 없음.
+  - [만들기] 동작·닫기 버튼으로 선택 해제 → 두 카드 모두 동일하게 반응.
 
 ---
 

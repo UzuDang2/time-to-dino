@@ -346,33 +346,53 @@ button:disabled {
 }
 
 /* D-84 (2026-04-24 요한 지시): 가방 모달 가로 배치.
-   landscape + 일정 폭 이상에서 가방 그리드와 합성 패널을 좌/우로.
-   portrait(모바일 세로)에서는 기본대로 세로 스택. */
+   landscape에서는 합성 패널을 가방과 합친 내부 블록이 아니라 "별도 카드"로
+   우측에 스택 — 가방 카드 높이만큼 세로 확보해 레시피 스크롤 영역 확대.
+   portrait(모바일 세로)에서는 기존대로 CraftPanel이 가방 모달 내부에 인라인 스택. */
+.inventory-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    max-height: 92vh;
+}
+
 .inventory-modal {
     max-width: min(92vw, 760px);
 }
 
-.inventory-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch;
+/* landscape 전용 우측 카드 — 기본은 숨김(portrait에서는 인라인 CraftPanel만 보인다). */
+.inventory-craft-side {
+    display: none;
 }
 
 @media (orientation: landscape) and (min-width: 720px) {
-    .inventory-modal {
-        max-width: min(92vw, 840px);
-    }
-    .inventory-layout {
+    .inventory-stage {
         flex-direction: row;
-        align-items: flex-start;
+        align-items: stretch;
     }
-    .inventory-main {
+    .inventory-modal {
         flex: 0 0 auto;
     }
-    .inventory-side {
-        flex: 1 1 auto;
-        min-width: 260px;
+    /* portrait 인라인 CraftPanel 숨김 — 우측 카드가 대체 */
+    .inventory-craft-inline {
+        display: none;
+    }
+    .inventory-craft-side {
+        display: flex;
+        flex-direction: column;
+        flex: 0 1 360px;
+        min-width: 280px;
+        max-width: 380px;
+    }
+    /* CraftPanel 내부 루트 div의 인라인 스타일(sticky/maxHeight/marginTop)을
+       landscape에 한해 해제 — 가방 카드 높이(stretch)만큼 꽉 채우도록 */
+    .inventory-craft-side > div {
+        position: static !important;
+        margin-top: 0 !important;
+        max-height: none !important;
+        height: 100% !important;
+        box-sizing: border-box;
     }
 }
 

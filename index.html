@@ -1165,13 +1165,12 @@
 
             return (
                 <div className="modal">
+                    <div className="inventory-stage">
                     <div className="modal-content inventory-modal">
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                             <h3>가방</h3>
                             <button onClick={() => { inventory.cancelSelection(); closeInventory(); }}>닫기</button>
                         </div>
-                        <div className="inventory-layout">
-                            <div className="inventory-main">
                                 <div style={{ position: 'relative' }}>
                             <div className="inventory-grid">
                                 {Array(ROWS).fill(null).map((_, row) =>
@@ -1288,26 +1287,42 @@
                                 짧게 탭 = 선택/이동 · 길게 누르면 정보 · 조합은 오른쪽 패널의 [만들기]
                             </div>
                         )}
+                        {/* D-48 합성 패널 — 선택된 아이템 기준으로 관련 레시피 자동 노출.
+                            닫기 = 선택 해제 (패널은 selectedItem이 null이면 자동으로 닫힘).
+                            D-84b (2026-04-24 요한 지시): portrait에서는 이 인라인 인스턴스가,
+                            landscape에서는 아래 .inventory-craft-side 인스턴스가 노출된다 (CSS로 택일).
+                            두 인스턴스는 동일 props이며 CraftPanel은 내부 state가 없어 중복 렌더 안전. */}
+                        {pendingCraft && (
+                            <div className="inventory-craft-inline">
+                                <CraftPanel
+                                    recipes={pendingCraft.candidates}
+                                    inventory={inventory}
+                                    onCraft={handleCraft}
+                                    onClose={() => {
+                                        inventory.cancelSelection();
+                                        setSelectedItem(null);
+                                        setPendingPos(null);
+                                        bump();
+                                    }}
+                                />
                             </div>
-                            {/* D-48 합성 패널 — 선택된 아이템 기준으로 관련 레시피 자동 노출.
-                                닫기 = 선택 해제 (패널은 selectedItem이 null이면 자동으로 닫힘).
-                                D-84: landscape에서 가방 우측에, portrait에서 가방 아래에 스택 (.inventory-layout + @media). */}
-                            {pendingCraft && (
-                                <div className="inventory-side">
-                                    <CraftPanel
-                                        recipes={pendingCraft.candidates}
-                                        inventory={inventory}
-                                        onCraft={handleCraft}
-                                        onClose={() => {
-                                            inventory.cancelSelection();
-                                            setSelectedItem(null);
-                                            setPendingPos(null);
-                                            bump();
-                                        }}
-                                    />
-                                </div>
-                            )}
+                        )}
+                    </div>
+                    {pendingCraft && (
+                        <div className="inventory-craft-side">
+                            <CraftPanel
+                                recipes={pendingCraft.candidates}
+                                inventory={inventory}
+                                onCraft={handleCraft}
+                                onClose={() => {
+                                    inventory.cancelSelection();
+                                    setSelectedItem(null);
+                                    setPendingPos(null);
+                                    bump();
+                                }}
+                            />
                         </div>
+                    )}
                     </div>
 
                     {infoItem && (
