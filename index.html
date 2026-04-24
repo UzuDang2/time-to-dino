@@ -61,7 +61,7 @@
             const detectionColor = detection < 30 ? '#4CAF50' :
                                   detection < 60 ? '#FFC107' : '#e94560';
 
-            const MAX_HEALTH = 6;
+            const MAX_HEALTH = 8;
             const MAX_HUNGER = 12;
             const healthPct = Math.max(0, Math.min(100, (health / MAX_HEALTH) * 100));
             const hungerPct = Math.max(0, Math.min(100, (hunger / MAX_HUNGER) * 100));
@@ -2610,7 +2610,7 @@
             const [tiles, setTiles] = useState([]);
             const [currentTile, setCurrentTile] = useState(0);
             const [playerMoveCount, setPlayerMoveCount] = useState(0);
-            const [health, setHealth] = useState(6);
+            const [health, setHealth] = useState(8);
             const [hunger, setHunger] = useState(12);
             const [time, setTime] = useState(0);
             const [maxTime, setMaxTime] = useState(3);

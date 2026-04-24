@@ -18,7 +18,7 @@
     // 스탯 clamp 상한 (게임 상수와 동기화 필요)
     const STAT_BOUNDS = {
         hunger: { min: 0, max: 12 },
-        health: { min: 0, max: 6 }
+        health: { min: 0, max: 8 }
     };
 
     // 단일 액션 파싱
