@@ -588,13 +588,15 @@ ITEM_NAME_TO_ID: dict[str, str] = {
     # 1단계 (파밍)
     "돌맹이": "stone",
     "나뭇가지": "branch",
-    "질긴줄기": "stem",
+    "줄기": "stem",           # D-49 (2026-04-24): '질긴줄기' → '줄기' 개명
+    "질긴줄기": "stem",       # 레거시 동의어 (구 조합법 raw 호환)
     "버섯": "mushroom",
     "산딸기": "berry",
     # 2단계 (조합)
     "목재": "wood",
-    "식물 섬유(끈)": "plant_fiber",
-    "식물 섬유": "plant_fiber",  # 괄호 주석 스트립 후 동의어
+    "끈": "plant_fiber",            # D-49 (2026-04-24): '식물 섬유(끈)' → '끈' 개명
+    "식물 섬유(끈)": "plant_fiber", # 레거시 동의어
+    "식물 섬유": "plant_fiber",     # 레거시 동의어
     "깨끗한 천": "clean_cloth",
     "붕대": "bandage",
 }

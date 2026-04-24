@@ -46,7 +46,7 @@ class InventorySystem {
         // === 1단계 환경재료 ===
         stone:    { name: '돌맹이',   shape: [[1]], grade: 1, mergeable: false, category: 'env',  merge_result: null },
         branch:   { name: '나뭇가지', shape: [[1]], grade: 1, mergeable: true,  category: 'env',  merge_result: 'wood' },
-        stem:     { name: '질긴줄기', shape: [[1]], grade: 1, mergeable: true,  category: 'env',  merge_result: 'plant_fiber' },
+        stem:     { name: '줄기',     shape: [[1]], grade: 1, mergeable: true,  category: 'env',  merge_result: 'plant_fiber' },
 
         // === 1단계 음식재료 (D-30: 2단계 음식 추가 — 머지 가능) ===
         mushroom: { name: '버섯',     shape: [[1]], grade: 1, mergeable: true,  category: 'food', merge_result: 'mushroom_mix' },
@@ -61,7 +61,7 @@ class InventorySystem {
 
         // === 2단계 (조합 결과물) ===
         wood:         { name: '목재',         shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
-        plant_fiber:  { name: '식물 섬유',    shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
+        plant_fiber:  { name: '끈',           shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         clean_cloth:  { name: '깨끗한 천',    shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         bandage:      { name: '붕대',         shape: [[1]], grade: 2, mergeable: false, category: 'consumable', merge_result: null },
 
