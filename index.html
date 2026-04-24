@@ -361,8 +361,13 @@
             // D-80 보강 (2026-04-24 요한 지시): revealed-only(밝혀졌지만 안 가본) 타일은
             // 색상만 실루엣과 동일(#444)로 낮추고, opacity·stroke·마커·지역명은 유지.
             // visited(색 있음, opacity 1)와 한눈에 구분하기 위해.
+            // D-80 보강 3: fill/stroke opacity 분리 — 타일 내부는 "가본 곳 vs 안 가본 곳"의
+            // 구분을 위해 흐릴 수 있지만, 이동 가능(canMove) 녹색 테두리는 항상 선명해야
+            // 길찾기가 쉽다. polygon opacity 한 방으로는 둘을 분리할 수 없어 fillOpacity와
+            // strokeOpacity를 따로 둔다.
             const revealedOnly = !tile.visited && tile.revealed;
-            const tileOpacity = dimmed ? 0.22 : (tile.visited ? 1 : tile.revealed ? 0.7 : 0.55);
+            const tileFillOpacity = dimmed ? 0.22 : (tile.visited ? 1 : tile.revealed ? 0.7 : 0.55);
+            const tileStrokeOpacity = dimmed ? 0.4 : 1;
             const tileFill = (dimmed || revealedOnly) ? '#444' : getTileColor(tile);
             const tileStroke = dimmed ? '#555' : (canMove ? '#4CAF50' : '#0f3460');
             const tileStrokeWidth = dimmed ? '1' : (canMove ? '3' : '2');
@@ -375,7 +380,8 @@
                         fill={tileFill}
                         stroke={tileStroke}
                         strokeWidth={tileStrokeWidth}
-                        opacity={tileOpacity}
+                        fillOpacity={tileFillOpacity}
+                        strokeOpacity={tileStrokeOpacity}
                         onClick={() => !gameOver && !victory && !pathUnvisited && canMove && moveTo(tile.id)}
                     />
                     {regionLabel && (
