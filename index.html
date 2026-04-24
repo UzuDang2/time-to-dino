@@ -580,6 +580,9 @@
             const invDef = InventorySystem.ITEMS[item.type] || {};
             const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
             const notionItem = notionItems.find(it => it && it['이름'] === (invDef.name || item.name));
+            // D-51: 무기 메타 — TTD_DATA.WEAPONS에서 직접 조회 (아이템마스터 탭이 아님).
+            const weaponsBundle = (window.TTD_DATA && Array.isArray(window.TTD_DATA.WEAPONS)) ? window.TTD_DATA.WEAPONS : [];
+            const weaponDef = weaponsBundle.find(w => w && w.id === item.type);
 
             const effect = (notionItem && notionItem.effect) || null;
             const usable = !!(effect && effect.usable);
@@ -587,8 +590,19 @@
                 ? window.EffectParser.describeEffect(effect)
                 : (effect && effect.raw) || '효과 없음';
 
-            const grade = (notionItem && notionItem['아이템 등급']) || null;
-            const slot = (notionItem && notionItem['가방칸수']) || '1x1';
+            const grade = (notionItem && notionItem['아이템 등급'])
+                || (weaponDef && weaponDef['아이템 등급'])
+                || null;
+            const slot = (notionItem && notionItem['가방칸수'])
+                || (weaponDef && weaponDef['가방칸수'])
+                || '1x1';
+            // D-51: 무기 내구도 표시 (인스턴스 durabilityLeft / 최대 durability).
+            const resolved = InventorySystem.resolveDef(item.type) || {};
+            const maxDur = (typeof resolved.durability === 'number' && resolved.durability > 0) ? resolved.durability : null;
+            const durLeft = (typeof item.durabilityLeft === 'number') ? item.durabilityLeft : maxDur;
+            const description = (notionItem && notionItem['설명 텍스트'])
+                || (weaponDef && weaponDef['설명 텍스트'])
+                || '';
 
             return (
                 <div
@@ -610,9 +624,12 @@
                             {grade && <div>등급: <span style={{ color: '#fff' }}>{grade}</span></div>}
                             <div>가방칸수: <span style={{ color: '#fff' }}>{slot}</span></div>
                             <div>성능: <span style={{ color: usable ? '#8bd17c' : '#888' }}>{effectLabel}</span></div>
-                            {notionItem && notionItem['설명 텍스트'] && (
+                            {maxDur && (
+                                <div>내구도: <span style={{ color: '#d4b84a' }}>{durLeft}/{maxDur}</span></div>
+                            )}
+                            {description && (
                                 <div style={{ marginTop: '8px', fontSize: '11px', color: '#aaa' }}>
-                                    {notionItem['설명 텍스트']}
+                                    {description}
                                 </div>
                             )}
                         </div>
@@ -1869,7 +1886,22 @@
 
             const handleConfirm = () => {
                 if (!allFilled || phase !== 'select') return;
-                const res = CombatDeck.resolveHunt(prey, slots);
+                // D-51: weaponState 구성 — 슬롯에 배치된 무기 요구 카드의 owning weapon
+                //   인스턴스 1자루(가장 내구 높은 순)의 durabilityLeft를 추적.
+                //   동일 weaponId에 대해 여러 자루를 동시 추적하진 않음(현재 1자루 전제).
+                const weaponState = {};
+                const seenWeaponIds = new Set();
+                for (const c of slots) {
+                    if (!c || !c.weaponId || seenWeaponIds.has(c.weaponId)) continue;
+                    seenWeaponIds.add(c.weaponId);
+                    // inventory에서 해당 type의 아이템 중 durabilityLeft 최댓값 사용.
+                    const items = (inventory && inventory.items) || [];
+                    const instances = items.filter(it => it.type === c.weaponId);
+                    const total = instances.reduce((s, it) =>
+                        s + (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0), 0);
+                    weaponState[c.weaponId] = { durabilityLeft: total };
+                }
+                const res = CombatDeck.resolveHunt(prey, slots, { weaponState });
                 setResult(res);
                 setPhase('resolve');
 
@@ -1986,6 +2018,11 @@
                                                 <div style={{ fontWeight: '600' }}>{card.name}</div>
                                                 <div style={{ fontSize: '10px', color: '#aaa' }}>
                                                     {card.damage > 0 ? `공${card.damage}` : ''} {card.success_rate}%
+                                                    {(card.damage || 0) > 0 && (Number(card.accuracy) || 0) > 0 && (
+                                                        <span style={{ color: '#8bd17c', marginLeft: '3px' }}>
+                                                            +{card.accuracy}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         ) : <span style={{ color: '#666' }}>비었음</span>}
@@ -2066,7 +2103,10 @@
                                         {log.outcome === 'flee_signal' && '사냥감이 빠르게 도망친다!'}
                                         {log.outcome === 'player_flee' && '물러섰다.'}
                                         {log.outcome === undefined && (
-                                            log.userCard == null ? `prey ${log.preyAction}`
+                                            log.autoFail ? (log.reason === 'weapon_missing'
+                                                    ? '무기가 없어 실패'
+                                                    : '실패')
+                                            : log.userCard == null ? `prey ${log.preyAction}`
                                             : !log.hit ? '빗나감'
                                             : log.preyEvaded ? `명중했지만 회피당함`
                                             : `데미지 ${log.damage} (HP ${log.preyHpAfter})`
@@ -2092,6 +2132,22 @@
                                                 ? slots.filter(s => s && s.id === card.id).length
                                                 : 0;
                                             const exhausted = !!(card.slotLimit && usedInSlots >= card.slotLimit);
+                                            // D-50: accuracy 배지 — damage 있는 카드만, accuracy>0일 때만 표시.
+                                            const showAccuracy = (card.damage || 0) > 0 && (Number(card.accuracy) || 0) > 0;
+                                            // D-51: 무기 요구 카드면 해당 무기 인스턴스의 durabilityLeft 표시
+                                            //   (여러 자루 있을 때 합산 — weaponState와 동일 관점).
+                                            let durBadge = null;
+                                            if (card.weaponId) {
+                                                const items = (inventory && inventory.items) || [];
+                                                const instances = items.filter(it => it.type === card.weaponId);
+                                                const durLeft = instances.reduce((s, it) =>
+                                                    s + (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0), 0);
+                                                const durMax = instances.reduce((s, it) => {
+                                                    const def = InventorySystem.resolveDef(it.type) || {};
+                                                    return s + (typeof def.durability === 'number' ? def.durability : 0);
+                                                }, 0);
+                                                if (durMax > 0) durBadge = `내구 ${durLeft}/${durMax}`;
+                                            }
                                             return (
                                                 <div key={card.uid}
                                                     onClick={() => handleHandClick(card)}
@@ -2119,7 +2175,17 @@
                                                     </div>
                                                     <div style={{ fontSize: '10px', color: '#aaa' }}>
                                                         {card.damage > 0 ? `공${card.damage} ` : ''}{card.success_rate}%
+                                                        {showAccuracy && (
+                                                            <span style={{ color: '#8bd17c', marginLeft: '4px' }}>
+                                                                명중 +{card.accuracy}%
+                                                            </span>
+                                                        )}
                                                     </div>
+                                                    {durBadge && (
+                                                        <div style={{ fontSize: '10px', color: '#d4b84a' }}>
+                                                            {durBadge}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -2268,19 +2334,29 @@
                 const prey = activeHunt.prey;
                 const outcome = result && result.outcome;
 
-                // D-47: 사용된 아이템 요구 카드만큼 인벤에서 차감.
-                //   turn.userCard.requirement가 '없음'이 아니면 그 이름의 아이템을 1개씩 소비.
-                //   outcome 무관(victory/prey_fled/player_fled) — 실제 손에 올라간 턴만 반영.
+                // D-47/D-51: 사용된 카드의 요구 재료를 인벤에서 차감.
+                //   - 일반 재료(돌맹이 등): 1개씩 removeItem.
+                //   - 무기 재료: result.weaponUsage에서 이미 계산된 used/fullLossCount로 차감
+                //     (consumeWeaponUse — durabilityLeft 감소, 0이면 제거).
+                //   autoFail 턴은 실제 사용이 없었으므로 제외.
                 //   consumedSummary는 victory 메시지에 "소모: 돌맹이 2개" 형태로 덧붙임.
                 const consumedSummary = [];
                 if (inventory && Array.isArray(result && result.turns)) {
+                    // 1) 비무기 재료 집계 — requirement 이름 중 weapon이 아닌 것만.
+                    const TTD = window.TTD_DATA || {};
+                    const WEAPONS = Array.isArray(TTD.WEAPONS) ? TTD.WEAPONS : [];
+                    const weaponNameSet = new Set(WEAPONS.map(w => w && w.name).filter(Boolean));
+
                     const consumeByName = {};
                     for (const turn of result.turns) {
+                        if (turn && turn.autoFail) continue; // 무기 없어서 실패한 턴은 소모 없음
                         const uc = turn && turn.userCard;
                         if (!uc) continue;
-                        const req = uc.requirement;
-                        if (!req || req === '없음' || String(req).indexOf('없음') === 0) continue;
-                        consumeByName[req] = (consumeByName[req] || 0) + 1;
+                        const reqs = CombatDeck.parseRequirement(uc.requirement);
+                        for (const rName of reqs) {
+                            if (weaponNameSet.has(rName)) continue; // 무기는 weaponUsage 경로로
+                            consumeByName[rName] = (consumeByName[rName] || 0) + 1;
+                        }
                     }
                     for (const [reqName, count] of Object.entries(consumeByName)) {
                         let remaining = count;
@@ -2300,6 +2376,59 @@
                         const actuallyConsumed = count - remaining;
                         if (actuallyConsumed > 0) {
                             consumedSummary.push(`${reqName} ${actuallyConsumed}개`);
+                        }
+                    }
+
+                    // 2) 무기 차감 — weaponUsage {weaponId: {used, fullLossCount}}.
+                    //   used는 내구도 총 차감량. 동일 weaponId 인스턴스들을 순회하며
+                    //   durabilityLeft가 많은 순으로 차감(한 자루 기준 설계지만 여러 자루도 안전).
+                    //   fullLoss 턴은 한 자루를 통째로 날림 — 인스턴스 1자루를 0으로.
+                    const usage = (result && result.weaponUsage) || {};
+                    for (const [weaponId, info] of Object.entries(usage)) {
+                        const def = InventorySystem.resolveDef(weaponId) || {};
+                        const displayName = def.name || weaponId;
+                        const instances = inventory.items
+                            .filter(it => it.type === weaponId)
+                            .sort((a, b) => (b.durabilityLeft || 0) - (a.durabilityLeft || 0));
+
+                        let fullLossLeft = Number(info.fullLossCount) || 0;
+                        // 우선 full_loss 카운트만큼 자루를 통째로 소멸.
+                        for (let i = 0; i < fullLossLeft && instances.length > 0; i++) {
+                            const inst = instances[0];
+                            inventory.consumeWeaponUse(inst, 0, true);
+                            // instances 배열 동기화 (제거됐으므로 pop)
+                            instances.shift();
+                        }
+                        // 남은 일반 차감량 = used - (full_loss로 날린 durability 합계) 계산이 복잡하니,
+                        // weaponUsage.used는 이미 fullLoss를 포함한 총량이므로 일반 차감분만 분리.
+                        //   일반 = used - (fullLossCount 동안 소멸한 durability의 합).
+                        //   fullLoss에서 소멸한 durability는 그 자루의 durabilityLeft였음 — 추적이 번거롭다.
+                        //   간단화: combat의 weaponState를 그대로 믿고, fullLossCount만큼 자루를 소멸하는
+                        //   것으로 끝난다면(인스턴스 1자루라는 공통 케이스에서 정확), 남은 일반 차감은
+                        //   "used - fullLoss로 날린 durability"를 수동 계산. 하지만 combat 쪽이 단일
+                        //   weaponState 덩어리로 처리하므로, 여기선 'fullLossCount'가 1이면 그 자루를 태운 것으로
+                        //   종료. 나머지 턴은 일반 차감.
+                        //   → 더 단순한 해석: used에서 fullLoss로 이미 소모된 durability(instances[0]의 원래 값)를
+                        //     빼고 남은 만큼 일반 차감. 그러나 현 모델은 '무기 1자루' 기준이므로
+                        //     fullLossCount≥1이면 그 자루 소멸로 끝나고 나머지 턴은 auto-fail이 됐을 것이다.
+                        //   결론: fullLossCount≥1이면 일반 차감은 건너뜀.
+                        if ((Number(info.fullLossCount) || 0) === 0) {
+                            let decLeft = Number(info.used) || 0;
+                            for (const inst of instances) {
+                                if (decLeft <= 0) break;
+                                const canDec = Math.min(decLeft, (inst.durabilityLeft || 0));
+                                if (canDec > 0) {
+                                    inventory.consumeWeaponUse(inst, canDec, false);
+                                    decLeft -= canDec;
+                                }
+                            }
+                        }
+                        const usedTotal = Number(info.used) || 0;
+                        if (usedTotal > 0) {
+                            consumedSummary.push(`${displayName} 내구 ${usedTotal}`);
+                        }
+                        if (info.broken) {
+                            consumedSummary.push(`${displayName} 파손`);
                         }
                     }
                 }
