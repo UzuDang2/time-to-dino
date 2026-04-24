@@ -4,7 +4,7 @@
 
 ---
 
-## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 + D-81 consume 유령 + D-82 맵 드래그·줌 + D-83 가방 탭/롱프레스 스왑)
+## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 + D-81 consume 유령 + D-82 맵 드래그·줌 + D-83 가방 탭/롱프레스 스왑 + D-84 가방 landscape 레이아웃)
 
 > 🌐 claude.ai/code 웹 환경(Linux 샌드박스). Notion MCP 미연결 + `notion.site` 방화벽 차단 상태.
 > 이번 라운드는 repo 내 코드만 수정.
@@ -87,6 +87,18 @@
   - 아이템 롱프레스(400ms) → 정보창 노출.
   - 선택 상태에서 하단 합성 패널에 조합 가능한 레시피 노출 → [만들기] 버튼이 유일한 조합 트리거.
   - 빈 셀 탭은 기존대로 pendingPos 설정 + [확정]·[회전]·[취소] 버튼 경로 유지.
+
+- [x] **[디렉터/웹]** ✅ **D-84 가방 모달 landscape 레이아웃 — 합성 패널을 우측 스택**
+  - 요한 지시: 화면 가로일 땐 가방 오른쪽에 레시피, 세로(모바일 portrait)는 현재대로 아래 스택.
+  - 구현:
+    - `gameStyles.css`: `.inventory-modal` / `.inventory-layout` / `.inventory-main` / `.inventory-side` + `@media (orientation: landscape) and (min-width: 720px)` 블록에서 flex-direction을 row로 전환. landscape 시 `.inventory-modal` max-width 840px까지 허용.
+    - `InventoryModal` JSX: header 아래 `.inventory-layout` wrapper 신설. 내부를 `.inventory-main`(grid/preview/아이템/floating/액션 버튼) + `.inventory-side`(CraftPanel)로 분리. portrait는 세로 스택(기본), landscape는 옆 나란히.
+  - CraftPanel 내부 구조·로직 변경 없음 — 외부 래퍼의 폭만 제어.
+
+- [ ] **[요한]** 🧪 **QA: D-84 가방 landscape**
+  - 세로 모바일(폭 < 720px 또는 portrait) — 기존대로 가방 아래에 합성 패널 스택, 회귀 없음.
+  - 가로 PC/태블릿(폭 ≥ 720px + landscape) — 가방 grid 오른쪽에 합성 패널. 선택 해제 시 패널 자동 사라지며 레이아웃 폭 축소.
+  - 두 모드 모두에서 [만들기] 클릭 → 기존과 동일하게 재료 소비·결과물 배치.
 
 ---
 
