@@ -12,7 +12,7 @@
     "id": "listen",
     "name": "귀 기울이기",
     "count": 3,
-    "effect": "몬스터 감지",
+    "effect": "거리별 소리로 보스 감지 · 사냥감 흔적",
     "detection": -5,
     "consume": "",
     "extra_effect": ""
@@ -22,7 +22,7 @@
     "name": "음식 찾기",
     "count": 1,
     "effect": "음식 획득",
-    "detection": 5,
+    "detection": 10,
     "consume": "",
     "extra_effect": ""
   },
@@ -40,7 +40,7 @@
     "name": "휴식",
     "count": 1,
     "effect": "체력/배고픔 소폭 회복, 소음 최소",
-    "detection": -13,
+    "detection": -5,
     "consume": "category:음식;scale:recover=2",
     "extra_effect": ""
   }

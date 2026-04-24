@@ -15,7 +15,7 @@ window.TTD_DATA = {
       "id": "listen",
       "name": "귀 기울이기",
       "count": 3,
-      "effect": "몬스터 감지",
+      "effect": "거리별 소리로 보스 감지 · 사냥감 흔적",
       "detection": -5,
       "consume": "",
       "extra_effect": ""
@@ -25,7 +25,7 @@ window.TTD_DATA = {
       "name": "음식 찾기",
       "count": 1,
       "effect": "음식 획득",
-      "detection": 5,
+      "detection": 10,
       "consume": "",
       "extra_effect": ""
     },
@@ -43,7 +43,7 @@ window.TTD_DATA = {
       "name": "휴식",
       "count": 1,
       "effect": "체력/배고픔 소폭 회복, 소음 최소",
-      "detection": -13,
+      "detection": -5,
       "consume": "category:음식;scale:recover=2",
       "extra_effect": ""
     }
@@ -84,42 +84,48 @@ window.TTD_DATA = {
       "name": "주먹으로 치기",
       "damage": 1,
       "success_rate": 100,
-      "requirement": "없음"
+      "requirement": "없음",
+      "count": 1
     },
     {
       "id": "throw_stone",
       "name": "돌 던지기",
       "damage": 2,
       "success_rate": 90,
-      "requirement": "돌맹이"
+      "requirement": "돌맹이",
+      "count": 1
     },
     {
       "id": "stab_weapon",
       "name": "창으로 찌르기",
       "damage": 2,
       "success_rate": 100,
-      "requirement": "나무창"
+      "requirement": "나무창",
+      "count": 1
     },
     {
       "id": "dodge",
       "name": "회피하기",
       "damage": 0,
       "success_rate": 75,
-      "requirement": "없음"
+      "requirement": "없음",
+      "count": 3
     },
     {
       "id": "run_away",
       "name": "도망치기",
       "damage": 0,
       "success_rate": 25,
-      "requirement": "없음"
+      "requirement": "없음",
+      "count": 1
     },
     {
       "id": "throw_spear",
       "name": "창던지기",
       "damage": 4,
       "success_rate": 100,
-      "requirement": "나무창"
+      "requirement": "나무창",
+      "count": 1
     }
   ],
   "MONSTERS": [
@@ -152,9 +158,10 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 4,
       "attack": 0,
-      "evade_rate": 40,
+      "evade_rate": 30,
       "type": "회피형",
-      "meat": 3
+      "meat": 3,
+      "habitat": "덤불"
     },
     {
       "id": "mouse",
@@ -162,9 +169,10 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 2,
       "attack": 0,
-      "evade_rate": 30,
+      "evade_rate": 20,
       "type": "회피형",
-      "meat": 2
+      "meat": 2,
+      "habitat": "덤불"
     },
     {
       "id": "squirrel",
@@ -172,9 +180,10 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 3,
       "attack": 0,
-      "evade_rate": 50,
+      "evade_rate": 40,
       "type": "회피형",
-      "meat": 2
+      "meat": 2,
+      "habitat": "숲"
     },
     {
       "id": "bird",
@@ -182,9 +191,10 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 3,
       "attack": 0,
-      "evade_rate": 60,
+      "evade_rate": 40,
       "type": "회피형",
-      "meat": 3
+      "meat": 3,
+      "habitat": "평원"
     },
     {
       "id": "salamander",
@@ -194,17 +204,19 @@ window.TTD_DATA = {
       "attack": 0,
       "evade_rate": 20,
       "type": "회피형",
-      "meat": 2
+      "meat": 2,
+      "habitat": "숲"
     },
     {
       "id": "snake",
       "name": "작은 뱀",
       "level": 1,
-      "hp": 4,
+      "hp": 3,
       "attack": 0,
       "evade_rate": 20,
       "type": "회피형",
-      "meat": 2
+      "meat": 2,
+      "habitat": "덤불"
     },
     {
       "id": "frog",
@@ -212,9 +224,10 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 3,
       "attack": 0,
-      "evade_rate": 50,
+      "evade_rate": 30,
       "type": "회피형",
-      "meat": 2
+      "meat": 2,
+      "habitat": "덤불"
     },
     {
       "id": "crab",
@@ -224,7 +237,8 @@ window.TTD_DATA = {
       "attack": 0,
       "evade_rate": 20,
       "type": "회피형",
-      "meat": 2
+      "meat": 2,
+      "habitat": "시냇물"
     },
     {
       "id": "grasshopper",
@@ -234,7 +248,8 @@ window.TTD_DATA = {
       "attack": 0,
       "evade_rate": 50,
       "type": "회피형",
-      "meat": 1
+      "meat": 1,
+      "habitat": "평원"
     },
     {
       "id": "boar",
@@ -244,7 +259,8 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 15,
       "type": "반격형",
-      "meat": 5
+      "meat": 5,
+      "habitat": ""
     },
     {
       "id": "dinosaur",
@@ -254,7 +270,8 @@ window.TTD_DATA = {
       "attack": 1,
       "evade_rate": 15,
       "type": "반격형",
-      "meat": 4
+      "meat": 4,
+      "habitat": ""
     },
     {
       "id": "deer",
@@ -264,7 +281,8 @@ window.TTD_DATA = {
       "attack": 0,
       "evade_rate": 50,
       "type": "회피형",
-      "meat": 7
+      "meat": 7,
+      "habitat": ""
     },
     {
       "id": "badger",
@@ -274,7 +292,8 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 15,
       "type": "반격형",
-      "meat": 6
+      "meat": 6,
+      "habitat": ""
     },
     {
       "id": "fox",
@@ -284,7 +303,8 @@ window.TTD_DATA = {
       "attack": 0,
       "evade_rate": 60,
       "type": "회피형",
-      "meat": 5
+      "meat": 5,
+      "habitat": ""
     },
     {
       "id": "turkey",
@@ -294,7 +314,8 @@ window.TTD_DATA = {
       "attack": 1,
       "evade_rate": 15,
       "type": "반격형",
-      "meat": 4
+      "meat": 4,
+      "habitat": ""
     },
     {
       "id": "armadillo",
@@ -304,7 +325,18 @@ window.TTD_DATA = {
       "attack": 0,
       "evade_rate": 10,
       "type": "방어형",
-      "meat": 5
+      "meat": 5,
+      "habitat": ""
+    }
+  ],
+  "SPECIAL_CARDS": [
+    {
+      "id": "hunt_start",
+      "name": "사냥시작",
+      "time": 1,
+      "detection": 2,
+      "effect": "사냥감과의 전투를 시작한다",
+      "overflow": "Y"
     }
   ],
   "BUILDINGS": [
@@ -1107,9 +1139,9 @@ window.TTD_DATA = {
   "DROP_TABLE": {
     "regions": {
       "숲": {
-        "env": 25,
-        "food": 50,
-        "none": 25
+        "env": 50,
+        "food": 40,
+        "none": 10
       },
       "덤불": {
         "env": 70,
@@ -1117,9 +1149,9 @@ window.TTD_DATA = {
         "none": 20
       },
       "평원": {
-        "env": 40,
+        "env": 60,
         "food": 10,
-        "none": 50
+        "none": 30
       },
       "시냇물": {
         "env": 30,
@@ -1192,14 +1224,8 @@ window.TTD_DATA = {
       },
       "동굴": {
         "env": [
-          70,
-          30
-        ]
-      },
-      "평원": {
-        "env": [
-          70,
-          30
+          80,
+          20
         ]
       }
     }

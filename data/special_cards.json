@@ -1,0 +1,10 @@
+[
+  {
+    "id": "hunt_start",
+    "name": "사냥시작",
+    "time": 1,
+    "detection": 2,
+    "effect": "사냥감과의 전투를 시작한다",
+    "overflow": "Y"
+  }
+]

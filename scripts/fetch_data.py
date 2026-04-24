@@ -101,6 +101,7 @@ SHEET_TABS = {
     "몬스터": "monsters.json",
     "사냥감": "prey.json",
     "빌딩": "buildings.json",
+    "특수카드": "special_cards.json",
 }
 
 # 드롭테이블 전용 탭 이름
@@ -1146,6 +1147,7 @@ BROWSER_BUNDLE_KEYS = {
     "combat_cards.json": "COMBAT_CARDS",
     "monsters.json": "MONSTERS",
     "prey.json": "PREY",
+    "special_cards.json": "SPECIAL_CARDS",
     "buildings.json": "BUILDINGS",
     "items.json": "ITEMS",
     "weapons.json": "WEAPONS",  # D-47: 무기 테이블 (별도 탭 '무기')

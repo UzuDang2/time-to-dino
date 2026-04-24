@@ -5,9 +5,10 @@
     "level": 1,
     "hp": 4,
     "attack": 0,
-    "evade_rate": 40,
+    "evade_rate": 30,
     "type": "회피형",
-    "meat": 3
+    "meat": 3,
+    "habitat": "덤불"
   },
   {
     "id": "mouse",
@@ -15,9 +16,10 @@
     "level": 1,
     "hp": 2,
     "attack": 0,
-    "evade_rate": 30,
+    "evade_rate": 20,
     "type": "회피형",
-    "meat": 2
+    "meat": 2,
+    "habitat": "덤불"
   },
   {
     "id": "squirrel",
@@ -25,9 +27,10 @@
     "level": 1,
     "hp": 3,
     "attack": 0,
-    "evade_rate": 50,
+    "evade_rate": 40,
     "type": "회피형",
-    "meat": 2
+    "meat": 2,
+    "habitat": "숲"
   },
   {
     "id": "bird",
@@ -35,9 +38,10 @@
     "level": 1,
     "hp": 3,
     "attack": 0,
-    "evade_rate": 60,
+    "evade_rate": 40,
     "type": "회피형",
-    "meat": 3
+    "meat": 3,
+    "habitat": "평원"
   },
   {
     "id": "salamander",
@@ -47,17 +51,19 @@
     "attack": 0,
     "evade_rate": 20,
     "type": "회피형",
-    "meat": 2
+    "meat": 2,
+    "habitat": "숲"
   },
   {
     "id": "snake",
     "name": "작은 뱀",
     "level": 1,
-    "hp": 4,
+    "hp": 3,
     "attack": 0,
     "evade_rate": 20,
     "type": "회피형",
-    "meat": 2
+    "meat": 2,
+    "habitat": "덤불"
   },
   {
     "id": "frog",
@@ -65,9 +71,10 @@
     "level": 1,
     "hp": 3,
     "attack": 0,
-    "evade_rate": 50,
+    "evade_rate": 30,
     "type": "회피형",
-    "meat": 2
+    "meat": 2,
+    "habitat": "덤불"
   },
   {
     "id": "crab",
@@ -77,7 +84,8 @@
     "attack": 0,
     "evade_rate": 20,
     "type": "회피형",
-    "meat": 2
+    "meat": 2,
+    "habitat": "시냇물"
   },
   {
     "id": "grasshopper",
@@ -87,7 +95,8 @@
     "attack": 0,
     "evade_rate": 50,
     "type": "회피형",
-    "meat": 1
+    "meat": 1,
+    "habitat": "평원"
   },
   {
     "id": "boar",
@@ -97,7 +106,8 @@
     "attack": 2,
     "evade_rate": 15,
     "type": "반격형",
-    "meat": 5
+    "meat": 5,
+    "habitat": ""
   },
   {
     "id": "dinosaur",
@@ -107,7 +117,8 @@
     "attack": 1,
     "evade_rate": 15,
     "type": "반격형",
-    "meat": 4
+    "meat": 4,
+    "habitat": ""
   },
   {
     "id": "deer",
@@ -117,7 +128,8 @@
     "attack": 0,
     "evade_rate": 50,
     "type": "회피형",
-    "meat": 7
+    "meat": 7,
+    "habitat": ""
   },
   {
     "id": "badger",
@@ -127,7 +139,8 @@
     "attack": 2,
     "evade_rate": 15,
     "type": "반격형",
-    "meat": 6
+    "meat": 6,
+    "habitat": ""
   },
   {
     "id": "fox",
@@ -137,7 +150,8 @@
     "attack": 0,
     "evade_rate": 60,
     "type": "회피형",
-    "meat": 5
+    "meat": 5,
+    "habitat": ""
   },
   {
     "id": "turkey",
@@ -147,7 +161,8 @@
     "attack": 1,
     "evade_rate": 15,
     "type": "반격형",
-    "meat": 4
+    "meat": 4,
+    "habitat": ""
   },
   {
     "id": "armadillo",
@@ -157,6 +172,7 @@
     "attack": 0,
     "evade_rate": 10,
     "type": "방어형",
-    "meat": 5
+    "meat": 5,
+    "habitat": ""
   }
 ]

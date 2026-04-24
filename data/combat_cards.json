@@ -4,41 +4,47 @@
     "name": "주먹으로 치기",
     "damage": 1,
     "success_rate": 100,
-    "requirement": "없음"
+    "requirement": "없음",
+    "count": 1
   },
   {
     "id": "throw_stone",
     "name": "돌 던지기",
     "damage": 2,
     "success_rate": 90,
-    "requirement": "돌맹이"
+    "requirement": "돌맹이",
+    "count": 1
   },
   {
     "id": "stab_weapon",
     "name": "창으로 찌르기",
     "damage": 2,
     "success_rate": 100,
-    "requirement": "나무창"
+    "requirement": "나무창",
+    "count": 1
   },
   {
     "id": "dodge",
     "name": "회피하기",
     "damage": 0,
     "success_rate": 75,
-    "requirement": "없음"
+    "requirement": "없음",
+    "count": 3
   },
   {
     "id": "run_away",
     "name": "도망치기",
     "damage": 0,
     "success_rate": 25,
-    "requirement": "없음"
+    "requirement": "없음",
+    "count": 1
   },
   {
     "id": "throw_spear",
     "name": "창던지기",
     "damage": 4,
     "success_rate": 100,
-    "requirement": "나무창"
+    "requirement": "나무창",
+    "count": 1
   }
 ]

@@ -76,21 +76,7 @@
   - **포기(run_away 성공)**: "사냥을 포기하고 물러섰다." prey 제자리.
   - **회귀**: 보스 게임오버·listen 4단계 메시지·뒤져보기·머지/조합·LootToast 그대로.
 
-- [ ] **[요한]** ✍️ **시트 `전투카드` 탭 Notion 기준 수치 갱신** (D-46 SSOT)
-  - 현재 JSON 수치(dodge success_rate=75)는 구 버전. Notion 기준 지시 대기.
-  - `count` 컬럼 신설 (회피=3, 나머지=1). 없으면 `card.count || 1` 런타임 폴백이 감당.
-  - `throw_spear` 신규 row 추가 (damage=2, success=90, requirement=나무창 또는 신규).
-
-- [ ] **[요한]** ✍️ **(선택) 시트 `사냥감` 탭에 `habitat` 컬럼 신설**
-  - 신설 시 `data/prey.json`의 각 레코드에 `habitat: [...]` 필드 생기고, 런타임은 `prey.habitat || PREY_HABITAT[prey.id] || []`로 fallback.
-  - 신설 전까지 `data/prey_habitat.json`(파이프라인 밖, 안전)이 SSOT.
-
-- [ ] **[요한]** ✍️ **(선택) 특수카드 SSOT 배선**
-  - `hunt_start` 카드는 현재 `HUNT_START_CARD` 런타임 상수. 시트 `특수카드` 탭 생성 or `베이스탐험카드`에 overflow row 추가.
-
-- [ ] **[요한]** ✍️ **Notion 아이템 DB에 `meat`(생고기) 추가**
-  - 현재 `inventory.js::ITEMS` 폴백. Notion 추가 후 `items.raw.json` 동기화 + `make data`로 SSOT 정리.
-  - 추천 값: 이름=생고기, 카테고리=음식, 단계=1단계, 가방칸수=1x1, 머지=false, 일회용=true, 효과=hunger+2(임시).
+> 💡 9차 세션 시트 pending 4건(전투카드 count+수치+throw_spear, 사냥감 habitat, 특수카드 탭 신설, 생고기 Notion 등재)은 2026-04-24 디렉터가 gspread API로 일괄 반영 완료. 아래 "완료" 섹션 참조.
 
 ---
 
@@ -110,10 +96,6 @@
   - 서로 다른 재료(식물 섬유+질긴줄기 등) 짧은 탭 시 즉시 조합 결과물 생성 확인.
   - 기존 드래그·회전·확정 버튼 플로우 회귀 없는지 한 번씩 확인(빈 칸에 옮기기, 같은 위치로 되돌리기).
   - 머지/조합 불가 쌍(돌맹이+나뭇가지)을 짧게 탭 = 선택이 두 번째 아이템으로 전환(기존 swap 로직 유지).
-
-- [ ] **[요한]** ✍️ **(선택) 시트 `베이스탐험카드` listen row effect 값 갱신**
-  - 카드 UI 한 줄 설명. 현재 "몬스터 감지"도 유효하지만, "거리별 소리로 보스 감지" 같은 한 줄로 바꾸면 SSOT 일관.
-  - 변경 후 `make data` → 런타임 자동 반영.
 
 ## 대기: 요한 측 작업 (5차 세션 — D-24 머지·조합 통합)
 
@@ -163,24 +145,22 @@
     - 카드 시간 +1, 발각률 -10(0 미만이면 0에 clamp).
   - QA 이상 있으면 디렉터에게. 이상 없으면 "시트에 휴식 row 추가" 수동 작업 진행.
 
-- [ ] **[요한]** ✍️ **시트 `베이스탐험카드` 탭에 `rest`(휴식) 행 추가**
-  - 디렉터는 `REST_FALLBACK` 상수로 런타임 동작을 이미 구현했으나, SSOT 원칙상 시트에도 반영 필요.
-  - 시트 편집 경로(Chrome MCP clipboard)가 tab hidden 상태에서 실패(`Document is not focused`, D-17 후속 제약). 요한 수동.
-  - 방법:
-    1. 시트 [`베이스탐험카드`](https://docs.google.com/spreadsheets/d/1iS4Lmjx32w0Mu527foFtc8pQn3pw6APcQYnvcKdVM9o) 탭 열기.
-    2. 마지막 row 아래 새 행 추가.
-    3. 값(컬럼 순서는 기존 row 참조): `id=rest`, `name=휴식`, `count=1`, `effect=음식 1개 소비 · 회복 x2`, `detection=-10`, `time=1`, `consume=category:음식;scale:recover=2`, `extra_effect=`(빈칸).
-    4. 현재 시트에 `time` / `consume` / `extra_effect` 컬럼이 없을 수 있음 — **헤더에도 이 컬럼명을 추가해야** 런타임이 읽어옴. 헤더 추가는 1회성이므로 지금 함께 해두면 이후 카드는 값만 채워도 됨.
-    5. 저장 → 요한이 `make data` 실행 → 커밋.
-
-- [ ] **[요한]** ✍️ **시트 `베이스탐험카드` 탭에서 `find_weapon` 행 수동 삭제** (3차 세션부터 대기중)
-  - 디렉터는 런타임 필터로 이미 손패에서 제거했으나, **시트 실 row는 남아 있음**.
-  - Chrome MCP clipboard 경로가 **tab hidden 상태에서 실패**. 요한 수동.
-  - 방법: 시트 탭 → row 번호 우클릭 → "Delete row" → 저장 → `make data`.
+> 💡 4차 세션 시트 pending 2건(`rest` row 추가, `find_weapon` row 삭제)은 2026-04-24 기준 이미 반영 완료. `base_cards.json`에 rest 존재 + find_weapon 없음 검증.
 
 ## 요한 확정 대기 (디렉터 제안 중)
 
 - _(없음 — "음식 카테고리 옵션 유지" 확정(D-21)으로 항목 닫힘.)_
+
+## 완료 (2026-04-24, 10차 세션 — 시트 pending 일괄 청소)
+
+- [x] **[디렉터]** gspread 서비스 계정 API로 시트 4건 수정 일괄 실행:
+  - 시트 `전투카드` 탭: `count` 컬럼 신설 + 값 채움(회피=3, 나머지=1) + `throw_spear` row 신규 추가(damage=4, success=100, requirement=나무창, count=1).
+  - 시트 `사냥감` 탭: `habitat` 컬럼 신설 + 1단계 9종 값 채움 (토끼·쥐·뱀·개구리=덤불, 다람쥐·도롱뇽=숲, 메추라기새·메뚜기=평원, 게=시냇물). 2단계 7종은 공란(후속 이터레이션).
+  - 시트 `베이스탐험카드` 탭: `listen` row effect = "거리별 소리로 보스 감지 · 사냥감 흔적"로 갱신.
+  - 시트 `특수카드` 탭 **신설** + `hunt_start` row (time=1, detection=2, effect, overflow=Y) 삽입.
+- [x] **[디렉터]** `scripts/fetch_data.py` 업데이트: `SHEET_TABS`에 `"특수카드": "special_cards.json"`, `BROWSER_BUNDLE_KEYS`에 `special_cards.json → SPECIAL_CARDS` 추가.
+- [x] **[디렉터]** `make data` 실행 완료 — `data/combat_cards.json`(6 rows, count 포함), `data/prey.json`(habitat 포함), `data/base_cards.json`(listen 갱신), `data/special_cards.json`(신규), `data/data.js` 재생성 확인. `[api]` 경로로 SSOT 동기 성공.
+- [x] **[디렉터]** 런타임 폴백(`HUNT_START_CARD` 상수, `data/prey_habitat.json`, `inventory.js` meat 폴백) 정리는 이번 세션 범위 외. 시트 값이 JSON에 들어왔으므로 다음 이터레이션에서 런타임이 시트값을 우선 참조하도록 배선 필요.
 
 ## 완료 (2026-04-22, 4차 세션 — 손패 5장 + 휴식 + D-23 프레임워크)
 
