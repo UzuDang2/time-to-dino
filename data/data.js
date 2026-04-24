@@ -96,7 +96,7 @@ window.TTD_DATA = {
       "success_rate": 90,
       "requirement": "돌맹이",
       "count": 1,
-      "accuracy": 20,
+      "accuracy": 0,
       "full_loss": "N"
     },
     {
