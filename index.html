@@ -2018,12 +2018,47 @@
             );
         }
 
+        // D-58: 적 슬롯 최종 회피율 배지.
+        //   - damage>0 카드 배치 + finalEvade < baseEvade → 초록 + bold.
+        //   - 그 외(빈 슬롯 / damage=0 카드 / 감소 없음) → 기본색.
+        function EvadeBadge({ baseEvade, finalEvade, consumed }) {
+            const reduced = finalEvade < baseEvade;
+            return (
+                <span
+                    className={reduced ? 'evade-changed' : undefined}
+                    style={{
+                        color: reduced ? '#8bd17c' : '#ddd',
+                        fontWeight: reduced ? 700 : 400,
+                        opacity: consumed ? 0.5 : 1,
+                        transition: 'color 0.2s, opacity 0.2s'
+                    }}>
+                    회피 {finalEvade}%
+                </span>
+            );
+        }
+
         function HuntCombatModal({ prey, inventory, combatCards, onResolve, onCancel }) {
             const [slots, setSlots] = useState([null, null, null]);
             const [hand, setHand] = useState(() => CombatDeck.buildHuntDeck(combatCards, inventory));
             const [phase, setPhase] = useState('select');     // 'select' | 'resolve' | 'done'
             const [logs, setLogs] = useState([]);             // 표시된 턴 로그
             const [result, setResult] = useState(null);
+
+            // D-58: 슬롯별 최종 회피율 계산.
+            //   SSOT: combatDeck.js::resolveHunt L232 effectiveEvade 공식과 동일.
+            //     finalEvade = max(0, prey.evade_rate - card.accuracy)
+            //   damage=0 카드 / 빈 슬롯 → base 그대로(회피 보정 없음).
+            //   card.accuracy 는 buildHuntDeck 이 이미 카드+무기 합산한 값(D-50). 이중 합산 금지.
+            const computedEvades = React.useMemo(() => {
+                const base = (Number(prey.evade_rate) >= 0) ? Number(prey.evade_rate) : 20;
+                return slots.map(card => {
+                    if (!card || !((Number(card.damage) || 0) > 0)) {
+                        return { base, final: base };
+                    }
+                    const final = Math.max(0, base - (Number(card.accuracy) || 0));
+                    return { base, final };
+                });
+            }, [slots, prey.evade_rate]);
 
             const hpPct = Math.max(0, Math.min(100, ((prey.hp - (prey.hp - (prey.hpCurrent ?? prey.hp))) / prey.hp) * 100));
             // 전투 시작 시 hpCurrent = prey.hp. 이후 표시용으로만 사용.
@@ -2216,7 +2251,8 @@
                             <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>적 행동</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                                 {[0, 1, 2].map((i) => {
-                                    const evadePct = (typeof prey.evade_rate === 'number') ? prey.evade_rate : 20;
+                                    const ev = computedEvades[i] || { base: 20, final: 20 };
+                                    const consumed = !!logs.find(l => l.turn === i + 1);
                                     return (
                                         <div key={i} style={{
                                             padding: '8px 4px',
@@ -2225,9 +2261,10 @@
                                             borderRadius: '6px',
                                             fontSize: '11px',
                                             textAlign: 'center',
-                                            opacity: logs.find(l => l.turn === i + 1) ? 0.5 : 1
+                                            opacity: consumed ? 0.5 : 1
                                         }}>
-                                            T{i + 1}<br/>회피 {evadePct}%
+                                            T{i + 1}<br/>
+                                            <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />
                                         </div>
                                     );
                                 })}
