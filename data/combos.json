@@ -63,5 +63,31 @@
       "plant_fiber"
     ],
     "result": "slingshot"
+  },
+  {
+    "ingredients": [
+      "meat",
+      "branch"
+    ],
+    "result": "meat_skewer"
+  },
+  {
+    "ingredients": [
+      "fish",
+      "branch"
+    ],
+    "result": "fish_skewer"
+  },
+  {
+    "ingredients": [
+      "meat_skewer"
+    ],
+    "result": "grilled_meat_skewer"
+  },
+  {
+    "ingredients": [
+      "fish_skewer"
+    ],
+    "result": "grilled_fish_skewer"
   }
 ]

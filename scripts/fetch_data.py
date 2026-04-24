@@ -599,6 +599,11 @@ ITEM_NAME_TO_ID: dict[str, str] = {
     "식물 섬유": "plant_fiber",     # 레거시 동의어
     "깨끗한 천": "clean_cloth",
     "붕대": "bandage",
+    # D-57 요리 시스템 — 꼬치(2재료 조합) + 구이(1재료 요리)
+    "생고기꼬치": "meat_skewer",
+    "물고기꼬치": "fish_skewer",
+    "고기꼬치구이": "grilled_meat_skewer",
+    "생선꼬치구이": "grilled_fish_skewer",
 }
 
 
@@ -895,17 +900,22 @@ def build_combos_from_sheet(
         seen.add(key)
         combos.append({"ingredients": [src, src], "result": dst})
 
-    # 2) 이원·삼원·사원 조합 — a/b 필수, c/d 옵션.
-    #    D-47: ingredient_d 추가 — 4재료 레시피(예: stone+stone+wood+plant_fiber=weapon_basic).
+    # 2) 1~4재료 조합 — a/result 필수, b/c/d 옵션.
+    #    D-47: ingredient_d(4재료 레시피 — stone+stone+wood+plant_fiber=weapon_basic).
+    #    D-57: 1재료 레시피 허용(요리 경로 — meat_skewer→grilled_meat_skewer).
+    #          1재료는 findRecipesContainingAny에서 uniq.size<=1으로 필터돼 합성 패널에선 안 뜸.
+    #          오직 휴식 카드 → 요리 모달 경유 craftRecipe 호출로만 사용.
     for row in extra_rows or []:
         a = str(row.get("ingredient_a") or "").strip()
         b = str(row.get("ingredient_b") or "").strip()
         c = str(row.get("ingredient_c") or "").strip()
         d = str(row.get("ingredient_d") or "").strip()
         r = str(row.get("result") or "").strip()
-        if not (a and b and r):
+        if not (a and r):
             continue
-        ingredients = [a, b]
+        ingredients = [a]
+        if b:
+            ingredients.append(b)
         if c:
             ingredients.append(c)
         if d:

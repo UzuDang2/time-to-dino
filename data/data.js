@@ -1063,6 +1063,74 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "fish_skewer",
+      "name": "물고기꼬치",
+      "이름": "물고기꼬치",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "물고기를 나뭇가지에 꿴 꼬치. 구우면 한결 든든해진다.",
+      "효과 요약": "배고픔 +1, 생명력 -1.",
+      "사용 효과": "hunger+1;health-1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 1
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -1
+          }
+        ],
+        "raw": "hunger+1;health-1"
+      }
+    },
+    {
+      "id": "meat_skewer",
+      "name": "생고기꼬치",
+      "이름": "생고기꼬치",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "생고기를 나뭇가지에 꿴 꼬치. 요리하면 훨씬 안전해진다.",
+      "효과 요약": "배고픔 +1, 생명력 -1.",
+      "사용 효과": "hunger+1;health-1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 1
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -1
+          }
+        ],
+        "raw": "hunger+1;health-1"
+      }
+    },
+    {
       "id": "mushroom_mix",
       "name": "버섯모둠",
       "이름": "버섯모둠",
@@ -1164,6 +1232,74 @@ window.TTD_DATA = {
           }
         ],
         "raw": "hunger+3"
+      }
+    },
+    {
+      "id": "grilled_fish_skewer",
+      "name": "생선꼬치구이",
+      "이름": "생선꼬치구이",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "3단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "불향이 밴 생선 꼬치. 한 입 베어 물면 지친 몸이 풀린다.",
+      "효과 요약": "배고픔 +2, 생명력 +1.",
+      "사용 효과": "hunger+2;health+1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 2
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 1
+          }
+        ],
+        "raw": "hunger+2;health+1"
+      }
+    },
+    {
+      "id": "grilled_meat_skewer",
+      "name": "고기꼬치구이",
+      "이름": "고기꼬치구이",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "3단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "모닥불에 잘 익힌 고기 꼬치. 속이 든든하고 기운이 돈다.",
+      "효과 요약": "배고픔 +2, 생명력 +1.",
+      "사용 효과": "hunger+2;health+1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 2
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 1
+          }
+        ],
+        "raw": "hunger+2;health+1"
       }
     }
   ],
@@ -1370,6 +1506,32 @@ window.TTD_DATA = {
         "plant_fiber"
       ],
       "result": "slingshot"
+    },
+    {
+      "ingredients": [
+        "meat",
+        "branch"
+      ],
+      "result": "meat_skewer"
+    },
+    {
+      "ingredients": [
+        "fish",
+        "branch"
+      ],
+      "result": "fish_skewer"
+    },
+    {
+      "ingredients": [
+        "meat_skewer"
+      ],
+      "result": "grilled_meat_skewer"
+    },
+    {
+      "ingredients": [
+        "fish_skewer"
+      ],
+      "result": "grilled_fish_skewer"
     }
   ]
 };
