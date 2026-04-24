@@ -2430,10 +2430,13 @@
                                                 const durLeft = Math.max(0, durMaxInitial - usedInSlots);
                                                 if (durMaxInitial > 0) durBadge = `내구 ${durLeft}/${durMaxInitial}`;
                                             }
-                                            // slotLimit 카드(자원 요구)의 잔여 × 표시용.
-                                            const usedInSlots = card.slotLimit
-                                                ? slots.filter(s => s && s.id === card.id).length
-                                                : 0;
+                                            // D-66: 잔여 × 표시는 requirements 기반 실시간 min.
+                                            //   서로 다른 카드가 같은 재료를 공유할 때도 차감이 공유됨.
+                                            //   예: 돌던지기(돌맹이)·새총쏘기(새총+돌맹이) 모두 '돌맹이' 소비.
+                                            //   한쪽을 슬롯에 올리면 다른 쪽의 × 표시도 실시간 감소.
+                                            const reqRemaining = (Array.isArray(card.requirements) && card.requirements.length > 0)
+                                                ? Math.max(0, Math.min(...card.requirements.map(r => remainingByReq[r] ?? 0)))
+                                                : null;
                                             return (
                                                 <div key={card.uid}
                                                     onClick={() => handleHandClick(card)}
@@ -2453,9 +2456,9 @@
                                                         {card.infinite && (
                                                             <span style={{ color: '#3dd68c', marginLeft: '4px' }}>∞</span>
                                                         )}
-                                                        {card.slotLimit && (
+                                                        {card.slotLimit && reqRemaining !== null && (
                                                             <span style={{ color: '#d4b84a', marginLeft: '4px' }}>
-                                                                ×{card.slotLimit - usedInSlots}
+                                                                ×{reqRemaining}
                                                             </span>
                                                         )}
                                                     </div>
