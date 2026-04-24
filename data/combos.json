@@ -110,5 +110,45 @@
       "crab_skewer"
     ],
     "result": "grilled_crab_skewer"
+  },
+  {
+    "ingredients": [
+      "stem",
+      "stem",
+      "stem"
+    ],
+    "result": "leaf_vest"
+  },
+  {
+    "ingredients": [
+      "wood",
+      "wood",
+      "plant_fiber"
+    ],
+    "result": "wooden_shield"
+  },
+  {
+    "ingredients": [
+      "clean_cloth",
+      "clean_cloth",
+      "plant_fiber"
+    ],
+    "result": "cloth_armor"
+  },
+  {
+    "ingredients": [
+      "wooden_shield",
+      "stone",
+      "stone"
+    ],
+    "result": "reinforced_shield"
+  },
+  {
+    "ingredients": [
+      "cloth_armor",
+      "stone",
+      "stone"
+    ],
+    "result": "scale_mail"
   }
 ]

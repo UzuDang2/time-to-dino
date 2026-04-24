@@ -113,6 +113,16 @@ class InventorySystem {
         //   name/내구도만 덮고 shape는 static 유지.
         slingshot:    { name: '새총',   shape: [[1]],    grade: 1, mergeable: false, category: '무기' },
 
+        // === D-72 방어구 5종 (2026-04-24) ===
+        //   shape 1x1 고정, mergeable=false. category는 type과 동일('shield' | 'armor').
+        //   런타임 TTD_DATA.ARMORS가 defense/name/size/grade 등을 덮어씀.
+        //   requirement DSL 확장: 카드 requirement='shield' / 'armor' 이면 카테고리 매칭.
+        leaf_vest:         { name: '잎사귀 조끼',  shape: [[1]], grade: 1, mergeable: false, category: 'armor',  merge_result: null, defense: 1 },
+        wooden_shield:     { name: '나무 방패',    shape: [[1]], grade: 2, mergeable: false, category: 'shield', merge_result: null, defense: 2 },
+        cloth_armor:       { name: '천 갑옷',      shape: [[1]], grade: 2, mergeable: false, category: 'armor',  merge_result: null, defense: 2 },
+        reinforced_shield: { name: '강화 방패',    shape: [[1]], grade: 3, mergeable: false, category: 'shield', merge_result: null, defense: 3 },
+        scale_mail:        { name: '비늘 갑옷',    shape: [[1]], grade: 3, mergeable: false, category: 'armor',  merge_result: null, defense: 3 },
+
         tool_pickaxe: { name: '곡괭이', shape: [[1, 0], [1, 1]], grade: 2, mergeable: false },
 
         armor: { name: '가죽 갑옷', shape: [[1, 1], [1, 1]], grade: 2, mergeable: false }
@@ -128,6 +138,7 @@ class InventorySystem {
         const td = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : null;
         const itemsBundle = td && Array.isArray(td.ITEMS) ? td.ITEMS : null;
         const weaponsBundle = td && Array.isArray(td.WEAPONS) ? td.WEAPONS : null;
+        const armorsBundle = td && Array.isArray(td.ARMORS) ? td.ARMORS : null;
 
         // D-64: itemsBundle과 weaponsBundle을 머지해 덮어씀(early return 제거).
         //   이전엔 itemsBundle에 무기 아이템(slingshot 등)이 먼저 매칭되면
@@ -157,6 +168,18 @@ class InventorySystem {
                 if (wDef['내구도'] != null) merged.durability = Number(wDef['내구도']);
                 if (wDef['공격력'] != null) merged.attack = Number(wDef['공격력']);
                 if (wDef.accuracy != null) merged.accuracy = Number(wDef.accuracy);
+            }
+        }
+        // D-72: 방어구 번들 병합. type은 'shield' | 'armor' — category로도 그대로 사용.
+        //   defense는 requirement='shield'/'armor' DSL과 전투 카드 방어 합산에 쓰임.
+        if (armorsBundle) {
+            const aDef = armorsBundle.find(a => a && a.id === type);
+            if (aDef) {
+                if (aDef.name) merged.name = aDef.name;
+                // type이 있으면 category로 사용 (shield/armor). 없으면 static category 유지.
+                if (aDef.type) merged.category = aDef.type;
+                if (aDef.defense != null) merged.defense = Number(aDef.defense);
+                merged.type = aDef.type || merged.type;
             }
         }
         return merged;

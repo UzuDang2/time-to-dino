@@ -112,6 +112,9 @@ REGION_POOL_SHEET = "드롭풀"
 # Notion DB는 레거시(서사 참조용)로 남기고, 런타임은 여기서만 읽는다.
 ITEM_MASTER_SHEET = "아이템마스터"
 WEAPON_MASTER_SHEET = "무기"
+# D-72 (2026-04-24): 방어구 마스터 탭. 헤더: id, name, type, grade, size, weight, defense, 조합법, 설명
+# type은 'shield' | 'armor'. 런타임에서 category로도 사용(inventory.js resolveDef).
+ARMOR_MASTER_SHEET = "방어구"
 
 # 조합레시피 탭 (D-30): 이원 재료 조합(같은 재료 아닌 것).
 # 헤더: ingredient_a, ingredient_b, result, note
@@ -612,6 +615,12 @@ ITEM_NAME_TO_ID: dict[str, str] = {
     "게살꼬치": "crab_skewer",
     "구운게살꼬치": "grilled_crab_skewer",
     "메뚜기": "grasshopper_whole",
+    # D-72 방어구 5종 (2026-04-24): 시트 `방어구` 탭 기반. 조합 레시피 재료명 매핑에도 사용.
+    "잎사귀 조끼": "leaf_vest",
+    "나무 방패": "wooden_shield",
+    "천 갑옷": "cloth_armor",
+    "강화 방패": "reinforced_shield",
+    "비늘 갑옷": "scale_mail",
 }
 
 
@@ -984,8 +993,39 @@ def rows_to_weapons(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def rows_to_armors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """D-72 방어구 탭 파서. 스키마(헤더):
+    id, name, type, grade, size, weight, defense, 조합법, 설명
+    type은 'shield' | 'armor' — 런타임 카테고리로도 사용.
+    출력은 items.json / weapons.json 스타일과 키를 맞춰 런타임(resolveDef)이
+    동일 경로로 읽을 수 있게 한다.
+    """
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        aid = str(r.get("id") or "").strip()
+        name = str(r.get("name") or "").strip()
+        if not aid or not name:
+            continue
+        armor: dict[str, Any] = {
+            "id": aid,
+            "name": name,
+            "이름": name,
+            "type": str(r.get("type") or "").strip() or None,  # 'shield' | 'armor'
+            "카테고리": str(r.get("type") or "").strip() or None,  # 런타임 카테고리 = type
+            "아이템 등급": str(r.get("grade") or "").strip() or None,
+            "가방칸수": str(r.get("size") or "").strip() or "1x1",
+            "무게": r.get("weight"),
+            "defense": int(r.get("defense") or 0),
+            "방어력": int(r.get("defense") or 0),
+            "설명 텍스트": str(r.get("설명") or r.get("description") or "").strip(),
+            "효과 요약": str(r.get("summary") or "").strip(),
+        }
+        out.append(armor)
+    return out
+
+
 def export_items_from_sheet(sh) -> bool:
-    """API로 아이템마스터 + 무기 + 조합레시피 탭을 읽어 items/weapons/combos 생성."""
+    """API로 아이템마스터 + 무기 + 방어구 + 조합레시피 탭을 읽어 items/weapons/armors/combos 생성."""
     names = {w.title for w in sh.worksheets()}
     if ITEM_MASTER_SHEET not in names:
         print(f"[warn] 탭 '{ITEM_MASTER_SHEET}' 없음 — items 생성 스킵")
@@ -1005,10 +1045,20 @@ def export_items_from_sheet(sh) -> bool:
     write_json(weapons_path, weapons)
     print(f"[api] weapons      → {weapons_path.name}  ({len(weapons)} weapons)")
 
+    # D-72 방어구 탭
+    armors: list[dict[str, Any]] = []
+    if ARMOR_MASTER_SHEET in names:
+        a_rows = _ws_rows(sh.worksheet(ARMOR_MASTER_SHEET))
+        armors = rows_to_armors(a_rows)
+    armors_path = DATA_DIR / "armors.json"
+    write_json(armors_path, armors)
+    print(f"[api] armors       → {armors_path.name}  ({len(armors)} armors)")
+
     combo_rows: list[dict[str, Any]] = []
     if COMBO_RECIPE_SHEET in names:
         combo_rows = _ws_rows(sh.worksheet(COMBO_RECIPE_SHEET))
     extra_ids = {w["id"] for w in weapons if w.get("id")}
+    extra_ids.update({a["id"] for a in armors if a.get("id")})
     combos = build_combos_from_sheet(items, combo_rows, extra_valid_ids=extra_ids)
     combos_path = DATA_DIR / "combos.json"
     write_json(combos_path, combos)
@@ -1017,7 +1067,7 @@ def export_items_from_sheet(sh) -> bool:
 
 
 def export_items_from_xlsx(xlsx_path: Path) -> bool:
-    """xlsx 폴백 — 아이템마스터 + 무기 + 조합레시피 탭에서 읽기."""
+    """xlsx 폴백 — 아이템마스터 + 무기 + 방어구 + 조합레시피 탭에서 읽기."""
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     if ITEM_MASTER_SHEET not in wb.sheetnames:
         print(f"[warn] xlsx에 '{ITEM_MASTER_SHEET}' 탭 없음 — items 생성 스킵")
@@ -1036,10 +1086,20 @@ def export_items_from_xlsx(xlsx_path: Path) -> bool:
     write_json(weapons_path, weapons)
     print(f"[export] weapons     → {weapons_path.name}  ({len(weapons)} weapons)")
 
+    # D-72 방어구 탭
+    armors: list[dict[str, Any]] = []
+    if ARMOR_MASTER_SHEET in wb.sheetnames:
+        a_rows = sheet_to_rows(wb[ARMOR_MASTER_SHEET])
+        armors = rows_to_armors(a_rows)
+    armors_path = DATA_DIR / "armors.json"
+    write_json(armors_path, armors)
+    print(f"[export] armors      → {armors_path.name}  ({len(armors)} armors)")
+
     combo_rows: list[dict[str, Any]] = []
     if COMBO_RECIPE_SHEET in wb.sheetnames:
         combo_rows = sheet_to_rows(wb[COMBO_RECIPE_SHEET])
     extra_ids = {w["id"] for w in weapons if w.get("id")}
+    extra_ids.update({a["id"] for a in armors if a.get("id")})
     combos = build_combos_from_sheet(items, combo_rows, extra_valid_ids=extra_ids)
     combos_path = DATA_DIR / "combos.json"
     write_json(combos_path, combos)
@@ -1185,6 +1245,7 @@ BROWSER_BUNDLE_KEYS = {
     "buildings.json": "BUILDINGS",
     "items.json": "ITEMS",
     "weapons.json": "WEAPONS",  # D-47: 무기 테이블 (별도 탭 '무기')
+    "armors.json": "ARMORS",   # D-72: 방어구 테이블 (별도 탭 '방어구')
     "drop_table.json": "DROP_TABLE",
     "combos.json": "COMBOS",  # D-24: 머지·조합 통합 시스템
 }

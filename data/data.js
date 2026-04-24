@@ -1509,6 +1509,78 @@ window.TTD_DATA = {
       "효과 요약": "새총 쏘기 카드 소지 조건."
     }
   ],
+  "ARMORS": [
+    {
+      "id": "leaf_vest",
+      "name": "잎사귀 조끼",
+      "이름": "잎사귀 조끼",
+      "type": "armor",
+      "카테고리": "armor",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "defense": 1,
+      "방어력": 1,
+      "설명 텍스트": "임시방편 잎사귀 조끼",
+      "효과 요약": ""
+    },
+    {
+      "id": "wooden_shield",
+      "name": "나무 방패",
+      "이름": "나무 방패",
+      "type": "shield",
+      "카테고리": "shield",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "무게": 2,
+      "defense": 2,
+      "방어력": 2,
+      "설명 텍스트": "투박한 나무 방패",
+      "효과 요약": ""
+    },
+    {
+      "id": "cloth_armor",
+      "name": "천 갑옷",
+      "이름": "천 갑옷",
+      "type": "armor",
+      "카테고리": "armor",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "무게": 2,
+      "defense": 2,
+      "방어력": 2,
+      "설명 텍스트": "천 조각을 꿰맨 갑옷",
+      "효과 요약": ""
+    },
+    {
+      "id": "reinforced_shield",
+      "name": "강화 방패",
+      "이름": "강화 방패",
+      "type": "shield",
+      "카테고리": "shield",
+      "아이템 등급": "3단계",
+      "가방칸수": "1x1",
+      "무게": 3,
+      "defense": 3,
+      "방어력": 3,
+      "설명 텍스트": "돌로 보강한 나무 방패",
+      "효과 요약": ""
+    },
+    {
+      "id": "scale_mail",
+      "name": "비늘 갑옷",
+      "이름": "비늘 갑옷",
+      "type": "armor",
+      "카테고리": "armor",
+      "아이템 등급": "3단계",
+      "가방칸수": "1x1",
+      "무게": 3,
+      "defense": 3,
+      "방어력": 3,
+      "설명 텍스트": "비늘처럼 돌을 덧댄 갑옷",
+      "효과 요약": ""
+    }
+  ],
   "DROP_TABLE": {
     "regions": {
       "숲": {
@@ -1729,6 +1801,46 @@ window.TTD_DATA = {
         "crab_skewer"
       ],
       "result": "grilled_crab_skewer"
+    },
+    {
+      "ingredients": [
+        "stem",
+        "stem",
+        "stem"
+      ],
+      "result": "leaf_vest"
+    },
+    {
+      "ingredients": [
+        "wood",
+        "wood",
+        "plant_fiber"
+      ],
+      "result": "wooden_shield"
+    },
+    {
+      "ingredients": [
+        "clean_cloth",
+        "clean_cloth",
+        "plant_fiber"
+      ],
+      "result": "cloth_armor"
+    },
+    {
+      "ingredients": [
+        "wooden_shield",
+        "stone",
+        "stone"
+      ],
+      "result": "reinforced_shield"
+    },
+    {
+      "ingredients": [
+        "cloth_armor",
+        "stone",
+        "stone"
+      ],
+      "result": "scale_mail"
     }
   ]
 };
