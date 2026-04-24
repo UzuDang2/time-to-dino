@@ -1993,6 +1993,31 @@
         //
         // 슬롯↔손패 이동은 uid 기준. "뒤 슬롯 고정" 원칙 — 슬롯→손패 복귀 시 다른 슬롯 위치 유지.
         // 확정 시 resolveHunt(prey, slots) → 턴 로그 순차 표시(500ms) → onResolve(result) 콜백.
+        // D-58: HuntCombatModal 수치 배지 통일.
+        //   - 🗡️+N / N% / 🏹+N 순서 고정, 줄바꿈 없음.
+        //   - damage=0 카드(dodge/run_away) 는 🗡️·🏹 생략, N%만 표시.
+        //   - 라벨 텍스트('공'/'명중 +N%') 전부 제거 — 아이콘 + 숫자로 통일.
+        const STAT_ICONS = { damage: '🗡️', accuracy: '🏹' };
+        const STAT_COLORS = { damage: '#e06666', accuracy: '#8bd17c' };
+        function StatBadges({ card }) {
+            const dmg = Number(card.damage) || 0;
+            const acc = Number(card.accuracy) || 0;
+            const sr = card.success_rate;
+            return (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                    {dmg > 0 && (
+                        <span style={{ color: STAT_COLORS.damage }}>{STAT_ICONS.damage}+{dmg}</span>
+                    )}
+                    {(sr !== undefined && sr !== null) && (
+                        <span style={{ color: '#aaa' }}>{sr}%</span>
+                    )}
+                    {dmg > 0 && acc > 0 && (
+                        <span style={{ color: STAT_COLORS.accuracy }}>{STAT_ICONS.accuracy}+{acc}</span>
+                    )}
+                </span>
+            );
+        }
+
         function HuntCombatModal({ prey, inventory, combatCards, onResolve, onCancel }) {
             const [slots, setSlots] = useState([null, null, null]);
             const [hand, setHand] = useState(() => CombatDeck.buildHuntDeck(combatCards, inventory));
@@ -2175,13 +2200,8 @@
                                         {card ? (
                                             <div>
                                                 <div style={{ fontWeight: '600' }}>{card.name}</div>
-                                                <div style={{ fontSize: '10px', color: '#aaa' }}>
-                                                    {card.damage > 0 ? `공${card.damage}` : ''} {card.success_rate}%
-                                                    {(card.damage || 0) > 0 && (Number(card.accuracy) || 0) > 0 && (
-                                                        <span style={{ color: '#8bd17c', marginLeft: '3px' }}>
-                                                            +{card.accuracy}
-                                                        </span>
-                                                    )}
+                                                <div style={{ fontSize: '10px' }}>
+                                                    <StatBadges card={card} />
                                                 </div>
                                             </div>
                                         ) : <span style={{ color: '#666' }}>비었음</span>}
@@ -2291,8 +2311,6 @@
                                                 ? slots.filter(s => s && s.id === card.id).length
                                                 : 0;
                                             const exhausted = !!(card.slotLimit && usedInSlots >= card.slotLimit);
-                                            // D-50: accuracy 배지 — damage 있는 카드만, accuracy>0일 때만 표시.
-                                            const showAccuracy = (card.damage || 0) > 0 && (Number(card.accuracy) || 0) > 0;
                                             // D-51: 무기 요구 카드면 해당 무기 인스턴스의 durabilityLeft 표시
                                             //   (여러 자루 있을 때 합산 — weaponState와 동일 관점).
                                             let durBadge = null;
@@ -2332,13 +2350,8 @@
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div style={{ fontSize: '10px', color: '#aaa' }}>
-                                                        {card.damage > 0 ? `공${card.damage} ` : ''}{card.success_rate}%
-                                                        {showAccuracy && (
-                                                            <span style={{ color: '#8bd17c', marginLeft: '4px' }}>
-                                                                명중 +{card.accuracy}%
-                                                            </span>
-                                                        )}
+                                                    <div style={{ fontSize: '10px' }}>
+                                                        <StatBadges card={card} />
                                                     </div>
                                                     {durBadge && (
                                                         <div style={{ fontSize: '10px', color: '#d4b84a' }}>
