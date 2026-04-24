@@ -22,11 +22,11 @@
   {
     "id": "stab_weapon",
     "name": "창으로 찌르기",
-    "damage": 2,
+    "damage": 4,
     "success_rate": 100,
     "requirement": "나무창",
     "count": 1,
-    "accuracy": 30,
+    "accuracy": 20,
     "full_loss": "N"
   },
   {
@@ -52,7 +52,7 @@
   {
     "id": "throw_spear",
     "name": "창던지기",
-    "damage": 4,
+    "damage": 6,
     "success_rate": 100,
     "requirement": "나무창",
     "count": 1,
@@ -66,7 +66,7 @@
     "success_rate": 100,
     "requirement": "새총 + 돌맹이",
     "count": 1,
-    "accuracy": 90,
+    "accuracy": 20,
     "full_loss": "N"
   }
 ]

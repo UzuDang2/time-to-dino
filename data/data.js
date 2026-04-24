@@ -102,11 +102,11 @@ window.TTD_DATA = {
     {
       "id": "stab_weapon",
       "name": "창으로 찌르기",
-      "damage": 2,
+      "damage": 4,
       "success_rate": 100,
       "requirement": "나무창",
       "count": 1,
-      "accuracy": 30,
+      "accuracy": 20,
       "full_loss": "N"
     },
     {
@@ -132,7 +132,7 @@ window.TTD_DATA = {
     {
       "id": "throw_spear",
       "name": "창던지기",
-      "damage": 4,
+      "damage": 6,
       "success_rate": 100,
       "requirement": "나무창",
       "count": 1,
@@ -146,7 +146,7 @@ window.TTD_DATA = {
       "success_rate": 100,
       "requirement": "새총 + 돌맹이",
       "count": 1,
-      "accuracy": 90,
+      "accuracy": 20,
       "full_loss": "N"
     }
   ],
@@ -1178,7 +1178,7 @@ window.TTD_DATA = {
       "아이템 등급": "1단계",
       "내구도": 5,
       "공격력": 0,
-      "accuracy": 10,
+      "accuracy": 0,
       "설명 텍스트": "나뭇가지와 돌을 엮어 만든 단순한 창. 창으로 찌르기·창던지기 카드 사용.",
       "효과 요약": "기본 무기. 전투 카드 '창으로 찌르기' / '창던지기' 소지 조건."
     },
@@ -1192,7 +1192,7 @@ window.TTD_DATA = {
       "아이템 등급": "1단계",
       "내구도": 3,
       "공격력": 0,
-      "accuracy": 90,
+      "accuracy": 0,
       "설명 텍스트": "돌맹이를 장전해 날리는 소형 무기. 새총 쏘기 카드 사용.",
       "효과 요약": "새총 쏘기 카드 소지 조건."
     }
@@ -1229,7 +1229,8 @@ window.TTD_DATA = {
       "숲": {
         "env": [
           "branch",
-          "stone"
+          "stone",
+          "stem"
         ],
         "food": [
           "mushroom",
@@ -1277,6 +1278,19 @@ window.TTD_DATA = {
       }
     },
     "weights": {
+      "숲": {
+        "env": [
+          60,
+          20,
+          20
+        ]
+      },
+      "덤불": {
+        "env": [
+          60,
+          40
+        ]
+      },
       "시냇물": {
         "food": [
           80,
