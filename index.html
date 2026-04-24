@@ -365,12 +365,20 @@
             // 구분을 위해 흐릴 수 있지만, 이동 가능(canMove) 녹색 테두리는 항상 선명해야
             // 길찾기가 쉽다. polygon opacity 한 방으로는 둘을 분리할 수 없어 fillOpacity와
             // strokeOpacity를 따로 둔다.
+            // D-85 (2026-04-24 요한 지시): 현재 타일의 connections에 속하는 타일은
+            // silhouette/dim 상태여도 항상 녹색 canMove 테두리를 띄워야 한다. 이전에는
+            // dimmed일 때 stroke=#555/width=1로 덮어써서, listen으로 silhouette 플래그가
+            // 붙은 "갈 수 있는" 타일이 "못 가는 타일"처럼 보이는 버그가 있었다.
+            // → canMove가 최우선, 그 다음에 dimmed, 그 다음 기본 테두리.
+            // 단, [맵 보기](showPathView)에서 pathUnvisited이면 실제 클릭이 막히므로
+            // 녹색 승격도 생략해서 "녹색인데 안 눌림" 모순을 피한다.
+            const showCanMove = canMove && !pathUnvisited;
             const revealedOnly = !tile.visited && tile.revealed;
             const tileFillOpacity = dimmed ? 0.22 : (tile.visited ? 1 : tile.revealed ? 0.7 : 0.55);
-            const tileStrokeOpacity = dimmed ? 0.4 : 1;
+            const tileStrokeOpacity = (dimmed && !showCanMove) ? 0.4 : 1;
             const tileFill = (dimmed || revealedOnly) ? '#444' : getTileColor(tile);
-            const tileStroke = dimmed ? '#555' : (canMove ? '#4CAF50' : '#0f3460');
-            const tileStrokeWidth = dimmed ? '1' : (canMove ? '3' : '2');
+            const tileStroke = showCanMove ? '#4CAF50' : (dimmed ? '#555' : '#0f3460');
+            const tileStrokeWidth = showCanMove ? '3' : (dimmed ? '1' : '2');
 
             return (
                 <g key={tile.id} opacity={hasNoConnections ? 0 : 1}>

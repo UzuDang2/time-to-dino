@@ -113,6 +113,24 @@
   - portrait(폭 < 720px 또는 세로): 기존대로 가방 모달 내부 하단에 sticky 스택. 회귀 없음.
   - [만들기] 동작·닫기 버튼으로 선택 해제 → 두 카드 모두 동일하게 반응.
 
+- [x] **[디렉터/웹]** ✅ **D-85 canMove 녹색 테두리가 silhouette/dim 타일에서 사라지는 버그**
+  - 요한 제보(스크린샷): 평원(현재 타일) 바로 아래 2칸이 "못 가는 타일처럼 초록 테두리가 없음". 실제로는 터치하면 이동 동작함.
+  - 원인 분석:
+    1. 이전 턴에 listen 시전 → 해당 타일들이 revealed/visited 타일의 connections에 있어 `silhouette=true` 플래그가 붙음.
+    2. 플레이어가 평원으로 이동 → 평원은 visited, 그 physical neighbors는 `discovered=true`로 승격되지만 `silhouette` 플래그는 그대로.
+    3. HexTile 렌더에서 `silhouetteOnly = !showPathView && tile.silhouette && !tile.revealed && !tile.visited` → true, `dimmed=true`.
+    4. `tileStroke = dimmed ? '#555' : (canMove ? '#4CAF50' : '#0f3460')` → dim이 canMove를 덮어쓰므로 #555 width 1 → 시각적으로 "못 가는 타일"과 구분 안 됨.
+  - 조치 (index.html HexTile):
+    - 우선순위 역전: `tileStroke = canMove ? '#4CAF50' : (dimmed ? '#555' : '#0f3460')`
+    - `tileStrokeWidth = canMove ? '3' : (dimmed ? '1' : '2')`
+    - `tileStrokeOpacity = (dimmed && !canMove) ? 0.4 : 1` — dim이어도 canMove면 선명하게.
+    - fill/fillOpacity는 그대로(내부 색은 "가본 곳 vs 안 가본 곳" 구분 목적 유지).
+  - 효과: listen으로 silhouette이 붙었든, 이동해서 discovered만 된 상태든, 현재 타일의 connections에 속하면 항상 선명한 초록 테두리. 길찾기 난이도 추가 하향.
+
+- [ ] **[요한]** 🧪 **QA: D-85 canMove 녹색 테두리 항상 노출**
+  - listen 후 이동 반복 시 현재 타일의 이웃이 dim/silhouette 상태여도 **모두 녹색 굵은 테두리**로 노출되는지.
+  - [맵 보기] 모드에서는 canMove 녹색 테두리가 뜨지 않아야 함(showPathView일 때 `pathUnvisited` 경로에서 클릭 차단).
+
 ---
 
 ## 대기: 요한 측 QA (12차 세션 — 2026-04-24, D-72~D-78 사냥감 확장 2·3단계)
