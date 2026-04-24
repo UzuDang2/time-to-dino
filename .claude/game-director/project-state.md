@@ -341,3 +341,31 @@ SQLite-like 타입:
    - 시각적 원형 테두리는 렌더 안 함(요한: 완전 투명).
 
 **브라우저 검증**: 미실행. 요한 수동 QA (pending.md E/F 체크리스트 참조).
+
+## 2026-04-24 12차 세션 변경점 — D-60/D-61/D-62 (턴별 회피·맵 확대·보스 배회)
+
+요한 노션 기획 3건 일괄 구현. 계획서 확정 스펙 기반.
+
+1. **D-60 턴별 회피율 + 도주 누적 패널티**:
+   - 시트 `사냥감` 탭에 `evade_per_turn` CSV 컬럼 추가 (Level 1 9종 T3 -10~20% 하향).
+   - `combatDeck.js::parseEvadesByTurn` 신설 + `resolveHunt` 턴별 계산(`evadesByTurn[t] - fleeCount*10`).
+   - `HuntCombatModal::computedEvades` 턴별 base 반영.
+   - `setPreys` prey_fled 분기에서 `fleeCount` 누적.
+   - `useCard('hunt_start')`가 activeHunt에 `evade_per_turn`/`fleeCount` 전달.
+
+2. **D-61 맵 크기 1.5배 (7x7 → 11x11)**:
+   - `index.html` 전역 `MAP_SIZE = 11` 상수 도입, 3곳 `MapGenerator(7)` → `MapGenerator(MAP_SIZE)` 치환.
+   - `mapGenerator.js::_generateOnce` 내부 하드코딩을 gridSize 기반 스케일로 리팩토링:
+     - `getCornerCandidates()` 동적 산출.
+     - `emptySlotCount = totalTiles * (0.20~0.31)`.
+     - `minBossDistance = max(5, floor(gridSize*0.7))`.
+     - `specialTiles = good/trap * (totalTiles/49)` 비율.
+
+3. **D-62 보스 미방문 타일 선호**:
+   - `boss.js::BossMonster.visitedTiles` Set 필드 + `setPosition` 헬퍼.
+   - `moveRandom` 미방문 필터 → 있으면 그중 랜덤, 없으면 기존 로직.
+   - `moveTowards`·`moveRandom` 둘 다 이동 후 방문 기록.
+   - `initializeGame` `boss.position=X` 직접 할당 → `boss.setPosition(X)` 로 visitedTiles 동기화.
+   - `moveTo` 일반 모드 인라인 랜덤 이동 → `boss.moveRandom()` 위임.
+
+**브라우저 검증**: 미실행. Node 단위 스모크 테스트만 수행 (resolveHunt 수식, 맵 생성 스케일, 보스 미방문 우선). 요한 수동 QA — pending.md D-60/D-61/D-62 체크리스트 참조.

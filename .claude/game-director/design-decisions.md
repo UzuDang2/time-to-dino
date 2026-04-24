@@ -948,3 +948,82 @@ confirmPlacement:
 **Notion 생략**: D-30 이후 런타임 SSOT가 시트로 이관됐고, Notion 아이템 DB는 레거시(서사 참조). 이번도 meat(D-46)·slingshot(D-52)과 동일 패턴으로 Notion 등재 스킵.
 
 **파일**: `data/items.json`·`data/combos.json`·`data/data.js`(자동 재생성), `scripts/fetch_data.py`(ITEM_NAME_TO_ID + 1재료 레시피 허용), `inventory.js`(ITEMS 4종 폴백), `index.html`(CardItemConsumeModal prop 교체, CookingModal 신규, handleCookRecipe, cookingOpen state, BBQ 함수 3개 제거), 시트 `아이템마스터`·`조합레시피` 탭.
+
+## D-60. 사냥감 턴별 회피율 + 도주 누적 패널티 (2026-04-24, 12th 세션)
+
+**결정**: 단일 `evade_rate` 값을 3턴 공통으로 쓰던 기존 모델을 **턴별 회피율 + 도주 누적 패널티** 2축 시스템으로 확장한다.
+
+**신규 SSOT 컬럼**: 시트 `사냥감` 탭에 `evade_per_turn` CSV 컬럼 추가. 형식 `"T1,T2,T3"`. 빈값이면 `evade_rate` 3턴 공통으로 폴백.
+
+**Level 1 9종 T3 하향 수치 (요한 확정)**:
+| 사냥감 | evade_rate | evade_per_turn |
+|---|---|---|
+| rabbit | 30 | 30,30,20 |
+| mouse | 20 | 20,20,10 |
+| squirrel | 40 | 40,40,25 |
+| bird | 40 | 40,40,25 |
+| salamander | 20 | 20,20,10 |
+| snake | 20 | 20,20,10 |
+| frog | 30 | 30,30,20 |
+| crab | 20 | 20,20,10 |
+| grasshopper | 50 | 50,50,30 |
+
+Level 2 사냥감 7종은 빈값 — 기존 evade_rate 그대로 사용.
+
+**도주 누적 패널티**: prey 개체가 도망칠 때마다 `fleeCount += 1`. 재조우 시 매 턴 base 회피율이 `fleeCount*10` 차감 (max 0). 토끼 1회 도망 → T1/T2 30→20%, T3 20→10%. 2회 도망 → T1/T2 10%, T3 0%.
+
+**근거**: 계획봇 분석 — "회피형 중심 1단계 사냥감에서 3턴 막타 명중 안정성이 부족하고, 도망 시 동기부여(실패해도 다음 번 쉬워짐)가 없어 '도망 후 재사냥' 플로우가 루즈했음". T3 하향으로 마무리 일격 확률 확보 + fleeCount 패널티로 도망친 prey를 추적할 유인.
+
+**구현**:
+- `combatDeck.js`: `parseEvadesByTurn(prey)` 헬퍼 신설 (CSV 파싱, 길이 3 보장, 부분 CSV는 마지막 값 패딩). `resolveHunt`는 `evadeRate` 단일값 대신 `evadesByTurn[t] - fleeCount*10` 턴별 계산. `effectiveEvade = max(0, baseEvadeT - card.accuracy)`.
+- `index.html::HuntCombatModal::computedEvades`: `CombatDeck.parseEvadesByTurn(prey)` + fleeCount 반영. 턴별 `base` 다르게 계산 → 적 행동 슬롯 UI가 T1/T2/T3 다른 값으로 노출.
+- `index.html::useCard('hunt_start')`: activeHunt 세팅 시 `evade_per_turn`, `fleeCount` 전달.
+- `index.html::handleHuntResolve` prey_fled 분기: `fleeCount: (p.fleeCount||0)+1` 로 누적. victory/player_fled는 건드리지 않음.
+
+**SSOT 원칙**: `resolveHunt`와 `computedEvades`가 동일 공식을 공유 (D-58 교훈 — 렌더·판정 분기 금지). `parseEvadesByTurn`을 export해 양쪽이 같은 파서 사용.
+
+**파일**: 시트 `사냥감` 탭(`evade_per_turn` 컬럼 + 9 rows), `data/prey.json`·`data/data.js`(자동 재생성), `combatDeck.js`(parseEvadesByTurn, resolveHunt 턴별), `index.html`(HuntCombatModal computedEvades, useCard hunt_start, handleHuntResolve prey_fled).
+
+## D-61. 맵 크기 7x7 → 11x11 (2026-04-24, 12th 세션)
+
+**결정**: 플레이 그리드를 1.5배(7→11, 정확히는 10.5 반올림) 상향. 타일 수 49→121 (2.47배). 탐험 여지와 보스와의 거리감 확보.
+
+**구현**:
+- `index.html`: 전역 상수 `MAP_SIZE = 11` 도입 (DRY — 모든 `new MapGenerator(N)` 호출부 한 곳에서 관리). 기존 3곳 `MapGenerator(7)` → `MapGenerator(MAP_SIZE)` 치환.
+- `mapGenerator.js::_generateOnce`:
+  - `cornerCandidates` 하드코딩 배열 → `getCornerCandidates()` 메서드. 4꼭짓점+상하 가운데를 gridSize 기반으로 계산 (7x7: [0,6,42,48,3,45], 11x11: [0,10,110,120,5,115]).
+  - `emptySlotCount`: 고정 10~15 → `totalTiles * (0.20~0.31)` 비율. 11x11에선 24~37개. 기존 비율 유지.
+  - `minBossDistance`: 고정 5 → `max(5, floor(gridSize * 0.7))`. 11x11에선 7.
+  - `specialTiles`: 고정 good=4/trap=2 → `totalTiles/49` 스케일. 11x11에선 good≈10/trap≈5.
+- `PADDING_HEXES = 7`은 그대로(D-54). 맵이 커져도 스크롤 여유 7 hex면 충분.
+
+**검증**:
+- Node 시드 1회: tiles 121, nonEmpty 90, good 10, trap 5, 보스 거리 12칸. mapExtent 2915x2475.
+- `make data` 불필요(데이터 변경 없음).
+- useLayoutEffect 중앙 정렬은 `cur.position` 기반이라 자동 동작.
+
+**파일**: `index.html`(MAP_SIZE 상수, 3곳 MapGenerator 교체), `mapGenerator.js`(getCornerCandidates, _generateOnce 스케일 로직).
+
+## D-62. 보스 미방문 타일 선호 배회 (2026-04-24, 12th 세션)
+
+**결정**: 일반 모드(chase 아님) 보스가 인접 타일 중 아직 밟지 않은 곳을 우선 선택해 이동. 전맵 순회를 유도해 11x11 확대 맵에서 보스가 한 구역에 맴도는 문제 방지.
+
+**구현**:
+- `boss.js::BossMonster`:
+  - 생성자에 `this.visitedTiles = new Set([this.position])` 신규 필드.
+  - `setPosition(pos)` 헬퍼: 외부 override 시 visitedTiles도 동기화.
+  - `moveRandom()`: 인접 중 미방문 타일 필터 → 있으면 거기서 랜덤 선택, 없으면 기존 인접 전체에서 랜덤. 이동 후 visitedTiles에 추가.
+  - `moveTowards()` (chaseMode 용): 기존 최단 접근 로직 유지 + 이동 후 visitedTiles에 추가. chase는 플레이어 접근이 최우선이므로 미방문 필터 적용 안 함.
+- `index.html::initializeGame`: `newBoss.position = bossPos` 직접 할당을 `newBoss.setPosition(bossPos)` 로 교체 — visitedTiles에 실제 스폰 위치 반영(findSpawnPosition 임시 자리 오염 방지).
+- `index.html::moveTo` 일반 모드 블록: 인라인 랜덤 이동(`bossConnections[random]`) → `boss.moveRandom()` 위임. 최신 tiles 참조를 위해 `boss.tiles = newTiles` 주입.
+
+**분리 원칙**:
+- `bossMoveHistory`(UI) vs `visitedTiles`(내부 AI): 전자는 결과화면 경로 시각화용, 후자는 이동 결정용. 역할 분리.
+- `visitedTiles`는 게임 내 지속, 리셋 없음.
+
+**검증**:
+- Node 시뮬 (valid 시드, 60 player moves = 30 movable turns):
+  - `same after move = 0` — 이동 턴마다 반드시 실제 이동 발생.
+  - `visitedTiles.size = 23`, 고유 시퀀스 22 — 기존 랜덤(평균 7~10 고유)보다 현저히 많음.
+
+**파일**: `boss.js`(visitedTiles, setPosition, moveRandom/moveTowards), `index.html`(initializeGame setPosition, moveTo 일반 모드 moveRandom 위임).
