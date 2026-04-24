@@ -152,8 +152,22 @@ button:active {
     transition: all 0.2s;
 }
 
-.hex-tile:hover { 
-    filter: brightness(1.2); 
+.hex-tile:hover {
+    filter: brightness(1.2);
+}
+
+/* D-53 (2026-04-24): [맵 보기] 모드에서 플레이어가 방문하지 않은 타일.
+   맵 전체 윤곽만 회색 반투명으로 노출 — 지형/마커는 숨김. */
+.hex-tile.path-unvisited {
+    cursor: default;
+}
+.hex-tile.path-unvisited:hover {
+    filter: none;
+}
+
+/* D-53: 보스 이동 경로 마커 — 빨간 동그라미 + B{n} 라벨. 글로우로 눈에 띄게. */
+.boss-path-dot circle {
+    filter: drop-shadow(0 0 3px rgba(233, 69, 96, 0.7));
 }
 
 /* D-50 (2026-04-23 요한 지시): 엔티티 "말"(piece) 공통 스타일.
