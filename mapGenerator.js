@@ -1,5 +1,19 @@
 // mapGenerator.js - 인접 타일 자동 연결 방식
 
+// D-54 (2026-04-24): 플레이 그리드 주변 빈 패딩(hex 단위).
+// 요한 지시: "유저가 맵 한계지점을 느끼는 부분이 없게" — 스크롤해도 "끝"이
+// 안 보이도록 넉넉한 여백을 SVG 캔버스에 확보한다. 타일은 기존 7x7만 렌더,
+// 패딩 영역은 빈 공간(렌더 요소 없음). 숫자를 키우면 더 넉넉하지만 그만큼
+// DOM 크기·초기 paint 비용이 늘어난다.
+const PADDING_HEXES = 7;
+
+// D-54: HexTile 폴리곤은 x±43, y±50 고정. 좌표 생성과 extent 계산이 같은
+// 상수를 쓰도록 한 자리에서 상수 선언.
+const HEX_COL_STEP = 110;   // 가로 열 간격 (홀짝 행은 +55 오프셋)
+const HEX_ROW_STEP = 95;    // 세로 행 간격
+const HEX_HALF_WIDTH = 55;  // 폴리곤 최외곽 반 폭 여유(짝수 행 오프셋과 동일값)
+const HEX_HALF_HEIGHT = 50; // 폴리곤 최외곽 반 높이
+
 // 타일 지형(region) — 뒤져보기 드롭 테이블과 연동되는 키
 // 값은 Notion "🎲 타일 드롭 테이블" DB의 지역 title과 일치시킨다.
 const REGIONS = ['숲', '덤불', '평원', '시냇물', '동굴'];
@@ -30,16 +44,34 @@ class MapGenerator {
     }
 
     // 육각형 그리드 좌표 생성 (간격 축소)
+    // D-54: PADDING_HEXES * (hex step) 만큼 원점 오프셋을 더해 그리드를 캔버스
+    // 중앙으로 민다. 이렇게 하면 상하좌우 모두 패딩 공간이 생겨, 스크롤
+    // 끝에서도 빈 배경이 계속 이어져 "맵 경계"를 유저가 못 느낀다.
     generateHexPositions() {
+        const xOffset = PADDING_HEXES * HEX_COL_STEP + 100;
+        const yOffset = PADDING_HEXES * HEX_ROW_STEP + 100;
         const positions = [];
         for (let row = 0; row < this.gridSize; row++) {
             for (let col = 0; col < this.gridSize; col++) {
-                const x = col * 110 + (row % 2) * 55 + 100;
-                const y = row * 95 + 100;
+                const x = col * HEX_COL_STEP + (row % 2) * HEX_HALF_WIDTH + xOffset;
+                const y = row * HEX_ROW_STEP + yOffset;
                 positions.push({ x, y, row, col });
             }
         }
         return positions;
+    }
+
+    // D-54: SVG 캔버스 크기 산출 — 플레이 그리드 양옆에 PADDING_HEXES만큼 여백.
+    // 반환: { totalWidth, totalHeight }. GameMap의 <svg width/height>에 그대로 적용.
+    // 계산: (플레이 그리드 칸수 + 2*PADDING) * step + 폴리곤 반폭·반높이 여유.
+    getMapExtent() {
+        const cols = this.gridSize;
+        const rows = this.gridSize;
+        const totalWidth =
+            (cols + 2 * PADDING_HEXES) * HEX_COL_STEP + HEX_HALF_WIDTH + 2 * HEX_HALF_WIDTH;
+        const totalHeight =
+            (rows + 2 * PADDING_HEXES) * HEX_ROW_STEP + 2 * HEX_HALF_HEIGHT;
+        return { totalWidth, totalHeight };
     }
 
     // 육각형 인접 타일 계산

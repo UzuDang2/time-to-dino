@@ -464,6 +464,13 @@
                 : tiles.filter(t => t.visited || t.discovered || t.revealed);
             const containerRef = React.useRef(null);
 
+            // D-54: 플레이 그리드 주변에 넉넉한 빈 패딩을 두어 스크롤해도 "끝"이
+            // 안 보이게 한다. SVG 총 크기는 mapGenerator가 PADDING_HEXES 반영해 산출.
+            const mapExtent = React.useMemo(() => {
+                const gen = new MapGenerator(7);
+                return gen.getMapExtent();
+            }, []);
+
             // D-47 (2026-04-22 요한 지시): 게임 시작 시 현재 위치 타일이 스크롤
             // 뷰포트 중앙에 오도록 1회 정렬. 이전엔 항상 (0,0)에서 시작해 매번
             // 시작 위치를 찾아야 했음.
@@ -489,7 +496,7 @@
             return (
                 <div className="map-area">
                     <div className="map-container" ref={containerRef}>
-                        <svg className="map-svg" width="1100" height="1000">
+                        <svg className="map-svg" width={mapExtent.totalWidth} height={mapExtent.totalHeight}>
                             {visibleTiles.map(tile => (
                                 <HexTile
                                     key={tile.id}
