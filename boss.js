@@ -5,8 +5,6 @@ class BossMonster {
         this.tiles = tiles;
         this.position = this.findSpawnPosition(playerStartTile);
         this.chaseMode = false;
-        this.playerMoveCount = 0;
-        this.bossMovePhase = 0; // 0=1칸, 1=2칸
         this.health = 10;
         this.name = '티라노사우루스';
         // D-77 (2026-04-24): 포식 상태.
@@ -146,8 +144,6 @@ class BossMonster {
     //       BFS 첫 홉으로 전진. 타일 일치 시 포식 시작(predationStay=2, prey 제거).
     //     - 포식 로직이 적용되지 않으면 기존 추격/일반 이동 경로 수행.
     onPlayerMove(playerTile, detectionRate, preys) {
-        this.playerMoveCount++;
-
         // 발각률 80% 이상이면 추격 모드
         if (detectionRate >= 80 && !this.chaseMode) {
             this.chaseMode = true;
@@ -221,21 +217,14 @@ class BossMonster {
             }
         }
 
-        // 기존 이동 로직.
+        // D-86 (2026-04-24 요한 지시): 플레이어 1이동 = 보스 1이동. 모드 무관.
+        //   이전: 일반 모드 2턴에 1번(0.5칸/턴), 추격 모드 1·2·1·2 교대(평균 1.33칸/턴).
+        //   변경: 일반 = 순찰 1홉, 추격 = 플레이어 방향 1홉. 둘 다 매 턴 고정 1칸.
+        //   포식 경로(상단 블록)도 이미 BFS 첫 홉 한 칸 구조라 동일 템포를 공유.
         if (this.chaseMode) {
-            // 추격 모드: 1칸, 2칸, 1칸 패턴
-            if (this.playerMoveCount % 1 === 0) {
-                const moves = this.bossMovePhase === 0 ? 1 : 2;
-                for (let i = 0; i < moves; i++) {
-                    this.moveTowards(playerTile);
-                }
-                this.bossMovePhase = (this.bossMovePhase + 1) % 3;
-                if (this.bossMovePhase === 2) this.bossMovePhase = 0;
-            }
+            this.moveTowards(playerTile);
         } else {
-            if (this.playerMoveCount % 2 === 0) {
-                this.moveRandom();
-            }
+            this.moveRandom();
         }
 
         return this.position === playerTile;

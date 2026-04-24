@@ -1,5 +1,9 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80~D-86**).
+D-86 보스 이동 템포 단순화: `boss.js::onPlayerMove` 이동 분기에서 일반 모드 `playerMoveCount % 2 === 0` 2턴 스킵과 추격 모드 `bossMovePhase` 1/2 교대를 모두 제거. 매 플레이어 턴 정확히 1칸(`chaseMode ? moveTowards() : moveRandom()`). 인스턴스 필드 `playerMoveCount`, `bossMovePhase` 제거(boss.js 내부 전용 확인됨; `index.html` 동명 React state와 무관). 포식(D-77) 경로는 무변경(이미 1홉 구조).
+D-85 canMove 테두리 dim 우선순위 역전: `HexTile`에서 `tileStroke = showCanMove ? '#4CAF50' : (dimmed ? '#555' : '#0f3460')` 순서로 변경. `showCanMove = canMove && !pathUnvisited`로 [맵 보기]에서 클릭 안 되는 타일 녹색 승격 생략. silhouette/discovered 잔존 플래그로 dim 처리되던 인접 타일이 더 이상 "못 가는 타일"처럼 회색으로 보이지 않음.
+
 마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80/D-81/D-82**).
 D-82 맵 조작 개선: `.map-container` `touch-action: none` + `GameMap`에 `zoom` state(0.5~2.5) + 드래그 pan / 마우스휠·핀치 zoom. SVG `viewBox` 고정 + `width/height *= zoom`으로 내부 좌표계 안전. 드래그 임계값 4px 초과 시 click 이벤트 capture 단계에서 차단해 hex tap과 공존. 줌 중심 보정(커서/핀치 중점 고정)은 `requestAnimationFrame`으로 SVG 리렌더 후 scroll 재설정.
 D-81 consume 모달 유령 아이템: `InventoryModal` 닫기에 `cancelSelection` + `CardItemConsumeModal::candidates` 및 `openConsumeForCard::hasAny` 계산에서 `selectedItem.id` 제외(이중 방어).
