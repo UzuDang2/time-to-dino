@@ -286,3 +286,32 @@ SQLite-like 타입:
    - `chaseMode` 전환 판정(`>=80`)과 `boss.onPlayerMove(targetId, movedDetection)` 호출도 새 값 기준으로 갱신. 이동 즉시 80 돌파 시 같은 턴 chase 전환.
 
 브라우저 검증: 로컬 서버(`python3 -m http.server 8765`) + Chrome MCP 로드. 손패에 find_weapon 없음, 이동 1회 후 detection bar width=5%, region 라벨 "평원"/"동굴" 노출 확인. 콘솔 에러 0.
+
+## 2026-04-24 11차 세션 변경점 — 사냥 전투 B/C/D (D-50/51/52)
+
+요한 노션 기획 3건을 일괄 구현. 계획봇 계획서 + 요한 확정 스펙 기반.
+
+1. **B. 명중률(accuracy) 축 분리 (D-50)**:
+   - 시트 `전투카드`에 `accuracy`(int) + `full_loss`(Y/N) 컬럼 신설 + 6종 카드 값 기입.
+   - 시트 `무기`에 `accuracy` 컬럼 신설(weapon_basic 10, slingshot 90).
+   - `scripts/fetch_data.py::rows_to_weapons`에 `accuracy` 캐스팅 추가.
+   - `combatDeck.js::buildHuntDeck`: 카드에 owning weapon.accuracy 합산 + `weaponId` 필드 주입.
+   - `combatDeck.js::resolveHunt`: `effectiveEvade = max(0, evadeRate - card.accuracy)` 판정.
+   - `index.html::HuntCombatModal`: 손패/슬롯 카드에 "명중 +N%" 배지 노출.
+
+2. **C. 무기 내구도 (D-51)**:
+   - weapon_basic durability 10→5 (시트).
+   - 전투카드 `full_loss` 컬럼(throw_spear=Y).
+   - `inventory.js`: `consumeWeaponUse(item, n, fullLoss)` 헬퍼 + addItem/_placeDerivedItem에 `durabilityLeft` 초기화.
+   - `combatDeck.js::resolveHunt`: `opts.weaponState`로 실시간 재고 추적. card.weaponId 있는데 durabilityLeft<=0이면 autoFail 로그. success 시 weaponState 차감(fullLoss면 전량).
+   - `index.html::handleHuntResolve`: `result.weaponUsage`에서 weaponId별 used/fullLossCount/broken 추출 → 인벤 인스턴스에 consumeWeaponUse 적용. 기존 requirement 기반 일괄 소비를 무기/비무기로 분기.
+   - `ItemInfoModal`: 무기 아이템 인스턴스에 "내구도 N/M" 표시.
+
+3. **D. 새총 조합 (D-52)**:
+   - `combatDeck.js::parseRequirement`: `" + "` 구분 DSL 파서. 기존 단일 requirement 호환.
+   - `buildHuntDeck`: 복합 요구 재료 각각의 보유 수 체크, slotLimit = min(보유들).
+   - `handleHuntResolve`: 복합 requirement도 각 재료 1개씩 차감(무기는 weaponUsage 경로).
+   - 시트 4개 탭 편집: 아이템마스터/무기/조합레시피/전투카드에 slingshot·slingshot_shot row 추가.
+   - `inventory.js::ITEMS`에 slingshot 정적 폴백 등록.
+
+**브라우저 검증**: 이번 세션에선 미실행. 요한에게 수동 QA 위임 (pending.md 체크리스트 참조).

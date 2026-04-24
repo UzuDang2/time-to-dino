@@ -726,3 +726,64 @@ confirmPlacement:
 - `moveTo` 진입 직후: `setBossVisible(false)` 추가
 
 **파일**: `index.html` (HexTile, GameMap, state, listen, moveTo).
+
+## D-50. 사냥 전투 명중률(accuracy) 축 분리 (2026-04-24, 11th 세션)
+
+**결정**: 전투 카드에 기존 `success_rate`(카드 자체 성공률)와 별개의 축 `accuracy`(정수 %)를 신설. 무기는 자체 `accuracy`를 가지며, 카드 렌더 시 `card.accuracy + weapon.accuracy`로 합산. 판정 공식은 `effectiveEvade = max(0, prey.evade_rate - totalAccuracy)` → 이 값으로 prey 회피 롤.
+
+**근거**: 기존엔 `success_rate`가 "카드 사용 자체의 성공(던지기가 대상 근처로 갔는지)"과 "회피 가능 여부"를 한 축에 섞어 놨다. 요한 피드백: "무기가 좋으면 맞히기 쉬워야 한다" — 무기 정확도라는 개념을 도입하면 이 두 축이 독립돼 카드 튜닝 여지가 커진다. 예: 새총은 'success_rate 100'이지만 새·작은 사냥감에 명중 +90%로 평원/시냇물 사냥에 특화.
+
+**스펙**:
+- 시트 `전투카드`에 `accuracy` 컬럼 신설(int). punch 0, throw_stone 20, stab_weapon 30, dodge/run_away 0, throw_spear 20, slingshot_shot 90.
+- 시트 `무기`에 `accuracy` 컬럼 신설(int). weapon_basic 10, slingshot 90.
+- `combatDeck.buildHuntDeck`: 각 카드에 대해 owning weapon(requirement의 무기 이름)을 찾아 accuracy 합산 + `weaponId` 주입(D-51 경로에서 재사용).
+- `resolveHunt`: 공격 판정에서 `effectiveEvade = max(0, evadeRate - (card.accuracy || 0))`. 기존 `evadeRate` 직접 사용 줄 교체.
+- UI(HuntCombatModal 손패·슬롯): damage>0 카드에 한해 "명중 +N%" 배지 노출. dodge/run_away는 accuracy=0이라 자동 미노출.
+
+**회귀 안전망**: 기존 JSON에 accuracy 필드가 없는 경우 `(card.accuracy || 0)` 폴백으로 0 처리. 시트 업데이트가 선행되지 않아도 기존 동작 그대로 유지.
+
+**파일**: `scripts/fetch_data.py`(rows_to_weapons), `combatDeck.js`(buildHuntDeck/resolveHunt), `index.html`(HuntCombatModal 배지).
+
+## D-51. 무기 내구도 시스템 + 실시간 재고 반영 (2026-04-24, 11th 세션)
+
+**결정**: 무기 아이템 인스턴스에 런타임 필드 `durabilityLeft:number`를 부여. 전투에서 무기 요구 카드를 사용하면 `durabilityLeft`를 1 차감, 0 이하가 되면 인벤에서 제거. 전투카드에 `full_loss`(Y/N) 컬럼이 있고, Y인 카드는 성공 시 무기 1자루를 즉시 소멸(인벤 제거). 핵심: **턴 진행 중 실시간 재고 추적** — 창던지기 카드를 슬롯에 3개 배치해도, 1턴에서 창 1자루를 잃으면 2·3턴은 `autoFail: reason='weapon_missing'` 로 처리.
+
+**근거 (요한 원문)**: "창던지기 카드는 나무창이 있을 때만 생성되는 것. 근데 전투 순서상 (창던지기, 창던지기, 창던지기)인 경우 처음 던진 창이 그대로 소실될 수 있음. 실시간 반영해 첫번째 창던지기로 창을 잃은 경우 2·3번째가 자동 실패하도록 전투 시나리오를 짜야함." 즉 전투 결정 이후 일괄 차감으로는 이 시나리오를 못 만든다. resolveHunt가 턴 루프 내부에서 `weaponState`를 추적해야 옳다.
+
+**스펙**:
+- 시트 `전투카드`에 `full_loss`(Y/N) 컬럼 신설. throw_spear=Y, 나머지 N.
+- 시트 `무기`: weapon_basic durability 10→5 (요한 밸런스 조정).
+- `combatDeck.resolveHunt(prey, userSlots, { weaponState })`:
+  - weaponState = { [weaponId]: { durabilityLeft } } — 런타임 재고 스냅샷.
+  - 턴 시작 시 card.weaponId가 있으면 durabilityLeft 확인 → 0이면 autoFail.
+  - 카드 success_rate hit 성공 + damage>0 경로에서만 무기 사용 카운트(명중/회피 무관).
+  - full_loss=Y면 남은 durability 전부 날림; 아니면 -1.
+  - 반환 객체에 `weaponUsage: { [weaponId]: { used, broken, fullLossCount, durabilityFinal } }` 포함.
+- `inventory.consumeWeaponUse(item, n, fullLoss)`: durabilityLeft 차감 후 0이면 제거.
+- `addItem` / `_placeDerivedItem`: `resolveDef(type).durability`가 있으면 `durabilityLeft` 필드 자동 초기화.
+- UI: 무기 요구 카드에 "내구 N/M" 배지 + autoFail 턴 로그에 "무기가 없어 실패" 메시지. ItemInfoModal에도 내구도 노출.
+- `handleHuntResolve`: 기존 requirement 기반 일괄 소비 경로를 재료/무기로 분기. 일반 재료는 `removeItem`, 무기는 `weaponUsage` 기반 `consumeWeaponUse`.
+
+**디렉터 해석 — full_loss 컬럼 방식 채택**: 창던지기 손실을 "durability 전량 차감"으로 구현하는 대안도 있었으나, 명시적인 `full_loss=Y`가 카드 데이터로 읽히는 편이 설계 의도를 명확히 드러내며 미래 확장(예: 재사용 가능한 던지기 무기)도 대응하기 쉽다.
+
+**파일**: `inventory.js`(consumeWeaponUse, durabilityLeft 초기화, slingshot entry), `combatDeck.js`(resolveHunt weaponState 루프), `index.html`(HuntCombatModal weaponState 구성, handleHuntResolve 분기, ItemInfoModal).
+
+## D-52. 새총(slingshot) 아이템 + 복합 requirement DSL (2026-04-24, 11th 세션)
+
+**결정**: 신규 1단계 무기 `slingshot` 추가. 조합법 `branch + plant_fiber → slingshot` (나뭇가지 + 끈). 새 전투카드 `slingshot_shot`는 복합 요구 `"새총 + 돌맹이"` — 즉 무기와 탄약을 모두 보유해야 활성. 이를 위해 requirement 파서를 `parseRequirement(req) → string[]`로 확장.
+
+**근거**: 새총은 설계상 "돌맹이를 탄약으로 쓰는 원거리 무기"다. 탄약 소비 없이 공격할 수 있다면 무기 밸런스가 무너진다. 단일 requirement 문자열로는 이 조건을 표현할 수 없어 DSL 확장이 필수. 포맷은 `" + "`(공백 포함) 구분으로 단순화 — 기존 단일 재료 문자열과 완전 호환(split 결과가 [원문] 1개).
+
+**스펙**:
+- 시트 `아이템마스터`: slingshot row (1단계, 1x1, 무게 1, durability 3).
+- 시트 `무기`: slingshot row (accuracy 90).
+- 시트 `조합레시피`: `branch + plant_fiber → slingshot`.
+- 시트 `전투카드`: slingshot_shot (damage 3, success_rate 100, accuracy 90, requirement "새총 + 돌맹이", full_loss N).
+- `combatDeck.parseRequirement`: `" + "` 구분 파서. "없음" 계열은 [] 반환.
+- `combatDeck.buildHuntDeck`: requirement 재료 각각의 보유 개수 확인 → `slotLimit = min(보유 개수들)`. 하나라도 0이면 카드 제외. 무기 요구 재료는 accuracy 합산에 반영.
+- `handleHuntResolve`: 턴별로 requirement를 parse해 각 재료를 1개씩 차감. 무기 재료는 weaponUsage 경로로, 일반 재료는 기존 removeItem 경로로.
+- `inventory.ITEMS`에 slingshot 폴백 정적 정의 추가(TTD_DATA 로드 실패 대비).
+
+**Notion 등재는 skip**: D-30 이후 런타임 SSOT가 시트로 이관됐고, Notion 구 DB는 서사 참조용이다. 이번 세션에선 시트만 처리 — meat(D-46) 때와 동일 패턴.
+
+**파일**: `inventory.js`(ITEMS.slingshot), `combatDeck.js`(parseRequirement, buildHuntDeck 복합 요구), `index.html`(handleHuntResolve 복합 요구 소비), 시트 4개 탭 + `data/*.json` 재생성.
