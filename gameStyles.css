@@ -383,9 +383,9 @@ button:disabled {
     100% { transform: translate(-50%, -50%) scale(12);  opacity: 0; filter: blur(3px) drop-shadow(0 0 20px rgba(255, 30, 30, 0.6)); }
 }
 
-/* D-55 (2026-04-24 요한 지시): 배고픔/생명력 임계값 경고 점멸.
-   StatGauge 채움(fill) div에만 적용. 라벨/숫자/아이콘은 정상 표시.
-   조건: hunger<=3 (배고픔), health<=2 (생명력) — StatPanel에서 warning prop 주입. */
+/* D-55 / D-67 (2026-04-24): 배고픔/생명력 임계값 경고 점멸.
+   D-55는 채움 div에만 적용이라 게이지 0%일 때 안 보였음. D-67은 stat-box 전체에도
+   외곽 글로우를 추가해 채움이 비어도 유저가 체감 가능. */
 @keyframes gauge-warning-pulse {
     from {
         opacity: 1;
@@ -398,6 +398,21 @@ button:disabled {
 }
 .gauge-warning {
     animation: gauge-warning-pulse 0.6s ease-in-out infinite alternate;
+}
+
+/* D-67: 박스 전체 경고 — 채움과 무관하게 stat-box 외곽이 빨갛게 점멸. */
+@keyframes stat-warning-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.0);
+        background-color: rgba(233, 69, 96, 0.0);
+    }
+    50% {
+        box-shadow: 0 0 10px 2px rgba(233, 69, 96, 0.75);
+        background-color: rgba(233, 69, 96, 0.22);
+    }
+}
+.stat-box.stat-warning {
+    animation: stat-warning-pulse 0.8s ease-in-out infinite;
 }
 
 /* D-58 (2026-04-24): HuntCombatModal 적 슬롯 회피율 변경 트랜지션.

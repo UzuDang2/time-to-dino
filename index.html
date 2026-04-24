@@ -205,7 +205,7 @@
         //   StatPanel이 health<=2 / hunger<=3 에서 주입. 라벨/숫자/아이콘은 정상.
         function StatGauge({ icon, value, max, pct, color, valueColor, flex, warning }) {
             return (
-                <div className="stat-box" style={{ padding: '5px 7px', flex: flex, minWidth: 0 }}>
+                <div className={`stat-box ${warning ? 'stat-warning' : ''}`} style={{ padding: '5px 7px', flex: flex, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <span style={{ fontSize: '13px', lineHeight: 1 }}>{icon}</span>
                         <div style={{
@@ -2978,6 +2978,17 @@
             //   - 카드 사용으로 손패가 줄면 보충 없음 (플레이어가 적게 쓰면 다음 타일에서 리필).
             //   - hunt_start는 사냥감 조우 시 overflow로 추가 (카운터 제외, 이동 시 소멸).
             // 따라서 카드 사용 직후 자동 보충 useEffect는 제거.
+
+            // D-67 (2026-04-24): 배고픔 1 이하 직접 알림.
+            //   D-55 게이지 점멸만으로는 경고가 약하다는 요한 피드백. hunger <= 1로 떨어지면
+            //   메시지로 '배고파서 쓰러질 것 같다...' 를 덮어씌워 유저가 즉시 인지하도록.
+            //   hunger 변화 시마다 재평가 — 회복되면 다른 action이 덮어쓰면서 자연 해제.
+            useEffect(() => {
+                if (gameOver || victory) return;
+                if (hunger <= 1) {
+                    setMessage('배고파서 쓰러질 것 같다...');
+                }
+            }, [hunger, gameOver, victory]);
 
             // 아이템 사용 — 인벤토리 정보창에서 '사용' 버튼을 누를 때 호출.
             // EffectParser가 파싱한 Notion '사용 효과' DSL을 런타임에 적용하고,
