@@ -117,32 +117,37 @@ class InventorySystem {
         const itemsBundle = td && Array.isArray(td.ITEMS) ? td.ITEMS : null;
         const weaponsBundle = td && Array.isArray(td.WEAPONS) ? td.WEAPONS : null;
 
+        // D-64: itemsBundle과 weaponsBundle을 머지해 덮어씀(early return 제거).
+        //   이전엔 itemsBundle에 무기 아이템(slingshot 등)이 먼저 매칭되면
+        //   early return되어 weapons.json의 durability/accuracy를 못 읽어왔다.
+        //   결과: durabilityLeft 미초기화 → weaponState total=0 → resolveHunt auto-fail.
+        //   수정: items 분기로 mergeable/merge_result만 반영하고, weapons 분기가
+        //         이어서 무기 메타(내구도·공격력·accuracy)를 덮어쓰게.
+        let merged = { ...staticDef };
+
         if (itemsBundle) {
             const itemDef = itemsBundle.find(it => it && it.id === type);
             if (itemDef) {
-                return {
-                    ...staticDef,
-                    mergeable: itemDef.merge_enabled === true,
-                    merge_result: itemDef.merge_result || null,
-                };
+                merged.mergeable = itemDef.merge_enabled === true;
+                merged.merge_result = itemDef.merge_result || null;
+                // items bundle에도 '내구도'·'공격력'·accuracy가 있으면 반영.
+                if (itemDef['내구도'] != null) merged.durability = Number(itemDef['내구도']);
+                if (itemDef['공격력'] != null) merged.attack = Number(itemDef['공격력']);
+                if (itemDef.accuracy != null) merged.accuracy = Number(itemDef.accuracy);
             }
         }
         if (weaponsBundle) {
             const wDef = weaponsBundle.find(w => w && w.id === type);
             if (wDef) {
-                // 무기 메타를 static 위에 덮어씀. 조합/분해 불가는 static 기본값 유지.
-                // D-50: accuracy, D-51: durability(인스턴스 초기값 계산용) 노출.
-                return {
-                    ...staticDef,
-                    name: wDef.name || staticDef.name,
-                    category: wDef['카테고리'] || staticDef.category || '무기',
-                    durability: wDef['내구도'] != null ? Number(wDef['내구도']) : undefined,
-                    attack: wDef['공격력'] != null ? Number(wDef['공격력']) : undefined,
-                    accuracy: wDef.accuracy != null ? Number(wDef.accuracy) : 0,
-                };
+                // 무기 메타 덮어씀. weapons 탭이 더 최신 SSOT라고 간주.
+                if (wDef.name) merged.name = wDef.name;
+                merged.category = wDef['카테고리'] || merged.category || '무기';
+                if (wDef['내구도'] != null) merged.durability = Number(wDef['내구도']);
+                if (wDef['공격력'] != null) merged.attack = Number(wDef['공격력']);
+                if (wDef.accuracy != null) merged.accuracy = Number(wDef.accuracy);
             }
         }
-        return staticDef;
+        return merged;
     }
 
     // 두 아이템의 2종 조합 레시피 조회 (TTD_DATA.COMBOS 전역 리스트).

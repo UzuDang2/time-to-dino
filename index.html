@@ -2074,20 +2074,79 @@
 
             const allFilled = slots.every(s => s !== null);
 
+            // D-64 (2026-04-24): 슬롯 배치 실시간 재고 반영.
+            //   buildHuntDeck의 slotLimit은 전투 시작 시점 1회 계산이라 배치로 차감 안 됨.
+            //   requirement 이름 기반 capacity를 실시간으로 계산해 손패 비활성·슬롯 내구도 표시.
+            //   무기(category='무기')는 durabilityLeft 합이 capacity, 일반 재료는 인스턴스 수.
+            const reqCapacityByName = React.useMemo(() => {
+                const cap = {};
+                const items = (inventory && inventory.items) || [];
+                for (const it of items) {
+                    const def = InventorySystem.resolveDef(it.type) || {};
+                    const name = def.name || it.name;
+                    if (!name) continue;
+                    const isWeapon = def.category === '무기';
+                    const contribute = isWeapon
+                        ? (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0)
+                        : 1;
+                    cap[name] = (cap[name] || 0) + contribute;
+                }
+                return cap;
+            }, [inventory]);
+
+            // 슬롯에 이미 배치된 카드의 requirements만큼 차감한 잔량.
+            const remainingByReq = React.useMemo(() => {
+                const rem = { ...reqCapacityByName };
+                for (const c of slots) {
+                    if (!c || !Array.isArray(c.requirements)) continue;
+                    for (const r of c.requirements) {
+                        rem[r] = (rem[r] || 0) - 1;
+                    }
+                }
+                return rem;
+            }, [slots, reqCapacityByName]);
+
+            const canPlaceCard = (card) => {
+                if (!Array.isArray(card.requirements) || card.requirements.length === 0) return true;
+                for (const r of card.requirements) {
+                    if ((remainingByReq[r] || 0) <= 0) return false;
+                }
+                return true;
+            };
+
+            // 슬롯별 무기 내구도 계산 (weaponId별 순차 차감).
+            //   before: 이 슬롯 사용 직전 내구, after: 사용 직후 내구.
+            //   무기 아닌 카드(돌 던지기 등)와 빈 슬롯은 null.
+            const slotWeaponDur = React.useMemo(() => {
+                const weaponCap = {};
+                const items = (inventory && inventory.items) || [];
+                for (const it of items) {
+                    const def = InventorySystem.resolveDef(it.type) || {};
+                    if (def.category !== '무기') continue;
+                    weaponCap[it.type] = (weaponCap[it.type] || 0)
+                        + (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0);
+                }
+                const remain = { ...weaponCap };
+                return slots.map(card => {
+                    if (!card || !card.weaponId) return null;
+                    const before = remain[card.weaponId] || 0;
+                    const loss = (card.full_loss === 'Y' || card.fullLoss === true) ? before : 1;
+                    const after = Math.max(0, before - loss);
+                    remain[card.weaponId] = after;
+                    return { before, after };
+                });
+            }, [slots, inventory]);
+
             // D-46/D-47: 카드 재사용 규칙.
             //   - infinite 카드(주먹/회피/도망): 손패 1장, 슬롯 무제한 배치.
             //   - slotLimit 카드(돌 던지기/창 등): 손패 1장, 슬롯 배치는 가방 내 아이템 개수만큼.
-            //     예: 돌 3개 → 돌 던지기 슬롯에 최대 3번.
-            //   - 둘 다 손패에서 사라지지 않고, 슬롯에 놓을 때 uid 고유값 재부여.
+            //   - D-64: 실시간 재고 체크로 통합 — canPlaceCard로 판정.
             const handleHandClick = (card) => {
                 if (phase !== 'select') return;
                 const emptyIdx = slots.findIndex(s => s === null);
                 if (emptyIdx < 0) return;
+                if (!canPlaceCard(card)) return;
                 const isReusable = !!(card.infinite || card.slotLimit);
-                if (card.slotLimit) {
-                    const usedInSlots = slots.filter(s => s && s.id === card.id).length;
-                    if (usedInSlots >= card.slotLimit) return;
-                }
                 const newSlots = [...slots];
                 newSlots[emptyIdx] = isReusable
                     ? { ...card, uid: `${card.uid}:slot:${emptyIdx}:${Date.now()}` }
@@ -2246,6 +2305,11 @@
                                                 <div style={{ fontSize: '10px' }}>
                                                     <StatBadges card={card} />
                                                 </div>
+                                                {slotWeaponDur[i] && (
+                                                    <div style={{ fontSize: '10px', color: '#aaa', marginTop: '2px' }}>
+                                                        내구 {slotWeaponDur[i].before}/{slotWeaponDur[i].after}
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : <span style={{ color: '#666' }}>비었음</span>}
                                     </div>
@@ -2351,25 +2415,25 @@
                                 ) : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                                         {hand.map(card => {
-                                            // D-47: slotLimit 카드(아이템 요구)는 현재 슬롯 사용량으로 잔여 횟수 계산.
-                                            const usedInSlots = card.slotLimit
-                                                ? slots.filter(s => s && s.id === card.id).length
-                                                : 0;
-                                            const exhausted = !!(card.slotLimit && usedInSlots >= card.slotLimit);
-                                            // D-51: 무기 요구 카드면 해당 무기 인스턴스의 durabilityLeft 표시
-                                            //   (여러 자루 있을 때 합산 — weaponState와 동일 관점).
+                                            // D-64: 실시간 재고 기반 비활성 판정. canPlaceCard가 requirements
+                                            //   모두에 대해 remainingByReq 체크 — slotLimit보다 정확.
+                                            const exhausted = !canPlaceCard(card);
+                                            // D-51/D-64: 무기 요구 카드면 현재 잔여 내구도 표시.
+                                            //   슬롯에 이미 배치된 해당 무기 카드 수만큼 실시간 차감.
                                             let durBadge = null;
                                             if (card.weaponId) {
                                                 const items = (inventory && inventory.items) || [];
                                                 const instances = items.filter(it => it.type === card.weaponId);
-                                                const durLeft = instances.reduce((s, it) =>
+                                                const durMaxInitial = instances.reduce((s, it) =>
                                                     s + (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0), 0);
-                                                const durMax = instances.reduce((s, it) => {
-                                                    const def = InventorySystem.resolveDef(it.type) || {};
-                                                    return s + (typeof def.durability === 'number' ? def.durability : 0);
-                                                }, 0);
-                                                if (durMax > 0) durBadge = `내구 ${durLeft}/${durMax}`;
+                                                const usedInSlots = slots.filter(s => s && s.weaponId === card.weaponId).length;
+                                                const durLeft = Math.max(0, durMaxInitial - usedInSlots);
+                                                if (durMaxInitial > 0) durBadge = `내구 ${durLeft}/${durMaxInitial}`;
                                             }
+                                            // slotLimit 카드(자원 요구)의 잔여 × 표시용.
+                                            const usedInSlots = card.slotLimit
+                                                ? slots.filter(s => s && s.id === card.id).length
+                                                : 0;
                                             return (
                                                 <div key={card.uid}
                                                     onClick={() => handleHandClick(card)}
