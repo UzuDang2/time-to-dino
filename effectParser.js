@@ -78,13 +78,22 @@
     //              음수 delta(감소)는 건드리지 않는다 (회복 액션만 증폭하는 의미).
     //   - 향후 확장: damage, detection 등 action 타입이 늘어나면 여기에 분기 추가.
     //
+    // D-49 (2026-04-24): bonuses(덧셈) 지원 추가.
+    //   - recover: 양수 delta stat action에 상수로 더함(곱과 구별). 휴식 카드가
+    //     'scale:recover=2'(음식 효과 × 2)에서 'bonus:recover=1'(+1 고정 보너스)로 전환.
+    //   - 적용 순서: scale 먼저 적용 → bonus 합산. (음식 1→× scale → + bonus)
+    //
     // 범위 외 action(spawn_card 등)은 그대로 패스스루.
-    function scaleEffect(parsed, scales) {
+    function scaleEffect(parsed, scales, bonuses) {
         if (!parsed || !parsed.actions) return parsed;
         const factorRecover = (scales && typeof scales.recover === 'number') ? scales.recover : 1;
+        const bonusRecover = (bonuses && typeof bonuses.recover === 'number') ? bonuses.recover : 0;
         const scaledActions = parsed.actions.map(a => {
-            if (a.type === 'stat' && a.delta > 0 && factorRecover !== 1) {
-                return { ...a, delta: a.delta * factorRecover };
+            if (a.type === 'stat' && a.delta > 0) {
+                let delta = a.delta;
+                if (factorRecover !== 1) delta = delta * factorRecover;
+                if (bonusRecover !== 0) delta = delta + bonusRecover;
+                if (delta !== a.delta) return { ...a, delta };
             }
             return a;
         });
@@ -102,9 +111,10 @@
     //   'category:음식'              → 필터: 아이템의 '카테고리'가 '음식'
     //   'material_type:음식재료'     → 필터: '재료 타입'이 '음식재료'
     //   'id:stone'                  → 필터: 인벤토리 아이템 type === 'stone'
-    //   'scale:recover=2'           → 스케일: 회복 delta x2
+    //   'scale:recover=2'           → 스케일(곱): 회복 delta × 2
+    //   'bonus:recover=1'           → 보너스(합): 회복 delta + 1  (D-49)
     //
-    // 여러 필터가 함께 있으면 AND 조건. scale은 복수 가능.
+    // 여러 필터가 함께 있으면 AND 조건. scale·bonus는 각각 복수 가능.
     // 파싱 실패 토큰은 조용히 무시(런타임 가드).
     function parseCardConsume(raw) {
         const s = String(raw || '').trim();
@@ -112,6 +122,7 @@
 
         const filters = {};
         const scales = {};
+        const bonuses = {};
         const tokens = s.split(';').map(t => t.trim()).filter(Boolean);
         for (const tok of tokens) {
             // scale:key=value
@@ -120,6 +131,14 @@
                 const key = scaleMatch[1].toLowerCase();
                 const val = parseFloat(scaleMatch[2]);
                 if (Number.isFinite(val)) scales[key] = val;
+                continue;
+            }
+            // bonus:key=value  (D-49: 상수 보너스)
+            const bonusMatch = tok.match(/^bonus\s*:\s*([a-z_]+)\s*=\s*(-?\d+(?:\.\d+)?)$/i);
+            if (bonusMatch) {
+                const key = bonusMatch[1].toLowerCase();
+                const val = parseFloat(bonusMatch[2]);
+                if (Number.isFinite(val)) bonuses[key] = val;
                 continue;
             }
             // filterKey:value  (카테고리/material_type/id 등)
@@ -132,10 +151,10 @@
             }
         }
 
-        if (Object.keys(filters).length === 0 && Object.keys(scales).length === 0) {
+        if (Object.keys(filters).length === 0 && Object.keys(scales).length === 0 && Object.keys(bonuses).length === 0) {
             return null;
         }
-        return { filters, scales, raw: s };
+        return { filters, scales, bonuses, raw: s };
     }
 
     // 필터 매칭: 인벤 아이템 1개가 consume.filters를 모두 만족하는가?

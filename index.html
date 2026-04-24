@@ -1075,13 +1075,14 @@
         //     각 증분을 같은 방식으로 처리. scale이 걸릴 수 있는 건 양수 delta stat뿐.
         //   - scale이 없거나 1이면 기존 UI와 동일.
         //   이 표현은 휴식 외 향후 consume 카드에도 재사용 가능하도록 일반화.
-        function CardItemConsumeModal({ inventory, filter, scales, hintText, titleText, emptyText, extraOptions, onSelect, onExtraSelect, onClose }) {
+        function CardItemConsumeModal({ inventory, filter, scales, bonuses, hintText, titleText, emptyText, extraOptions, onSelect, onExtraSelect, onClose }) {
             const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
             const byName = (name) => notionItems.find(it => it && it['이름'] === name);
             const Parser = window.EffectParser;
 
             const recoverScale = (scales && typeof scales.recover === 'number') ? scales.recover : 1;
-            const hasRecoverScale = recoverScale !== 1;
+            const recoverBonus = (bonuses && typeof bonuses.recover === 'number') ? bonuses.recover : 0;
+            const hasRecoverBoost = recoverScale !== 1 || recoverBonus !== 0;
 
             const candidates = (inventory?.items || []).filter(invItem => {
                 const def = InventorySystem.ITEMS[invItem.type] || {};
@@ -1098,7 +1099,7 @@
             function renderEffectRow(notionItem) {
                 const parsedEffect = notionItem && notionItem.effect;
                 const summary = notionItem && notionItem['효과 요약'];
-                const canScale = hasRecoverScale && parsedEffect && parsedEffect.usable && Parser;
+                const canScale = hasRecoverBoost && parsedEffect && parsedEffect.usable && Parser;
 
                 if (!canScale) {
                     // 폴백: 원본 효과 요약만 표시 (기존 동작)
@@ -1126,7 +1127,9 @@
                                 : a.stat === 'health' ? '생명력'
                                 : a.stat;
                     const baseStr = `${label} +${a.delta}`;
-                    const bonus = Math.round(a.delta * recoverScale - a.delta);
+                    // scale(곱) → bonus(합) 순서로 적용한 최종 delta - 원본 delta
+                    const scaledDelta = a.delta * recoverScale + recoverBonus;
+                    const bonus = Math.round(scaledDelta - a.delta);
                     return (
                         <span key={i} style={{ marginRight: '6px' }}>
                             {baseStr}
@@ -2653,14 +2656,21 @@
                 // D-36: 휴식 등 scale이 걸린 카드는 모달이 "효과 증폭"을 시각적으로 강조해야 함.
                 // scales(예: {recover: 2})를 그대로 넘겨 모달이 아이템 효과를 미리보기로 스케일.
                 // 카드 이름/효과 텍스트는 카드별 안내 문구의 기본값으로 사용.
-                const hintText = (consume.scales && consume.scales.recover && consume.scales.recover !== 1)
-                    ? `${card.name}으로 인해 음식의 효과가 ${consume.scales.recover}배가 됩니다`
+                const scaleHint = (consume.scales && consume.scales.recover && consume.scales.recover !== 1)
+                    ? `음식의 효과가 ${consume.scales.recover}배`
+                    : null;
+                const bonusHint = (consume.bonuses && consume.bonuses.recover && consume.bonuses.recover !== 0)
+                    ? `음식의 효과에 +${consume.bonuses.recover}`
+                    : null;
+                const hintText = (scaleHint || bonusHint)
+                    ? `${card.name}으로 인해 ${[scaleHint, bonusHint].filter(Boolean).join(' 및 ')}가 됩니다`
                     : null;
                 setPendingConsume({
                     card,
                     consume,
                     filter: filterFn,
                     scales: consume.scales || {},
+                    bonuses: consume.bonuses || {},
                     hintText,
                     titleText: card.name + ' — 사용할 아이템',
                     emptyText: '쓸 만한 아이템이 없다.',
@@ -2728,7 +2738,7 @@
 
                 let appliedMsg = '';
                 if (parsedEffect && parsedEffect.usable && Parser) {
-                    const scaled = Parser.scaleEffect(parsedEffect, consume.scales || {});
+                    const scaled = Parser.scaleEffect(parsedEffect, consume.scales || {}, consume.bonuses || {});
                     Parser.applyItemEffect(scaled, {
                         getStat: (name) => (name === 'hunger' ? hunger : name === 'health' ? health : null),
                         setStat: (name, val) => {
@@ -3284,6 +3294,7 @@
                             inventory={inventory}
                             filter={pendingConsume.filter}
                             scales={pendingConsume.scales}
+                            bonuses={pendingConsume.bonuses}
                             hintText={pendingConsume.hintText}
                             titleText={pendingConsume.titleText}
                             emptyText={pendingConsume.emptyText}
