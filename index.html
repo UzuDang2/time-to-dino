@@ -85,6 +85,7 @@
                             color={healthColor}
                             valueColor="#eee"
                             flex={1}
+                            warning={health <= 2}
                         />
                         <StatGauge
                             icon="🍖"
@@ -94,6 +95,7 @@
                             color={hungerColor}
                             valueColor={hungerLow ? '#d4b84a' : '#eee'}
                             flex={1}
+                            warning={hunger <= 3}
                         />
                         <div className="stat-box" style={{ ...compactBox, display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                             <div style={{ display: 'flex', gap: '2px' }}>
@@ -194,7 +196,9 @@
 
         // 스탯 게이지 — 발각률 바와 동일 구조. 아이콘 + 게이지 + 숫자.
         // D-37: 라벨 제거·컴팩트 padding. `flex` prop으로 외부에서 너비 배분 제어.
-        function StatGauge({ icon, value, max, pct, color, valueColor, flex }) {
+        // D-55 (2026-04-24 요한 지시): `warning` prop true면 채움 부분에만 빨간 점멸.
+        //   StatPanel이 health<=2 / hunger<=3 에서 주입. 라벨/숫자/아이콘은 정상.
+        function StatGauge({ icon, value, max, pct, color, valueColor, flex, warning }) {
             return (
                 <div className="stat-box" style={{ padding: '5px 7px', flex: flex, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -207,12 +211,15 @@
                             overflow: 'hidden',
                             minWidth: 0
                         }}>
-                            <div style={{
-                                width: `${pct}%`,
-                                height: '100%',
-                                background: color,
-                                transition: 'all 0.3s'
-                            }} />
+                            <div
+                                className={warning ? 'gauge-warning' : undefined}
+                                style={{
+                                    width: `${pct}%`,
+                                    height: '100%',
+                                    background: color,
+                                    transition: 'all 0.3s'
+                                }}
+                            />
                         </div>
                         <span style={{
                             fontSize: '11px',
