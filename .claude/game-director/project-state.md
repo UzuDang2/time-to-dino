@@ -1,5 +1,58 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**12th session — 로컬 Mac 세션 / D-72~D-78 사냥감 확장 2·3단계 통합**).
+D-72 (방어구 시스템 5종 + 조합 5건, `scripts/fetch_data.py`/`inventory.js` + 시트 `방어구` 탭 신설 + `조합레시피` +5).
+- 시트 `방어구` 탭 신설 (headers: id, name, type, grade, size, weight, defense, 조합법, 설명). 5 row: leaf_vest(1/armor/1), wooden_shield(2/shield/2), cloth_armor(2/armor/2), reinforced_shield(3/shield/3), scale_mail(3/armor/3).
+- `fetch_data.py` ARMOR_MASTER_SHEET 상수 + rows_to_armors + API/xlsx 양쪽 export. BROWSER_BUNDLE_KEYS에 ARMORS 편입. ITEM_NAME_TO_ID +5 매핑.
+- `inventory.js` ITEMS 폴백 5종 + resolveDef에 armorsBundle 머지 (defense/type/category). 기존 weapons 머지 패턴 재사용.
+- 산출: armors.json 5종, combos.json 16→21 (+5 3재료 레시피).
+
+D-73 (웅크리기·방패막기 카드 + requirement shield/armor 카테고리 DSL, `combatDeck.js`/시트 `전투카드`).
+- 시트 `전투카드` 신규 `defense` 컬럼 + 2장 append: crouch(무한, def 1), shield_block(req='shield', def 1).
+- `combatDeck.js` CATEGORY_REQ_TOKENS = {'shield','armor'}. `buildHuntDeck`:
+  - resolveDef 기반 category 매칭. 토큰이 카테고리면 인벤 내 category 카운트로 slotLimit. 이름 매칭과 공존.
+  - 카드별 defense 주입. id='shield_block'이면 카드 defense + 인벤 전체 방어구 defense 합산(shield+armor).
+  - 카테고리 토큰은 accuracy 합산에서 자동 제외.
+- `index.html::handleHuntResolve` 재료 소비 루프에 카테고리 토큰 skip.
+
+D-74 (플레이어 방어 계산 + HP 차감 + 🛡️ 배지, `combatDeck.js`/`index.html`).
+- `resolveHunt` 반환 객체에 `playerDamageTaken` — prey attack과 유저 카드 defense 대결 누적.
+- `index.html::handleHuntResolve` setHealth로 차감, HP 0이면 setGameOver + deathReason 'health'.
+- `HuntCombatModal::StatBadges` — STAT_ICONS.defense='🛡️', color '#4db8ff'. 순서 🗡️→%→🏹→🛡️. dmg=0 && def>0이면 🗡️ 숨김.
+
+D-75 (2등급 사냥감 4턴 패턴 시트 DSL + 행동 해석, `combatDeck.js`/`index.html`/시트 `사냥감`).
+- 시트 `사냥감` +actions_per_turn +defense 컬럼. L2 prey 7종 attack=2 일괄, habitat 기본값, actions CSV 고정 시퀀스.
+- `combatDeck.js::parsePreyActions` DSL. `resolveHunt` Level 2 분기 — 4턴 루프, attack/defend/evade/peek 각각 고유 효과.
+  - defend 턴: 유저 대미지 감쇄(prey.defense). peek 턴: evade=0 명중 보장. evade 턴만 회피율 굴림.
+- `HuntCombatModal` SLOT_COUNT 상수 (L1=3/L2=4) — slots/grid/preyActions 모두 이 기준 동적. 적 슬롯 턴별 행동 라벨 + 회피 턴만 회피율.
+
+D-76 (PREY_SPAWN 상수 + level2 5마리 + 3~5칸 거리, `mapGenerator.js`/`index.html`).
+- `index.html` `PREY_SPAWN = {level1:5, level2:5}` 상수. PREY_EMOJI +L2 7종.
+- `mapGenerator.js::spawnPrey` 시그니처 확장(counts 객체 또는 number 호환). L1/L2 별도 풀, L2 상호 BFS 거리 ≥ 3 강제(공간 부족 시 완화). habitat CSV string 자동 배열화.
+
+D-77 (보스 포식 이동 우선권 + 2턴 정지 + 사체 생성, `boss.js`/`index.html`).
+- `BossMonster` state 추가: predationTarget, predationStay, onPredationStart/Complete 훅.
+- `onPlayerMove(playerTile, detection, preys)` 시그니처. predationStay>0면 정지+감소. 타겟 있으면 BFS 첫 홉 전진. 타겟 도달 시 stay=2 시작. 타겟 없으면 L2 거리 ≤ 2 탐색.
+- `index.html::initializeGame`에서 콜백 연결 — Start에서 setPreys 제거, Complete에서 setCarcassTiles 추가. moveTo의 보스 이동 로직을 onPlayerMove 단일 경로로 통합.
+
+D-78 (동물 사체 타일 🦴 + 귀기울이기 단서 + 뒤져보기 생고기 1회 보너스, `index.html`).
+- carcassTiles / carcassMeatTaken / carcassTraceTiles 3 state. HexTile visited+carcass → 중앙 🦴. carcassTrace → 👣 대신 🦴.
+- `useCard('listen')` 인접 carcassTiles → carcassTraceTiles 추가 + 메시지.
+- `useCard('search')` 사체 타일 첫 시전 → 일반 region 드롭 + meat +1, carcassMeatTaken 등록. 이후 시전은 일반 드롭만.
+- moveTo에서 방문 시 해당 타일의 carcassTrace 자동 정리.
+
+12차 세션 변경 파일: `scripts/fetch_data.py`, `inventory.js`, `combatDeck.js`, `boss.js`, `mapGenerator.js`, `index.html`, `data/armors.json`(신규), `data/combat_cards.json`, `data/prey.json`, `data/combos.json`, `data/data.js`, `.claude/game-director/project-state.md`, `.claude/game-director/pending.md`.
+전투카드 7→9 (+defense 컬럼). 아이템 25 유지 / 무기 2 유지 / 방어구 5 신설. 조합 16→21 (+5 방어구). prey 16 유지 (+actions_per_turn/+defense 컬럼, L2 7종 업데이트).
+
+Node 스모크(전부 통과):
+- resolveDef for armors 5종 — name/category/defense/type 정상 override.
+- buildHuntDeck: shield×2(def2) + armor×1(def1) 인벤 → shield_block.defense=6 (1+2+2+1). armor-only → shield_block 제외.
+- resolveHunt L2 boar(attack,attack,defend,evade): crouch→punch→shield_block→punch 시퀀스 → playerDamageTaken 3, preyHp 3.
+- spawnPrey 7x7: L1 5 + L2 5 스폰, 모든 L2 쌍 거리 ≥ 3.
+- BossMonster 포식: 선형 4타일 맵 0→1→2 전진, stay 2→1→0, onPredationStart/Complete 콜백 정상.
+
+2·3단계 브라우저 E2E는 요한 QA 대기 (`pending.md` 12차 세션 블록 참조).
+
 마지막 검증: 2026-04-24 (**12th session — 로컬 Mac 세션 / D-71 사냥감 확장 1단계**).
 D-71 (게·메뚜기 보상 다양화 + 조합·요리 체인, `scripts/fetch_data.py`/`inventory.js`/`index.html` + 시트 3탭).
 - 시트 `아이템마스터` +5 row: crab_whole(재료), crab_meat(음식 1hp), crab_skewer(음식 1hp), grilled_crab_skewer(음식 2hp+1hl), grasshopper_whole(음식 1hp).
