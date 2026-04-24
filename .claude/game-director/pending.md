@@ -4,7 +4,7 @@
 
 ---
 
-## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 확장)
+## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 확장 + D-81 consume 모달 유령 아이템 버그)
 
 > 🌐 claude.ai/code 웹 환경(Linux 샌드박스). Notion MCP 미연결 + `notion.site` 방화벽 차단 상태.
 > 이번 라운드는 repo 내 코드만 수정.
@@ -24,6 +24,19 @@
   - 새 게임 → 한두 칸 이동 후 listen → 현재 타일 이웃(밝음) + 이웃의 이웃(회색 윤곽) 확인.
   - 맵 보기 모드 진입 시 이 silhouette 플래그는 무관(`pathUnvisited` 경로만 타도록 `!showPathView` 가드 있음).
   - 실루엣 타일로 직접 이동 → visited=true로 승격되면서 평소 스타일로 전환.
+
+- [x] **[디렉터/웹]** ✅ **D-81 휴식/consume 카드 리스트에 '가방에 없는 아이템' 뜨는 버그 수정**
+  - 요한 제보: 휴식 카드 음식 목록에 가방엔 안 보이는 아이템이 간혹 등장.
+  - 원인: `InventoryModal`의 "닫기" 버튼이 `setShowInventory(false)`만 호출하고 `inventory.cancelSelection()`을 호출 안 함. 플레이어가 롱프레스로 아이템 선택(들어올림) → `selectItem()`이 grid에선 제거하지만 `inventory.items`엔 남김 → 가방 닫기 → 그리드엔 없지만 items 배열엔 선택(floating) 아이템 그대로 → consume 모달이 `inventory.items`를 순회하며 그 유령 아이템까지 리스트에 포함.
+  - 조치:
+    1. `InventoryModal` 닫기 버튼 onClick에 `inventory.cancelSelection()` 선행 호출 — 주 방어선(선택 상태면 원래 자리 or 빈 자리로 복원).
+    2. `CardItemConsumeModal::candidates` 및 `openConsumeForCard::hasAny` 계산에서 `selectedItem.id`를 제외 — 엣지 케이스(회전 후 놓을 자리 없음 등 cancelSelection 폴백 실패) 이중 방어.
+  - 영향: 휴식/find_food/find_weapon 등 consume 기반 모든 카드 정합성 회복.
+
+- [ ] **[요한]** 🧪 **QA: D-81 consume 모달 정합**
+  - 가방 열고 음식 롱프레스 → 들린 상태로 닫기 → 휴식 카드 사용 → 모달에 그 아이템 **안 보임** 확인. (수정 전엔 보였음.)
+  - 선택 없이 닫기는 기존대로 정상.
+  - 정상 플로우(가방에 음식 N개 보유) 회귀 없음.
 
 ---
 

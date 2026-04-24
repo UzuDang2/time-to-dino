@@ -1011,7 +1011,7 @@
                     <div className="modal-content">
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                             <h3>가방</h3>
-                            <button onClick={closeInventory}>닫기</button>
+                            <button onClick={() => { inventory.cancelSelection(); closeInventory(); }}>닫기</button>
                         </div>
                         <div style={{ position: 'relative' }}>
                             <div className="inventory-grid">
@@ -1197,7 +1197,12 @@
             const recoverBonus = (bonuses && typeof bonuses.recover === 'number') ? bonuses.recover : 0;
             const hasRecoverBoost = recoverScale !== 1 || recoverBonus !== 0;
 
+            // D-81 (2026-04-24): 가방 그리드에 없는 아이템(선택으로 공중에 뜬 상태 등)은
+            //   리스트에서 제외. inventory.items는 selectedItem도 포함하므로, selected는 사용 불가로 간주.
+            //   가방 "닫기" 경로에서 cancelSelection 보장이 주 방어선, 이것은 엣지 케이스 이중 방어.
+            const selectedId = inventory?.selectedItem?.id;
             const candidates = (inventory?.items || []).filter(invItem => {
+                if (selectedId && invItem.id === selectedId) return false;
                 const def = InventorySystem.ITEMS[invItem.type] || {};
                 const notionItem = byName(def.name || invItem.name);
                 return filter ? filter(invItem, notionItem, def) : true;
@@ -3203,7 +3208,11 @@
                 }
                 const filterFn = (invItem, notionItem) =>
                     Parser.matchesConsumeFilter(consume, invItem, notionItem);
+                // D-81: 선택(floating) 중인 아이템은 사용 가능 대상에서 제외 — 모달 candidates와 일치시켜
+                //   "리스트는 비었지만 hasAny=true"로 모달이 뜨는 부정합 방지.
+                const selectedId = inventory?.selectedItem?.id;
                 const hasAny = (inventory?.items || []).some(invItem => {
+                    if (selectedId && invItem.id === selectedId) return false;
                     const def = InventorySystem.ITEMS[invItem.type] || {};
                     const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
                     const notionItem = notionItems.find(it => it && it['이름'] === (def.name || invItem.name));
