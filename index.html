@@ -2670,6 +2670,8 @@
                         const reqs = CombatDeck.parseRequirement(uc.requirement);
                         for (const rName of reqs) {
                             if (weaponNameSet.has(rName)) continue; // 무기는 weaponUsage 경로로
+                            // D-73: 카테고리 토큰(shield/armor)은 소비 대상 아님 — 방어구는 내구 개념 없음.
+                            if (CombatDeck.CATEGORY_REQ_TOKENS && CombatDeck.CATEGORY_REQ_TOKENS.has(rName)) continue;
                             consumeByName[rName] = (consumeByName[rName] || 0) + 1;
                         }
                     }

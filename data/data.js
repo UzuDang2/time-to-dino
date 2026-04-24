@@ -87,7 +87,8 @@ window.TTD_DATA = {
       "requirement": "없음",
       "count": 1,
       "accuracy": 0,
-      "full_loss": "N"
+      "full_loss": "N",
+      "defense": ""
     },
     {
       "id": "throw_stone",
@@ -97,7 +98,8 @@ window.TTD_DATA = {
       "requirement": "돌맹이",
       "count": 1,
       "accuracy": 0,
-      "full_loss": "N"
+      "full_loss": "N",
+      "defense": ""
     },
     {
       "id": "stab_weapon",
@@ -107,7 +109,8 @@ window.TTD_DATA = {
       "requirement": "나무창",
       "count": 1,
       "accuracy": 20,
-      "full_loss": "N"
+      "full_loss": "N",
+      "defense": ""
     },
     {
       "id": "dodge",
@@ -117,7 +120,8 @@ window.TTD_DATA = {
       "requirement": "없음",
       "count": 3,
       "accuracy": 0,
-      "full_loss": "N"
+      "full_loss": "N",
+      "defense": ""
     },
     {
       "id": "run_away",
@@ -127,7 +131,8 @@ window.TTD_DATA = {
       "requirement": "없음",
       "count": 1,
       "accuracy": 0,
-      "full_loss": "N"
+      "full_loss": "N",
+      "defense": ""
     },
     {
       "id": "throw_spear",
@@ -137,7 +142,8 @@ window.TTD_DATA = {
       "requirement": "나무창",
       "count": 1,
       "accuracy": 20,
-      "full_loss": "Y"
+      "full_loss": "Y",
+      "defense": ""
     },
     {
       "id": "slingshot_shot",
@@ -147,7 +153,30 @@ window.TTD_DATA = {
       "requirement": "새총 + 돌맹이",
       "count": 1,
       "accuracy": 20,
-      "full_loss": "N"
+      "full_loss": "N",
+      "defense": ""
+    },
+    {
+      "id": "crouch",
+      "name": "웅크리기",
+      "damage": 0,
+      "success_rate": 100,
+      "requirement": "없음",
+      "count": 1,
+      "accuracy": 0,
+      "full_loss": "N",
+      "defense": 1
+    },
+    {
+      "id": "shield_block",
+      "name": "방패 막기",
+      "damage": 0,
+      "success_rate": 100,
+      "requirement": "shield",
+      "count": 1,
+      "accuracy": 0,
+      "full_loss": "N",
+      "defense": 1
     }
   ],
   "MONSTERS": [

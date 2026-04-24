@@ -69,6 +69,11 @@
         return parts.map(p => p.trim()).filter(Boolean);
     }
 
+    // D-73: 카테고리 토큰 집합. requirement가 이 토큰 단일이면 "인벤에 category=토큰인 아이템
+    //   1개 이상 보유" 로 판정(이름 매칭 대신). shield/armor 두 방어구 계열에 사용.
+    //   확장 시 여기에 추가만 하면 buildHuntDeck이 동일 경로로 처리.
+    const CATEGORY_REQ_TOKENS = new Set(['shield', 'armor']);
+
     // D-46/D-50 개정: 사냥감 전투 덱 빌드.
     //   손패 구성 규칙:
     //     - requirement '없음' → 무한카드(infinite=true).
@@ -81,20 +86,31 @@
     function buildHuntDeck(combatCardsJson, inventory) {
         const cards = Array.isArray(combatCardsJson) ? combatCardsJson : [];
         const items = (inventory && Array.isArray(inventory.items)) ? inventory.items : [];
-        const ITEM_DEFS = (typeof window !== 'undefined' && window.InventorySystem && window.InventorySystem.ITEMS)
-            ? window.InventorySystem.ITEMS
-            : (typeof InventorySystem !== 'undefined' && InventorySystem.ITEMS) || {};
+        const IS = (typeof window !== 'undefined' && window.InventorySystem)
+            || (typeof InventorySystem !== 'undefined' ? InventorySystem : null);
+        const ITEM_DEFS = (IS && IS.ITEMS) || {};
+        const resolveDef = IS && typeof IS.resolveDef === 'function'
+            ? IS.resolveDef.bind(IS)
+            : (t) => ITEM_DEFS[t] || {};
         const TTD = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : null;
         const WEAPONS = (TTD && Array.isArray(TTD.WEAPONS)) ? TTD.WEAPONS : [];
+        const ARMORS  = (TTD && Array.isArray(TTD.ARMORS))  ? TTD.ARMORS  : [];
 
         // 아이템 이름별 보유 개수 맵 — requirement 재료명 → 보유 개수.
         const ownedCountByName = {};
+        // 카테고리별 보유 개수 맵 — requirement='shield'/'armor' 용.
+        const ownedCountByCategory = {};
+        // 카테고리별 보유 아이템의 defense 합 (D-73): shield_block 카드의 방어 합산에 사용.
+        const defenseSumByCategory = { shield: 0, armor: 0 };
         for (const it of items) {
-            const staticName = (ITEM_DEFS[it.type] || {}).name;
-            // 무기는 ITEMS에 없을 수도 있어 WEAPONS까지 조회.
-            const weaponDef = WEAPONS.find(w => w && w.id === it.type);
-            const name = staticName || (weaponDef && weaponDef.name);
+            const def = resolveDef(it.type) || {};
+            const name = def.name || (ITEM_DEFS[it.type] || {}).name;
             if (name) ownedCountByName[name] = (ownedCountByName[name] || 0) + 1;
+            const cat = def.category;
+            if (cat === 'shield' || cat === 'armor') {
+                ownedCountByCategory[cat] = (ownedCountByCategory[cat] || 0) + 1;
+                defenseSumByCategory[cat] += Number(def.defense) || 0;
+            }
         }
 
         // 이름 → 무기 정의 맵 (카드에 accuracy 보너스 합산 + full_loss 분기용).
@@ -107,40 +123,63 @@
         let idx = 0;
         for (const card of cards) {
             const reqs = parseRequirement(card && card.requirement);
+            const cardDefense = Number(card.defense) || 0;
 
-            // 무한카드 (요구 없음) — 주먹/회피/도망.
+            // 무한카드 (요구 없음) — 주먹/회피/도망/웅크리기.
             if (reqs.length === 0) {
-                const base = { ...card, infinite: true, uid: `combat:${card.id}:${idx++}` };
-                base.accuracy = Number(card.accuracy) || 0;
+                const base = {
+                    ...card, infinite: true,
+                    accuracy: Number(card.accuracy) || 0,
+                    defense: cardDefense,
+                    uid: `combat:${card.id}:${idx++}`
+                };
                 deck.push(base);
                 continue;
             }
 
-            // 요구 재료별 보유 개수 — 하나라도 0이면 카드 제외.
+            // 요구 토큰별 보유 개수 — 하나라도 0이면 카드 제외.
+            //   카테고리 토큰(shield/armor): 인벤에 category=토큰인 아이템 수.
+            //   그 외: 이름 매칭.
             let slotLimit = Infinity;
             let missing = false;
             for (const r of reqs) {
-                const owned = ownedCountByName[r] || 0;
+                const owned = CATEGORY_REQ_TOKENS.has(r)
+                    ? (ownedCountByCategory[r] || 0)
+                    : (ownedCountByName[r] || 0);
                 if (owned <= 0) { missing = true; break; }
                 slotLimit = Math.min(slotLimit, owned);
             }
             if (missing) continue;
 
             // accuracy 합산: 카드 자체 accuracy + (요구 재료 중 무기의 accuracy).
+            //   카테고리 토큰은 무기가 아니므로 무기 매칭에서 자동 제외 (weaponByName에 없음).
             let totalAccuracy = Number(card.accuracy) || 0;
             let owningWeaponId = null;
             for (const r of reqs) {
+                if (CATEGORY_REQ_TOKENS.has(r)) continue;
                 const wdef = weaponByName[r];
                 if (wdef) {
                     totalAccuracy += Number(wdef.accuracy) || 0;
-                    owningWeaponId = owningWeaponId || wdef.id; // 첫 매칭 무기 기록
+                    owningWeaponId = owningWeaponId || wdef.id;
                 }
+            }
+
+            // D-73: defense 합산 — `shield_block` 카드는 인벤 내 모든 방어구(shield+armor)의
+            //   defense를 카드 defense에 더해 최종 방어값을 산출. 그 외(크아 웅크리기=requirement
+            //   없음이라 위 분기에서 이미 처리됨)는 카드 defense 그대로.
+            //   id 기반 분기 — 스펙이 shield_block만 합산으로 확정.
+            let finalDefense = cardDefense;
+            if (card && card.id === 'shield_block') {
+                finalDefense = cardDefense
+                    + (defenseSumByCategory.shield || 0)
+                    + (defenseSumByCategory.armor  || 0);
             }
 
             deck.push({
                 ...card,
                 requirements: reqs,                     // 런타임 편의(소비 단계용)
                 accuracy: totalAccuracy,
+                defense: finalDefense,
                 slotLimit,
                 weaponId: owningWeaponId,               // null이면 무기 아닌 카드(돌던지기 등)
                 uid: `combat:${card.id}:${idx++}`
@@ -294,7 +333,8 @@
 
     const api = {
         buildCombatDeck, consumeExtraCard, RUNTIME_CARDS,
-        buildHuntDeck, resolveHunt, parseRequirement, parseEvadesByTurn
+        buildHuntDeck, resolveHunt, parseRequirement, parseEvadesByTurn,
+        CATEGORY_REQ_TOKENS
     };
 
     if (typeof module !== 'undefined' && module.exports) {
