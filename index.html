@@ -2905,32 +2905,12 @@
                 setGraveyard(prev => [...prev, ...orphan]);
             }, [preys, currentTile]);
 
-            // D-59 (2026-04-24): 손패 5장 보장 — 카드 사용 직후 자동 보충.
-            // 기존 D-48 개정은 이동 시 손패 전량 교체만 다뤘고, 한 타일에 머물며
-            // 여러 카드를 쓰면 4/5, 3/5로 줄어드는 문제가 있었다. non-overflow 카드
-            // 기준이 HAND_SIZE 미만이면 덱/무덤에서 보충. overflow(hunt_start)는 카운트 제외.
-            // 엔드 상태(gameOver/victory)에서는 보충 중지.
-            useEffect(() => {
-                if (gameOver || victory) return;
-                const nonOverflowCount = (hand || []).filter(c => !c.overflow).length;
-                if (nonOverflowCount >= HAND_SIZE) return;
-                const need = HAND_SIZE - nonOverflowCount;
-                let newDeck = [...deck];
-                let newGraveyard = [...graveyard];
-                const drawn = [];
-                while (drawn.length < need) {
-                    if (newDeck.length === 0) {
-                        if (newGraveyard.length === 0) break;
-                        newDeck = shuffleDeck(newGraveyard);
-                        newGraveyard = [];
-                    }
-                    drawn.push(newDeck.shift());
-                }
-                if (drawn.length === 0) return;
-                setHand(prev => [...prev, ...drawn]);
-                setDeck(newDeck);
-                setGraveyard(newGraveyard);
-            }, [hand, deck, graveyard, gameOver, victory]);
+            // D-63 (2026-04-24): D-59 revert.
+            // 손패 자동 보충은 요한 의도 반대였다. 올바른 규칙:
+            //   - 타일 이동 시에만 덱에서 5장 새로 드로우 (moveTo에서 처리, D-48).
+            //   - 카드 사용으로 손패가 줄면 보충 없음 (플레이어가 적게 쓰면 다음 타일에서 리필).
+            //   - hunt_start는 사냥감 조우 시 overflow로 추가 (카운터 제외, 이동 시 소멸).
+            // 따라서 카드 사용 직후 자동 보충 useEffect는 제거.
 
             // 아이템 사용 — 인벤토리 정보창에서 '사용' 버튼을 누를 때 호출.
             // EffectParser가 파싱한 Notion '사용 효과' DSL을 런타임에 적용하고,
