@@ -216,18 +216,35 @@ class MapGenerator {
         return reachable.size >= Math.floor(nonEmpty * 0.7);
     }
 
+    // D-61: 모서리 후보를 gridSize 기반으로 동적 산출.
+    //   4꼭짓점(TL/TR/BL/BR) + 상하 가운데(TC/BC). 예: 7x7→[0,6,42,48,3,45].
+    //   11x11→[0,10,110,120,5,115] 등.
+    getCornerCandidates() {
+        const n = this.gridSize;
+        const last = n * n - 1;
+        const mid = Math.floor((n - 1) / 2);
+        return [
+            0,              // top-left
+            n - 1,          // top-right
+            (n - 1) * n,    // bottom-left
+            last,           // bottom-right
+            mid,            // top-center
+            (n - 1) * n + mid // bottom-center
+        ];
+    }
+
     _generateOnce() {
-        const cornerCandidates = [0, 6, 42, 48, 3, 45];
+        const cornerCandidates = this.getCornerCandidates();
         const playerStart = cornerCandidates[Math.floor(Math.random() * cornerCandidates.length)];
-        
+
         // 플레이어 시작점에서 가장 먼 모서리를 탈출구로
         let maxDist = 0;
         let exitPos = 0;
         const positions = this.generateHexPositions();
-        
+
         for (const candidate of cornerCandidates) {
             if (candidate !== playerStart) {
-                const dist = Math.abs(positions[candidate].row - positions[playerStart].row) + 
+                const dist = Math.abs(positions[candidate].row - positions[playerStart].row) +
                              Math.abs(positions[candidate].col - positions[playerStart].col);
                 if (dist > maxDist) {
                     maxDist = dist;
@@ -235,54 +252,64 @@ class MapGenerator {
                 }
             }
         }
-        
-        // 빈 슬롯 랜덤 생성 (10~15개)
-        const emptySlotCount = Math.floor(Math.random() * 6) + 10;
-        const emptySlots = new Set();
+
+        // D-61: 빈 슬롯 수를 gridSize 기반 비율로 스케일.
+        //   7x7(49타일)에서 10~15개(약 20~31%)였음. 동일 비율 유지.
+        //   11x11(121타일) → 약 25~38개.
         const totalTiles = this.gridSize * this.gridSize;
-        
+        const emptyMin = Math.floor(totalTiles * 0.20);
+        const emptyMax = Math.floor(totalTiles * 0.31);
+        const emptySlotCount = emptyMin + Math.floor(Math.random() * (emptyMax - emptyMin + 1));
+        const emptySlots = new Set();
+
         while (emptySlots.size < emptySlotCount) {
             const randomTile = Math.floor(Math.random() * totalTiles);
             // 시작점, 탈출구, 모서리는 빈 슬롯 제외
-            if (randomTile !== playerStart && 
-                randomTile !== exitPos && 
+            if (randomTile !== playerStart &&
+                randomTile !== exitPos &&
                 !cornerCandidates.includes(randomTile)) {
                 emptySlots.add(randomTile);
             }
         }
-        
+
         // 연결된 맵 생성
         const tiles = this.generateConnectedMap(emptySlots);
-        
+
         // 타입 설정
         tiles[playerStart].type = 'start';
         tiles[playerStart].visited = true;
         tiles[playerStart].discovered = true;
-        
+
         tiles[exitPos].type = 'exit';
-        
-        // 보스 위치 (플레이어에서 5칸 이상 떨어진 곳)
+
+        // D-61: 보스 최소 거리도 gridSize에 비례. 7x7=5칸 → 11x11≈8칸.
+        const minBossDistance = Math.max(5, Math.floor(this.gridSize * 0.7));
         const distances = tiles
             .map((tile, index) => ({
                 index,
                 distance: this.calculateDistance(tiles, playerStart, index)
             }))
-            .filter(d => d.distance >= 5 && 
-                        d.index !== exitPos && 
-                        d.index !== playerStart && 
+            .filter(d => d.distance >= minBossDistance &&
+                        d.index !== exitPos &&
+                        d.index !== playerStart &&
                         !tiles[d.index].isEmpty);
-        
+
         distances.sort((a, b) => b.distance - a.distance);
-        const bossPos = distances.length > 0 
-            ? distances[Math.floor(Math.random() * Math.min(3, distances.length))].index 
+        const bossPos = distances.length > 0
+            ? distances[Math.floor(Math.random() * Math.min(3, distances.length))].index
             : exitPos - 1;
-        
-        // 특수 타일 (빈 슬롯 제외)
+
+        // D-61: 특수 타일 개수를 gridSize에 비례 스케일.
+        //   7x7: good=4, trap=2 (합 6 ≈ 49의 12%). 동일 비율로 11x11≈10/5.
         const availableIndices = tiles
             .map((t, i) => i)
             .filter(i => tiles[i].type === 'normal' && i !== bossPos && !tiles[i].isEmpty);
-        
-        const specialTiles = { good: 4, trap: 2 };
+
+        const scale = totalTiles / 49; // 7x7 기준 비율
+        const specialTiles = {
+            good: Math.max(4, Math.round(4 * scale)),
+            trap: Math.max(2, Math.round(2 * scale))
+        };
         for (const [type, count] of Object.entries(specialTiles)) {
             for (let i = 0; i < count && availableIndices.length > 0; i++) {
                 const randomIndex = Math.floor(Math.random() * availableIndices.length);
@@ -290,7 +317,7 @@ class MapGenerator {
                 tiles[tileIndex].type = type;
             }
         }
-        
+
         return { tiles, playerStart, bossPos, exitPos };
     }
 }

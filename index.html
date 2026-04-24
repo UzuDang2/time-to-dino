@@ -32,6 +32,11 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // D-61 (2026-04-24, 12차 세션): 맵 크기 단일 진실의 원천.
+        //   7x7 → 11x11 (1.5배 상향). MapGenerator 모든 호출부가 이 상수를 사용.
+        //   mapGenerator.js 내부는 gridSize 인자로 받아 자동 스케일(빈슬롯/특수타일/보스거리).
+        const MAP_SIZE = 11;
+
         // ============================================
         // React 컴포넌트들
         // ============================================
@@ -474,7 +479,7 @@
             // D-54: 플레이 그리드 주변에 넉넉한 빈 패딩을 두어 스크롤해도 "끝"이
             // 안 보이게 한다. SVG 총 크기는 mapGenerator가 PADDING_HEXES 반영해 산출.
             const mapExtent = React.useMemo(() => {
-                const gen = new MapGenerator(7);
+                const gen = new MapGenerator(MAP_SIZE);
                 return gen.getMapExtent();
             }, []);
 
@@ -2765,7 +2770,7 @@
             }, []);
 
             function initializeGame() {
-                const mapGen = new MapGenerator(7);
+                const mapGen = new MapGenerator(MAP_SIZE);
                 const { tiles: newTiles, playerStart, bossPos, exitPos } = mapGen.generate();
                 
                 // getHexNeighbors를 사용하여 물리적으로 인접한 모든 타일을 discovered로 설정
@@ -3380,7 +3385,7 @@
                 setDetection(movedDetection);
                 
                 // getHexNeighbors를 사용하여 물리적으로 인접한 모든 타일을 discovered로 설정
-                const mapGen = new MapGenerator(7);
+                const mapGen = new MapGenerator(MAP_SIZE);
                 const positions = mapGen.generateHexPositions();
                 const targetNeighbors = mapGen.getHexNeighbors(targetId, positions);
                 
