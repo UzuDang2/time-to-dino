@@ -130,19 +130,83 @@ class BossMonster {
         }
     }
 
-    // D-62: 일반 모드 랜덤 이동 — 미방문 타일을 선호.
+    // D-62 / D-69: 일반 모드 랜덤 이동 — 미방문 타일을 적극 선호.
     //   1) 인접 연결 중 visitedTiles에 없는 것 → 거기서 랜덤.
-    //   2) 전부 방문했으면 → 인접 전체에서 랜덤 (기존 동작).
-    //   이동 후 visitedTiles에 추가. 11x11 맵에서도 전맵 순회 유도(D-62 요한 지시).
+    //   2) 인접 전부 방문 → 맵 전체 미방문 타일 중 가장 가까운 것을 향해 BFS로 1칸 전진.
+    //      (D-69: 요한 지시 "보스가 한쪽에서 뱅뱅 돌지 않게" — 중앙/반대쪽 순회 유도)
+    //   3) 맵 전체를 모두 밟았으면 visitedTiles 리셋 + 인접 랜덤 (다시 순회 시작).
     moveRandom() {
         const connections = this.tiles[this.position].connections;
         if (connections.length === 0) return;
 
+        // 1) 인접 미방문 우선
         const unvisited = connections.filter(c => !this.visitedTiles.has(c));
-        const pool = unvisited.length > 0 ? unvisited : connections;
-        const next = pool[Math.floor(Math.random() * pool.length)];
-        this.position = next;
-        this.visitedTiles.add(this.position);
+        if (unvisited.length > 0) {
+            const next = unvisited[Math.floor(Math.random() * unvisited.length)];
+            this.position = next;
+            this.visitedTiles.add(this.position);
+            return;
+        }
+
+        // 2) 전체 맵에서 미방문 타일 집합
+        const allUnvisited = new Set();
+        for (let i = 0; i < this.tiles.length; i++) {
+            if (!this.tiles[i].isEmpty && !this.visitedTiles.has(i)) {
+                allUnvisited.add(i);
+            }
+        }
+
+        // 3) 전맵 순회 완료 → 리셋
+        if (allUnvisited.size === 0) {
+            this.visitedTiles = new Set([this.position]);
+            const next = connections[Math.floor(Math.random() * connections.length)];
+            this.position = next;
+            this.visitedTiles.add(this.position);
+            return;
+        }
+
+        // 4) BFS로 가장 가까운 미방문 향한 첫 홉
+        const firstHop = this._bfsFirstHopToAny(allUnvisited);
+        if (firstHop !== null) {
+            this.position = firstHop;
+            this.visitedTiles.add(this.position);
+        } else {
+            // 미방문이 현재 위치에서 도달 불가(이론상 D-68 고립 차단 이후 발생 X) — 안전망
+            const next = connections[Math.floor(Math.random() * connections.length)];
+            this.position = next;
+            this.visitedTiles.add(this.position);
+        }
+    }
+
+    // D-69: 현재 위치에서 BFS로 타겟 집합 중 가장 가까운 타일을 찾고,
+    //   그 경로의 '첫 홉'(현재 위치에서 1칸 떨어진 이웃)을 반환.
+    //   경로 없으면 null.
+    _bfsFirstHopToAny(targetSet) {
+        if (!targetSet || targetSet.size === 0) return null;
+        const prev = new Map();
+        const visited = new Set([this.position]);
+        const queue = [this.position];
+        let reached = null;
+        while (queue.length > 0) {
+            const cur = queue.shift();
+            if (targetSet.has(cur) && cur !== this.position) {
+                reached = cur;
+                break;
+            }
+            for (const n of this.tiles[cur].connections) {
+                if (!visited.has(n)) {
+                    visited.add(n);
+                    prev.set(n, cur);
+                    queue.push(n);
+                }
+            }
+        }
+        if (reached === null) return null;
+        let step = reached;
+        while (prev.has(step) && prev.get(step) !== this.position) {
+            step = prev.get(step);
+        }
+        return step;
     }
 
     // 보스 위치 반환
