@@ -1768,7 +1768,7 @@
                 guide: '함정을 피하고, 위험한 타일 앞에서는 귀 기울이기로 상황을 먼저 살피세요. 풍족한 땅에서 회복에 쓸 재료를 꾸준히 모아두는 것도 좋습니다.'
             },
             boss: {
-                subtitle: '그림자가 덮치는 순간, 아무것도 할 수 없었다...',
+                subtitle: '보스가 당신을 삼켰습니다',
                 guide: '발각률이 80%를 넘으면 보스가 추격해 옵니다. 귀 기울이기로 거리를 파악하고, 숨기·휴식으로 발각률을 낮추세요. 보스 위치가 드러나면 반대 방향으로 우회하는 편이 안전합니다.'
             }
         };
@@ -1831,23 +1831,23 @@
                         )}
 
                         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                            {victory && (
-                                <button
-                                    onClick={() => onViewPath && onViewPath()}
-                                    style={{
-                                        background: '#d4b84a',
-                                        color: '#333',
-                                        border: 'none',
-                                        padding: '12px 24px',
-                                        fontSize: '15px',
-                                        fontWeight: '600',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    🗺️ 맵 보기
-                                </button>
-                            )}
+                            {/* D-56 (2026-04-24 요한 지시): victory/defeat 모두 [맵 보기] 노출.
+                                defeat에서도 보스 경로·플레이어 동선을 복기할 수 있도록. */}
+                            <button
+                                onClick={() => onViewPath && onViewPath()}
+                                style={{
+                                    background: '#d4b84a',
+                                    color: '#333',
+                                    border: 'none',
+                                    padding: '12px 24px',
+                                    fontSize: '15px',
+                                    fontWeight: '600',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                🗺️ 맵 보기
+                            </button>
                             <button
                                 onClick={() => window.location.reload()}
                                 style={{
@@ -3330,8 +3330,14 @@
                 let msg = '';
                 
                 if (encounter) {
-                    setGameOver(true);
-                    setDeathReason('boss');
+                    // D-56 (2026-04-24 요한 지시): 보스 조우 시 점프스케어 선재생 → 0.55s 뒤
+                    // 게임오버 모달. 같은 타일 진입 기준(listen 인접 1칸 연출과는 별개 경로).
+                    setBossJumpscare(true);
+                    setTimeout(() => {
+                        setBossJumpscare(false);
+                        setGameOver(true);
+                        setDeathReason('boss');
+                    }, 550);
                     msg = '보스 몬스터와 조우했다! 게임 오버...';
                 } else if (tile.type === 'normal') {
                     msg = '평범한 숲길이다.';
@@ -3548,7 +3554,7 @@
                                     fontWeight: 600
                                 }}
                             >
-                                ← 승리 화면
+                                {victory ? '← 승리 화면' : '← 결과 화면'}
                             </button>
                             <button
                                 onClick={() => window.location.reload()}
