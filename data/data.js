@@ -183,7 +183,8 @@ window.TTD_DATA = {
       "evade_rate": 30,
       "type": "회피형",
       "meat": 3,
-      "habitat": "덤불"
+      "habitat": "덤불",
+      "evade_per_turn": "30,30,20"
     },
     {
       "id": "mouse",
@@ -194,7 +195,8 @@ window.TTD_DATA = {
       "evade_rate": 20,
       "type": "회피형",
       "meat": 2,
-      "habitat": "덤불"
+      "habitat": "덤불",
+      "evade_per_turn": "20,20,10"
     },
     {
       "id": "squirrel",
@@ -205,7 +207,8 @@ window.TTD_DATA = {
       "evade_rate": 40,
       "type": "회피형",
       "meat": 2,
-      "habitat": "숲"
+      "habitat": "숲",
+      "evade_per_turn": "40,40,25"
     },
     {
       "id": "bird",
@@ -216,7 +219,8 @@ window.TTD_DATA = {
       "evade_rate": 40,
       "type": "회피형",
       "meat": 3,
-      "habitat": "평원"
+      "habitat": "평원",
+      "evade_per_turn": "40,40,25"
     },
     {
       "id": "salamander",
@@ -227,7 +231,8 @@ window.TTD_DATA = {
       "evade_rate": 20,
       "type": "회피형",
       "meat": 2,
-      "habitat": "숲"
+      "habitat": "숲",
+      "evade_per_turn": "20,20,10"
     },
     {
       "id": "snake",
@@ -238,7 +243,8 @@ window.TTD_DATA = {
       "evade_rate": 20,
       "type": "회피형",
       "meat": 2,
-      "habitat": "덤불"
+      "habitat": "덤불",
+      "evade_per_turn": "20,20,10"
     },
     {
       "id": "frog",
@@ -249,7 +255,8 @@ window.TTD_DATA = {
       "evade_rate": 30,
       "type": "회피형",
       "meat": 2,
-      "habitat": "덤불"
+      "habitat": "덤불",
+      "evade_per_turn": "30,30,20"
     },
     {
       "id": "crab",
@@ -260,7 +267,8 @@ window.TTD_DATA = {
       "evade_rate": 20,
       "type": "회피형",
       "meat": 2,
-      "habitat": "시냇물"
+      "habitat": "시냇물",
+      "evade_per_turn": "20,20,10"
     },
     {
       "id": "grasshopper",
@@ -271,7 +279,8 @@ window.TTD_DATA = {
       "evade_rate": 50,
       "type": "회피형",
       "meat": 1,
-      "habitat": "평원"
+      "habitat": "평원",
+      "evade_per_turn": "50,50,30"
     },
     {
       "id": "boar",
@@ -282,7 +291,8 @@ window.TTD_DATA = {
       "evade_rate": 15,
       "type": "반격형",
       "meat": 5,
-      "habitat": ""
+      "habitat": "",
+      "evade_per_turn": ""
     },
     {
       "id": "dinosaur",
@@ -293,7 +303,8 @@ window.TTD_DATA = {
       "evade_rate": 15,
       "type": "반격형",
       "meat": 4,
-      "habitat": ""
+      "habitat": "",
+      "evade_per_turn": ""
     },
     {
       "id": "deer",
@@ -304,7 +315,8 @@ window.TTD_DATA = {
       "evade_rate": 50,
       "type": "회피형",
       "meat": 7,
-      "habitat": ""
+      "habitat": "",
+      "evade_per_turn": ""
     },
     {
       "id": "badger",
@@ -315,7 +327,8 @@ window.TTD_DATA = {
       "evade_rate": 15,
       "type": "반격형",
       "meat": 6,
-      "habitat": ""
+      "habitat": "",
+      "evade_per_turn": ""
     },
     {
       "id": "fox",
@@ -326,7 +339,8 @@ window.TTD_DATA = {
       "evade_rate": 60,
       "type": "회피형",
       "meat": 5,
-      "habitat": ""
+      "habitat": "",
+      "evade_per_turn": ""
     },
     {
       "id": "turkey",
@@ -337,7 +351,8 @@ window.TTD_DATA = {
       "evade_rate": 15,
       "type": "반격형",
       "meat": 4,
-      "habitat": ""
+      "habitat": "",
+      "evade_per_turn": ""
     },
     {
       "id": "armadillo",
@@ -348,7 +363,8 @@ window.TTD_DATA = {
       "evade_rate": 10,
       "type": "방어형",
       "meat": 5,
-      "habitat": ""
+      "habitat": "",
+      "evade_per_turn": ""
     }
   ],
   "SPECIAL_CARDS": [
