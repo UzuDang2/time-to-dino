@@ -87,6 +87,18 @@ class InventorySystem {
         grilled_meat_skewer:  { name: '고기꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
         grilled_fish_skewer:  { name: '생선꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
 
+        // === D-71 사냥감 확장 1단계 — 게·메뚜기 보상 체인 ===
+        //   crab_whole(재료): 단독 섭취 불가. 돌+게 조합으로 게살 2개.
+        //   crab_meat(음식 2단계): hunger+1. 꼬치 재료로도 사용.
+        //   crab_skewer(음식 2단계): hunger+1. 요리 모달에서 구울 수 있음.
+        //   grilled_crab_skewer(음식 3단계): hunger+2, health+1.
+        //   grasshopper_whole(음식 1단계): 메뚜기 단독 섭취 hunger+1.
+        crab_whole:           { name: '게',             shape: [[1]], grade: 1, mergeable: false, category: '재료', merge_result: null },
+        crab_meat:            { name: '발라낸 게살',    shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
+        crab_skewer:          { name: '게살꼬치',       shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
+        grilled_crab_skewer:  { name: '구운게살꼬치',   shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
+        grasshopper_whole:    { name: '메뚜기',         shape: [[1]], grade: 1, mergeable: false, category: '음식', merge_result: null },
+
         // === 레거시 (기존 카드 시스템 참조) — 후속 작업에서 1단계 체계로 흡수 예정 ===
         material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: false, merge_result: null },
         material_mid:  { name: '일반 재료', shape: [[1]], grade: 2, mergeable: false, merge_result: null },
@@ -632,7 +644,11 @@ class InventorySystem {
     // D-47 합성 확정: 레시피의 ingredients를 인벤에서 개별 제거 후 결과 아이템을 배치.
     //   - preferredPos가 있으면 해당 자리 우선, 실패 시 빈 공간 자동 탐색.
     //   - 결과 배치 실패(공간 없음)면 재료 소비도 하지 않고 실패 반환.
-    // 반환: { ok, reason?, resultType?, shortage? }
+    // D-71: `recipe.count` 지원 — 1회 조합으로 생성되는 결과물 수량.
+    //   첫 번째 결과물은 preferredPos에 시도, 나머지는 빈 칸 자동 탐색.
+    //   인벤이 가득 차면 들어간 만큼만 생성(overflow>0)하고 ok 반환.
+    //   재료 소비는 1회 고정(count와 무관) — 한 번의 조합.
+    // 반환: { ok, reason?, resultType?, shortage?, produced?, overflow? }
     craftRecipe(recipe, preferredPos) {
         if (!recipe || !Array.isArray(recipe.ingredients) || !recipe.result) {
             return { ok: false, reason: 'invalid_recipe' };
@@ -641,7 +657,7 @@ class InventorySystem {
         if (!evalResult.canCraft) {
             return { ok: false, reason: 'short_ingredients', shortage: evalResult.shortage };
         }
-        // 결과물 배치 가능 여부 선검사 — 실제 소비 전에 공간 체크.
+        // 결과물 배치 가능 여부 선검사 — 실제 소비 전에 공간 체크(첫 1개 기준).
         const resultDef = InventorySystem.ITEMS[recipe.result];
         if (!resultDef) return { ok: false, reason: 'unknown_result' };
         const canPlaceAtPreferred = preferredPos
@@ -667,10 +683,18 @@ class InventorySystem {
             }
             this.items = keep;
         }
-        // 결과 배치.
-        const ok = this._placeDerivedItem(recipe.result, placementPos.x, placementPos.y);
-        if (!ok) return { ok: false, reason: 'place_failed' };
-        return { ok: true, resultType: recipe.result };
+        // 결과 배치 — count만큼 반복. 첫 1개는 preferredPos에, 나머지는 빈 칸.
+        const count = Math.max(1, Number(recipe.count) || 1);
+        let produced = 0;
+        const firstOk = this._placeDerivedItem(recipe.result, placementPos.x, placementPos.y);
+        if (firstOk) produced += 1;
+        for (let i = 1; i < count; i++) {
+            if (this.addItem(recipe.result)) produced += 1;
+            else break; // 가방 포화 — 나머지는 포기.
+        }
+        if (produced === 0) return { ok: false, reason: 'place_failed' };
+        const overflow = count - produced;
+        return { ok: true, resultType: recipe.result, produced, overflow };
     }
 }
 

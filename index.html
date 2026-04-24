@@ -806,7 +806,14 @@
                 if (res.ok) {
                     if (onFlashMessage) {
                         const resultDef = InventorySystem.ITEMS[res.resultType] || {};
-                        onFlashMessage(`재료를 조합해 ${resultDef.name || res.resultType}을(를) 만들었다.`);
+                        const name = resultDef.name || res.resultType;
+                        // D-71: count>1 레시피 — produced/overflow 안내.
+                        const produced = Number(res.produced || 1);
+                        let msg = produced > 1
+                            ? `재료를 조합해 ${name} ${produced}개를 만들었다.`
+                            : `재료를 조합해 ${name}을(를) 만들었다.`;
+                        if (res.overflow > 0) msg += ` (가방이 가득 차 ${res.overflow}개는 두고 왔다.)`;
+                        onFlashMessage(msg);
                     }
                     inventory.selectedItem = null;
                     setSelectedItem(null);
@@ -2752,22 +2759,26 @@
                         next.delete(prey.tileId);
                         return next;
                     });
-                    // meat 인벤 추가 — 실패분(가방 포화)은 overflow로 집계.
-                    const meatCount = prey.meat || 0;
+                    // D-71: prey.drop_item 우선, 없으면 'meat' 폴백. 이름·등급은 resolveDef로 동적 조회.
+                    const dropId = (prey.drop_item && String(prey.drop_item).trim()) || 'meat';
+                    const dropDef = InventorySystem.resolveDef(dropId) || {};
+                    const dropName = dropDef.name || dropId;
+                    const dropGrade = Number(dropDef.grade) || 1;
+                    const dropCount = prey.meat || 0;
                     let added = 0;
                     let overflow = 0;
-                    for (let i = 0; i < meatCount; i++) {
-                        const ok = inventory.addItem('meat');
+                    for (let i = 0; i < dropCount; i++) {
+                        const ok = inventory.addItem(dropId);
                         if (ok) added += 1;
                         else overflow += 1;
                     }
-                    let msg = `사냥에 성공했다. 생고기 ${added}을(를) 얻었다.`;
+                    let msg = `사냥에 성공했다. ${dropName} ${added}을(를) 얻었다.`;
                     if (overflow > 0) msg += ` (가방이 가득 차 ${overflow}개는 두고 왔다.)`;
                     setMessage(withConsumed(msg));
                     setActiveHunt(null);
                     if (added > 0) {
                         // z-index 충돌 방지 — 모달 unmount 후 토스트 띄움.
-                        setTimeout(() => showLootToast([{ name: '생고기', count: added, grade: 1 }]), 100);
+                        setTimeout(() => showLootToast([{ name: dropName, count: added, grade: dropGrade }]), 100);
                     }
                 } else if (outcome === 'prey_fled') {
                     // D-47: 반드시 다른 타일로 이동 — 3단계 fallback.
@@ -3236,6 +3247,9 @@
                             // D-47: 이전 전투에서 준 데미지 누적 유지. hpCurrent가 있으면 그 값으로 시작.
                             hp: (typeof prey.hpCurrent === 'number') ? prey.hpCurrent : (preyDef.hp || 1),
                             meat: preyDef.meat || 1,
+                            // D-71: prey 전용 드롭 아이템 id. 시트 `사냥감.drop_item` 컬럼.
+                            //   빈값이면 handleHuntResolve에서 'meat' 폴백.
+                            drop_item: preyDef.drop_item || '',
                             evade_rate: preyDef.evade_rate || 20,
                             // D-60: 턴별 회피율 CSV ("30,30,20") — 빈값이면 resolveHunt/UI에서 evade_rate로 폴백.
                             evade_per_turn: preyDef.evade_per_turn || '',
