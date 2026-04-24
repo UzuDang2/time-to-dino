@@ -932,8 +932,16 @@
             // 프레스 상태를 ref로 관리해 재렌더 없이 타이머/가드 갱신.
             const pressRef = React.useRef({ timer: null, longFired: false, itemId: null });
 
-            // 기존 탭(=롱프레스) 경로: 선택/원복
-            const activateSelect = (item) => {
+            // D-83 (2026-04-24 요한 지시): 탭 ↔ 롱프레스 역할 스왑.
+            //   신규 UX:
+            //     - 짧은 탭  = 선택 모드 진입/토글/머지/swap (주 조작)
+            //     - 롱프레스 = 아이템 정보창
+            //     - 조합은 하단 합성 패널의 [만들기] 버튼 전용 — 다른 재료 탭은 swap만 수행.
+            //   이전 UX(D-32)는 롱프레스=선택, 탭=정보창+자동 조합이었으나,
+            //   "위치 교체하려다 의도치 않게 조합이 발동"되는 케이스가 있어 주 조작을 탭으로
+            //   넘기고 조합은 명시적 버튼으로만 분리.
+            const onShortTap = (item) => {
+                // 선택 없음 → 선택 진입(들어올림)
                 if (!selectedItem) {
                     inventory.selectItem(item);
                     setSelectedItem(item);
@@ -941,28 +949,32 @@
                     bump();
                     return;
                 }
+                // 같은 아이템 탭 → 선택 해제(토글)
                 if (selectedItem.id === item.id) {
                     inventory.cancelSelection();
                     setSelectedItem(null);
                     setPendingPos(null);
                     bump();
+                    return;
                 }
-                // 다른 아이템으로 전환은 셀 클릭 경로에서 처리 (교체/머지)
+                // 다른 아이템 탭 → confirmPlacement로 일임:
+                //   · 같은 재료(canMerge) → 즉시 머지
+                //   · 다른 재료 → swap (조합은 합성 패널 전용, 자동 발동 안 함)
+                const res = inventory.confirmPlacement(item.x, item.y);
+                applyDropResult(res);
+                bump();
             };
 
-            // 짧은 탭: 정보창 열기. 단, 이미 선택 모드라면 "즉시 머지/조합" 분기.
-            //
-            // D-32 (요한 지시 2026-04-22): 롱프레스 → 짧은 탭 조합으로 드래그·확정 버튼 없이
-            //   한 번에 머지/조합까지 간다. 산딸기+산딸기→딸기모둠 같은 흐름이 탭 두 번이면 끝.
-            //   - 같은 아이템을 다시 탭: 선택 취소(토글).
-            //   - 같은 type & 머지 가능 → 즉시 머지.
-            //   - 다른 type & 조합 매칭 → 즉시 조합.
-            //   - 그 외: 기존대로 selectItem 경로(선택 전환) — 드래그로 빈 칸에 옮기는 기존 UX는 살림.
+            // 롱프레스: 아이템 정보창.
+            const onLongPressInfo = (item) => {
+                setInfoItem(item);
+            };
+
             // D-48: confirmPlacement 결과 반영 공통 헬퍼.
             //   - merge: 즉시 실행 (기존 동작).
             //   - swap: 새 아이템으로 선택 전환.
             //   - place: 배치 후 선택 해제.
-            //   합성 패널은 이제 '선택된 아이템 기준'으로 자동 노출되므로 craft_prompt 경로 폐기.
+            //   합성 패널은 '선택된 아이템 기준'으로 자동 노출되므로 craft_prompt 경로 없음.
             const applyDropResult = (res) => {
                 if (!res || !res.ok) return false;
                 if (res.action === 'swap') {
@@ -1010,37 +1022,7 @@
                 bump();
             };
 
-            const openInfo = (item) => {
-                if (selectedItem) {
-                    if (selectedItem.id === item.id) {
-                        // 토글: 동일 아이템 탭 = 선택 해제
-                        inventory.cancelSelection();
-                        setSelectedItem(null);
-                        setPendingPos(null);
-                        bump();
-                        return;
-                    }
-
-                    const canMerge = inventory.canMerge(selectedItem, item);
-                    // D-47: "다른 재료 + 관련 레시피 존재" 감지 → confirmPlacement가
-                    //   craft_prompt 반환 → 합성 패널 오픈.
-                    const hasCraftCandidate = selectedItem.type !== item.type
-                        && InventorySystem.findRecipesContainingAny(selectedItem.type, item.type).length > 0;
-
-                    if (canMerge || hasCraftCandidate) {
-                        const res = inventory.confirmPlacement(item.x, item.y);
-                        applyDropResult(res);
-                        bump();
-                        return;
-                    }
-
-                    // 머지/조합 후보 없음 — 선택 전환.
-                    activateSelect(item);
-                    return;
-                }
-                setInfoItem(item);
-            };
-
+            // D-83: 포인터 핸들러 — 짧은 탭=onShortTap, 롱프레스=onLongPressInfo.
             const onItemPointerDown = (e, item) => {
                 e.stopPropagation();
                 // 마우스 우클릭/중간클릭 무시
@@ -1048,7 +1030,7 @@
                 pressRef.current = { timer: null, longFired: false, itemId: item.id };
                 pressRef.current.timer = setTimeout(() => {
                     pressRef.current.longFired = true;
-                    activateSelect(item);
+                    onLongPressInfo(item);
                 }, LONG_PRESS_MS);
             };
 
@@ -1060,7 +1042,7 @@
                     pressRef.current = { timer: null, longFired: false, itemId: null };
                     return;
                 }
-                if (!st.longFired) openInfo(item);
+                if (!st.longFired) onShortTap(item);
                 pressRef.current = { timer: null, longFired: false, itemId: null };
             };
 
@@ -1076,7 +1058,7 @@
                 const st = pressRef.current;
                 if (st.longFired) { onItemPointerCancel(); return; }
                 // 포인터 이벤트가 쓰이지 않는 환경에서의 폴백
-                openInfo(item);
+                onShortTap(item);
             };
 
             // 사용 버튼 — 효과 적용 후 일회용이면 인벤에서 제거, 정보창 닫기

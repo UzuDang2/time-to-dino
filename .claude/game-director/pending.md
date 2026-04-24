@@ -4,7 +4,7 @@
 
 ---
 
-## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 + D-81 consume 유령 아이템 + D-82 맵 드래그·줌)
+## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 + D-81 consume 유령 + D-82 맵 드래그·줌 + D-83 가방 탭/롱프레스 스왑)
 
 > 🌐 claude.ai/code 웹 환경(Linux 샌드박스). Notion MCP 미연결 + `notion.site` 방화벽 차단 상태.
 > 이번 라운드는 repo 내 코드만 수정.
@@ -67,6 +67,26 @@
   - 2 finger 핀치 → 두 손가락 중점 기준 확대·축소. 중점이 화면에서 고정된 것처럼 느껴져야.
   - 싱글 탭 → 기존대로 hex 이동.
   - 가방/모달 등 상위 UI 터치 스크롤(내부 스크롤 있는 경우)에 간섭 없는지 회귀 확인.
+
+- [x] **[디렉터/웹]** ✅ **D-83 가방 입력 체계 재편 — 탭 ↔ 롱프레스 역할 스왑**
+  - 요한 지시:
+    - 짧은 탭 = **선택 모드 진입/전환(주 조작)**
+    - 롱프레스 = **아이템 정보창**
+    - 서로 다른 재료 조합 의도 없이 위치만 바꾸려던 케이스가 자주 있어, 다른 재료 탭은 **기본 swap**만. 조합은 하단 합성 패널의 [만들기] 버튼으로만.
+  - 구현(InventoryModal):
+    - `onShortTap(item)` 신설 — 선택 없음=진입, 같은 아이템=토글, 다른 아이템=`confirmPlacement`(canMerge면 즉시 머지, 아니면 swap)
+    - `onLongPressInfo(item)` 신설 — 단순 `setInfoItem(item)`
+    - 기존 `activateSelect` / `openInfo`(복합 분기) 제거
+    - `onItemPointerDown` 타이머 콜백: `activateSelect` → `onLongPressInfo`
+    - `onItemPointerUp` 짧은 탭 분기: `openInfo` → `onShortTap`
+    - `handleItemClick`(onClick 폴백): `onShortTap`
+  - `confirmPlacement`(inventory.js)는 이미 다른 재료를 swap으로 처리하고 있어 별도 변경 없음. 합성 패널(`CraftPanel`)도 `selectedItem` 기반으로 이미 자동 노출.
+
+- [ ] **[요한]** 🧪 **QA: D-83 가방 입력 체계**
+  - 아이템 짧은 탭 → 들어올림(선택). 같은 아이템 탭 → 해제. 다른 재료 탭 → 위치 교체(swap). 같은 재료 탭 → 즉시 머지.
+  - 아이템 롱프레스(400ms) → 정보창 노출.
+  - 선택 상태에서 하단 합성 패널에 조합 가능한 레시피 노출 → [만들기] 버튼이 유일한 조합 트리거.
+  - 빈 셀 탭은 기존대로 pendingPos 설정 + [확정]·[회전]·[취소] 버튼 경로 유지.
 
 ---
 
