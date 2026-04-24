@@ -5,6 +5,60 @@
 
 ---
 
+## D-71. 사냥감 확장 1단계 — 게·메뚜기 보상 다양화 + 조합·요리 체인 (2026-04-24, 12th 세션)
+
+**요한 원문(디렉터 요약)**: "모든 사냥감 드롭이 생고기 뿐이라 게·메뚜기도 구분이 안 된다. 게는 껍질 부수는 조합이 있어야 하고 구워도 먹을 수 있어야 한다. 메뚜기는 날것으로도 허기를 달래 준다. 2·3단계(2등급 전투/방어, 보스 포식)는 다음 이터레이션."
+
+**결정**:
+
+1) **prey 전용 드롭** — 시트 `사냥감` 탭 + 신규 `drop_item` 컬럼. `crab → crab_whole`, `grasshopper → grasshopper_whole`. 나머지 1등급 7종·2등급 7종은 공란 = `'meat'` 폴백. SSOT는 시트.
+
+2) **아이템 5종 신설(시트 `아이템마스터`)**:
+   - `crab_whole` (재료, 1단계, disposable=N): 단독 섭취 불가. 조합 재료 전용.
+   - `crab_meat` (음식, 2단계, hunger+1): 발라낸 게살. 단독 섭취 또는 꼬치 재료.
+   - `crab_skewer` (음식, 2단계, hunger+1): 게살꼬치. 요리 가능.
+   - `grilled_crab_skewer` (음식, 3단계, hunger+2;health+1): 구운게살꼬치.
+   - `grasshopper_whole` (음식, 1단계, hunger+1): 메뚜기 단독 섭취.
+
+3) **조합 체인 3건(시트 `조합레시피`)**:
+   - `stone + crab_whole → crab_meat × 2` — 껍질 부수기, 2개 산출(신규 `result_count=2`).
+   - `crab_meat + branch → crab_skewer × 1` — 꼬치 꿰기.
+   - `crab_skewer → grilled_crab_skewer` — 1재료 "요리" 경로(D-57과 동일 규칙).
+
+4) **신규 스키마 — `result_count` 컬럼** (조합레시피 탭):
+   - 빈칸/1=기본, >1=N개 산출. `fetch_data.py::build_combos_from_sheet`가 `combo.count`(>1일 때만)로 방출.
+   - `inventory.js::craftRecipe`가 `recipe.count` 만큼 결과물 반복 배치. 첫 개는 preferredPos, 나머지는 `addItem` 빈 칸 탐색. 가방 포화 시 들어간 만큼만 생성 + `{produced, overflow}` 반환. 재료 소비는 1회 고정(count와 무관).
+   - 반환 스키마 확장은 비파괴적(기존 count 없는 레시피는 produced=1/overflow=0).
+
+5) **런타임 폴백** — `inventory.js::ITEMS`에 5종 하드코딩 엔트리. 오프라인/시트 장애 시 테스트 가능. TTD_DATA 로드 후 `resolveDef`가 mergeable/merge_result·내구/공격 등을 시트값으로 덮어씀(기존 merge 규약 그대로).
+
+6) **사냥 승리 드롭 분기** — `handleHuntResolve` victory에서 `prey.drop_item`이 있으면 그 id를 `inventory.addItem`, 없으면 `'meat'` 폴백. 메시지/LootToast의 이름·등급도 `InventorySystem.resolveDef(dropId)`로 동적 조회.
+
+**근거**:
+- prey 보상 폴리모프(`drop_item`)는 D-46 `meat` 단일 드롭 모델을 깨지 않고 확장. 빈값 = `meat` 폴백으로 하위 호환.
+- `result_count` 스키마는 D-33 weights CSV와 같은 철학("시트 SSOT 수치 파라미터를 DSL 없이 컬럼으로"). 2~4재료 레시피의 `ingredient_c/d`가 이미 옵션 컬럼이라 같은 패턴을 따름.
+- 게 드롭을 바로 음식으로 주지 않고 "돌로 깨서 게살 x2"로 만든 이유: (a) 게 2마리 = 생고기 4개 수준의 빈약 드롭을 바꾸되, (b) 돌맹이 자원 소비를 강제해 1단계 재료 순환을 생성. hunger+1 × 2 = meat × 2와 대등하지만 "돌이 필요" 조건이 추가됨.
+- 메뚜기는 조합 단계 없이 바로 섭취 가능 — "작은 곤충은 그냥 먹는다"는 선사 리얼리즘. hunger+1로 베리와 동일 티어.
+- `CookingModal`이 `ingredients.length===1 && result.startsWith('grilled_')` 필터라 `grilled_crab_skewer`도 자동 노출 — 별도 수정 불필요(D-57 네이밍 규약의 이점).
+
+**관련 파일**:
+- `scripts/fetch_data.py::ITEM_NAME_TO_ID` (신규 5종), `::build_combos_from_sheet` (`result_count` → `combo.count`).
+- `inventory.js::ITEMS` (신규 5종), `::craftRecipe` (count 반복 + produced/overflow 반환).
+- `index.html::useCard('hunt_start')` (activeHunt.prey에 drop_item), `::handleHuntResolve` victory (drop_item 우선), `::handleCraft` (produced/overflow 메시지).
+- 시트 `아이템마스터` +5 row / `조합레시피` +신규 컬럼 `result_count` + 3 row / `사냥감` +신규 컬럼 `drop_item` + 2 row 값 세팅.
+- `data/items.json`(25 items), `data/combos.json`(16 recipes), `data/prey.json`(drop_item 필드), `data/data.js` 재생성.
+
+**비파괴적**:
+- `'meat'` 폴백·기존 12종 prey drop 체인 변화 없음.
+- `craftRecipe` 반환 스키마 확장(produced/overflow 추가)만, 기존 호출부(`handleCraft` 한 곳)는 명시적으로 업데이트. D-57 요리 호출부는 1재료 = produced=1 자연 호환.
+- CookingModal 렌더 로직 그대로 — grilled_ 접두어 규약이 D-57 이후 스키마 확장을 자연스럽게 흡수.
+
+**후속(2·3단계, pending.md 등재)**:
+- 2단계 2등급 전투/방어 시스템 (공격+1, 방어+1 신규 defend 카드, 100% 성공, 공통 카드풀).
+- 3단계 보스 포식(waypoint 이탈 2회 정지 + 생고기 확정 무한 드롭).
+
+---
+
 ## D-58. HuntCombatModal 수치 배지 통일 + 적 슬롯 실시간 회피율 (2026-04-24, 12th 세션)
 
 **요한 원문**: "사냥 모달의 수치 표기가 들쭉날쭉이다. `공4`, `명중 +20%`, `회피 30%`가 서로 라벨 스타일이 달라 읽기 어렵다. 아이콘 + 숫자로 통일해라. 그리고 창을 슬롯에 놓으면 적의 회피율이 실제로 줄어든 값으로 바로 보여야 한다. 숫자 다이얼 연출은 다음 이터레이션."

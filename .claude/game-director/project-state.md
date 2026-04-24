@@ -1,5 +1,17 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**12th session — 로컬 Mac 세션 / D-71 사냥감 확장 1단계**).
+D-71 (게·메뚜기 보상 다양화 + 조합·요리 체인, `scripts/fetch_data.py`/`inventory.js`/`index.html` + 시트 3탭).
+- 시트 `아이템마스터` +5 row: crab_whole(재료), crab_meat(음식 1hp), crab_skewer(음식 1hp), grilled_crab_skewer(음식 2hp+1hl), grasshopper_whole(음식 1hp).
+- 시트 `조합레시피` 신규 `result_count` 컬럼 + 3 row: stone+crab_whole→crab_meat x2 / crab_meat+branch→crab_skewer / crab_skewer→grilled_crab_skewer.
+- 시트 `사냥감` 신규 `drop_item` 컬럼: crab→crab_whole, grasshopper→grasshopper_whole (나머지 14종 공란=meat 폴백).
+- `fetch_data.py::ITEM_NAME_TO_ID` +5 매핑, `build_combos_from_sheet`가 `result_count`를 combo.count(>1일 때만)로 방출.
+- `inventory.js::craftRecipe` count 반복 배치 + `{produced, overflow}` 반환. 재료 소비는 1회 고정. 기존 호출부(`handleCraft`) 메시지 확장.
+- `index.html::useCard('hunt_start')` activeHunt.prey에 drop_item 전달. `::handleHuntResolve` victory 분기 drop_item 우선(`meat` 폴백). LootToast/메시지 이름·등급 동적.
+- 데이터 재생성: items 20→25(+5), combos 13→16(+3), prey.json drop_item 필드 등장.
+- Node 스모크: `stone+crab_whole → crab_meat x2` 성공 / `crab_skewer → grilled_crab_skewer` 성공 확인.
+- 2·3단계(2등급 전투/방어, 보스 포식)는 pending.md 등재 — 이번 범위 외.
+
 마지막 검증: 2026-04-24 (**12th session — 로컬 Mac 세션**, G/H/I 기획 3건 + D-58 리팩터).
 D-55 (스탯 경고 점멸, `gameStyles.css`/`index.html`), D-56 (보스 결과화면 — 점프스케어 + "삼켰습니다" + defeat 맵보기, `index.html`), D-57 (휴식=요리 시스템, 바베큐 폐지 — 아이템 4종 + 조합 4건, `inventory.js`/`scripts/fetch_data.py`/시트 2탭/`data/*.json` 재생성), **D-58** (HuntCombatModal 수치 배지 통일 + 적 슬롯 실시간 회피율, `index.html`/`gameStyles.css`, 3커밋).
 12차 세션 변경 파일: `gameStyles.css`, `index.html`, `inventory.js`, `scripts/fetch_data.py`, `data/items.json`, `data/combos.json`, `data/data.js`, `.claude/game-director/design-decisions.md`, `.claude/game-director/project-state.md`, `.claude/game-director/pending.md`.
