@@ -1,5 +1,10 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80 listen 실루엣 확장**).
+귀 기울이기 카드가 이제 현재 타일 이웃(revealed) + **그 이웃의 이웃 중 미공개 타일**을 맵 보기(D-53)와 동일한 dim 색상(#444 / opacity 0.22)으로 노출. 한번 본 실루엣은 `tile.silhouette` 플래그로 영구 유지. `HexTile`에서 `pathUnvisited`와 `silhouetteOnly`를 `dimmed`로 통합해 렌더 분기 재사용. 클릭 조건은 기존 `pathUnvisited`만 사용 — silhouette 타일이어도 canMove면 이동 가능.
+변경 파일: `index.html`, `.claude/game-director/pending.md` · `project-state.md`.
+웹 환경 제약(Notion MCP 미연결·notion.site 방화벽) 그대로.
+
 마지막 검증: 2026-04-24 (**12th session — 로컬 Mac 세션 / D-72~D-78 사냥감 확장 2·3단계 통합**).
 D-72 (방어구 시스템 5종 + 조합 5건, `scripts/fetch_data.py`/`inventory.js` + 시트 `방어구` 탭 신설 + `조합레시피` +5).
 - 시트 `방어구` 탭 신설 (headers: id, name, type, grade, size, weight, defense, 조합법, 설명). 5 row: leaf_vest(1/armor/1), wooden_shield(2/shield/2), cloth_armor(2/armor/2), reinforced_shield(3/shield/3), scale_mail(3/armor/3).

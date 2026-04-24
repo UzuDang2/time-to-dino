@@ -314,6 +314,11 @@
             // D-53: [맵 보기] 모드에서 미방문 타일은 반투명 회색 윤곽만 공개.
             // 지역 이름/마커/prey/흔적은 숨긴다(스포일러 방지 — 방문 안 한 곳은 지형만 감).
             const pathUnvisited = showPathView && !tile.visited;
+            // D-80 (2026-04-24 요한 지시): listen 실루엣 — 정보가 밝혀진 타일에
+            // 인접하여 길이 연결된 그 다음 1칸 타일을 맵보기와 동일한 dim 색상으로 노출.
+            // 길찾기 난이도 하향 목적. 게임 중에도 이동은 가능(canMove면 클릭 허용).
+            const silhouetteOnly = !showPathView && tile.silhouette && !tile.revealed && !tile.visited;
+            const dimmed = pathUnvisited || silhouetteOnly;
 
             // 길이 없는 타일 (connections 없음) 판별
             const hasNoConnections = tile.connections.length === 0 &&
@@ -350,18 +355,18 @@
             // - visited: 초록 동그란 마커 + 지형 이름, 타일 밝음(opacity 1)
             // - revealed only: 지형 이름만 (마커 없음), 타일 약간 어두움(opacity 0.7)
             // - 미공개: 아무것도 없음, 타일 매우 어두움(opacity 0.55)
-            const regionLabel = !pathUnvisited && (tile.visited || tile.revealed) && tile.region
+            const regionLabel = !dimmed && (tile.visited || tile.revealed) && tile.region
                 ? (REGION_LABEL[tile.region] || tile.region)
                 : null;
-            const tileOpacity = pathUnvisited ? 0.22 : (tile.visited ? 1 : tile.revealed ? 0.7 : 0.55);
-            const tileFill = pathUnvisited ? '#444' : getTileColor(tile);
-            const tileStroke = pathUnvisited ? '#555' : (canMove ? '#4CAF50' : '#0f3460');
-            const tileStrokeWidth = pathUnvisited ? '1' : (canMove ? '3' : '2');
+            const tileOpacity = dimmed ? 0.22 : (tile.visited ? 1 : tile.revealed ? 0.7 : 0.55);
+            const tileFill = dimmed ? '#444' : getTileColor(tile);
+            const tileStroke = dimmed ? '#555' : (canMove ? '#4CAF50' : '#0f3460');
+            const tileStrokeWidth = dimmed ? '1' : (canMove ? '3' : '2');
 
             return (
                 <g key={tile.id} opacity={hasNoConnections ? 0 : 1}>
                     <polygon
-                        className={`hex-tile${pathUnvisited ? ' path-unvisited' : ''}`}
+                        className={`hex-tile${dimmed ? ' path-unvisited' : ''}`}
                         points={`${x},${y-50} ${x+43},${y-25} ${x+43},${y+25} ${x},${y+50} ${x-43},${y+25} ${x-43},${y-25}`}
                         fill={tileFill}
                         stroke={tileStroke}
@@ -394,7 +399,7 @@
                             </text>
                         </g>
                     )}
-                    {!pathUnvisited && (
+                    {!dimmed && (
                         <text
                             x={x}
                             y={y + 5}
@@ -410,7 +415,7 @@
                         D-47: 어두운 타일에서도 확실히 보이도록 크기·대비 상향.
                         D-78: 사체 trace는 👣 대신 🦴로. 일반 prey trace와 동시에 있으면
                         사체가 우선(보스 포식이 끝난 "확정 단서"라 더 구체적). */}
-                    {!pathUnvisited && (hasTrace || hasCarcassTrace) && (
+                    {!dimmed && (hasTrace || hasCarcassTrace) && (
                         <text
                             x={x + 20}
                             y={y - 18}
@@ -3513,12 +3518,31 @@
                     const bossDist = boss.calculateHexDistance(currentTile, bossPos);
 
                     // 인접 타일 revealed — 거리 무관하게 항상 실행되는 listen의 기본 효과.
-                    const newTiles = tiles.map(t => {
+                    let newTiles = tiles.map(t => {
                         if (tiles[currentTile].connections.includes(t.id)) {
                             return { ...t, revealed: true };
                         }
                         return t;
                     });
+                    // D-80 (2026-04-24 요한 지시): 길찾기 난이도 하향 — 정보가 밝혀진 타일의
+                    // connections 중 아직 공개 전인 타일을 silhouette으로 마킹. HexTile이 맵보기의
+                    // dim 색상(#444 / opacity 0.22)으로 윤곽만 노출. 영구 유지(이후 revealed/visited 되면
+                    // 자연스럽게 상위 스타일로 승격). 이동 가능 여부는 기존대로 canMove 판정.
+                    const silhouetteIds = new Set();
+                    newTiles.forEach(t => {
+                        if (!t.revealed && !t.visited) return;
+                        (t.connections || []).forEach(cid => {
+                            const target = newTiles[cid];
+                            if (!target) return;
+                            if (target.revealed || target.visited) return;
+                            silhouetteIds.add(cid);
+                        });
+                    });
+                    if (silhouetteIds.size > 0) {
+                        newTiles = newTiles.map(t =>
+                            silhouetteIds.has(t.id) ? { ...t, silhouette: true } : t
+                        );
+                    }
                     setTiles(newTiles);
 
                     // listen 보스 감지 → TileEventToast로 시각화 (공룡 아이콘 + 단계별 테두리 색).

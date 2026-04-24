@@ -4,6 +4,29 @@
 
 ---
 
+## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 확장)
+
+> 🌐 claude.ai/code 웹 환경(Linux 샌드박스). Notion MCP 미연결 + `notion.site` 방화벽 차단 상태.
+> 이번 라운드는 repo 내 코드만 수정.
+
+### 완료
+
+- [x] **[디렉터/웹]** ✅ **D-80 listen 시야 확장 (길찾기 난이도 하향)**
+  - 요한 지시: 귀 기울이기 시전 시 인접 타일(revealed) 외에도, **정보가 밝혀진(revealed/visited) 타일의 connections 중 아직 공개 전인 곳**을 실루엣으로 보여줌. 색상은 맵 보기(D-53)의 미방문 타일 스타일과 동일(`#444` / stroke `#555` / opacity 0.22).
+  - 구현:
+    1. `useCard('listen')` 분기 — 기존 인접 revealed 세팅 후 `silhouetteIds` BFS-1step 계산, 해당 타일에 `silhouette: true` 플래그 부여. `newTiles.forEach` + `connections` 순회로 O(N).
+    2. `HexTile`: `silhouetteOnly = !showPathView && tile.silhouette && !tile.revealed && !tile.visited` 파생 변수 + `dimmed = pathUnvisited || silhouetteOnly`. fill/stroke/opacity/className/라벨·마커 렌더 조건을 `dimmed` 기준으로 통합. 클릭 조건은 기존 `pathUnvisited`만 사용 — silhouette 타일이어도 인접(canMove)이면 이동 허용.
+  - 효과: 플레이어가 한번 listen을 쓴 위치 주변 2홉까지 지도 윤곽 파악 가능. 맵 보기와 동일한 시각 언어라 별도 학습 없음.
+
+### 요한 검수 / 후속
+
+- [ ] **[요한]** 🧪 **QA: D-80 실루엣 경계 케이스**
+  - 새 게임 → 한두 칸 이동 후 listen → 현재 타일 이웃(밝음) + 이웃의 이웃(회색 윤곽) 확인.
+  - 맵 보기 모드 진입 시 이 silhouette 플래그는 무관(`pathUnvisited` 경로만 타도록 `!showPathView` 가드 있음).
+  - 실루엣 타일로 직접 이동 → visited=true로 승격되면서 평소 스타일로 전환.
+
+---
+
 ## 대기: 요한 측 QA (12차 세션 — 2026-04-24, D-72~D-78 사냥감 확장 2·3단계)
 
 D-72~D-78 구현 완료 (8커밋 분할). 시트 4탭 편집(방어구 신설 / 조합레시피 5건 / 전투카드 defense 컬럼+2카드 / 사냥감 actions_per_turn+defense 컬럼+L2 7종 업데이트). `localhost:8765` 로드 후 아래 체크.
