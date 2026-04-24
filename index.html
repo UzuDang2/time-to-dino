@@ -512,6 +512,17 @@
                 return gen.getMapExtent();
             }, []);
 
+            // D-82 (2026-04-24 요한 지시): 맵 조작 개선.
+            //   - 꾹 누른 채 드래그 → 맵 pan (PC 마우스 + 모바일 1 finger).
+            //   - 마우스 휠 → 확대/축소 (PC).
+            //   - 두 손가락 핀치 → 확대/축소 (모바일).
+            //   - 드래그 임계값 4px 넘으면 같은 제스처의 click(=hex tap) 이벤트를 capture 단계에서 차단.
+            const [zoom, setZoom] = React.useState(1);
+            const zoomRef = React.useRef(1);
+            React.useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+            const ZOOM_MIN = 0.5;
+            const ZOOM_MAX = 2.5;
+
             // D-47 (2026-04-22 요한 지시): 게임 시작 시 현재 위치 타일이 스크롤
             // 뷰포트 중앙에 오도록 1회 정렬. 이전엔 항상 (0,0)에서 시작해 매번
             // 시작 위치를 찾아야 했음.
@@ -526,6 +537,153 @@
                 el.scrollTop = cur.position.y - el.clientHeight / 2;
             }, []);
 
+            // D-82: 드래그/줌 이벤트 바인딩. 네이티브 리스너로 붙여 wheel에서 preventDefault 가능.
+            React.useEffect(() => {
+                const el = containerRef.current;
+                if (!el) return;
+
+                const drag = { active: false, startX: 0, startY: 0, sL: 0, sT: 0, moved: false };
+                const pinch = { active: false, dist: 0, zoomStart: 1 };
+                let blockNextClick = false;
+
+                const getDist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+
+                const beginPan = (x, y) => {
+                    drag.active = true;
+                    drag.startX = x;
+                    drag.startY = y;
+                    drag.sL = el.scrollLeft;
+                    drag.sT = el.scrollTop;
+                    drag.moved = false;
+                    el.classList.add('dragging');
+                };
+                const continuePan = (x, y) => {
+                    if (!drag.active) return;
+                    const dx = x - drag.startX;
+                    const dy = y - drag.startY;
+                    if (!drag.moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+                        drag.moved = true;
+                    }
+                    el.scrollLeft = drag.sL - dx;
+                    el.scrollTop = drag.sT - dy;
+                };
+                const endPan = () => {
+                    if (drag.moved) blockNextClick = true;
+                    drag.active = false;
+                    el.classList.remove('dragging');
+                };
+
+                const applyZoomAt = (ratio, focusClientX, focusClientY) => {
+                    const prev = zoomRef.current;
+                    const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev * ratio));
+                    if (Math.abs(next - prev) < 0.001) return;
+                    // 줌 중심 보정: focus 지점의 컨텐츠 좌표가 줌 전후 동일하도록 scroll 조정.
+                    const rect = el.getBoundingClientRect();
+                    const cx = focusClientX - rect.left + el.scrollLeft;
+                    const cy = focusClientY - rect.top + el.scrollTop;
+                    const factor = next / prev;
+                    const newScrollL = cx * factor - (focusClientX - rect.left);
+                    const newScrollT = cy * factor - (focusClientY - rect.top);
+                    zoomRef.current = next;
+                    setZoom(next);
+                    // 스크롤은 zoom 반영된 다음 프레임에 적용해야 정확 — 간단히 직후에 설정하면
+                    // SVG width/height 재계산 이후 사용자 체감엔 충분히 일치.
+                    requestAnimationFrame(() => {
+                        el.scrollLeft = newScrollL;
+                        el.scrollTop = newScrollT;
+                    });
+                };
+
+                // ── Mouse ──────────────────────────────────────────────
+                const onMouseDown = (e) => {
+                    if (e.button !== 0) return; // 좌클릭만
+                    beginPan(e.clientX, e.clientY);
+                };
+                const onMouseMove = (e) => { continuePan(e.clientX, e.clientY); };
+                const onMouseUp = () => { endPan(); };
+                const onWheel = (e) => {
+                    e.preventDefault();
+                    const ratio = e.deltaY > 0 ? 0.9 : 1.1;
+                    applyZoomAt(ratio, e.clientX, e.clientY);
+                };
+
+                // ── Touch ──────────────────────────────────────────────
+                const onTouchStart = (e) => {
+                    if (e.touches.length === 2) {
+                        // 핀치 시작 — pan 중단.
+                        if (drag.active) { drag.active = false; el.classList.remove('dragging'); }
+                        pinch.active = true;
+                        pinch.dist = getDist(e.touches[0], e.touches[1]);
+                        pinch.zoomStart = zoomRef.current;
+                    } else if (e.touches.length === 1) {
+                        pinch.active = false;
+                        beginPan(e.touches[0].clientX, e.touches[0].clientY);
+                    }
+                };
+                const onTouchMove = (e) => {
+                    if (pinch.active && e.touches.length === 2) {
+                        e.preventDefault();
+                        const d = getDist(e.touches[0], e.touches[1]);
+                        if (pinch.dist === 0) return;
+                        const ratio = d / pinch.dist;
+                        const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, pinch.zoomStart * ratio));
+                        if (Math.abs(next - zoomRef.current) < 0.001) return;
+                        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                        const factor = next / zoomRef.current;
+                        const rect = el.getBoundingClientRect();
+                        const cx = midX - rect.left + el.scrollLeft;
+                        const cy = midY - rect.top + el.scrollTop;
+                        const newScrollL = cx * factor - (midX - rect.left);
+                        const newScrollT = cy * factor - (midY - rect.top);
+                        zoomRef.current = next;
+                        setZoom(next);
+                        requestAnimationFrame(() => {
+                            el.scrollLeft = newScrollL;
+                            el.scrollTop = newScrollT;
+                        });
+                    } else if (drag.active && e.touches.length === 1) {
+                        e.preventDefault();
+                        continuePan(e.touches[0].clientX, e.touches[0].clientY);
+                    }
+                };
+                const onTouchEnd = (e) => {
+                    if (e.touches.length < 2) pinch.active = false;
+                    if (e.touches.length === 0) endPan();
+                };
+
+                // ── Click capture — 드래그 후 발생한 click 억제 ─────
+                const onClickCapture = (e) => {
+                    if (blockNextClick) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        blockNextClick = false;
+                    }
+                };
+
+                el.addEventListener('mousedown', onMouseDown);
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+                el.addEventListener('wheel', onWheel, { passive: false });
+                el.addEventListener('touchstart', onTouchStart, { passive: false });
+                el.addEventListener('touchmove', onTouchMove, { passive: false });
+                el.addEventListener('touchend', onTouchEnd);
+                el.addEventListener('touchcancel', onTouchEnd);
+                el.addEventListener('click', onClickCapture, true);
+
+                return () => {
+                    el.removeEventListener('mousedown', onMouseDown);
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                    el.removeEventListener('wheel', onWheel);
+                    el.removeEventListener('touchstart', onTouchStart);
+                    el.removeEventListener('touchmove', onTouchMove);
+                    el.removeEventListener('touchend', onTouchEnd);
+                    el.removeEventListener('touchcancel', onTouchEnd);
+                    el.removeEventListener('click', onClickCapture, true);
+                };
+            }, []);
+
             // D-50: 엔티티 말(piece) — 타일 위에 얹히는 SVG text 오버레이.
             // 체스말처럼 타일 사이를 옮겨다니는 "엔티티" 표현. 배경(지형)은 그대로.
             // 나중에 사냥감(prey) 아이콘도 같은 패턴으로 추가될 예정.
@@ -537,7 +695,12 @@
             return (
                 <div className="map-area">
                     <div className="map-container" ref={containerRef}>
-                        <svg className="map-svg" width={mapExtent.totalWidth} height={mapExtent.totalHeight}>
+                        <svg
+                            className="map-svg"
+                            width={mapExtent.totalWidth * zoom}
+                            height={mapExtent.totalHeight * zoom}
+                            viewBox={`0 0 ${mapExtent.totalWidth} ${mapExtent.totalHeight}`}
+                        >
                             {visibleTiles.map(tile => (
                                 <HexTile
                                     key={tile.id}

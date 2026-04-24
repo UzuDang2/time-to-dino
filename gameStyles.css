@@ -140,6 +140,14 @@ button:active {
     flex: 1;
     overflow: auto;
     background: #0a0e27;
+    /* D-82 (2026-04-24 요한 지시): 네이티브 터치 스크롤·pinch 제거.
+       JS에서 드래그 pan + 마우스휠/핀치 zoom을 직접 구현한다. */
+    touch-action: none;
+    cursor: grab;
+    overscroll-behavior: contain;
+}
+.map-container.dragging {
+    cursor: grabbing;
 }
 
 .map-svg { 

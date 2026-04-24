@@ -4,7 +4,7 @@
 
 ---
 
-## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 확장 + D-81 consume 모달 유령 아이템 버그)
+## 13차 세션 — 웹 세션 (2026-04-24, D-80 listen 실루엣 + D-81 consume 유령 아이템 + D-82 맵 드래그·줌)
 
 > 🌐 claude.ai/code 웹 환경(Linux 샌드박스). Notion MCP 미연결 + `notion.site` 방화벽 차단 상태.
 > 이번 라운드는 repo 내 코드만 수정.
@@ -37,6 +37,30 @@
   - 가방 열고 음식 롱프레스 → 들린 상태로 닫기 → 휴식 카드 사용 → 모달에 그 아이템 **안 보임** 확인. (수정 전엔 보였음.)
   - 선택 없이 닫기는 기존대로 정상.
   - 정상 플로우(가방에 음식 N개 보유) 회귀 없음.
+
+- [x] **[디렉터/웹]** ✅ **D-82 맵 조작 개선 — 드래그 pan + 휠/핀치 zoom**
+  - 요한 지시: PC·모바일 모두 꾹 누른 채 드래그로 맵 이동, 모바일 핀치·PC 마우스휠로 확대·축소.
+  - 구현:
+    - `gameStyles.css`: `.map-container`에 `touch-action: none` + `cursor: grab`/`grabbing` — 네이티브 터치 스크롤·pinch 제거.
+    - `GameMap` 컴포넌트: `zoom` state(0.5~2.5) + `zoomRef`(이벤트 콜백에서 최신값 참조).
+    - SVG는 `viewBox="0 0 extent.W extent.H"` 고정 + `width/height = extent * zoom`으로 표시. 내부 좌표계는 유지(hex 위치 계산 변경 없음).
+    - 네이티브 리스너(useEffect 내부 addEventListener)로 mouse/touch/wheel 처리:
+      - mouse: mousedown → scrollLeft/scrollTop 드래그, wheel → `e.preventDefault()` + 비율 기반 줌 (휠업=확대).
+      - touch: 1 finger pan, 2 finger pinch — 핀치 중심(두 손가락 중점)을 기준으로 scroll 보정.
+      - 드래그 임계값 4px 넘으면 `blockNextClick` 플래그 → 이어지는 `click` 이벤트를 capture 단계에서 `stopPropagation + preventDefault`.
+    - wheel/touchmove는 `{ passive: false }` — preventDefault 보장.
+  - 줌 중심 보정: focus point(커서 또는 두 손가락 중점)의 컨텐츠 좌표가 줌 전후 동일하도록 scroll 재계산. `requestAnimationFrame`으로 SVG 리렌더 후 적용.
+
+- [ ] **[요한]** 🧪 **QA: D-82 맵 조작 (PC)**
+  - 마우스 좌클릭 꾹 → 드래그 → 맵이 커서 따라 이동. hex click 실행 안 됨(드래그 4px 초과 시).
+  - 마우스 휠 위/아래 → 커서 위치 기준으로 확대/축소. 최소 0.5, 최대 2.5배.
+  - 짧게 클릭(드래그 없이) → 기존대로 hex 타일 이동 트리거.
+
+- [ ] **[요한]** 🧪 **QA: D-82 맵 조작 (모바일)**
+  - 1 finger 드래그 → pan. 네이티브 스크롤 대체.
+  - 2 finger 핀치 → 두 손가락 중점 기준 확대·축소. 중점이 화면에서 고정된 것처럼 느껴져야.
+  - 싱글 탭 → 기존대로 hex 이동.
+  - 가방/모달 등 상위 UI 터치 스크롤(내부 스크롤 있는 경우)에 간섭 없는지 회귀 확인.
 
 ---
 

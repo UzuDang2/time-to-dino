@@ -1,5 +1,11 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80/D-81/D-82**).
+D-82 맵 조작 개선: `.map-container` `touch-action: none` + `GameMap`에 `zoom` state(0.5~2.5) + 드래그 pan / 마우스휠·핀치 zoom. SVG `viewBox` 고정 + `width/height *= zoom`으로 내부 좌표계 안전. 드래그 임계값 4px 초과 시 click 이벤트 capture 단계에서 차단해 hex tap과 공존. 줌 중심 보정(커서/핀치 중점 고정)은 `requestAnimationFrame`으로 SVG 리렌더 후 scroll 재설정.
+D-81 consume 모달 유령 아이템: `InventoryModal` 닫기에 `cancelSelection` + `CardItemConsumeModal::candidates` 및 `openConsumeForCard::hasAny` 계산에서 `selectedItem.id` 제외(이중 방어).
+D-80 listen 실루엣: `useCard('listen')`에서 revealed/visited 타일 connections 중 미공개를 `silhouette: true`로. `HexTile`은 `pathUnvisited`와 `silhouetteOnly`를 `dimmed`로 통합.
+변경 파일: `index.html`, `gameStyles.css`, `.claude/game-director/*.md`.
+
 마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80 listen 실루엣 확장**).
 귀 기울이기 카드가 이제 현재 타일 이웃(revealed) + **그 이웃의 이웃 중 미공개 타일**을 맵 보기(D-53)와 동일한 dim 색상(#444 / opacity 0.22)으로 노출. 한번 본 실루엣은 `tile.silhouette` 플래그로 영구 유지. `HexTile`에서 `pathUnvisited`와 `silhouetteOnly`를 `dimmed`로 통합해 렌더 분기 재사용. 클릭 조건은 기존 `pathUnvisited`만 사용 — silhouette 타일이어도 canMove면 이동 가능.
 변경 파일: `index.html`, `.claude/game-director/pending.md` · `project-state.md`.
