@@ -197,8 +197,9 @@ class MapGenerator {
     // 맵 유효성 검증.
     //   1) playerStart 타일에 1개 이상의 connection 보장
     //   2) playerStart에서 BFS로 exitPos 도달 가능
-    //   3) 도달 가능 타일 수가 비어있지 않은 전체 타일의 70% 이상 (섬 고립 완화)
-    _isValidMap({ tiles, playerStart, exitPos }) {
+    //   3) playerStart에서 bossPos 도달 가능 (D-68)
+    //   4) non-empty 타일이 모두 reachable (D-68, 요한 원문: 어떤 타일도 고립 금지)
+    _isValidMap({ tiles, playerStart, exitPos, bossPos }) {
         if (!tiles[playerStart] || tiles[playerStart].connections.length === 0) return false;
         const reachable = new Set([playerStart]);
         const queue = [playerStart];
@@ -212,8 +213,10 @@ class MapGenerator {
             }
         }
         if (!reachable.has(exitPos)) return false;
+        if (bossPos != null && !reachable.has(bossPos)) return false;
+        // D-68: non-empty 타일은 모두 도달 가능해야 함 (고립 섬 금지).
         const nonEmpty = tiles.filter(t => !t.isEmpty).length;
-        return reachable.size >= Math.floor(nonEmpty * 0.7);
+        return reachable.size === nonEmpty;
     }
 
     // D-61: 모서리 후보를 gridSize 기반으로 동적 산출.
@@ -275,12 +278,47 @@ class MapGenerator {
         // 연결된 맵 생성
         const tiles = this.generateConnectedMap(emptySlots);
 
+        // D-68: 고립 섬 제거 — playerStart에서 BFS reachable 아닌 non-empty 타일을
+        //   isEmpty로 전환하고 양방향 connections에서 제거. 이렇게 하면 보스/사냥감이
+        //   도달 불가한 섬에 배치되는 버그가 원천 차단된다.
+        const reachableInit = new Set([playerStart]);
+        const queueInit = [playerStart];
+        while (queueInit.length > 0) {
+            const cur = queueInit.shift();
+            for (const n of tiles[cur].connections) {
+                if (!reachableInit.has(n)) {
+                    reachableInit.add(n);
+                    queueInit.push(n);
+                }
+            }
+        }
+        for (let i = 0; i < tiles.length; i++) {
+            if (!tiles[i].isEmpty && !reachableInit.has(i)) {
+                tiles[i].isEmpty = true;
+                tiles[i].region = null;
+                // 이웃의 connections에서 이 i 제거.
+                for (const n of tiles[i].connections) {
+                    const idx = tiles[n].connections.indexOf(i);
+                    if (idx >= 0) tiles[n].connections.splice(idx, 1);
+                }
+                tiles[i].connections = [];
+            }
+        }
+
+        // playerStart 자체가 고립(연결 0)이면 이 맵은 폐기 — generate() 재시도에 맡김.
+        if (tiles[playerStart].connections.length === 0) {
+            return { tiles, playerStart, bossPos: exitPos, exitPos };
+        }
+
         // 타입 설정
         tiles[playerStart].type = 'start';
         tiles[playerStart].visited = true;
         tiles[playerStart].discovered = true;
 
-        tiles[exitPos].type = 'exit';
+        // exitPos가 고립 제거로 isEmpty가 됐으면 이 맵은 폐기 대상 — _isValidMap에서 걸림.
+        if (!tiles[exitPos].isEmpty) {
+            tiles[exitPos].type = 'exit';
+        }
 
         // D-61: 보스 최소 거리도 gridSize에 비례. 7x7=5칸 → 11x11≈8칸.
         const minBossDistance = Math.max(5, Math.floor(this.gridSize * 0.7));
@@ -289,7 +327,9 @@ class MapGenerator {
                 index,
                 distance: this.calculateDistance(tiles, playerStart, index)
             }))
-            .filter(d => d.distance >= minBossDistance &&
+            // D-68: Infinity 거리(도달 불가) 명시 제외 — reachable 집합 밖 안전장치.
+            .filter(d => Number.isFinite(d.distance) &&
+                        d.distance >= minBossDistance &&
                         d.index !== exitPos &&
                         d.index !== playerStart &&
                         !tiles[d.index].isEmpty);
