@@ -824,3 +824,81 @@ confirmPlacement:
 - 타일은 기존 7x7만 렌더. 패딩 영역은 빈 공간.
 
 **파일**: `mapGenerator.js`(상수·generateHexPositions·getMapExtent), `index.html::GameMap`.
+
+## D-55. 스탯 경고 피드백 — 게이지 빨간 점멸 (2026-04-24, 12th 세션)
+
+**결정**: 위험 임계에서 게이지 채움 부분이 빨갛게 점멸해 즉각 경고한다.
+- `hunger ≤ 3`: 배고픔 게이지 점멸.
+- `health ≤ 2`: 생명력 게이지 점멸.
+- 라벨·숫자·아이콘은 정상 표시 유지. 채움(fill) div에만 애니메이션 적용.
+
+**근거 (요한 지시)**: 기존 hungerColor/healthColor 색상 변화(D-37)만으로는 게임플레이 중 "위험 상태"가 직관적으로 인지되지 않는다. 점멸은 시각적 알람으로 플레이어 주의를 끌어 즉시 대응(식사·치료)을 유도.
+
+**스펙**:
+- `gameStyles.css::@keyframes gauge-warning-pulse`: 0.6s alternate, `opacity 1↔0.55` + `box-shadow inset` 빨간 글로우.
+- `.gauge-warning` 클래스를 채움 div에 토글.
+- `StatGauge({ ..., warning })` prop 추가. `StatPanel`에서 `warning={health<=2}` / `warning={hunger<=3}` 주입.
+- 기존 `healthColor`/`hungerColor` 팔레트는 그대로 — 점멸은 위에 얹는 레이어.
+
+**파일**: `gameStyles.css`, `index.html::StatGauge`, `index.html::StatPanel`.
+
+## D-56. 보스 사망 연출 통합 — 점프스케어 + "삼켰습니다" + defeat 맵보기 (2026-04-24, 12th 세션)
+
+**결정**: 보스 조우(같은 타일 진입)로 게임오버가 날 때 점프스케어를 먼저 보여주고 0.55s 뒤 GameEndModal을 띄운다. 문구는 "보스가 당신을 삼켰습니다"로 교체하고, victory뿐 아니라 defeat(보스·체력·배고픔)에서도 [🗺️ 맵 보기]를 노출해 보스 경로를 복기할 수 있게 한다.
+
+**근거 (요한 지시)**: 보스에게 잡히는 순간이 "그냥 로그 한 줄 뒤 모달"로 끝나면 긴장감이 보상으로 전환되지 않는다. 점프스케어 → 모달 순서로 "먹혔다"는 감정이 확실히 전달되고, 모달 문구는 서사보다 사실적 1인칭 선고("삼켰습니다")로 마감. 사망 시에도 맵을 볼 수 있게 해야 "어디서 어떻게 따라잡혔는지" 분석·학습이 가능.
+
+**스펙**:
+- `DEATH_NARRATIVE.boss.subtitle`: "그림자가 덮치는 순간…" → `"보스가 당신을 삼켰습니다"`. `guide`는 유지.
+- `moveTo` encounter 분기 (보스와 같은 타일):
+  ```js
+  setBossJumpscare(true);
+  setTimeout(() => {
+      setBossJumpscare(false);
+      setGameOver(true);
+      setDeathReason('boss');
+  }, 550);
+  ```
+  기존 `listen` 거리 1의 점프스케어는 연출만(게임오버 없음) — 이 경로와 별개.
+- `GameEndModal`: [🗺️ 맵 보기] 버튼에서 `victory &&` 조건 제거. defeat 전 사유(starvation/health/boss) 모두에서 경로 회고 가능.
+- 플로팅 바 문구: `← 승리 화면` → `victory ? '← 승리 화면' : '← 결과 화면'`.
+
+**파일**: `index.html`(DEATH_NARRATIVE, moveTo encounter, GameEndModal, showPathView 플로팅 바).
+
+## D-57. 휴식 = 요리 시스템 — 꼬치·구이 + 바베큐 폐지 (2026-04-24, 12th 세션)
+
+**결정**: 기존 "바베큐(생고기+나뭇가지/목재 → hunger+4 즉시 회복)" 가상 선택지를 완전히 제거하고, **꼬치 조합 + 꼬치구이 요리** 2단계 파이프라인으로 교체한다.
+
+**아이템 4종 추가**:
+| id | name | 효과 | 조합 |
+|---|---|---|---|
+| `meat_skewer` | 생고기꼬치 | hunger+1, health-1 (일회용, 2단계) | meat + branch |
+| `fish_skewer` | 물고기꼬치 | hunger+1, health-1 (일회용, 2단계) | fish + branch |
+| `grilled_meat_skewer` | 고기꼬치구이 | hunger+2, **health+1** (일회용, 3단계) | 요리(meat_skewer) |
+| `grilled_fish_skewer` | 생선꼬치구이 | hunger+2, **health+1** (일회용, 3단계) | 요리(fish_skewer) |
+
+**근거 (요한 확답)**: 바베큐는 재료 소비가 숨겨진 즉시 회복이라 인벤토리 시스템과 통합이 어설펐다. 꼬치(합성 패널)와 요리(휴식 카드 전용 모달)로 분리하면:
+- 꼬치 = "날것을 쓸만한 휴대 식량으로" (여전히 health-1 리스크).
+- 구이 = "불에 안전하게 익혀 든든하게" (health+1로 회복까지).
+- 2단계 진행이 명시적 플로우로 드러나 플레이어가 "요리" 행위를 자원 관리 축으로 인식.
+- 구이 효과 `hunger+2; health+1`은 요한 확답 (계획봇 초안 `health±0`에서 상향).
+
+**파이프라인**:
+- **꼬치**(2재료): `조합레시피` 시트 2행 추가 → `combos.json` 정상 반영. 합성 패널(인벤 드래그)에서 자동 지원 (`findRecipesContainingAny`).
+- **구이**(1재료): `조합레시피` 시트에 `ingredient_a`만 채운 행 2개. `build_combos_from_sheet` 로직에서 1재료 레시피 허용하도록 조건 완화 (기존 `a and b and r` → `a and r`).
+- 1재료 레시피는 `findRecipesContainingAny::uniq.size<=1` 필터로 합성 패널에서 자동 제외 — **휴식 카드 → 요리 모달** 경유로만 생성 가능.
+
+**UI 변경**:
+- `CardItemConsumeModal`: `extraOptions`/`onExtraSelect` prop 제거. `onCookClick`/`canCook` 추가. 휴식 카드에서만 주입되며 hintText 아래 [🔥 요리하기] 버튼 노출 (canCook=false면 회색 비활성).
+- `CookingModal` 신규: `TTD_DATA.COMBOS.filter(r => r.ingredients.length===1 && r.result.startsWith('grilled_'))`. 레시피 카드에 재료명 → 결과물명 + 효과 요약 + [🔥 요리하기] 버튼. 클릭 시 `inventory.craftRecipe` 호출.
+- `openConsumeForCard`의 `card.id==='rest'` 바베큐 블록 삭제. `handleExtraConsume`, `confirmBbq` 함수 삭제.
+
+**데이터 흐름**:
+1. 시트 `아이템마스터`·`조합레시피` 편집 (gspread API, 1회성 `scripts/_d57_append_rows.py` 후 삭제).
+2. `ITEM_NAME_TO_ID` 4개 매핑 추가 (`fetch_data.py`).
+3. `make data` → `items.json` 16→20, `combos.json` 9→13.
+4. `inventory.js::ITEMS` 폴백 엔트리 4개 추가 (D-23 REST_FALLBACK 패턴).
+
+**Notion 생략**: D-30 이후 런타임 SSOT가 시트로 이관됐고, Notion 아이템 DB는 레거시(서사 참조). 이번도 meat(D-46)·slingshot(D-52)과 동일 패턴으로 Notion 등재 스킵.
+
+**파일**: `data/items.json`·`data/combos.json`·`data/data.js`(자동 재생성), `scripts/fetch_data.py`(ITEM_NAME_TO_ID + 1재료 레시피 허용), `inventory.js`(ITEMS 4종 폴백), `index.html`(CardItemConsumeModal prop 교체, CookingModal 신규, handleCookRecipe, cookingOpen state, BBQ 함수 3개 제거), 시트 `아이템마스터`·`조합레시피` 탭.

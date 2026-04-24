@@ -1,5 +1,12 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**12th session — 로컬 Mac 세션**, G/H/I 기획 3건 일괄 구현).
+D-55 (스탯 경고 점멸, `gameStyles.css`/`index.html`), D-56 (보스 결과화면 — 점프스케어 + "삼켰습니다" + defeat 맵보기, `index.html`), D-57 (휴식=요리 시스템, 바베큐 폐지 — 아이템 4종 + 조합 4건, `inventory.js`/`scripts/fetch_data.py`/시트 2탭/`data/*.json` 재생성).
+12차 세션 변경 파일: `gameStyles.css`, `index.html`, `inventory.js`, `scripts/fetch_data.py`, `data/items.json`, `data/combos.json`, `data/data.js`, `.claude/game-director/design-decisions.md`, `.claude/game-director/project-state.md`, `.claude/game-director/pending.md`.
+아이템 갯수: 16 → 20 (+4 — 꼬치 2 + 구이 2). 조합 레시피: 9 → 13 (+4). 시트 `아이템마스터`·`조합레시피` 각 4행 append.
+`fetch_data.py::build_combos_from_sheet` 1재료 레시피 허용 (기존 `a and b and r` 필터 → `a and r`). `findRecipesContainingAny`의 `uniq.size<=1` 필터가 합성 패널에서 1재료 자동 제외하므로 회귀 없음.
+브라우저 E2E는 요한 QA 대기 (`pending.md` 12차 세션 블록 참조).
+
 마지막 검증: 2026-04-23 (**10th session — 웹 세션, claude.ai/code Linux 샌드박스**, UI 이터레이션 포함).
 라운드 1(`a4a5688`): hunt_start 카드 잔존 버그 수정 + 동굴/평원 돌멩이 가중치 70:30 상향.
 라운드 2(UI): 토스트 fade-out 0.25s easeOutCirc로 단축, listen 보스 감지 → 공룡 토스트 + 거리별 테두리 색(빨강/노랑/초록), 보스 인접 시 BossJumpscare 연출, 승리 시 [맵 보기] 모드 + moveHistory 기반 방문 순서 번호 + 플로팅 재시작/승리화면 버튼.
