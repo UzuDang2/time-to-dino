@@ -83,8 +83,14 @@ class InventorySystem {
         material_mid:  { name: '일반 재료', shape: [[1]], grade: 2, mergeable: false, merge_result: null },
         material_high: { name: '고급 재료', shape: [[1]], grade: 3, mergeable: false, merge_result: null },
 
-        weapon_basic: { name: '나무창', shape: [[1, 1]], grade: 1, mergeable: false },
-        weapon_stone: { name: '돌창',   shape: [[1, 1]], grade: 2, mergeable: false },
+        weapon_basic: { name: '나무창', shape: [[1, 1]], grade: 1, mergeable: false, category: '무기' },
+        weapon_stone: { name: '돌창',   shape: [[1, 1]], grade: 2, mergeable: false, category: '무기' },
+
+        // D-52 신규: 새총 — 1x1 소형 무기. branch + plant_fiber 조합.
+        //   런타임 정의는 TTD_DATA.WEAPONS가 덮어쓴다(내구도/정확도 등).
+        //   shape은 여기 하드코딩 — weapons.json에 shape 필드가 없어서 resolveDef가
+        //   name/내구도만 덮고 shape는 static 유지.
+        slingshot:    { name: '새총',   shape: [[1]],    grade: 1, mergeable: false, category: '무기' },
 
         tool_pickaxe: { name: '곡괭이', shape: [[1, 0], [1, 1]], grade: 2, mergeable: false },
 
@@ -116,12 +122,14 @@ class InventorySystem {
             const wDef = weaponsBundle.find(w => w && w.id === type);
             if (wDef) {
                 // 무기 메타를 static 위에 덮어씀. 조합/분해 불가는 static 기본값 유지.
+                // D-50: accuracy, D-51: durability(인스턴스 초기값 계산용) 노출.
                 return {
                     ...staticDef,
                     name: wDef.name || staticDef.name,
                     category: wDef['카테고리'] || staticDef.category || '무기',
                     durability: wDef['내구도'] != null ? Number(wDef['내구도']) : undefined,
                     attack: wDef['공격력'] != null ? Number(wDef['공격력']) : undefined,
+                    accuracy: wDef.accuracy != null ? Number(wDef.accuracy) : 0,
                 };
             }
         }
@@ -216,6 +224,12 @@ class InventorySystem {
             x: 0,
             y: 0
         };
+        // D-51: 무기 인스턴스에 durabilityLeft 초기화.
+        //   런타임 소스(TTD_DATA.WEAPONS) 우선 → static fallback.
+        const resolved = InventorySystem.resolveDef(itemType) || {};
+        if (typeof resolved.durability === 'number' && resolved.durability > 0) {
+            item.durabilityLeft = resolved.durability;
+        }
 
         // 빈 공간 찾기
         const position = this.findEmptySpace(item.shape);
@@ -509,12 +523,37 @@ class InventorySystem {
             x: preferredX,
             y: preferredY
         };
+        // D-51: 무기 결과물은 durabilityLeft 초기화 (조합으로 생성된 신품).
+        const resolved = InventorySystem.resolveDef(newType) || {};
+        if (typeof resolved.durability === 'number' && resolved.durability > 0) {
+            merged.durabilityLeft = resolved.durability;
+        }
         if (this.canPlace(merged.shape, merged.x, merged.y)) {
             this.placeItem(merged);
             this.items.push(merged);
             return true;
         }
         return this.addItem(newType);
+    }
+
+    // D-51: 무기 사용 소모.
+    //   item: inventory.items 중 무기 인스턴스 1자루.
+    //   n: 차감량(창찌르기 1, 창던지기는 fullLoss로 durabilityLeft 전량).
+    //   fullLoss: true면 남은 durability 전부 날림.
+    //   durabilityLeft <= 0이 되면 인벤에서 제거하고 broken=true 반환.
+    // 반환: { broken, durabilityLeft }
+    consumeWeaponUse(item, n, fullLoss) {
+        if (!item) return { broken: false, durabilityLeft: 0 };
+        const before = typeof item.durabilityLeft === 'number' ? item.durabilityLeft : 0;
+        const dec = fullLoss ? before : (typeof n === 'number' ? n : 1);
+        const after = Math.max(0, before - dec);
+        item.durabilityLeft = after;
+        if (after <= 0) {
+            this.removeItem(item);
+            this.items = this.items.filter(it => it.id !== item.id);
+            return { broken: true, durabilityLeft: 0 };
+        }
+        return { broken: false, durabilityLeft: after };
     }
 
     // 선택된 아이템을 (x, y)에 확정 배치

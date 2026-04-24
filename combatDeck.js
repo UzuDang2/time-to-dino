@@ -57,100 +57,223 @@
         return next;
     }
 
-    // D-46 (2026-04-23) — 사냥감 전투 덱 빌드.
-    //   보스 전투와 별개 파이프라인. 손패 구성은 간단:
-    //     - `requirement === '없음'` 또는 '없음 (항상 사용 가능)' 포함: 무조건 포함.
-    //     - 그 외: 인벤 아이템 중 하나의 `ITEMS[type].name`이 requirement와 일치해야 포함.
-    //   통과한 카드를 `count || 1`만큼 복제하고 uid `combat:{id}:{idx}` 부여.
-    //   기존 buildCombatDeck / RUNTIME_CARDS / consumeExtraCard는 건드리지 않음 (보스 전투 경로).
+    // D-52: 복합 requirement DSL 파서.
+    //   "A + B" → ["A", "B"]. 단일 재료는 ["A"]. 빈값/"없음" 계열 → [].
+    //   공백 유무 모두 허용( " + " 우선, fallback "+"). 이름 자체에 + 가 없다는 전제.
+    function parseRequirement(req) {
+        if (req == null) return [];
+        const s = String(req).trim();
+        if (!s || s === '없음' || s.indexOf('없음') === 0) return [];
+        // " + " 구분 우선, 없으면 "+" 단일 구분.
+        const parts = s.indexOf(' + ') >= 0 ? s.split(' + ') : s.split('+');
+        return parts.map(p => p.trim()).filter(Boolean);
+    }
+
+    // D-46/D-50 개정: 사냥감 전투 덱 빌드.
+    //   손패 구성 규칙:
+    //     - requirement '없음' → 무한카드(infinite=true).
+    //     - requirement 단일/복합 재료 → 각 재료 이름이 인벤에 존재해야 포함.
+    //       slotLimit = min(보유 개수들). 하나라도 0이면 카드 제외.
+    //   D-50: 카드 accuracy에 owning weapon의 accuracy를 합산해서 주입.
+    //     - owning weapon = requirement 재료 중 '무기 카테고리'에 해당하는 것.
+    //     - 여러 무기가 요구돼도 한 카드에 한 주무기 전제(현재 스펙상 하나).
+    //   통과한 카드에 uid `combat:{id}:{idx}` 부여.
     function buildHuntDeck(combatCardsJson, inventory) {
         const cards = Array.isArray(combatCardsJson) ? combatCardsJson : [];
         const items = (inventory && Array.isArray(inventory.items)) ? inventory.items : [];
         const ITEM_DEFS = (typeof window !== 'undefined' && window.InventorySystem && window.InventorySystem.ITEMS)
             ? window.InventorySystem.ITEMS
             : (typeof InventorySystem !== 'undefined' && InventorySystem.ITEMS) || {};
+        const TTD = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : null;
+        const WEAPONS = (TTD && Array.isArray(TTD.WEAPONS)) ? TTD.WEAPONS : [];
 
-        // 아이템 이름별 보유 개수 맵 — 요구 아이템 카드의 slotLimit 산출에 사용.
+        // 아이템 이름별 보유 개수 맵 — requirement 재료명 → 보유 개수.
         const ownedCountByName = {};
         for (const it of items) {
-            const name = (ITEM_DEFS[it.type] || {}).name;
+            const staticName = (ITEM_DEFS[it.type] || {}).name;
+            // 무기는 ITEMS에 없을 수도 있어 WEAPONS까지 조회.
+            const weaponDef = WEAPONS.find(w => w && w.id === it.type);
+            const name = staticName || (weaponDef && weaponDef.name);
             if (name) ownedCountByName[name] = (ownedCountByName[name] || 0) + 1;
+        }
+
+        // 이름 → 무기 정의 맵 (카드에 accuracy 보너스 합산 + full_loss 분기용).
+        const weaponByName = {};
+        for (const w of WEAPONS) {
+            if (w && w.name) weaponByName[w.name] = w;
         }
 
         const deck = [];
         let idx = 0;
         for (const card of cards) {
-            const req = card && card.requirement;
-            const isFree = typeof req === 'string' && (req === '없음' || req.indexOf('없음') === 0);
-            // D-46: requirement 없는 기본 카드(주먹/회피/도망) — 무한카드.
-            if (isFree) {
-                deck.push({ ...card, infinite: true, uid: `combat:${card.id}:${idx++}` });
+            const reqs = parseRequirement(card && card.requirement);
+
+            // 무한카드 (요구 없음) — 주먹/회피/도망.
+            if (reqs.length === 0) {
+                const base = { ...card, infinite: true, uid: `combat:${card.id}:${idx++}` };
+                base.accuracy = Number(card.accuracy) || 0;
+                deck.push(base);
                 continue;
             }
-            // D-47: 요구 아이템 카드(돌 던지기/창으로 찌르기/창던지기) — 손패에 1장만 두고
-            //   slotLimit=보유 개수로 슬롯 재사용 허용. 보유 0이면 덱에서 제외.
-            //   (기존 count 복제 로직은 폐기 — 보유량 기반으로 통일.)
-            const owned = (typeof req === 'string') ? (ownedCountByName[req] || 0) : 0;
-            if (owned <= 0) continue;
+
+            // 요구 재료별 보유 개수 — 하나라도 0이면 카드 제외.
+            let slotLimit = Infinity;
+            let missing = false;
+            for (const r of reqs) {
+                const owned = ownedCountByName[r] || 0;
+                if (owned <= 0) { missing = true; break; }
+                slotLimit = Math.min(slotLimit, owned);
+            }
+            if (missing) continue;
+
+            // accuracy 합산: 카드 자체 accuracy + (요구 재료 중 무기의 accuracy).
+            let totalAccuracy = Number(card.accuracy) || 0;
+            let owningWeaponId = null;
+            for (const r of reqs) {
+                const wdef = weaponByName[r];
+                if (wdef) {
+                    totalAccuracy += Number(wdef.accuracy) || 0;
+                    owningWeaponId = owningWeaponId || wdef.id; // 첫 매칭 무기 기록
+                }
+            }
+
             deck.push({
                 ...card,
-                slotLimit: owned,
+                requirements: reqs,                     // 런타임 편의(소비 단계용)
+                accuracy: totalAccuracy,
+                slotLimit,
+                weaponId: owningWeaponId,               // null이면 무기 아닌 카드(돌던지기 등)
                 uid: `combat:${card.id}:${idx++}`
             });
         }
         return deck;
     }
 
-    // D-48 개정: 사냥 전투 해결 로직.
+    // D-48/D-50/D-51 개정: 사냥 전투 해결 로직.
     //   3턴 고정. 모든 턴 공통으로 prey는 '회피' (evade_rate 판정, prey별 개별).
-    //   각 턴: 플레이어 카드 success_rate 판정 → run_away 성공 시 player_fled
-    //   → damage>0이면 prey.evade_rate 판정 → 명중 시 hp 차감 → hp<=0 victory.
-    //   3턴 모두 소진했는데 hp>0이면 prey_fled (사냥감이 도망). 이전의 '3턴차 자동 도망' 폐기.
-    function resolveHunt(prey, userSlots) {
+    //   각 턴:
+    //     1) 무기 요구 카드인데 weaponState의 durabilityLeft<=0 → auto-fail (무기 부재).
+    //     2) 플레이어 카드 success_rate 판정 → run_away 성공 시 player_fled.
+    //     3) damage>0이면 effectiveEvade = max(0, prey.evade_rate - card.accuracy).
+    //        effectiveEvade로 prey 회피 판정. 명중 시 hp 차감.
+    //     4) cardHit & 공격 실행된 경우, 무기 내구도 차감
+    //        (full_loss='Y'면 남은 durability 전부 0 → 인벤 제거; 아니면 -1).
+    //   반환: { outcome, turns, preyHpFinal, weaponUsage }
+    //     weaponUsage: { [weaponId]: { used:N, broken:bool, durabilityFinal } }
+    //
+    // opts.weaponState: { [weaponId]: { durabilityLeft:number, fullLossSeed:false } }
+    //   UI에서 각 무기 인스턴스의 현재 durabilityLeft를 미리 세팅해 넘긴다.
+    //   동일 weaponId 여러 자루가 있으면 상위에서 "한 자루씩 순차" 처리를 구현(여기선 1자루 추적).
+    function resolveHunt(prey, userSlots, opts) {
+        opts = opts || {};
+        const weaponState = {};
+        // 얕은 복사 — 원본 훼손 방지.
+        if (opts.weaponState) {
+            for (const [k, v] of Object.entries(opts.weaponState)) {
+                weaponState[k] = { durabilityLeft: Number(v && v.durabilityLeft) || 0 };
+            }
+        }
+
         let hp = prey.hp;
         const evadeRate = (Number(prey.evade_rate) >= 0) ? Number(prey.evade_rate) : 20;
         const turns = [];
+        const weaponUsage = {}; // 턴 내 누적 소모량
+
+        // 무기 사용 기록 헬퍼.
+        const recordWeaponUse = (wid, fullLoss) => {
+            const state = weaponState[wid];
+            if (!state) return;
+            const before = state.durabilityLeft;
+            const dec = fullLoss ? before : 1;
+            state.durabilityLeft = Math.max(0, before - dec);
+            const slot = weaponUsage[wid] || { used: 0, broken: false, fullLossCount: 0 };
+            slot.used += dec;
+            slot.broken = slot.broken || state.durabilityLeft <= 0;
+            if (fullLoss) slot.fullLossCount += 1;
+            slot.durabilityFinal = state.durabilityLeft;
+            weaponUsage[wid] = slot;
+        };
+
+        let terminatedOutcome = null;
+
         for (let t = 0; t < 3; t++) {
             const card = userSlots[t];
             if (!card) {
                 turns.push({ turn: t + 1, preyAction: '회피', userCard: null, hit: false, preyHpAfter: hp });
                 continue;
             }
+
+            // D-51 auto-fail: 무기 요구 카드인데 무기 재고가 0이면 시도조차 하지 않음.
+            if (card.weaponId) {
+                const ws = weaponState[card.weaponId];
+                if (!ws || ws.durabilityLeft <= 0) {
+                    turns.push({
+                        turn: t + 1, preyAction: '회피', userCard: card,
+                        hit: false, autoFail: true, reason: 'weapon_missing', preyHpAfter: hp
+                    });
+                    continue;
+                }
+            }
+
             const cardHit = Math.random() * 100 < (card.success_rate || 0);
+
+            // 도망치기 성공 분기.
             if (card.id === 'run_away' && cardHit) {
                 turns.push({
                     turn: t + 1, preyAction: '회피', userCard: card,
                     outcome: 'player_flee', preyHpAfter: hp
                 });
-                return { outcome: 'player_fled', turns, preyHpFinal: hp };
+                terminatedOutcome = 'player_fled';
+                break;
             }
+
             if (cardHit && (card.damage || 0) > 0) {
-                const preyEvaded = Math.random() * 100 < evadeRate;
+                // D-50: effectiveEvade = max(0, evadeRate - totalAccuracy).
+                const effectiveEvade = Math.max(0, evadeRate - (Number(card.accuracy) || 0));
+                const preyEvaded = Math.random() * 100 < effectiveEvade;
+
+                // 공격 실행 자체는 성공 — 무기 사용 카운트(명중/회피 무관).
+                // 요한 스펙: "창던지기 성공 시 창이 날아가 사라짐" — cardHit 기준이지 명중 여부와 무관.
+                if (card.weaponId) {
+                    const fullLoss = String(card.full_loss || '').toUpperCase() === 'Y';
+                    recordWeaponUse(card.weaponId, fullLoss);
+                }
+
                 if (!preyEvaded) {
                     hp -= card.damage;
                     turns.push({
                         turn: t + 1, preyAction: '회피', userCard: card,
-                        hit: true, preyEvaded: false, damage: card.damage, preyHpAfter: hp
+                        hit: true, preyEvaded: false, damage: card.damage,
+                        effectiveEvade, preyHpAfter: hp
                     });
-                    if (hp <= 0) return { outcome: 'victory', turns, preyHpFinal: hp };
+                    if (hp <= 0) {
+                        terminatedOutcome = 'victory';
+                        break;
+                    }
                 } else {
                     turns.push({
                         turn: t + 1, preyAction: '회피', userCard: card,
-                        hit: true, preyEvaded: true, preyHpAfter: hp
+                        hit: true, preyEvaded: true,
+                        effectiveEvade, preyHpAfter: hp
                     });
                 }
             } else {
+                // 카드 자체 실패(success_rate 미달) — 무기 소모 없음 (던지기 전에 놓친 셈).
                 turns.push({
                     turn: t + 1, preyAction: '회피', userCard: card,
                     hit: false, preyHpAfter: hp
                 });
             }
         }
-        // 3턴 다 지났는데 hp>0 → 사냥감 도망.
-        return { outcome: 'prey_fled', turns, preyHpFinal: hp };
+
+        const outcome = terminatedOutcome || (hp <= 0 ? 'victory' : 'prey_fled');
+        return { outcome, turns, preyHpFinal: hp, weaponUsage };
     }
 
-    const api = { buildCombatDeck, consumeExtraCard, RUNTIME_CARDS, buildHuntDeck, resolveHunt };
+    const api = {
+        buildCombatDeck, consumeExtraCard, RUNTIME_CARDS,
+        buildHuntDeck, resolveHunt, parseRequirement
+    };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
