@@ -456,6 +456,22 @@
                             </g>
                         );
                     })()}
+                    {/* D-70 (2026-04-24 요한 지시): 실패 시 탈출구 위치 공개.
+                        showPathView 모드에서 tile.type==='exit'이면 항상 🚪 마커 노출.
+                        유저가 '저기가 탈출구였구나' 복기 가능. */}
+                    {showPathView && tile.type === 'exit' && (
+                        <g className="exit-marker" pointerEvents="none">
+                            <circle cx={x - 28} cy={y - 2} r="14" fill="#2196F3" stroke="#1a1a2e" strokeWidth="1.5" opacity="0.95" />
+                            <text
+                                x={x - 28}
+                                y={y + 4}
+                                textAnchor="middle"
+                                fontSize="14"
+                            >
+                                🚪
+                            </text>
+                        </g>
+                    )}
                 </g>
             );
         }

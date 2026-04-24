@@ -14,19 +14,76 @@ class BossMonster {
         //   chaseMode에선 사용하지 않음(플레이어 추격이 우선).
         //   스폰 타일부터 방문 처리. 게임 내 지속, 리셋 안 함.
         this.visitedTiles = new Set([this.position]);
+        // D-70 (2026-04-24 요한 지시): 보스 순찰 waypoint.
+        //   중앙 ↔ 먼 코너 교대로 왕복. 게임 중 1~2번은 플레이어 경로와 교차해
+        //   '위기 순간'을 유발. 생성 위치와 무관하게 항상 중앙을 가로지른다.
+        this.patrolWaypoints = this._buildPatrolWaypoints(playerStartTile);
+        this.patrolIndex = 0;
     }
 
-    // 스폰 위치 찾기 (플레이어 시작점에서 가장 먼 3곳 중 랜덤)
+    // D-70: 순찰 waypoint 목록 계산.
+    //   [중앙, 스폰에서 먼 코너A, 중앙, 먼 코너B, ...] 형태로 중앙을 자주 지나가게.
+    //   코너 후보는 맵 꼭짓점들 중 non-empty를 거리순 정렬해 상위 3개.
+    _buildPatrolWaypoints(playerStartTile) {
+        const tiles = this.tiles;
+        if (!tiles || tiles.length === 0) return [this.position];
+        const n = Math.round(Math.sqrt(tiles.length));
+        const centerRow = Math.floor(n / 2);
+        const centerCol = Math.floor(n / 2);
+
+        // 중앙 후보: non-empty 타일 중 (centerRow, centerCol)에 가장 가까운 곳.
+        let centerTile = -1;
+        let bestCenterDist = Infinity;
+        for (let i = 0; i < tiles.length; i++) {
+            if (tiles[i].isEmpty) continue;
+            const p = tiles[i].position;
+            if (!p) continue;
+            const d = Math.abs(p.row - centerRow) + Math.abs(p.col - centerCol);
+            if (d < bestCenterDist) { bestCenterDist = d; centerTile = i; }
+        }
+        if (centerTile < 0) centerTile = this.position;
+
+        // 코너 후보: 스폰 위치에서 먼 non-empty 타일 상위 3개.
+        const candidates = [];
+        for (let i = 0; i < tiles.length; i++) {
+            if (tiles[i].isEmpty || i === this.position) continue;
+            const d = this.calculateDistance(this.position, i);
+            if (Number.isFinite(d)) candidates.push({ i, d });
+        }
+        candidates.sort((a, b) => b.d - a.d);
+        const farCorners = candidates.slice(0, 3).map(c => c.i);
+
+        const waypoints = [];
+        // 중앙을 매번 거치도록: [중앙, 코너, 중앙, 코너, ...] 편성.
+        if (farCorners.length === 0) return [centerTile];
+        for (const corner of farCorners) {
+            waypoints.push(centerTile);
+            waypoints.push(corner);
+        }
+        return waypoints.length > 0 ? waypoints : [centerTile];
+    }
+
+    // 스폰 위치 찾기 (플레이어 시작점에서 가장 먼 3곳 중 랜덤).
+    //   D-70: isEmpty/Infinity 타일을 후보에서 제외. 이전 구현은 필터가 없어
+    //   공백 타일(connections=0, distance=Infinity)이 상위로 들어가 보스가
+    //   고립 위치에 스폰되는 케이스가 있었다(waypoints 계산도 망가짐).
     findSpawnPosition(playerStartTile) {
-        const distances = this.tiles.map((tile, index) => ({
-            index,
-            distance: this.calculateDistance(playerStartTile, index)
-        }));
-        
+        const distances = this.tiles
+            .map((tile, index) => ({
+                index,
+                distance: this.calculateDistance(playerStartTile, index)
+            }))
+            .filter(d =>
+                Number.isFinite(d.distance) &&
+                !this.tiles[d.index].isEmpty &&
+                d.index !== playerStartTile
+            );
+
         distances.sort((a, b) => b.distance - a.distance);
         const topThree = distances.slice(0, 3);
+        if (topThree.length === 0) return playerStartTile; // 안전망
         const chosen = topThree[Math.floor(Math.random() * topThree.length)];
-        
+
         return chosen.index;
     }
 
@@ -130,48 +187,38 @@ class BossMonster {
         }
     }
 
-    // D-62 / D-69: 일반 모드 랜덤 이동 — 미방문 타일을 적극 선호.
-    //   1) 인접 연결 중 visitedTiles에 없는 것 → 거기서 랜덤.
-    //   2) 인접 전부 방문 → 맵 전체 미방문 타일 중 가장 가까운 것을 향해 BFS로 1칸 전진.
-    //      (D-69: 요한 지시 "보스가 한쪽에서 뱅뱅 돌지 않게" — 중앙/반대쪽 순회 유도)
-    //   3) 맵 전체를 모두 밟았으면 visitedTiles 리셋 + 인접 랜덤 (다시 순회 시작).
+    // D-70 (2026-04-24): 순찰 waypoint 기반 이동 — 맵 중앙을 가로지르는 동선.
+    //   patrolWaypoints 순서대로 타겟 지정, BFS 최단 경로 첫 홉으로 한 칸 전진.
+    //   도달하면 다음 waypoint로. 순회 끝나면 처음으로 loop.
+    //   D-62/D-69의 visitedTiles 로직은 UI 결과 화면용으로만 유지(bossMoveHistory).
     moveRandom() {
         const connections = this.tiles[this.position].connections;
         if (connections.length === 0) return;
 
-        // 1) 인접 미방문 우선
-        const unvisited = connections.filter(c => !this.visitedTiles.has(c));
-        if (unvisited.length > 0) {
-            const next = unvisited[Math.floor(Math.random() * unvisited.length)];
-            this.position = next;
-            this.visitedTiles.add(this.position);
-            return;
-        }
-
-        // 2) 전체 맵에서 미방문 타일 집합
-        const allUnvisited = new Set();
-        for (let i = 0; i < this.tiles.length; i++) {
-            if (!this.tiles[i].isEmpty && !this.visitedTiles.has(i)) {
-                allUnvisited.add(i);
-            }
-        }
-
-        // 3) 전맵 순회 완료 → 리셋
-        if (allUnvisited.size === 0) {
-            this.visitedTiles = new Set([this.position]);
+        // waypoint가 비어 있으면(엣지 케이스) 인접 랜덤 안전망.
+        if (!this.patrolWaypoints || this.patrolWaypoints.length === 0) {
             const next = connections[Math.floor(Math.random() * connections.length)];
             this.position = next;
             this.visitedTiles.add(this.position);
             return;
         }
 
-        // 4) BFS로 가장 가까운 미방문 향한 첫 홉
-        const firstHop = this._bfsFirstHopToAny(allUnvisited);
+        // 현재 waypoint 도달 → 다음으로 전환. 연속 중복 skip.
+        let target = this.patrolWaypoints[this.patrolIndex];
+        let guard = 0;
+        while (this.position === target && guard < this.patrolWaypoints.length) {
+            this.patrolIndex = (this.patrolIndex + 1) % this.patrolWaypoints.length;
+            target = this.patrolWaypoints[this.patrolIndex];
+            guard++;
+        }
+
+        const targetSet = new Set([target]);
+        const firstHop = this._bfsFirstHopToAny(targetSet);
         if (firstHop !== null) {
             this.position = firstHop;
             this.visitedTiles.add(this.position);
         } else {
-            // 미방문이 현재 위치에서 도달 불가(이론상 D-68 고립 차단 이후 발생 X) — 안전망
+            // 경로 없음(고립 후속 안전망) → 인접 랜덤.
             const next = connections[Math.floor(Math.random() * connections.length)];
             this.position = next;
             this.visitedTiles.add(this.position);
@@ -216,9 +263,13 @@ class BossMonster {
 
     // D-62: 외부에서 스폰 위치를 override할 때 visitedTiles도 동기화.
     //   index.html 초기화에서 mapGenerator가 준 bossPos로 덮어쓸 때 사용.
+    //   D-70: 새 position 기준으로 patrolWaypoints 재빌드 — 이전 constructor 기준
+    //   waypoints가 override된 현 위치와 무관해지는 문제 해결.
     setPosition(pos) {
         this.position = pos;
         this.visitedTiles.add(pos);
+        this.patrolWaypoints = this._buildPatrolWaypoints(pos);
+        this.patrolIndex = 0;
     }
 
     // 추격 모드 여부
