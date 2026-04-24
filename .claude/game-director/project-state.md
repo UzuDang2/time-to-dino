@@ -1,10 +1,11 @@
 # project-state.md
 
-마지막 검증: 2026-04-24 (**12th session — 로컬 Mac 세션**, G/H/I 기획 3건 일괄 구현).
-D-55 (스탯 경고 점멸, `gameStyles.css`/`index.html`), D-56 (보스 결과화면 — 점프스케어 + "삼켰습니다" + defeat 맵보기, `index.html`), D-57 (휴식=요리 시스템, 바베큐 폐지 — 아이템 4종 + 조합 4건, `inventory.js`/`scripts/fetch_data.py`/시트 2탭/`data/*.json` 재생성).
+마지막 검증: 2026-04-24 (**12th session — 로컬 Mac 세션**, G/H/I 기획 3건 + D-58 리팩터).
+D-55 (스탯 경고 점멸, `gameStyles.css`/`index.html`), D-56 (보스 결과화면 — 점프스케어 + "삼켰습니다" + defeat 맵보기, `index.html`), D-57 (휴식=요리 시스템, 바베큐 폐지 — 아이템 4종 + 조합 4건, `inventory.js`/`scripts/fetch_data.py`/시트 2탭/`data/*.json` 재생성), **D-58** (HuntCombatModal 수치 배지 통일 + 적 슬롯 실시간 회피율, `index.html`/`gameStyles.css`, 3커밋).
 12차 세션 변경 파일: `gameStyles.css`, `index.html`, `inventory.js`, `scripts/fetch_data.py`, `data/items.json`, `data/combos.json`, `data/data.js`, `.claude/game-director/design-decisions.md`, `.claude/game-director/project-state.md`, `.claude/game-director/pending.md`.
 아이템 갯수: 16 → 20 (+4 — 꼬치 2 + 구이 2). 조합 레시피: 9 → 13 (+4). 시트 `아이템마스터`·`조합레시피` 각 4행 append.
 `fetch_data.py::build_combos_from_sheet` 1재료 레시피 허용 (기존 `a and b and r` 필터 → `a and r`). `findRecipesContainingAny`의 `uniq.size<=1` 필터가 합성 패널에서 1재료 자동 제외하므로 회귀 없음.
+**D-58 요점**: `HuntCombatModal` 지역 컴포넌트 `StatBadges`·`EvadeBadge` 도입. 배지 형식 3종(`🗡️+N` / `N%` / `🏹+N`) 통일. `computedEvades = useMemo` 로 슬롯별 최종 회피율 계산 — 공식은 `combatDeck.js::resolveHunt` L232 SSOT 참조 주석. damage>0 & finalEvade<baseEvade 시 초록+bold. `card.accuracy`는 `buildHuntDeck`(D-50) 합산값 그대로 읽기만 — 이중 합산 없음. `.evade-changed` 0.2s 트랜지션. 숫자 다이얼 연출은 차기 이터레이션으로 제외.
 브라우저 E2E는 요한 QA 대기 (`pending.md` 12차 세션 블록 참조).
 
 마지막 검증: 2026-04-23 (**10th session — 웹 세션, claude.ai/code Linux 샌드박스**, UI 이터레이션 포함).

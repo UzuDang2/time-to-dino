@@ -5,6 +5,52 @@
 
 ---
 
+## D-58. HuntCombatModal 수치 배지 통일 + 적 슬롯 실시간 회피율 (2026-04-24, 12th 세션)
+
+**요한 원문**: "사냥 모달의 수치 표기가 들쭉날쭉이다. `공4`, `명중 +20%`, `회피 30%`가 서로 라벨 스타일이 달라 읽기 어렵다. 아이콘 + 숫자로 통일해라. 그리고 창을 슬롯에 놓으면 적의 회피율이 실제로 줄어든 값으로 바로 보여야 한다. 숫자 다이얼 연출은 다음 이터레이션."
+
+**결정**:
+
+1) **카드 수치 배지 3종 통일** — `HuntCombatModal` 내부에 `StatBadges({ card })` 지역 컴포넌트 도입.
+   - `🗡️+N` (빨강 `#e06666`) — damage>0 일 때만.
+   - `N%` (기본 `#aaa`, 아이콘 없음) — success_rate 항상.
+   - `🏹+N` (초록 `#8bd17c`) — damage>0 AND accuracy>0 일 때만.
+   - 순서 고정: 🗡️ → % → 🏹. `inline-flex` + `whiteSpace: nowrap`로 줄바꿈 금지.
+   - 기존 텍스트 라벨(`공N`, `명중 +N%`) 전부 제거. 내 슬롯·내 손패 두 곳 동일 규칙.
+   - 내구 배지(`내구 N/M`)는 D-51 분기 그대로 유지 — 별도 줄, 별도 색(노랑).
+
+2) **적 슬롯 최종 회피율 실시간 반영** — `computedEvades = React.useMemo(...)` 슬롯별 계산.
+   - **공식 불변식(SSOT)**: `finalEvade = max(0, prey.evade_rate - card.accuracy)` — `combatDeck.js::resolveHunt` L232 `effectiveEvade`와 **글자 단위 동일**. useMemo 위 주석에 SSOT 위치 명시.
+   - damage=0 카드(dodge/run_away) 또는 빈 슬롯 → base 그대로 (기본색).
+   - damage>0 & finalEvade < baseEvade → 초록 `#8bd17c` + bold.
+   - `EvadeBadge({ baseEvade, finalEvade, consumed })` 지역 컴포넌트로 추출. `consumed` 는 턴 로그 소진 여부(투명도).
+
+3) **이중 합산 방지** — `card.accuracy` 는 `buildHuntDeck`(D-50)에서 이미 카드+무기 합산된 값. 렌더 레이어는 읽기 전용.
+
+4) **숫자 다이얼 연출 제외** — 이터레이션 범위 축소. 단순 fadeIn(color/opacity 0.2s transition)만. 이유: (a) 카운트업 연출은 색 변화와 동시 재생 시 시선 분산, (b) 400ms 이상 지연은 카드 배치 UX를 둔하게 만듦, (c) 다음 회차에서 별도 스펙으로 다룰 것.
+
+**근거**:
+- D-50 `buildHuntDeck` 개편으로 `card.accuracy` 가 카드+무기 통합값이 되면서, 유저가 "창을 놓으면 회피가 얼마나 떨어지는지" 실시간으로 볼 수 없는 것이 반쯤 버그였다. 결과(resolveHunt) 로그에는 나오지만 배치 단계에서 안 보였다.
+- 라벨 다양성은 D-46/D-47 증분 추가 과정에서 파편화됐다. `공`/`명중 +`/`회피` 가 공존하는 상태를 아이콘으로 수렴.
+- SSOT 주석은 공식 분기가 발생하는 순간(예: 명중률 소프트캡 도입) 렌더 레이어만 업데이트되는 사고를 방지하기 위함.
+
+**관련 파일**:
+- `index.html::StatBadges` (신규, 모듈 상단 지역 컴포넌트).
+- `index.html::EvadeBadge` (신규).
+- `index.html::HuntCombatModal` — `computedEvades` useMemo, 내 슬롯/손패/적 슬롯 렌더 3곳 교체.
+- `gameStyles.css::.evade-changed` — color/opacity 0.2s 트랜지션.
+- `combatDeck.js::resolveHunt` L232 — SSOT 공식 (**변경 없음**, 주석 참조용).
+
+**비파괴적**:
+- `resolveHunt` 로직 불변. `buildHuntDeck` 불변. 배지는 렌더 전용.
+- 내구 배지·∞/×N 뱃지 등 기존 분기 영향 없음.
+
+**후속**:
+- 숫자 다이얼 연출은 별도 이터레이션.
+- 다른 배지 컨벤션(전투 HUD, 보스 체력 등) 일괄 통일은 D-58 범위 외.
+
+---
+
 ## D-37. HUD 2줄 압축 — 3개 한 줄 + 보스/발각 한 줄 (2026-04-22, 7th 세션)
 
 **요한 원문**: "생명력과 배고픔, 시간을 한줄로 표현해줘. 시간은 좀 짧아져도 되니까 세개를 한줄로. 보스 순찰표시와 발각률도 한줄로. 모바일에서 맵이 좀 더 많은 영역으로 잘 보이게"

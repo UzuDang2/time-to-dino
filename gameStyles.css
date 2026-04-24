@@ -399,3 +399,9 @@ button:disabled {
 .gauge-warning {
     animation: gauge-warning-pulse 0.6s ease-in-out infinite alternate;
 }
+
+/* D-58 (2026-04-24): HuntCombatModal 적 슬롯 회피율 변경 트랜지션.
+   카드 배치/해제 시 색·투명도 부드럽게 전환. 숫자 다이얼 연출은 추후 이터레이션. */
+.evade-changed {
+    transition: color 0.2s ease, opacity 0.2s ease;
+}
