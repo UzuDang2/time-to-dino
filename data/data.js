@@ -214,7 +214,9 @@ window.TTD_DATA = {
       "meat": 3,
       "habitat": "덤불",
       "evade_per_turn": "30,30,20",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "mouse",
@@ -227,7 +229,9 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "덤불",
       "evade_per_turn": "20,20,10",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "squirrel",
@@ -240,7 +244,9 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "숲",
       "evade_per_turn": "40,40,25",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "bird",
@@ -253,7 +259,9 @@ window.TTD_DATA = {
       "meat": 3,
       "habitat": "평원",
       "evade_per_turn": "40,40,25",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "salamander",
@@ -266,7 +274,9 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "숲",
       "evade_per_turn": "20,20,10",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "snake",
@@ -279,7 +289,9 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "덤불",
       "evade_per_turn": "20,20,10",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "frog",
@@ -292,7 +304,9 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "덤불",
       "evade_per_turn": "30,30,20",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "crab",
@@ -305,7 +319,9 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "시냇물",
       "evade_per_turn": "20,20,10",
-      "drop_item": "crab_whole"
+      "drop_item": "crab_whole",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "grasshopper",
@@ -318,7 +334,9 @@ window.TTD_DATA = {
       "meat": 1,
       "habitat": "평원",
       "evade_per_turn": "50,50,30",
-      "drop_item": "grasshopper_whole"
+      "drop_item": "grasshopper_whole",
+      "actions_per_turn": "",
+      "defense": ""
     },
     {
       "id": "boar",
@@ -329,35 +347,41 @@ window.TTD_DATA = {
       "evade_rate": 15,
       "type": "반격형",
       "meat": 5,
-      "habitat": "",
+      "habitat": "덤불,숲",
       "evade_per_turn": "",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "attack,attack,defend,evade",
+      "defense": 1
     },
     {
       "id": "dinosaur",
       "name": "작은 공룡",
       "level": 2,
       "hp": 4,
-      "attack": 1,
+      "attack": 2,
       "evade_rate": 15,
       "type": "반격형",
       "meat": 4,
-      "habitat": "",
+      "habitat": "동굴",
       "evade_per_turn": "",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "attack,evade,attack,peek",
+      "defense": 1
     },
     {
       "id": "deer",
       "name": "사슴",
       "level": 2,
       "hp": 7,
-      "attack": 0,
+      "attack": 2,
       "evade_rate": 50,
       "type": "회피형",
       "meat": 7,
-      "habitat": "",
+      "habitat": "평원,숲",
       "evade_per_turn": "",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "evade,evade,attack,peek",
+      "defense": 1
     },
     {
       "id": "badger",
@@ -368,48 +392,56 @@ window.TTD_DATA = {
       "evade_rate": 15,
       "type": "반격형",
       "meat": 6,
-      "habitat": "",
+      "habitat": "덤불",
       "evade_per_turn": "",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "defend,attack,evade,attack",
+      "defense": 1
     },
     {
       "id": "fox",
       "name": "여우",
       "level": 2,
       "hp": 5,
-      "attack": 0,
+      "attack": 2,
       "evade_rate": 60,
       "type": "회피형",
       "meat": 5,
-      "habitat": "",
+      "habitat": "숲",
       "evade_per_turn": "",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "evade,attack,evade,peek",
+      "defense": 1
     },
     {
       "id": "turkey",
       "name": "큰 새",
       "level": 2,
       "hp": 4,
-      "attack": 1,
+      "attack": 2,
       "evade_rate": 15,
       "type": "반격형",
       "meat": 4,
-      "habitat": "",
+      "habitat": "평원",
       "evade_per_turn": "",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "attack,evade,defend,peek",
+      "defense": 1
     },
     {
       "id": "armadillo",
       "name": "아르마딜로",
       "level": 2,
       "hp": 8,
-      "attack": 0,
+      "attack": 2,
       "evade_rate": 10,
       "type": "방어형",
       "meat": 5,
-      "habitat": "",
+      "habitat": "동굴",
       "evade_per_turn": "",
-      "drop_item": ""
+      "drop_item": "",
+      "actions_per_turn": "defend,defend,evade,peek",
+      "defense": 1
     }
   ],
   "SPECIAL_CARDS": [

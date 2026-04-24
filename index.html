@@ -2071,7 +2071,9 @@
         }
 
         function HuntCombatModal({ prey, inventory, combatCards, onResolve, onCancel }) {
-            const [slots, setSlots] = useState([null, null, null]);
+            // D-75: Level 2 prey는 4턴. Level 1은 기존 3턴.
+            const SLOT_COUNT = Number(prey && prey.level) === 2 ? 4 : 3;
+            const [slots, setSlots] = useState(() => Array(SLOT_COUNT).fill(null));
             const [hand, setHand] = useState(() => CombatDeck.buildHuntDeck(combatCards, inventory));
             const [phase, setPhase] = useState('select');     // 'select' | 'resolve' | 'done'
             const [logs, setLogs] = useState([]);             // 표시된 턴 로그
@@ -2083,6 +2085,23 @@
             //     finalEvade = max(0, baseEvadeT - card.accuracy)
             //   damage=0 카드 / 빈 슬롯 → base(턴별) 그대로.
             //   card.accuracy 는 buildHuntDeck 이 이미 카드+무기 합산한 값(D-50). 이중 합산 금지.
+            // D-75: Level 2 prey — actions_per_turn CSV 파싱. 적 행동 슬롯 라벨에 사용.
+            const preyActions = React.useMemo(() => {
+                if (SLOT_COUNT !== 4) return null;
+                const raw = prey && prey.actions_per_turn;
+                const defaults = ['attack', 'evade', 'attack', 'peek'];
+                const allowed = new Set(['attack','defend','evade','peek']);
+                const parts = (raw == null || raw === '')
+                    ? defaults
+                    : String(raw).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                const out = [];
+                for (let i = 0; i < 4; i++) {
+                    const tok = parts[i] != null ? parts[i] : parts[parts.length - 1] || 'evade';
+                    out.push(allowed.has(tok) ? tok : 'evade');
+                }
+                return out;
+            }, [prey.actions_per_turn, SLOT_COUNT]);
+
             const computedEvades = React.useMemo(() => {
                 const byTurn = CombatDeck.parseEvadesByTurn(prey);
                 const fleeCount = Math.max(0, Number(prey.fleeCount) || 0);
@@ -2310,10 +2329,10 @@
                             </div>
                         )}
 
-                        {/* D-48: 내 슬롯을 적 행동 위로 — 유저 턴 먼저 보이도록. */}
+                        {/* D-48/D-75: 내 슬롯 — L1 3칸 / L2 4칸. */}
                         <div style={{ marginBottom: '10px' }}>
                             <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>내 슬롯</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: '6px' }}>
                                 {slots.map((card, i) => (
                                     <div key={i}
                                         onClick={() => handleSlotClick(i)}
@@ -2345,14 +2364,21 @@
                             </div>
                         </div>
 
-                        {/* 적 패턴 3슬롯 — D-48 개정: 3턴 모두 '회피' (동적 evade_rate).
-                            3턴 소진 후 hp>0이면 자동 도망. */}
+                        {/* 적 패턴 슬롯 — D-48/D-75: 3턴(L1) 또는 4턴(L2). L2는 preyActions로 턴별 행동 라벨.
+                            턴 소진 후 hp>0이면 자동 도망. */}
                         <div style={{ marginBottom: '10px' }}>
                             <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>적 행동</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                                {[0, 1, 2].map((i) => {
+                            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: '6px' }}>
+                                {Array.from({ length: SLOT_COUNT }, (_, i) => {
                                     const ev = computedEvades[i] || { base: 20, final: 20 };
                                     const consumed = !!logs.find(l => l.turn === i + 1);
+                                    const action = preyActions ? preyActions[i] : 'evade';
+                                    const actionLabel = (
+                                        action === 'attack' ? '공격'
+                                        : action === 'defend' ? '방어'
+                                        : action === 'peek' ? '눈치'
+                                        : '회피'
+                                    );
                                     return (
                                         <div key={i} style={{
                                             padding: '8px 4px',
@@ -2364,7 +2390,17 @@
                                             opacity: consumed ? 0.5 : 1
                                         }}>
                                             T{i + 1}<br/>
-                                            <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />
+                                            {/* L2: 턴별 행동 라벨 + (evade 턴만) 회피율 배지 */}
+                                            {SLOT_COUNT === 4 ? (
+                                                <>
+                                                    <span style={{ color: '#ddd' }}>{actionLabel}</span>
+                                                    {action === 'evade' && (
+                                                        <><br/><EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} /></>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -3276,7 +3312,16 @@
                             // D-60: 턴별 회피율 CSV ("30,30,20") — 빈값이면 resolveHunt/UI에서 evade_rate로 폴백.
                             evade_per_turn: preyDef.evade_per_turn || '',
                             // D-60: 이 prey 개체가 그동안 몇 번 도망쳤는지 — 턴별 회피율에서 *10 차감.
-                            fleeCount: prey.fleeCount || 0
+                            fleeCount: prey.fleeCount || 0,
+                            // D-74/D-75: Level 2 prey 4턴 시스템.
+                            //   level=2면 HuntCombatModal이 4슬롯으로 구성, resolveHunt가 4턴 actions DSL 적용.
+                            //   attack: prey 공격력 (유저가 받는 대미지 - 유저 카드 defense).
+                            //   defense: prey 'defend' 턴의 방어값 (유저 공격 감쇄).
+                            //   actions_per_turn: 4턴 행동 CSV.
+                            level: Number(preyDef.level) || 1,
+                            attack: Number(preyDef.attack) || 0,
+                            defense: Number(preyDef.defense) || 0,
+                            actions_per_turn: preyDef.actions_per_turn || ''
                         }
                     });
                     setMessage(`${preyDef.name || '사냥감'}과 전투를 시작한다.`);

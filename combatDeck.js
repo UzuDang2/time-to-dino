@@ -207,22 +207,35 @@
         return out;
     }
 
-    // D-48/D-50/D-51/D-60 개정: 사냥 전투 해결 로직.
-    //   3턴 고정. 모든 턴 공통으로 prey는 '회피'.
+    // D-75: prey.actions_per_turn DSL 파싱 → 턴별 행동 배열.
+    //   CSV ('attack,evade,peek,defend'). 빈값이면 기본값 ['attack','evade','attack','peek'].
+    //   각 토큰이 허용 집합에 없으면 'evade'로 치환(안전 폴백).
+    function parsePreyActions(prey, turnCount) {
+        const allowed = new Set(['attack', 'defend', 'evade', 'peek']);
+        const defaults = ['attack', 'evade', 'attack', 'peek'];
+        const raw = prey && prey.actions_per_turn;
+        const parts = (raw == null || raw === '')
+            ? defaults
+            : String(raw).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        const out = [];
+        for (let i = 0; i < turnCount; i++) {
+            const token = parts[i] != null ? parts[i] : parts[parts.length - 1] || 'evade';
+            out.push(allowed.has(token) ? token : 'evade');
+        }
+        return out;
+    }
+
+    // D-48/D-50/D-51/D-60/D-74/D-75 개정: 사냥 전투 해결 로직.
+    //   Level 1 (기본): 3턴 고정, 모든 턴 prey='회피'.
+    //   Level 2 (prey.level === 2): 4턴 고정. prey.actions_per_turn 시트 DSL로 턴별 행동.
+    //     - attack: prey가 공격. 유저가 defense>0 카드 배치 시 finalDamage = max(0, preyAttack - cardDefense).
+    //     - defend: prey 방어 태세. 유저 공격 대미지에서 prey.defense 감쇄.
+    //     - evade : 기존 회피 로직 그대로 (evadesByTurn 기반).
+    //     - peek  : 아무 행동 없음. evade=0 간주 → 유저 공격 100% 명중(success_rate만 굴림).
+    //   D-74: 반환 객체에 `playerDamageTaken` — 유저 HP 차감에 사용.
     //   D-60: 턴별 회피율(evade_per_turn) + 도주 누적 패널티(fleeCount*10).
-    //   각 턴:
-    //     1) 무기 요구 카드인데 weaponState의 durabilityLeft<=0 → auto-fail (무기 부재).
-    //     2) 플레이어 카드 success_rate 판정 → run_away 성공 시 player_fled.
-    //     3) damage>0이면 baseEvadeT = evadesByTurn[t] - fleeCount*10 (max 0).
-    //        effectiveEvade = max(0, baseEvadeT - card.accuracy).
-    //     4) cardHit & 공격 실행된 경우, 무기 내구도 차감
-    //        (full_loss='Y'면 남은 durability 전부 0 → 인벤 제거; 아니면 -1).
-    //   반환: { outcome, turns, preyHpFinal, weaponUsage }
-    //     weaponUsage: { [weaponId]: { used:N, broken:bool, durabilityFinal } }
     //
     // opts.weaponState: { [weaponId]: { durabilityLeft:number, fullLossSeed:false } }
-    //   UI에서 각 무기 인스턴스의 현재 durabilityLeft를 미리 세팅해 넘긴다.
-    //   동일 weaponId 여러 자루가 있으면 상위에서 "한 자루씩 순차" 처리를 구현(여기선 1자루 추적).
     function resolveHunt(prey, userSlots, opts) {
         opts = opts || {};
         const weaponState = {};
@@ -260,10 +273,38 @@
 
         let terminatedOutcome = null;
 
-        for (let t = 0; t < 3; t++) {
+        const isLevel2 = Number(prey && prey.level) === 2;
+        const turnCount = isLevel2 ? 4 : 3;
+        const preyActions = isLevel2 ? parsePreyActions(prey, turnCount) : null;
+        const preyDefense = Math.max(0, Number(prey && prey.defense) || 0);
+
+        for (let t = 0; t < turnCount; t++) {
             const card = userSlots[t];
+            // L2: prey 행동 결정. L1: 고정 '회피'.
+            const preyActionRaw = isLevel2 ? preyActions[t] : 'evade';
+            const preyActionLabel = (
+                preyActionRaw === 'attack' ? '공격'
+                : preyActionRaw === 'defend' ? '방어'
+                : preyActionRaw === 'peek'   ? '눈치'
+                : '회피'
+            );
+
+            // D-74: 유저 카드의 defense로 prey 공격 감쇄 — preyAction='attack'일 때만 적용.
+            const cardDefense = Math.max(0, Number(card && card.defense) || 0);
+            const takeDamageThisTurn = () => {
+                if (preyActionRaw !== 'attack' || preyAttack <= 0) return 0;
+                const dmg = Math.max(0, preyAttack - cardDefense);
+                playerDamageTaken += dmg;
+                return dmg;
+            };
+
             if (!card) {
-                turns.push({ turn: t + 1, preyAction: '회피', userCard: null, hit: false, preyHpAfter: hp });
+                const dmgTaken = takeDamageThisTurn();
+                turns.push({
+                    turn: t + 1, preyAction: preyActionLabel, userCard: null,
+                    hit: false, preyHpAfter: hp,
+                    ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
+                });
                 continue;
             }
 
@@ -271,9 +312,11 @@
             if (card.weaponId) {
                 const ws = weaponState[card.weaponId];
                 if (!ws || ws.durabilityLeft <= 0) {
+                    const dmgTaken = takeDamageThisTurn();
                     turns.push({
-                        turn: t + 1, preyAction: '회피', userCard: card,
-                        hit: false, autoFail: true, reason: 'weapon_missing', preyHpAfter: hp
+                        turn: t + 1, preyAction: preyActionLabel, userCard: card,
+                        hit: false, autoFail: true, reason: 'weapon_missing', preyHpAfter: hp,
+                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
                     });
                     continue;
                 }
@@ -284,49 +327,64 @@
             // 도망치기 성공 분기.
             if (card.id === 'run_away' && cardHit) {
                 turns.push({
-                    turn: t + 1, preyAction: '회피', userCard: card,
+                    turn: t + 1, preyAction: preyActionLabel, userCard: card,
                     outcome: 'player_flee', preyHpAfter: hp
                 });
                 terminatedOutcome = 'player_fled';
                 break;
             }
 
-            if (cardHit && (card.damage || 0) > 0) {
+            const damageOut = Number(card.damage) || 0;
+            if (cardHit && damageOut > 0) {
                 // D-50/D-60: effectiveEvade = max(0, evadesByTurn[t] - fleeCount*10 - card.accuracy).
-                const baseEvadeT = Math.max(0, evadesByTurn[t] - fleeCount * 10);
+                //   D-75: preyAction='peek' → evade 0 (회피 포기, 명중 보장). 'defend'도 회피는 별도.
+                let baseEvadeT = Math.max(0, (evadesByTurn[t] || 0) - fleeCount * 10);
+                if (isLevel2 && (preyActionRaw === 'peek' || preyActionRaw === 'attack' || preyActionRaw === 'defend')) {
+                    // L2에서는 'evade' 턴만 회피 굴림. 그 외는 0.
+                    if (preyActionRaw !== 'evade') baseEvadeT = 0;
+                }
                 const effectiveEvade = Math.max(0, baseEvadeT - (Number(card.accuracy) || 0));
                 const preyEvaded = Math.random() * 100 < effectiveEvade;
 
                 // 공격 실행 자체는 성공 — 무기 사용 카운트(명중/회피 무관).
-                // 요한 스펙: "창던지기 성공 시 창이 날아가 사라짐" — cardHit 기준이지 명중 여부와 무관.
                 if (card.weaponId) {
                     const fullLoss = String(card.full_loss || '').toUpperCase() === 'Y';
                     recordWeaponUse(card.weaponId, fullLoss);
                 }
 
                 if (!preyEvaded) {
-                    hp -= card.damage;
+                    // D-75: preyAction='defend' → 유저 공격 대미지에서 prey.defense 감쇄.
+                    const defenseReduction = (isLevel2 && preyActionRaw === 'defend') ? preyDefense : 0;
+                    const appliedDamage = Math.max(0, damageOut - defenseReduction);
+                    hp -= appliedDamage;
+                    const dmgTaken = takeDamageThisTurn();
                     turns.push({
-                        turn: t + 1, preyAction: '회피', userCard: card,
-                        hit: true, preyEvaded: false, damage: card.damage,
-                        effectiveEvade, preyHpAfter: hp
+                        turn: t + 1, preyAction: preyActionLabel, userCard: card,
+                        hit: true, preyEvaded: false, damage: appliedDamage,
+                        effectiveEvade, preyHpAfter: hp,
+                        ...(defenseReduction > 0 ? { preyDefended: defenseReduction } : {}),
+                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
                     });
                     if (hp <= 0) {
                         terminatedOutcome = 'victory';
                         break;
                     }
                 } else {
+                    const dmgTaken = takeDamageThisTurn();
                     turns.push({
-                        turn: t + 1, preyAction: '회피', userCard: card,
+                        turn: t + 1, preyAction: preyActionLabel, userCard: card,
                         hit: true, preyEvaded: true,
-                        effectiveEvade, preyHpAfter: hp
+                        effectiveEvade, preyHpAfter: hp,
+                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
                     });
                 }
             } else {
-                // 카드 자체 실패(success_rate 미달) — 무기 소모 없음 (던지기 전에 놓친 셈).
+                // 카드 자체 실패(success_rate 미달) 또는 damage=0 카드.
+                const dmgTaken = takeDamageThisTurn();
                 turns.push({
-                    turn: t + 1, preyAction: '회피', userCard: card,
-                    hit: false, preyHpAfter: hp
+                    turn: t + 1, preyAction: preyActionLabel, userCard: card,
+                    hit: false, preyHpAfter: hp,
+                    ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
                 });
             }
         }
