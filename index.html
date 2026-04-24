@@ -2044,21 +2044,24 @@
             const [logs, setLogs] = useState([]);             // 표시된 턴 로그
             const [result, setResult] = useState(null);
 
-            // D-58: 슬롯별 최종 회피율 계산.
-            //   SSOT: combatDeck.js::resolveHunt L232 effectiveEvade 공식과 동일.
-            //     finalEvade = max(0, prey.evade_rate - card.accuracy)
-            //   damage=0 카드 / 빈 슬롯 → base 그대로(회피 보정 없음).
+            // D-58/D-60: 슬롯별 최종 회피율 계산 (턴별 base 반영).
+            //   SSOT: combatDeck.js::resolveHunt effectiveEvade 공식과 동일.
+            //     baseEvadeT = max(0, evadesByTurn[t] - fleeCount*10)
+            //     finalEvade = max(0, baseEvadeT - card.accuracy)
+            //   damage=0 카드 / 빈 슬롯 → base(턴별) 그대로.
             //   card.accuracy 는 buildHuntDeck 이 이미 카드+무기 합산한 값(D-50). 이중 합산 금지.
             const computedEvades = React.useMemo(() => {
-                const base = (Number(prey.evade_rate) >= 0) ? Number(prey.evade_rate) : 20;
-                return slots.map(card => {
+                const byTurn = CombatDeck.parseEvadesByTurn(prey);
+                const fleeCount = Math.max(0, Number(prey.fleeCount) || 0);
+                return slots.map((card, i) => {
+                    const base = Math.max(0, (byTurn[i] ?? 20) - fleeCount * 10);
                     if (!card || !((Number(card.damage) || 0) > 0)) {
                         return { base, final: base };
                     }
                     const final = Math.max(0, base - (Number(card.accuracy) || 0));
                     return { base, final };
                 });
-            }, [slots, prey.evade_rate]);
+            }, [slots, prey.evade_rate, prey.evade_per_turn, prey.fleeCount]);
 
             const hpPct = Math.max(0, Math.min(100, ((prey.hp - (prey.hp - (prey.hpCurrent ?? prey.hp))) / prey.hp) * 100));
             // 전투 시작 시 hpCurrent = prey.hp. 이후 표시용으로만 사용.
@@ -2717,11 +2720,14 @@
                     }
 
                     const hpFinal = (typeof result.preyHpFinal === 'number') ? result.preyHpFinal : prey.hp;
+                    // D-60: 이 prey 개체의 도주 횟수 누적. 다음 재조우 시 턴별 회피율에서 *10 차감.
                     if (candidates.length > 0) {
                         const dest = candidates[Math.floor(Math.random() * candidates.length)];
                         const fromTile = prey.tileId;
                         setPreys(prev => prev.map(p =>
-                            p.id === prey.id ? { ...p, tileId: dest, hpCurrent: hpFinal } : p
+                            p.id === prey.id
+                                ? { ...p, tileId: dest, hpCurrent: hpFinal, fleeCount: (p.fleeCount || 0) + 1 }
+                                : p
                         ));
                         // 원 타일 trace 제거 + 도망간 새 타일에 trace 추가.
                         setPreyTraceTiles(prev => {
@@ -2733,7 +2739,9 @@
                     } else {
                         // 이론상 도달 불가 (맵 전체에 non-reserved 타일이 하나도 없는 경우). 안전망.
                         setPreys(prev => prev.map(p =>
-                            p.id === prey.id ? { ...p, hpCurrent: hpFinal } : p
+                            p.id === prey.id
+                                ? { ...p, hpCurrent: hpFinal, fleeCount: (p.fleeCount || 0) + 1 }
+                                : p
                         ));
                     }
                     setMessage(withConsumed('사냥감이 도망쳤다. 발자국이 남아있다.'));
