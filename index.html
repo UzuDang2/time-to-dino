@@ -1165,12 +1165,14 @@
 
             return (
                 <div className="modal">
-                    <div className="modal-content">
+                    <div className="modal-content inventory-modal">
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                             <h3>가방</h3>
                             <button onClick={() => { inventory.cancelSelection(); closeInventory(); }}>닫기</button>
                         </div>
-                        <div style={{ position: 'relative' }}>
+                        <div className="inventory-layout">
+                            <div className="inventory-main">
+                                <div style={{ position: 'relative' }}>
                             <div className="inventory-grid">
                                 {Array(ROWS).fill(null).map((_, row) =>
                                     Array(COLS).fill(null).map((_, col) => {
@@ -1283,24 +1285,29 @@
                             </div>
                         ) : (
                             <div style={{ marginTop: '10px', fontSize: '11px', color: '#aaa' }}>
-                                짧게 탭 = 정보 · 길게 누르면 선택해서 이동/머지
+                                짧게 탭 = 선택/이동 · 길게 누르면 정보 · 조합은 오른쪽 패널의 [만들기]
                             </div>
                         )}
-                        {/* D-48 합성 패널 — 선택된 아이템 기준으로 관련 레시피 자동 노출.
-                            닫기 = 선택 해제 (패널은 selectedItem이 null이면 자동으로 닫힘). */}
-                        {pendingCraft && (
-                            <CraftPanel
-                                recipes={pendingCraft.candidates}
-                                inventory={inventory}
-                                onCraft={handleCraft}
-                                onClose={() => {
-                                    inventory.cancelSelection();
-                                    setSelectedItem(null);
-                                    setPendingPos(null);
-                                    bump();
-                                }}
-                            />
-                        )}
+                            </div>
+                            {/* D-48 합성 패널 — 선택된 아이템 기준으로 관련 레시피 자동 노출.
+                                닫기 = 선택 해제 (패널은 selectedItem이 null이면 자동으로 닫힘).
+                                D-84: landscape에서 가방 우측에, portrait에서 가방 아래에 스택 (.inventory-layout + @media). */}
+                            {pendingCraft && (
+                                <div className="inventory-side">
+                                    <CraftPanel
+                                        recipes={pendingCraft.candidates}
+                                        inventory={inventory}
+                                        onCraft={handleCraft}
+                                        onClose={() => {
+                                            inventory.cancelSelection();
+                                            setSelectedItem(null);
+                                            setPendingPos(null);
+                                            bump();
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {infoItem && (

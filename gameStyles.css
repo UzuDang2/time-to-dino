@@ -345,6 +345,37 @@ button:disabled {
     z-index: 100;
 }
 
+/* D-84 (2026-04-24 요한 지시): 가방 모달 가로 배치.
+   landscape + 일정 폭 이상에서 가방 그리드와 합성 패널을 좌/우로.
+   portrait(모바일 세로)에서는 기본대로 세로 스택. */
+.inventory-modal {
+    max-width: min(92vw, 760px);
+}
+
+.inventory-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+}
+
+@media (orientation: landscape) and (min-width: 720px) {
+    .inventory-modal {
+        max-width: min(92vw, 840px);
+    }
+    .inventory-layout {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+    .inventory-main {
+        flex: 0 0 auto;
+    }
+    .inventory-side {
+        flex: 1 1 auto;
+        min-width: 260px;
+    }
+}
+
 .modal-content {
     background: #16213e;
     padding: 20px;
