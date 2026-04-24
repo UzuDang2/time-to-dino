@@ -9,6 +9,13 @@ class BossMonster {
         this.bossMovePhase = 0; // 0=1칸, 1=2칸
         this.health = 10;
         this.name = '티라노사우루스';
+        // D-77 (2026-04-24): 포식 상태.
+        //   predationTarget — 현재 쫓는 L2 prey id (null=포식 모드 아님).
+        //   predationStay   — 포식 중 남은 정지 턴 수 (0이면 포식 아님 / 종료).
+        //   onPredationComplete — 포식 완료 시 호출될 콜백. 사체 타일 생성 세터 주입.
+        this.predationTarget = null;
+        this.predationStay = 0;
+        this.onPredationComplete = null;
         // D-62: 보스가 밟은 타일 집합 — 일반 모드 랜덤 이동 시
         //   미방문 타일을 우선 선택해 전맵을 잘 돌아다니게 한다.
         //   chaseMode에선 사용하지 않음(플레이어 추격이 우선).
@@ -132,17 +139,89 @@ class BossMonster {
         return { q, r: pos.row };
     }
 
-    // 플레이어 이동 시 호출
-    onPlayerMove(playerTile, detectionRate) {
+    // 플레이어 이동 시 호출.
+    //   D-77: preys 배열을 받아 포식 이동 우선권 판단.
+    //     - predationStay > 0: 이번 턴 이동 스킵, 감소. 0이면 포식 완료 콜백 실행.
+    //     - 포식 중이 아니면 L2 prey 중 타일거리 2 이내가 있는지 확인, 있으면
+    //       BFS 첫 홉으로 전진. 타일 일치 시 포식 시작(predationStay=2, prey 제거).
+    //     - 포식 로직이 적용되지 않으면 기존 추격/일반 이동 경로 수행.
+    onPlayerMove(playerTile, detectionRate, preys) {
         this.playerMoveCount++;
-        
+
         // 발각률 80% 이상이면 추격 모드
         if (detectionRate >= 80 && !this.chaseMode) {
             this.chaseMode = true;
             console.log('보스 추격 모드 활성화!');
         }
-        
-        // 보스 이동 로직
+
+        // D-77: 포식 중이면 이번 턴은 정지. 0이 되면 포식 완료.
+        if (this.predationStay > 0) {
+            this.predationStay -= 1;
+            if (this.predationStay === 0) {
+                // 포식 완료 — 사체 타일 콜백. 이동 없음.
+                const completedAt = this.position;
+                const targetId = this.predationTarget;
+                this.predationTarget = null;
+                if (typeof this.onPredationComplete === 'function') {
+                    try { this.onPredationComplete(completedAt, targetId); }
+                    catch (e) { console.warn('[boss] onPredationComplete error:', e); }
+                }
+            }
+            return this.position === playerTile;
+        }
+
+        // D-77: 포식 타겟 탐색/추적 — L2 prey가 타일거리 2 이내면 포식 경로 우선.
+        //   1) 타겟이 없으면 탐색 (L2 prey 중 거리 ≤ 2).
+        //   2) 타겟이 있으면 해당 prey를 preys 배열에서 찾아 BFS 첫 홉으로 전진.
+        //      타겟이 이미 사라졌으면(이미 잡힌 경우 등) 타겟 해제하고 일반 경로.
+        //   3) 타겟 타일 도달 시 포식 시작(predationStay=2, onPredationStart 콜백).
+        if (Array.isArray(preys)) {
+            let target = null;
+            if (this.predationTarget) {
+                target = preys.find(p => p && p.id === this.predationTarget);
+                if (!target) {
+                    // 타겟이 사라짐(다른 경로로 소멸) — 포식 해제.
+                    this.predationTarget = null;
+                }
+            }
+            if (!target && !this.predationTarget) {
+                // 타겟 탐색: L2 + 거리 2 이내.
+                const nearL2 = preys.filter(p => {
+                    if (!p || typeof p.tileId !== 'number') return false;
+                    if (p.level != null && p.level !== 2) return false;
+                    const d = this.calculateDistance(this.position, p.tileId);
+                    return Number.isFinite(d) && d <= 2;
+                });
+                if (nearL2.length > 0) {
+                    nearL2.sort((a, b) =>
+                        this.calculateDistance(this.position, a.tileId)
+                        - this.calculateDistance(this.position, b.tileId));
+                    target = nearL2[0];
+                    this.predationTarget = target.id;
+                }
+            }
+
+            if (target) {
+                if (this.position !== target.tileId) {
+                    const hop = this._bfsFirstHopToAny(new Set([target.tileId]));
+                    if (hop !== null) {
+                        this.position = hop;
+                        this.visitedTiles.add(this.position);
+                    }
+                }
+                if (this.position === target.tileId) {
+                    // 포식 시작 — 2턴 정지.
+                    this.predationStay = 2;
+                    if (typeof this.onPredationStart === 'function') {
+                        try { this.onPredationStart(target.id, this.position); }
+                        catch (e) { console.warn('[boss] onPredationStart error:', e); }
+                    }
+                }
+                return this.position === playerTile;
+            }
+        }
+
+        // 기존 이동 로직.
         if (this.chaseMode) {
             // 추격 모드: 1칸, 2칸, 1칸 패턴
             if (this.playerMoveCount % 1 === 0) {
@@ -151,16 +230,15 @@ class BossMonster {
                     this.moveTowards(playerTile);
                 }
                 this.bossMovePhase = (this.bossMovePhase + 1) % 3;
-                if (this.bossMovePhase === 2) this.bossMovePhase = 0; // 1,2,1 패턴
+                if (this.bossMovePhase === 2) this.bossMovePhase = 0;
             }
         } else {
-            // 일반 모드: 2칸마다 1칸 랜덤 이동
             if (this.playerMoveCount % 2 === 0) {
                 this.moveRandom();
             }
         }
-        
-        return this.position === playerTile; // 플레이어와 조우 여부
+
+        return this.position === playerTile;
     }
 
     // 플레이어 방향으로 이동 (chase mode).

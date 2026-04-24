@@ -2668,6 +2668,12 @@
             const [preys, setPreys] = useState([]);
             const [preyTraceTiles, setPreyTraceTiles] = useState(new Set());
             const [activeHunt, setActiveHunt] = useState(null);
+            // D-77/D-78: 동물 사체 타일. 보스 포식 완료 시 여기에 tileId가 추가됨.
+            //   carcassMeatTaken은 이미 생고기 보너스 1회 소진한 타일(뒤져보기 보상용).
+            const [carcassTiles, setCarcassTiles] = useState(new Set());
+            const [carcassMeatTaken, setCarcassMeatTaken] = useState(new Set());
+            // D-78: listen 카드로 감지된 사체 trace 타일 — 👣 대신 🦴 표시.
+            const [carcassTraceTiles, setCarcassTraceTiles] = useState(new Set());
             const mapRef = useRef(null);
 
             // 토스트 발사 — entries는 묶음 표시 대상.
@@ -2986,6 +2992,25 @@
                 const newBoss = new BossMonster(newTiles, playerStart);
                 // D-62: setPosition은 visitedTiles에도 bossPos 동기화 — 잘못된 스폰 기록 방지.
                 newBoss.setPosition(bossPos);
+                // D-77: 포식 콜백 연결.
+                //   onPredationStart  — 타겟 L2 prey를 preys에서 제거(보스가 잡아먹기 시작).
+                //   onPredationComplete — 보스가 그 타일에서 2턴 정지를 끝낼 때 사체 타일 생성.
+                newBoss.onPredationStart = (targetPreyId, /*tileId*/) => {
+                    setPreys(prev => prev.filter(p => p.id !== targetPreyId));
+                    setPreyTraceTiles(prev => {
+                        // prey 제거 후 해당 tileId는 carcassTraceTiles로 옮길 수도 있지만,
+                        // 포식 완료 시점까진 아직 "사체"로 보이지 않으므로 기존 trace만 삭제.
+                        const next = new Set(prev);
+                        return next;
+                    });
+                };
+                newBoss.onPredationComplete = (tileId /*, targetPreyId */) => {
+                    setCarcassTiles(prev => {
+                        const next = new Set(prev);
+                        next.add(tileId);
+                        return next;
+                    });
+                };
                 setBoss(newBoss);
                 // D-53: 보스 이동 history 초기화 (시작 위치가 B1).
                 setBossMoveHistory([bossPos]);
@@ -3638,20 +3663,27 @@
                 //   미방문 타일 우선 로직이 자연히 적용된다(전맵 순회 강화).
                 //   boss.tiles 참조는 초기화 시 주입된 tiles — moveTo에서 만든 newTiles와
                 //   동일 객체(참조 공유). 안전을 위해 호출 전 최신 tiles 반영.
+                // D-77: 포식 이동 우선권 — boss.onPlayerMove에 L2 preys를 넘기면
+                //   타일거리 2 이내 L2 prey가 있으면 포식 경로가 우선 실행된다.
+                //   포식 중이 아니면 chase/일반 기존 경로 그대로.
+                boss.tiles = newTiles;
                 const bossStartPos = boss.position;
                 let newBossPos = boss.position;
-                if (newMoveCount % 2 === 0 && !boss.chaseMode) {
-                    boss.tiles = newTiles;
-                    boss.moveRandom();
-                    newBossPos = boss.position;
-                }
 
                 if (movedDetection >= 80 && !boss.chaseMode) {
                     boss.chaseMode = true;
                 }
 
-                if (boss.chaseMode) {
-                    boss.onPlayerMove(targetId, movedDetection);
+                // D-77: L2 prey만 추려서 보스에 전달 (포식 후보).
+                const preyDataArrBossMove = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                const l2Preys = (preys || []).filter(p => {
+                    const def = preyDataArrBossMove.find(pd => pd && pd.id === p.preyType);
+                    return def && def.level === 2;
+                });
+
+                // 일반 모드에서는 2턴마다, chase 모드에선 매 턴 호출.
+                if (boss.chaseMode || newMoveCount % 2 === 0) {
+                    boss.onPlayerMove(targetId, movedDetection, l2Preys);
                     newBossPos = boss.position;
                 }
 
