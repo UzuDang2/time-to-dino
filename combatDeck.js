@@ -149,13 +149,33 @@
         return deck;
     }
 
-    // D-48/D-50/D-51 개정: 사냥 전투 해결 로직.
-    //   3턴 고정. 모든 턴 공통으로 prey는 '회피' (evade_rate 판정, prey별 개별).
+    // D-60: prey.evade_per_turn (CSV "T1,T2,T3") 파싱 → 턴별 회피율 배열.
+    //   빈 값/미지정 → fallback [evade_rate, evade_rate, evade_rate] (3턴 공통).
+    //   항상 길이 3 보장. 부분 CSV("30,30")면 나머지는 마지막 값으로 패딩.
+    function parseEvadesByTurn(prey) {
+        const fallback = (Number(prey && prey.evade_rate) >= 0)
+            ? Number(prey.evade_rate) : 20;
+        const raw = prey && prey.evade_per_turn;
+        if (raw == null || raw === '') return [fallback, fallback, fallback];
+        const parts = String(raw).split(',').map(s => s.trim()).filter(Boolean);
+        if (parts.length === 0) return [fallback, fallback, fallback];
+        const out = [];
+        for (let i = 0; i < 3; i++) {
+            const token = parts[i] != null ? parts[i] : parts[parts.length - 1];
+            const n = Number(token);
+            out.push(Number.isFinite(n) ? n : fallback);
+        }
+        return out;
+    }
+
+    // D-48/D-50/D-51/D-60 개정: 사냥 전투 해결 로직.
+    //   3턴 고정. 모든 턴 공통으로 prey는 '회피'.
+    //   D-60: 턴별 회피율(evade_per_turn) + 도주 누적 패널티(fleeCount*10).
     //   각 턴:
     //     1) 무기 요구 카드인데 weaponState의 durabilityLeft<=0 → auto-fail (무기 부재).
     //     2) 플레이어 카드 success_rate 판정 → run_away 성공 시 player_fled.
-    //     3) damage>0이면 effectiveEvade = max(0, prey.evade_rate - card.accuracy).
-    //        effectiveEvade로 prey 회피 판정. 명중 시 hp 차감.
+    //     3) damage>0이면 baseEvadeT = evadesByTurn[t] - fleeCount*10 (max 0).
+    //        effectiveEvade = max(0, baseEvadeT - card.accuracy).
     //     4) cardHit & 공격 실행된 경우, 무기 내구도 차감
     //        (full_loss='Y'면 남은 durability 전부 0 → 인벤 제거; 아니면 -1).
     //   반환: { outcome, turns, preyHpFinal, weaponUsage }
@@ -175,7 +195,8 @@
         }
 
         let hp = prey.hp;
-        const evadeRate = (Number(prey.evade_rate) >= 0) ? Number(prey.evade_rate) : 20;
+        const evadesByTurn = parseEvadesByTurn(prey);
+        const fleeCount = Math.max(0, Number(prey && prey.fleeCount) || 0);
         const turns = [];
         const weaponUsage = {}; // 턴 내 누적 소모량
 
@@ -228,8 +249,9 @@
             }
 
             if (cardHit && (card.damage || 0) > 0) {
-                // D-50: effectiveEvade = max(0, evadeRate - totalAccuracy).
-                const effectiveEvade = Math.max(0, evadeRate - (Number(card.accuracy) || 0));
+                // D-50/D-60: effectiveEvade = max(0, evadesByTurn[t] - fleeCount*10 - card.accuracy).
+                const baseEvadeT = Math.max(0, evadesByTurn[t] - fleeCount * 10);
+                const effectiveEvade = Math.max(0, baseEvadeT - (Number(card.accuracy) || 0));
                 const preyEvaded = Math.random() * 100 < effectiveEvade;
 
                 // 공격 실행 자체는 성공 — 무기 사용 카운트(명중/회피 무관).
@@ -272,7 +294,7 @@
 
     const api = {
         buildCombatDeck, consumeExtraCard, RUNTIME_CARDS,
-        buildHuntDeck, resolveHunt, parseRequirement
+        buildHuntDeck, resolveHunt, parseRequirement, parseEvadesByTurn
     };
 
     if (typeof module !== 'undefined' && module.exports) {
