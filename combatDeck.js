@@ -238,6 +238,10 @@
         const fleeCount = Math.max(0, Number(prey && prey.fleeCount) || 0);
         const turns = [];
         const weaponUsage = {}; // 턴 내 누적 소모량
+        // D-74: 유저가 받은 누적 대미지. prey.attack이 있을 때만 의미 있음.
+        //   유저 카드의 defense로 감쇄 — finalDamage = max(0, preyAttack - cardDefense).
+        let playerDamageTaken = 0;
+        const preyAttack = Math.max(0, Number(prey && prey.attack) || 0);
 
         // 무기 사용 기록 헬퍼.
         const recordWeaponUse = (wid, fullLoss) => {
@@ -328,7 +332,7 @@
         }
 
         const outcome = terminatedOutcome || (hp <= 0 ? 'victory' : 'prey_fled');
-        return { outcome, turns, preyHpFinal: hp, weaponUsage };
+        return { outcome, turns, preyHpFinal: hp, weaponUsage, playerDamageTaken };
     }
 
     const api = {

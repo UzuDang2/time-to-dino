@@ -2021,15 +2021,17 @@
         //
         // 슬롯↔손패 이동은 uid 기준. "뒤 슬롯 고정" 원칙 — 슬롯→손패 복귀 시 다른 슬롯 위치 유지.
         // 확정 시 resolveHunt(prey, slots) → 턴 로그 순차 표시(500ms) → onResolve(result) 콜백.
-        // D-58: HuntCombatModal 수치 배지 통일.
-        //   - 🗡️+N / N% / 🏹+N 순서 고정, 줄바꿈 없음.
-        //   - damage=0 카드(dodge/run_away) 는 🗡️·🏹 생략, N%만 표시.
-        //   - 라벨 텍스트('공'/'명중 +N%') 전부 제거 — 아이콘 + 숫자로 통일.
-        const STAT_ICONS = { damage: '🗡️', accuracy: '🏹' };
-        const STAT_COLORS = { damage: '#e06666', accuracy: '#8bd17c' };
+        // D-58/D-74: HuntCombatModal 수치 배지 통일.
+        //   - 🗡️+N / N% / 🏹+N / 🛡️+N 순서 고정, 줄바꿈 없음.
+        //   - damage=0 && defense>0 → 🗡️ 숨기고 🛡️ 표시 (크아 웅크리기/방패 막기).
+        //   - damage=0 && defense=0 (dodge/run_away) → 🗡️·🏹 생략, N%만.
+        //   - 라벨 텍스트 전부 제거 — 아이콘 + 숫자로 통일.
+        const STAT_ICONS = { damage: '🗡️', accuracy: '🏹', defense: '🛡️' };
+        const STAT_COLORS = { damage: '#e06666', accuracy: '#8bd17c', defense: '#4db8ff' };
         function StatBadges({ card }) {
             const dmg = Number(card.damage) || 0;
             const acc = Number(card.accuracy) || 0;
+            const def = Number(card.defense) || 0;
             const sr = card.success_rate;
             return (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
@@ -2041,6 +2043,9 @@
                     )}
                     {dmg > 0 && acc > 0 && (
                         <span style={{ color: STAT_COLORS.accuracy }}>{STAT_ICONS.accuracy}+{acc}</span>
+                    )}
+                    {def > 0 && (
+                        <span style={{ color: STAT_COLORS.defense }}>{STAT_ICONS.defense}+{def}</span>
                     )}
                 </span>
             );
@@ -2751,6 +2756,21 @@
                 }
                 const withConsumed = (msg) =>
                     consumedSummary.length > 0 ? `${msg} (소모: ${consumedSummary.join(', ')})` : msg;
+
+                // D-74: 플레이어 HP 차감 — prey.attack과 유저 카드 defense 대결 결과 누적 대미지.
+                //   HP 0이면 게임오버('health'). 기존 체력 사망 경로 재사용.
+                //   사망 체크는 victory 보상 등과 독립적으로 적용(전투에서 잡았어도 0 HP면 사망).
+                const dmgTaken = Math.max(0, Number(result && result.playerDamageTaken) || 0);
+                if (dmgTaken > 0) {
+                    setHealth(h => {
+                        const nh = Math.max(0, h - dmgTaken);
+                        if (nh <= 0) {
+                            setGameOver(true);
+                            setDeathReason('health');
+                        }
+                        return nh;
+                    });
+                }
 
                 if (outcome === 'victory') {
                     // preys 제거
