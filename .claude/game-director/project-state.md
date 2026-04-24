@@ -315,3 +315,21 @@ SQLite-like 타입:
    - `inventory.js::ITEMS`에 slingshot 정적 폴백 등록.
 
 **브라우저 검증**: 이번 세션에선 미실행. 요한에게 수동 QA 위임 (pending.md 체크리스트 참조).
+
+## 2026-04-24 11차 세션 변경점 — 결과 화면 회고 강화 + 스크롤 패딩 (D-53/54)
+
+요한 노션 기획 E/F를 B/C/D 위에 추가 구현. 계획봇 계획서 + 요한 확정 스펙 기반.
+
+1. **E. 결과 화면 보스 경로 + 전체 맵 윤곽 (D-53)**:
+   - `Game`에 `bossMoveHistory` state 추가. `initializeGame`에서 `[bossPos]` 초기화.
+   - `moveTo`: 보스 이동 후 위치가 변경되고 history 끝과도 다르면 push. 중복 자동 제거.
+   - `GameMap`: `showPathView` 모드에서 `tiles.filter(!isEmpty)` 로 전체 공개.
+   - `HexTile`: `pathUnvisited` 플래그로 미방문 타일은 회색 반투명 + 라벨/마커 숨김. 방문 타일에는 플레이어 노란 원(좌) + 보스 빨간 원 `B{n}`(우) 나란히.
+   - `gameStyles.css`: `.hex-tile.path-unvisited`, `.boss-path-dot` 추가.
+
+2. **F. 원형 스크롤 패딩 (D-54)**:
+   - `mapGenerator.js`: `PADDING_HEXES = 7`, HEX_* 상수 추출. `generateHexPositions`에 xOffset/yOffset 반영 → 플레이 그리드가 캔버스 중앙. `getMapExtent(): {totalWidth, totalHeight}` 신설.
+   - `index.html::GameMap`: svg width/height 하드코딩(1100x1000) → `getMapExtent()`. useLayoutEffect 중앙 정렬은 tile.position(새 좌표) 기반이라 무변경 동작.
+   - 시각적 원형 테두리는 렌더 안 함(요한: 완전 투명).
+
+**브라우저 검증**: 미실행. 요한 수동 QA (pending.md E/F 체크리스트 참조).

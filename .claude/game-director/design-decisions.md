@@ -787,3 +787,40 @@ confirmPlacement:
 **Notion 등재는 skip**: D-30 이후 런타임 SSOT가 시트로 이관됐고, Notion 구 DB는 서사 참조용이다. 이번 세션에선 시트만 처리 — meat(D-46) 때와 동일 패턴.
 
 **파일**: `inventory.js`(ITEMS.slingshot), `combatDeck.js`(parseRequirement, buildHuntDeck 복합 요구), `index.html`(handleHuntResolve 복합 요구 소비), 시트 4개 탭 + `data/*.json` 재생성.
+
+## D-53. 결과 화면 보스 경로 + 전체 맵 윤곽 (2026-04-24, 11th 세션)
+
+**결정**: 승리 후 [맵 보기] 모드에서 ① 보스가 지나간 타일에 빨간 동그라미 + 순서 라벨(B1, B2...) 오버레이, ② 방문하지 않은 타일도 반투명 회색으로 렌더해 맵 전체 크기·형태를 공개한다. D-48의 플레이어 노란 번호(방문 순서)는 그대로 유지.
+
+**근거 (요한 지시)**: 승리 후 "회고" 맥락에서는 플레이어 동선만 보이는 게 부족하다. 보스가 실제로 어떻게 움직였는지, 얼마나 스치듯 지나갔는지 복기할 수 있어야 "아슬아슬했다"는 공포 감정이 보상으로 돌아온다. 미방문 타일까지 공개하는 이유는 "내가 실제 맵의 얼마만 본 거였나"를 확인시키는 것.
+
+**D-42 예외 처리**: 인게임에서는 보스 위치 가시성을 "방금 listen 성공한 순간"으로 제한(D-42). 결과 화면은 게임 종료 후 공개 리뷰 맥락이라 이 원칙의 예외로 둔다. 플레이 중 공포의 긴장과 결과 회고의 정보 공개는 서로 다른 목적.
+
+**스펙**:
+- `Game`에 `bossMoveHistory: number[]` state 추가. `initializeGame`에서 `[bossPos]` 로 초기화(시작 위치가 B1).
+- `moveTo`: 보스 이동 처리 직후, 새 위치가 이동 전과 다르고 history 끝값과도 다르면 push. 같은 자리 유지 턴과 A→B→B 중복은 skip(보스가 한 자리에 여러 턴 머물러도 라벨은 하나).
+- `GameMap`: `showPathView` 모드일 때 `tiles.filter(!isEmpty)`로 전체 타일 공개. 평상시엔 기존 visited/discovered/revealed 필터 유지.
+- `HexTile`:
+  - `pathUnvisited = showPathView && !tile.visited` 플래그로 회색 반투명 폴리곤만 그리고 라벨/마커/흔적/지역명 숨김.
+  - `bossMoveHistory.indexOf(tile.id)` ≥ 0 이면 우측에 빨간 원(#e94560) + `B{idx+1}` 라벨. 플레이어 노란 원은 좌측 그대로.
+- `gameStyles.css`: `.hex-tile.path-unvisited`(cursor·hover 중화), `.boss-path-dot`(드롭셰도우).
+
+**파일**: `index.html`(Game state, moveTo, GameMap 필터, HexTile 렌더), `gameStyles.css`.
+
+## D-54. 원형 스크롤 패딩 — 완전 투명 (2026-04-24, 11th 세션)
+
+**결정**: 7x7 플레이 그리드 주변에 `PADDING_HEXES = 7` 만큼 빈 hex 영역을 SVG 캔버스에 확보한다. 원형 테두리나 장식은 렌더하지 않는다(완전 투명). 유저는 스크롤 끝까지 밀어도 타일이 없는 빈 공간만 계속 이어져, "맵이 여기서 끝난다"는 경계감을 느끼지 못한다.
+
+**근거 (요한 원문)**: "유저가 맵 한계지점을 느끼는 부분이 없게." 맵 경계가 드러나면 플레이어는 무의식적으로 "모서리 안에서만 돌면 된다"는 안도감을 얻고, 공포의 개방감이 깨진다. 원형 테두리를 실제로 그리는 대신 "스크롤해도 계속 빈공간"이라는 물리적 거리감으로 처리.
+
+**스펙**:
+- `mapGenerator.js`:
+  - `PADDING_HEXES = 7`, `HEX_COL_STEP/ROW_STEP/HALF_*` 상수 추출.
+  - `generateHexPositions`: `xOffset = PADDING_HEXES * HEX_COL_STEP + 100`, `yOffset = PADDING_HEXES * HEX_ROW_STEP + 100` 을 모든 좌표에 더함. 플레이 그리드가 캔버스 중앙으로 이동.
+  - `getMapExtent(): { totalWidth, totalHeight }` 신설. GameMap의 svg width/height 산출용.
+- `index.html::GameMap`:
+  - 하드코딩 `width=1100 height=1000` → `new MapGenerator(7).getMapExtent()` (useMemo 1회).
+  - `useLayoutEffect` 초기 중앙 정렬은 `tiles[currentTile].position` (패딩 오프셋 반영된 새 좌표) 기반이라 자동 동작.
+- 타일은 기존 7x7만 렌더. 패딩 영역은 빈 공간.
+
+**파일**: `mapGenerator.js`(상수·generateHexPositions·getMapExtent), `index.html::GameMap`.
