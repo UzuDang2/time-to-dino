@@ -44,7 +44,7 @@ window.TTD_DATA = {
       "count": 1,
       "effect": "체력/배고픔 소폭 회복, 소음 최소",
       "detection": -5,
-      "consume": "category:음식;scale:recover=2",
+      "consume": "category:음식;bonus:recover=1",
       "extra_effect": ""
     }
   ],
@@ -1149,9 +1149,9 @@ window.TTD_DATA = {
         "none": 20
       },
       "평원": {
-        "env": 60,
+        "env": 80,
         "food": 10,
-        "none": 30
+        "none": 10
       },
       "시냇물": {
         "env": 30,
@@ -1159,9 +1159,9 @@ window.TTD_DATA = {
         "none": 30
       },
       "동굴": {
-        "env": 55,
-        "food": 20,
-        "none": 25
+        "env": 70,
+        "food": 10,
+        "none": 20
       }
     },
     "pool": {

@@ -41,7 +41,7 @@
     "count": 1,
     "effect": "체력/배고픔 소폭 회복, 소음 최소",
     "detection": -5,
-    "consume": "category:음식;scale:recover=2",
+    "consume": "category:음식;bonus:recover=1",
     "extra_effect": ""
   }
 ]
