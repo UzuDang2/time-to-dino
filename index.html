@@ -2965,8 +2965,8 @@
                 });
                 if (orphan.length === 0) return;
                 const orphanUids = new Set(orphan.map(c => c.uid));
+                // D-65: hunt_start는 무덤이 아니라 소멸 (요한 원문). setGraveyard 호출 제거.
                 setHand(prev => prev.filter(c => !orphanUids.has(c.uid)));
-                setGraveyard(prev => [...prev, ...orphan]);
             }, [preys, currentTile]);
 
             // D-63 (2026-04-24): D-59 revert.
@@ -3185,15 +3185,15 @@
                     const targetId = card.target && card.target.preyId;
                     const prey = (preys || []).find(p => p.id === targetId);
                     if (!prey) {
+                        // D-65: hunt_start는 무덤으로 가지 않고 소멸.
                         setMessage('사냥감이 사라졌다.');
                         setHand(prev => prev.filter(c => c.uid !== card.uid));
-                        setGraveyard(prev => [...prev, card]);
                         return;
                     }
                     const preyData = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
                     const preyDef = preyData.find(p => p.id === prey.preyType) || {};
+                    // D-65: hunt_start는 무덤으로 가지 않고 소멸.
                     setHand(hand.filter(c => c.uid !== card.uid));
-                    setGraveyard([...graveyard, card]);
                     setTime(time + card.time);
                     const newDetection = Math.min(100, Math.max(0, detection + card.detection));
                     setDetection(newDetection);
@@ -3467,9 +3467,11 @@
                 //   단, hunt_start는 overflow로 HAND_SIZE 카운트에서 제외.
                 const preyHere = (preys || []).find(p => p.tileId === targetId);
 
-                // 1) 손패 전부 무덤으로 (hunt_start 포함 — 재생성 규칙이라 상실 OK).
-                let newGraveyard = [...graveyard, ...hand];
-                let newDeck = [...deck];
+                // 1) 손패 전부 무덤으로. 단, hunt_start(overflow)는 아예 소멸 — 무덤/덱 풀에
+                //    포함되면 안 됨 (D-65 요한 원문). 기존 graveyard에 섞여 있던 hunt_start도 청소.
+                let newGraveyard = [...graveyard, ...hand]
+                    .filter(c => c && c.id !== 'hunt_start' && !c.overflow);
+                let newDeck = [...deck].filter(c => c && c.id !== 'hunt_start' && !c.overflow);
                 let newHand = [];
 
                 // 2) 덱에서 HAND_SIZE 드로우. 덱 소진 시 무덤 셔플.
