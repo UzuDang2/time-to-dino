@@ -1352,9 +1352,9 @@ window.TTD_DATA = {
   "DROP_TABLE": {
     "regions": {
       "숲": {
-        "env": 50,
-        "food": 40,
-        "none": 10
+        "env": 70,
+        "food": 25,
+        "none": 5
       },
       "덤불": {
         "env": 70,
