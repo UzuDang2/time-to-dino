@@ -78,6 +78,15 @@ class InventorySystem {
         //   REST_FALLBACK 패턴(D-23) 준용 — items.raw.json 동기화 + make data 후 자연 스왑.
         meat:         { name: '생고기',       shape: [[1]], grade: 1, mergeable: false, category: '음식',  merge_result: null },
 
+        // === D-57 요리 시스템: 꼬치(2재료 조합) + 구이(1재료 요리) ===
+        //   꼬치(2단계): meat/fish + branch. 효과 hunger+1, health-1 — 생고기 부담 유지.
+        //   구이(3단계): 꼬치 1재료 "요리". 효과 hunger+2, health+1 — 불에 익혀 안전·든든.
+        //   모두 일회용, 머지·합성 경로 없음. 구이는 휴식 카드 요리 모달 경유로만 생성.
+        meat_skewer:          { name: '생고기꼬치',   shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
+        fish_skewer:          { name: '물고기꼬치',   shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
+        grilled_meat_skewer:  { name: '고기꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
+        grilled_fish_skewer:  { name: '생선꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
+
         // === 레거시 (기존 카드 시스템 참조) — 후속 작업에서 1단계 체계로 흡수 예정 ===
         material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: false, merge_result: null },
         material_mid:  { name: '일반 재료', shape: [[1]], grade: 2, mergeable: false, merge_result: null },
