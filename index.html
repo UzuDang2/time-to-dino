@@ -295,7 +295,7 @@
         //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스가 있으면 보스 우선)
         //   - 흔적(👣 우상단): preyTraceTiles.has(tile.id) — visited 무관 (청각 단서).
         //   - D-48: 발자국 방향 화살표 제거 — 흔적(👣)만으로 단서 제공.
-        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, preys, preyTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
+        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
             const canMove = tiles[currentTile].connections.includes(tile.id);
@@ -306,6 +306,10 @@
             const showPrey = tile.visited && preyOnTile && !isBoss;
             const preyEmoji = showPrey ? (PREY_EMOJI[preyOnTile.preyType] || '❓') : null;
             const hasTrace = preyTraceTiles && preyTraceTiles.has && preyTraceTiles.has(tile.id);
+            // D-78: 사체 타일. visited && carcassTiles.has(tile.id)면 🦴 오버레이.
+            //   listen으로 감지된 인접 사체는 carcassTraceTiles에 들어가 trace 위치에 🦴 표시(visited 무관).
+            const hasCarcass = carcassTiles && carcassTiles.has && carcassTiles.has(tile.id);
+            const hasCarcassTrace = carcassTraceTiles && carcassTraceTiles.has && carcassTraceTiles.has(tile.id);
 
             // D-53: [맵 보기] 모드에서 미방문 타일은 반투명 회색 윤곽만 공개.
             // 지역 이름/마커/prey/흔적은 숨긴다(스포일러 방지 — 방문 안 한 곳은 지형만 감).
@@ -332,6 +336,8 @@
                 if (isCurrent || isBoss) return '';
                 if (tile.type === 'exit') return '탈출구';
                 if (showPrey) return preyEmoji;
+                // D-78: visited 사체 타일 — 🦴 중앙 아이콘.
+                if (tile.visited && hasCarcass) return '🦴';
                 if (tile.type === 'good') return '🌾';
                 if (tile.type === 'trap') return '⚠️';
                 return '';
@@ -401,8 +407,10 @@
                         </text>
                     )}
                     {/* D-46: 흔적(우상단 👣) — visited 무관, listen 청각 단서.
-                        D-47: 어두운 타일에서도 확실히 보이도록 크기·대비 상향. */}
-                    {!pathUnvisited && hasTrace && (
+                        D-47: 어두운 타일에서도 확실히 보이도록 크기·대비 상향.
+                        D-78: 사체 trace는 👣 대신 🦴로. 일반 prey trace와 동시에 있으면
+                        사체가 우선(보스 포식이 끝난 "확정 단서"라 더 구체적). */}
+                    {!pathUnvisited && (hasTrace || hasCarcassTrace) && (
                         <text
                             x={x + 20}
                             y={y - 18}
@@ -413,7 +421,7 @@
                             strokeWidth="3"
                             paintOrder="stroke"
                         >
-                            👣
+                            {hasCarcassTrace ? '🦴' : '👣'}
                         </text>
                     )}
                     {/* 맵 보기 모드 — 플레이어가 방문한 순서 번호. 첫 방문 기준(indexOf). */}
@@ -484,7 +492,7 @@
         // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
         // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
         // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
             // D-53: [맵 보기] 모드에서는 방문/발견 여부와 무관하게 모든 비어있지 않은 타일 공개.
             // 미방문 타일은 HexTile 내부에서 반투명 회색으로 그린다.
             const visibleTiles = showPathView
@@ -538,6 +546,8 @@
                                     moveTo={moveTo}
                                     preys={preys}
                                     preyTraceTiles={preyTraceTiles}
+                                    carcassTiles={carcassTiles}
+                                    carcassTraceTiles={carcassTraceTiles}
                                     moveHistory={moveHistory}
                                     bossMoveHistory={bossMoveHistory}
                                     showPathView={showPathView}
@@ -3388,6 +3398,10 @@
                     //       tile 객체를 받아 안에서 처리한다.
                     const tile = tiles[currentTile];
                     const currentRegion = tile?.region;
+                    // D-78: 사체 타일 첫 뒤져보기 → 일반 region 드롭풀 + 생고기 +1 보너스.
+                    //   이미 1회 뽑았으면(carcassMeatTaken에 등록) 보너스 없이 일반 드롭만.
+                    const onCarcass = carcassTiles.has(currentTile);
+                    const carcassBonus = onCarcass && !carcassMeatTaken.has(currentTile);
                     if (currentRegion) {
                         const drops = rollSearchLoot(currentRegion, tile);
                         // 같은 아이템 개수 누적 (토스트/메시지 가독성)
@@ -3401,6 +3415,23 @@
                                 overflow += 1;
                             }
                         });
+
+                        // D-78: 사체 첫 뒤져보기 보너스 — 생고기 +1. 한 번만.
+                        if (carcassBonus) {
+                            const addedMeat = inventory.addItem('meat');
+                            if (addedMeat) {
+                                counter.set('meat', (counter.get('meat') || 0) + 1);
+                            } else {
+                                overflow += 1;
+                            }
+                            setCarcassMeatTaken(prev => {
+                                const next = new Set(prev);
+                                next.add(currentTile);
+                                return next;
+                            });
+                            // 사체 trace 마커는 이 타일에 남아있더라도 visited 이후엔 사체 🦴가
+                            // 이미 가운데 아이콘으로 노출되므로 trace는 그대로 둬도 혼선 없음.
+                        }
 
                         if (counter.size > 0) {
                             const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
@@ -3543,6 +3574,18 @@
                         });
                         msg += '\n근처에서 희미한 기척이 느껴진다.';
                     }
+
+                    // D-78: 인접 사체 타일 감지 — 👣 대신 🦴 trace.
+                    //   carcassTiles ∩ 인접 = "사체 냄새가 나는 타일".
+                    const carcassHits = neighborIds.filter(nid => carcassTiles.has(nid));
+                    if (carcassHits.length > 0) {
+                        setCarcassTraceTiles(prev => {
+                            const next = new Set(prev);
+                            carcassHits.forEach(id => next.add(id));
+                            return next;
+                        });
+                        msg += '\n어디선가 짐승의 사체 냄새가 풍긴다.';
+                    }
                 } else if (card.id === 'hide') {
                     msg += '조용히 몸을 숨겼다.';
                 }
@@ -3603,6 +3646,15 @@
                 setTiles(newTiles);
                 setCurrentTile(targetId);
                 setMoveHistory(prev => [...prev, targetId]);
+
+                // D-78: 방문한 타일이 carcassTrace에 있었다면 정리 (이제 visited → 중앙 🦴로 표시).
+                if (carcassTraceTiles.has(targetId)) {
+                    setCarcassTraceTiles(prev => {
+                        const next = new Set(prev);
+                        next.delete(targetId);
+                        return next;
+                    });
+                }
 
                 // D-48: 카드 규칙 개정 — 타일 이동 시 손패 전부 무덤으로 보내고 덱에서
                 //   HAND_SIZE(5)장 새로 드로우. 덱 소진 시 무덤 셔플해서 덱 재구성.
@@ -3816,6 +3868,8 @@
                         onTileEventToastDone={() => setTileEventToast(null)}
                         preys={preys}
                         preyTraceTiles={preyTraceTiles}
+                        carcassTiles={carcassTiles}
+                        carcassTraceTiles={carcassTraceTiles}
                         moveHistory={moveHistory}
                         bossMoveHistory={bossMoveHistory}
                         showPathView={showPathView}
