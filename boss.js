@@ -9,6 +9,11 @@ class BossMonster {
         this.bossMovePhase = 0; // 0=1칸, 1=2칸
         this.health = 10;
         this.name = '티라노사우루스';
+        // D-62: 보스가 밟은 타일 집합 — 일반 모드 랜덤 이동 시
+        //   미방문 타일을 우선 선택해 전맵을 잘 돌아다니게 한다.
+        //   chaseMode에선 사용하지 않음(플레이어 추격이 우선).
+        //   스폰 타일부터 방문 처리. 게임 내 지속, 리셋 안 함.
+        this.visitedTiles = new Set([this.position]);
     }
 
     // 스폰 위치 찾기 (플레이어 시작점에서 가장 먼 3곳 중 랜덤)
@@ -101,14 +106,16 @@ class BossMonster {
         return this.position === playerTile; // 플레이어와 조우 여부
     }
 
-    // 플레이어 방향으로 이동
+    // 플레이어 방향으로 이동 (chase mode).
+    // D-62: 추격 모드는 플레이어 접근이 최우선이라 visitedTiles 필터를 적용하지 않는다.
+    // 이동 이후에는 방문 기록 갱신.
     moveTowards(playerTile) {
         const connections = this.tiles[this.position].connections;
         if (connections.length === 0) return;
-        
+
         let bestMove = this.position;
         let shortestDist = this.calculateDistance(this.position, playerTile);
-        
+
         for (const conn of connections) {
             const dist = this.calculateDistance(conn, playerTile);
             if (dist < shortestDist) {
@@ -116,24 +123,38 @@ class BossMonster {
                 bestMove = conn;
             }
         }
-        
+
         if (bestMove !== this.position) {
             this.position = bestMove;
+            this.visitedTiles.add(this.position);
         }
     }
 
-    // 랜덤 이동
+    // D-62: 일반 모드 랜덤 이동 — 미방문 타일을 선호.
+    //   1) 인접 연결 중 visitedTiles에 없는 것 → 거기서 랜덤.
+    //   2) 전부 방문했으면 → 인접 전체에서 랜덤 (기존 동작).
+    //   이동 후 visitedTiles에 추가. 11x11 맵에서도 전맵 순회 유도(D-62 요한 지시).
     moveRandom() {
         const connections = this.tiles[this.position].connections;
         if (connections.length === 0) return;
-        
-        const randomConn = connections[Math.floor(Math.random() * connections.length)];
-        this.position = randomConn;
+
+        const unvisited = connections.filter(c => !this.visitedTiles.has(c));
+        const pool = unvisited.length > 0 ? unvisited : connections;
+        const next = pool[Math.floor(Math.random() * pool.length)];
+        this.position = next;
+        this.visitedTiles.add(this.position);
     }
 
     // 보스 위치 반환
     getPosition() {
         return this.position;
+    }
+
+    // D-62: 외부에서 스폰 위치를 override할 때 visitedTiles도 동기화.
+    //   index.html 초기화에서 mapGenerator가 준 bossPos로 덮어쓸 때 사용.
+    setPosition(pos) {
+        this.position = pos;
+        this.visitedTiles.add(pos);
     }
 
     // 추격 모드 여부

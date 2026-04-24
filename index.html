@@ -2824,7 +2824,8 @@
                 setInventory(inv);
                 
                 const newBoss = new BossMonster(newTiles, playerStart);
-                newBoss.position = bossPos;
+                // D-62: setPosition은 visitedTiles에도 bossPos 동기화 — 잘못된 스폰 기록 방지.
+                newBoss.setPosition(bossPos);
                 setBoss(newBoss);
                 // D-53: 보스 이동 history 초기화 (시작 위치가 B1).
                 setBossMoveHistory([bossPos]);
@@ -3468,14 +3469,16 @@
                 setGraveyardFlashKey(k => k + 1);
                 
                 // 보스 이동 로직
+                // D-62: 일반 모드 랜덤 이동을 boss.moveRandom() 위임 —
+                //   미방문 타일 우선 로직이 자연히 적용된다(전맵 순회 강화).
+                //   boss.tiles 참조는 초기화 시 주입된 tiles — moveTo에서 만든 newTiles와
+                //   동일 객체(참조 공유). 안전을 위해 호출 전 최신 tiles 반영.
                 const bossStartPos = boss.position;
                 let newBossPos = boss.position;
                 if (newMoveCount % 2 === 0 && !boss.chaseMode) {
-                    const bossConnections = newTiles[boss.position].connections;
-                    if (bossConnections.length > 0) {
-                        newBossPos = bossConnections[Math.floor(Math.random() * bossConnections.length)];
-                        boss.position = newBossPos;
-                    }
+                    boss.tiles = newTiles;
+                    boss.moveRandom();
+                    newBossPos = boss.position;
                 }
 
                 if (movedDetection >= 80 && !boss.chaseMode) {
