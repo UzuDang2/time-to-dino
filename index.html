@@ -500,9 +500,11 @@
         function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
             // D-53: [맵 보기] 모드에서는 방문/발견 여부와 무관하게 모든 비어있지 않은 타일 공개.
             // 미방문 타일은 HexTile 내부에서 반투명 회색으로 그린다.
+            // D-80 보강(2026-04-24): silhouette 플래그도 렌더 대상 — listen 시점에 즉시 노출.
+            //   (이전엔 discovered=false면 filter에서 걸려 이동 후에야 뒤늦게 나타나는 버그가 있었음.)
             const visibleTiles = showPathView
                 ? tiles.filter(t => !t.isEmpty)
-                : tiles.filter(t => t.visited || t.discovered || t.revealed);
+                : tiles.filter(t => t.visited || t.discovered || t.revealed || t.silhouette);
             const containerRef = React.useRef(null);
 
             // D-54: 플레이 그리드 주변에 넉넉한 빈 패딩을 두어 스크롤해도 "끝"이

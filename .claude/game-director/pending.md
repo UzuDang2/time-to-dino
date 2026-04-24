@@ -20,8 +20,14 @@
 
 ### 요한 검수 / 후속
 
-- [ ] **[요한]** 🧪 **QA: D-80 실루엣 경계 케이스**
-  - 새 게임 → 한두 칸 이동 후 listen → 현재 타일 이웃(밝음) + 이웃의 이웃(회색 윤곽) 확인.
+- [x] **[디렉터/웹]** ✅ **D-80 보강 — silhouette 타일이 이동 후에만 보이던 버그 수정**
+  - 요한 제보: listen을 써도 인접 타일만 revealed되고, 실루엣(2칸 밖)은 한 칸 이동해야 뒤늦게 보임.
+  - 원인: `GameMap::visibleTiles` 필터가 `visited || discovered || revealed`만 통과. silhouette 플래그를 달아도 `discovered=false`인 타일은 **렌더 자체가 안 됨**. 이동 시 `moveTo`의 `targetNeighbors` 경로가 `discovered=true`로 승격시키면서 뒤늦게 노출되는 부작용.
+  - 조치: `visibleTiles` 필터에 `|| t.silhouette` 추가. listen 시점에 즉시 실루엣 렌더.
+  - 커밋: 다음 커밋에 포함(D-80 보강).
+
+- [ ] **[요한]** 🧪 **QA: D-80 수정 후 — listen 시점 즉시 실루엣**
+  - 새 게임 → 한 칸도 이동하지 않은 상태에서 listen 사용 → 현재 이웃(밝음) + 이웃의 이웃(회색 윤곽)이 **동시에** 노출되어야 함.
   - 맵 보기 모드 진입 시 이 silhouette 플래그는 무관(`pathUnvisited` 경로만 타도록 `!showPathView` 가드 있음).
   - 실루엣 타일로 직접 이동 → visited=true로 승격되면서 평소 스타일로 전환.
 
