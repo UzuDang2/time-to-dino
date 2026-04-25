@@ -4,6 +4,29 @@
 
 ---
 
+## 13차 세션 — 웹 세션 (2026-04-25, D-98: L1 사냥감 행동 패턴)
+
+### D-98 (2026-04-25 요한 지시): L1 사냥감 3턴 행동 패턴 (peek≤2 / evade≤1 / defend≤1)
+
+- [x] **[디렉터/웹]** ✅ L1 9종 actions_per_turn + defense=1.
+  - 토끼 peek,defend,evade / 쥐 peek,peek,evade / 다람쥐 peek,evade,peek / 메추라기새 peek,peek,evade
+  - 도롱뇽 peek,evade,defend / 작은 뱀 peek,defend,evade / 개구리 peek,evade,peek
+  - 게 peek,defend,evade / 메뚜기 peek,peek,evade
+- [x] **[디렉터/웹]** ✅ combatDeck.js — L1도 parsePreyActions 사용 (L1/L2 통합 처리).
+- [x] **[디렉터/웹]** ✅ index.html HuntCombatModal — preyActions L1 가드 제거 (lvl 기반 fallback).
+
+### 시트 SSOT 동기화 (다음 로컬 세션)
+
+- [ ] **[로컬]** 시트 `사냥감` L1 9종 `actions_per_turn` 컬럼에 패턴 입력.
+- [ ] **[로컬]** 시트 `사냥감` L1 9종 `defense` = 1 입력.
+
+### 요한 QA 대기 (D-98)
+
+- [ ] **[요한]** 🧪 L1 사냥감별 적 행동 슬롯이 의도한 패턴(peek/defend/evade)으로 표시되는지.
+- [ ] **[요한]** 🧪 peek 턴은 무방비(주먹으로도 명중), defend 턴은 데미지 1 차감, evade 턴은 evade_rate 적용.
+
+---
+
 ## 13차 세션 — 웹 세션 (2026-04-25, D-97: 무기 카드 재조정 + 확률 분실)
 
 ### D-97 (2026-04-25 요한 지시): 무기 카드 명중·데미지 + 창던지기 50% 분실

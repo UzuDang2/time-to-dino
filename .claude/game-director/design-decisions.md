@@ -5,6 +5,69 @@
 
 ---
 
+## D-98. L1 사냥감 행동 패턴 도입 (2026-04-25, 13th 세션, `data/prey.json` / `combatDeck.js` / `index.html`)
+
+요한 원문: "1단계 사냥감들 패턴을 눈치보기는 최대2회, 회피는 최대 1회, 방어는 최대1회로 제한하여 3턴을 구성하는데. 사냥감들에 따라 너의 판단으로 적절히 구성해면 좋겠어. 예를들어 토끼는 회피 회피 회피 였는데 이렇게가 아니라. 토끼는 좀 재빠르니까 눈치보기, 방어, 회피 이런식으로 구성해봐"
+
+### 배경
+
+- D-75에서 L2에 도입한 `actions_per_turn` DSL(attack/defend/evade/peek)이 L1에는 미적용 — L1은 모든 턴 'evade' 고정.
+- 결과: L1 사냥감별 개성이 evade_per_turn 수치로만 표현 → 모든 사냥감이 "회피만 하는" 단조 행동.
+- 요한 의도: L1도 행동을 **3턴** 구성으로 다채롭게. 단 규칙 — peek≤2 / evade≤1 / defend≤1.
+
+### 가능한 multiset 조합 (3턴)
+
+- (peek=2, evade=1) — 잠잠 → 도망형
+- (peek=2, defend=1) — 잠잠 → 방어형
+- (peek=1, evade=1, defend=1) — 살핌 → 방어 → 도망 (가장 풍성)
+
+### 사냥감별 패턴 — 컨셉
+
+| ID | 이름 | evade_rate | actions_per_turn | 컨셉 |
+|---|---|---|---|---|
+| rabbit | 토끼 | 2 | peek,defend,evade | 두리번 → 웅크림 → 도약 (요한 예시) |
+| mouse | 쥐 | 1 | peek,peek,evade | 잰걸음 살피다 도망 |
+| squirrel | 다람쥐 | 2 | peek,evade,peek | 살핌 → 휙 점프 → 다시 살핌 |
+| bird | 메추라기새 | 2 | peek,peek,evade | 경계 → 경계 → 날아오름 |
+| salamander | 도롱뇽 | 1 | peek,evade,defend | 살핌 → 슬그머니 → 잎새로 숨음 |
+| snake | 작은 뱀 | 1 | peek,defend,evade | 노려봄 → 똬리 → 미끄러짐 |
+| frog | 개구리 | 2 | peek,evade,peek | 가만히 → 점프 → 가만히 |
+| crab | 게 | 1 | peek,defend,evade | 살핌 → 집게 방어 → 옆걸음 |
+| grasshopper | 메뚜기 | 3 | peek,peek,evade | 가만히 → 폭발적 점프 |
+
+### defense=1 일괄
+
+- L1 9종 모두 `defense: 1`. 작은 사냥감이라 1로 통일 — 데미지 1짜리 카드(주먹)는 0 차감, 데미지 2짜리(돌)는 1만 통과, 데미지 3+(새총·창)는 의미 있게 통과.
+- 요한이 게 등껍질 등 종별 차등을 명시하지 않아 일관성 우선. 추후 피드백 시 조정.
+
+### 코드 변경
+
+- `combatDeck.js::parsePreyActions`: fallback을 `lvl === 2 ? ['attack','evade','attack','peek'] : ['peek','evade','peek']`로 분기.
+- `combatDeck.js::resolveHunt`:
+  - `const preyActions = isLevel2 ? parsePreyActions(...) : null` → `parsePreyActions(...)` (무조건 호출).
+  - `const preyActionRaw = isLevel2 ? preyActions[t] : 'evade'` → `preyActions[t]`.
+  - `if (isLevel2 && (peek/attack/defend))` → `if (preyActionRaw !== 'evade')` (회피 0 가드 일반화).
+  - `defenseReduction = (isLevel2 && preyActionRaw === 'defend') ? preyDefense : 0` → `(preyActionRaw === 'defend') ? preyDefense : 0`.
+- `index.html::HuntCombatModal::preyActions`: `if (SLOT_COUNT !== 4) return null` 가드 제거 + 동일한 lvl 기반 fallback. 적 행동 슬롯의 peek/defend/evade 라벨·수치 배지 L1에도 자동 노출.
+
+### 검증 (Node 스모크)
+
+- 토끼+주먹×3 (peek/defend/evade) → T1 hit 1 / T2 hit 0(def-1) / T3 회피 → finalHP 3.
+- 토끼+주먹/주먹/새총 → T3 새총 acc 1 ≥ evade 1 → hit 3 → hp 0 victory.
+- 메뚜기(hp 1)+주먹×3 → T1 peek hit 1 → 즉살.
+- 작은 뱀+돌×3 → T2 defend 2-1=1 → hp 0 victory.
+
+### 정수 시스템 정합성
+
+- D-96의 결정론(명중 ≥ 회피 → 명중) + D-98 peek=무방비(evade 0)는 자연스럽게 결합 — peek 턴은 acc 0 카드(주먹)도 100% 명중.
+- evade 턴에서 acc 0 카드가 무력해지므로(주먹은 메뚜기·다람쥐 evade 못 뚫음) 무기·새총의 가치가 부각됨.
+
+### SUPERSEDES
+
+- 코드 주석/메모리에서 "L1: 모든 턴 'evade' 고정" 표현은 D-98 이후 무효.
+
+---
+
 ## D-97. 무기 카드 명중·데미지 재조정 + 창던지기 확률 분실 (2026-04-25, 13th 세션, `data/combat_cards.json` / `combatDeck.js` / `index.html`)
 
 요한 원문: "새총의 명중을 1로 조정해줘, 창찌르기도 1로, 창 던지기는 2인데 특수규칙으로 창던지기는 50%확률로 창을 잃어버릴수 있다고 적어줘, 창던지기시 대미지는 6"

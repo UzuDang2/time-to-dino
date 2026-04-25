@@ -1,5 +1,15 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-98**).
+D-98 L1 사냥감 행동 패턴 도입 (peek≤2 / evade≤1 / defend≤1, 3턴):
+- prey.json L1 9종 actions_per_turn + defense=1.
+  - 토끼 peek,defend,evade · 쥐 peek,peek,evade · 다람쥐 peek,evade,peek · 메추라기새 peek,peek,evade
+  - 도롱뇽 peek,evade,defend · 작은 뱀 peek,defend,evade · 개구리 peek,evade,peek
+  - 게 peek,defend,evade · 메뚜기 peek,peek,evade.
+- combatDeck.js: `parsePreyActions`에 lvl 분기 fallback(L1=peek,evade,peek / L2=기존). resolveHunt에서 `isLevel2 ?` 가드 제거 — L1도 actions DSL 사용. baseEvadeT=0/defenseReduction L1/L2 공통.
+- index.html HuntCombatModal::preyActions: `if (SLOT_COUNT !== 4) return null` 제거, lvl 기반 fallback. L1 적 행동 슬롯에 peek/defend/evade 라벨 + 수치 배지 자동 노출.
+- Node 스모크 4 케이스 PASS: 토끼+주먹×3→hp4→3 (T2 defend 차감), 토끼+주먹/주먹/새총→hp 0 (T3 evade 명중), 메뚜기 hp1→T1 peek 즉살, 작은뱀+돌×3→T2 hp 0.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-97**).
 D-97 무기 카드 명중·데미지 재조정 + 창던지기 확률 분실:
 - combat_cards.json: slingshot_shot acc 3→1, stab_weapon acc 3→1, throw_spear acc 3→2 dmg 4→6 full_loss "Y"→"N" + 신규 `loss_chance: 50`.

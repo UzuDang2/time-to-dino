@@ -208,12 +208,16 @@
         return out;
     }
 
-    // D-75: prey.actions_per_turn DSL 파싱 → 턴별 행동 배열.
-    //   CSV ('attack,evade,peek,defend'). 빈값이면 기본값 ['attack','evade','attack','peek'].
+    // D-75/D-98: prey.actions_per_turn DSL 파싱 → 턴별 행동 배열.
+    //   CSV ('attack,evade,peek,defend'). 빈값이면 레벨별 기본값.
+    //   D-98 (2026-04-25 요한 지시): L1도 행동 패턴 도입(peek≤2 / evade≤1 / defend≤1, 3턴).
     //   각 토큰이 허용 집합에 없으면 'evade'로 치환(안전 폴백).
     function parsePreyActions(prey, turnCount) {
         const allowed = new Set(['attack', 'defend', 'evade', 'peek']);
-        const defaults = ['attack', 'evade', 'attack', 'peek'];
+        const lvl = Number(prey && prey.level) || 1;
+        const defaults = lvl === 2
+            ? ['attack', 'evade', 'attack', 'peek']
+            : ['peek', 'evade', 'peek'];
         const raw = prey && prey.actions_per_turn;
         const parts = (raw == null || raw === '')
             ? defaults
@@ -226,9 +230,11 @@
         return out;
     }
 
-    // D-48/D-50/D-51/D-60/D-74/D-75 개정: 사냥 전투 해결 로직.
-    //   Level 1 (기본): 3턴 고정, 모든 턴 prey='회피'.
-    //   Level 2 (prey.level === 2): 4턴 고정. prey.actions_per_turn 시트 DSL로 턴별 행동.
+    // D-48/D-50/D-51/D-60/D-74/D-75/D-98 개정: 사냥 전투 해결 로직.
+    //   Level 1: 3턴 고정. D-98 (2026-04-25 요한 지시) — actions_per_turn DSL 사용
+    //     (peek≤2 / evade≤1 / defend≤1로 사냥감별 성격 반영).
+    //   Level 2: 4턴 고정. prey.actions_per_turn 시트 DSL로 턴별 행동.
+    //   공통:
     //     - attack: prey가 공격. 유저가 defense>0 카드 배치 시 finalDamage = max(0, preyAttack - cardDefense).
     //     - defend: prey 방어 태세. 유저 공격 대미지에서 prey.defense 감쇄.
     //     - evade : 기존 회피 로직 그대로 (evadesByTurn 기반).
@@ -277,13 +283,13 @@
 
         const isLevel2 = Number(prey && prey.level) === 2;
         const turnCount = isLevel2 ? 4 : 3;
-        const preyActions = isLevel2 ? parsePreyActions(prey, turnCount) : null;
+        // D-98: L1도 actions_per_turn DSL 사용 — L1/L2 공통 처리.
+        const preyActions = parsePreyActions(prey, turnCount);
         const preyDefense = Math.max(0, Number(prey && prey.defense) || 0);
 
         for (let t = 0; t < turnCount; t++) {
             const card = userSlots[t];
-            // L2: prey 행동 결정. L1: 고정 '회피'.
-            const preyActionRaw = isLevel2 ? preyActions[t] : 'evade';
+            const preyActionRaw = preyActions[t];
             const preyActionLabel = (
                 preyActionRaw === 'attack' ? '공격'
                 : preyActionRaw === 'defend' ? '방어'
@@ -341,11 +347,9 @@
                 // D-96 (2026-04-25 요한 지시): 회피율(%) → 회피(정수), 명중률(%) → 명중(정수).
                 //   판정: 명중 ≥ 회피이면 무조건 명중, 회피 > 명중이면 무조건 회피.
                 //   확률 굴림 제거(결정론). fleeCount는 회피 -1씩 차감(누적 패널티 단순화).
-                //   L2 turn-action 분기: peek/attack/defend는 회피 0 (회피 굴림 없음).
+                //   D-98: turn-action 분기 L1/L2 공통 — peek/attack/defend는 회피 0.
                 let baseEvadeT = Math.max(0, (evadesByTurn[t] || 0) - fleeCount);
-                if (isLevel2 && (preyActionRaw === 'peek' || preyActionRaw === 'attack' || preyActionRaw === 'defend')) {
-                    if (preyActionRaw !== 'evade') baseEvadeT = 0;
-                }
+                if (preyActionRaw !== 'evade') baseEvadeT = 0;
                 const cardAccuracy = Number(card.accuracy) || 0;
                 const effectiveEvade = baseEvadeT;
                 const preyEvaded = effectiveEvade > cardAccuracy;
@@ -361,8 +365,8 @@
                 }
 
                 if (!preyEvaded) {
-                    // D-75: preyAction='defend' → 유저 공격 대미지에서 prey.defense 감쇄.
-                    const defenseReduction = (isLevel2 && preyActionRaw === 'defend') ? preyDefense : 0;
+                    // D-75/D-98: preyAction='defend' → 유저 공격 대미지에서 prey.defense 감쇄 (L1/L2 공통).
+                    const defenseReduction = (preyActionRaw === 'defend') ? preyDefense : 0;
                     const appliedDamage = Math.max(0, damageOut - defenseReduction);
                     hp -= appliedDamage;
                     const dmgTaken = takeDamageThisTurn();

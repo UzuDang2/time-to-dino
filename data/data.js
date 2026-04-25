@@ -216,8 +216,8 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "2,2,1",
       "drop_item": "",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,defend,evade",
+      "defense": 1
     },
     {
       "id": "mouse",
@@ -231,8 +231,8 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
       "drop_item": "",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,peek,evade",
+      "defense": 1
     },
     {
       "id": "squirrel",
@@ -246,8 +246,8 @@ window.TTD_DATA = {
       "habitat": "숲",
       "evade_per_turn": "2,2,1",
       "drop_item": "",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,evade,peek",
+      "defense": 1
     },
     {
       "id": "bird",
@@ -261,8 +261,8 @@ window.TTD_DATA = {
       "habitat": "평원",
       "evade_per_turn": "2,2,1",
       "drop_item": "",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,peek,evade",
+      "defense": 1
     },
     {
       "id": "salamander",
@@ -276,8 +276,8 @@ window.TTD_DATA = {
       "habitat": "숲",
       "evade_per_turn": "1,1,1",
       "drop_item": "",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,evade,defend",
+      "defense": 1
     },
     {
       "id": "snake",
@@ -291,8 +291,8 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
       "drop_item": "",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,defend,evade",
+      "defense": 1
     },
     {
       "id": "frog",
@@ -306,8 +306,8 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "2,2,1",
       "drop_item": "",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,evade,peek",
+      "defense": 1
     },
     {
       "id": "crab",
@@ -321,8 +321,8 @@ window.TTD_DATA = {
       "habitat": "시냇물",
       "evade_per_turn": "1,1,1",
       "drop_item": "crab_whole",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,defend,evade",
+      "defense": 1
     },
     {
       "id": "grasshopper",
@@ -336,8 +336,8 @@ window.TTD_DATA = {
       "habitat": "평원",
       "evade_per_turn": "3,3,2",
       "drop_item": "grasshopper_whole",
-      "actions_per_turn": "",
-      "defense": ""
+      "actions_per_turn": "peek,peek,evade",
+      "defense": 1
     },
     {
       "id": "boar",

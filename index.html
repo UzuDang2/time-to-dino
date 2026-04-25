@@ -2634,22 +2634,25 @@
             //     finalEvade = baseEvadeT (명중 vs 회피는 결정론 비교 — UI에선 base 표시).
             //   damage=0 카드 / 빈 슬롯 → base(턴별) 그대로.
             //   card.accuracy(명중)는 buildHuntDeck 이 이미 카드+무기 합산(D-50).
-            // D-75: Level 2 prey — actions_per_turn CSV 파싱. 적 행동 슬롯 라벨에 사용.
+            // D-75/D-98: actions_per_turn CSV 파싱 → 적 행동 슬롯 라벨.
+            //   D-98 (2026-04-25 요한 지시): L1도 행동 패턴 도입 → L1/L2 공통 처리.
             const preyActions = React.useMemo(() => {
-                if (SLOT_COUNT !== 4) return null;
+                const lvl = Number(prey && prey.level) || 1;
                 const raw = prey && prey.actions_per_turn;
-                const defaults = ['attack', 'evade', 'attack', 'peek'];
+                const defaults = lvl === 2
+                    ? ['attack', 'evade', 'attack', 'peek']
+                    : ['peek', 'evade', 'peek'];
                 const allowed = new Set(['attack','defend','evade','peek']);
                 const parts = (raw == null || raw === '')
                     ? defaults
                     : String(raw).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
                 const out = [];
-                for (let i = 0; i < 4; i++) {
+                for (let i = 0; i < SLOT_COUNT; i++) {
                     const tok = parts[i] != null ? parts[i] : parts[parts.length - 1] || 'evade';
                     out.push(allowed.has(tok) ? tok : 'evade');
                 }
                 return out;
-            }, [prey.actions_per_turn, SLOT_COUNT]);
+            }, [prey.actions_per_turn, prey.level, SLOT_COUNT]);
 
             const computedEvades = React.useMemo(() => {
                 const byTurn = CombatDeck.parseEvadesByTurn(prey);

@@ -11,8 +11,8 @@
     "habitat": "덤불",
     "evade_per_turn": "2,2,1",
     "drop_item": "",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,defend,evade",
+    "defense": 1
   },
   {
     "id": "mouse",
@@ -26,8 +26,8 @@
     "habitat": "덤불",
     "evade_per_turn": "1,1,1",
     "drop_item": "",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,peek,evade",
+    "defense": 1
   },
   {
     "id": "squirrel",
@@ -41,8 +41,8 @@
     "habitat": "숲",
     "evade_per_turn": "2,2,1",
     "drop_item": "",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,evade,peek",
+    "defense": 1
   },
   {
     "id": "bird",
@@ -56,8 +56,8 @@
     "habitat": "평원",
     "evade_per_turn": "2,2,1",
     "drop_item": "",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,peek,evade",
+    "defense": 1
   },
   {
     "id": "salamander",
@@ -71,8 +71,8 @@
     "habitat": "숲",
     "evade_per_turn": "1,1,1",
     "drop_item": "",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,evade,defend",
+    "defense": 1
   },
   {
     "id": "snake",
@@ -86,8 +86,8 @@
     "habitat": "덤불",
     "evade_per_turn": "1,1,1",
     "drop_item": "",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,defend,evade",
+    "defense": 1
   },
   {
     "id": "frog",
@@ -101,8 +101,8 @@
     "habitat": "덤불",
     "evade_per_turn": "2,2,1",
     "drop_item": "",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,evade,peek",
+    "defense": 1
   },
   {
     "id": "crab",
@@ -116,8 +116,8 @@
     "habitat": "시냇물",
     "evade_per_turn": "1,1,1",
     "drop_item": "crab_whole",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,defend,evade",
+    "defense": 1
   },
   {
     "id": "grasshopper",
@@ -131,8 +131,8 @@
     "habitat": "평원",
     "evade_per_turn": "3,3,2",
     "drop_item": "grasshopper_whole",
-    "actions_per_turn": "",
-    "defense": ""
+    "actions_per_turn": "peek,peek,evade",
+    "defense": 1
   },
   {
     "id": "boar",
