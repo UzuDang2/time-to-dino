@@ -625,6 +625,9 @@ ITEM_NAME_TO_ID: dict[str, str] = {
     "큰생고기": "big_meat",
     "큰고기꼬치": "big_meat_skewer",
     "큰고기꼬치구이": "grilled_big_meat_skewer",
+    # D-94 (2026-04-25): 거대한 먹이 — 큰생고기 ×4 조합 + 보스 유인용. 2x2 음식.
+    "거대한 먹이": "giant_bait",
+    "거대한 먹이 구이": "grilled_giant_bait",
 }
 
 

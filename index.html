@@ -313,9 +313,15 @@
                 else if (tile.type === 'trap') list.push({ kind: 'trap', emoji: '⚠️' });
                 if (tile.visited && ctx.hasCarcass) list.push({ kind: 'carcass', emoji: '🦴' });
                 if (ctx.showPrey) list.push({ kind: 'prey', emoji: ctx.preyEmoji });
+                // D-94: 유저가 놓아둔 거대한 먹이 — visited와 무관(카드 효과로 자기 타일에 놓아도
+                //   visited는 이미 true임). carcass와 동시에 있을 수 없음(보스가 먹으면 carcass로 전환).
+                if (ctx.hasBait && !(tile.visited && ctx.hasCarcass)) {
+                    list.push({ kind: 'bait', emoji: '🍖' });
+                }
                 const traceVisible = (ctx.hasTrace || ctx.hasCarcassTrace)
                     && !ctx.showPrey
-                    && !(tile.visited && ctx.hasCarcass);
+                    && !(tile.visited && ctx.hasCarcass)
+                    && !ctx.hasBait;
                 if (traceVisible) {
                     list.push({ kind: 'trace', emoji: ctx.hasCarcassTrace ? '🦴' : '👣' });
                 }
@@ -344,7 +350,7 @@
         //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스가 있으면 보스 우선)
         //   - 흔적(👣 우상단): preyTraceTiles.has(tile.id) — visited 무관 (청각 단서).
         //   - D-48: 발자국 방향 화살표 제거 — 흔적(👣)만으로 단서 제공.
-        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, requestWait, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
+        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, requestWait, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, baitTiles, moveHistory, bossMoveHistory, showPathView }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
             const canMove = tiles[currentTile].connections.includes(tile.id);
@@ -359,6 +365,8 @@
             //   listen으로 감지된 인접 사체는 carcassTraceTiles에 들어가 trace 위치에 🦴 표시(visited 무관).
             const hasCarcass = carcassTiles && carcassTiles.has && carcassTiles.has(tile.id);
             const hasCarcassTrace = carcassTraceTiles && carcassTraceTiles.has && carcassTraceTiles.has(tile.id);
+            // D-94: 거대한 먹이 — 유저가 놓아둔 타일.
+            const hasBait = baitTiles && baitTiles.has && baitTiles.has(tile.id);
 
             // D-53: [맵 보기] 모드에서 미방문 타일은 반투명 회색 윤곽만 공개.
             // 지역 이름/마커/prey/흔적은 숨긴다(스포일러 방지 — 방문 안 한 곳은 지형만 감).
@@ -386,7 +394,7 @@
             // D-89: getTileLabel 폐기 — 모든 아이콘이 computeTileIcons + 스택 슬롯 위치로 통합.
             //   미공개 타일에만 단독 '?' 라벨 사용.
             const tileIcons = computeTileIcons(tile, {
-                isCurrent, isBoss, showPrey, preyEmoji, hasCarcass, hasTrace, hasCarcassTrace
+                isCurrent, isBoss, showPrey, preyEmoji, hasCarcass, hasTrace, hasCarcassTrace, hasBait
             });
             const visibleIcons = dimmed ? [] : tileIcons;
             // 플레이어/보스는 GameMap이 단일 SVG text로 그려 transition 슬라이드 보존.
@@ -582,7 +590,7 @@
         // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
         // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
         // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, requestWait, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, requestWait, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, baitTiles, moveHistory, bossMoveHistory, showPathView }) {
             // D-53: [맵 보기] 모드에서는 방문/발견 여부와 무관하게 모든 비어있지 않은 타일 공개.
             // 미방문 타일은 HexTile 내부에서 반투명 회색으로 그린다.
             // D-80 보강(2026-04-24): silhouette 플래그도 렌더 대상 — listen 시점에 즉시 노출.
@@ -804,7 +812,8 @@
                     })(),
                     hasCarcass: carcassTiles && carcassTiles.has && carcassTiles.has(tileObj.id),
                     hasTrace: preyTraceTiles && preyTraceTiles.has && preyTraceTiles.has(tileObj.id),
-                    hasCarcassTrace: carcassTraceTiles && carcassTraceTiles.has && carcassTraceTiles.has(tileObj.id)
+                    hasCarcassTrace: carcassTraceTiles && carcassTraceTiles.has && carcassTraceTiles.has(tileObj.id),
+                    hasBait: baitTiles && baitTiles.has && baitTiles.has(tileObj.id)
                 };
                 const icons = computeTileIcons(tileObj, ctx);
                 const layout = TILE_STACK_LAYOUTS[Math.min(icons.length, TILE_STACK_MAX)] || [];
@@ -847,6 +856,7 @@
                                     preyTraceTiles={preyTraceTiles}
                                     carcassTiles={carcassTiles}
                                     carcassTraceTiles={carcassTraceTiles}
+                                    baitTiles={baitTiles}
                                     moveHistory={moveHistory}
                                     bossMoveHistory={bossMoveHistory}
                                     showPathView={showPathView}
@@ -956,7 +966,7 @@
         // 데이터 소스 우선순위:
         //   1) window.TTD_DATA.ITEMS (Notion SSOT) — '이름'으로 조회, effect 포함
         //   2) InventorySystem.ITEMS[item.type] — 구버전 폴백
-        function ItemInfoModal({ item, onUse, onClose }) {
+        function ItemInfoModal({ item, onUse, onLureBait, onClose }) {
             const invDef = InventorySystem.ITEMS[item.type] || {};
             const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
             const notionItem = notionItems.find(it => it && it['이름'] === (invDef.name || item.name));
@@ -1023,12 +1033,11 @@
                             )}
                         </div>
 
-                        <div style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>
+                        <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <button
                                 onClick={onUse}
                                 disabled={!usable}
                                 style={{
-                                    flex: 1,
                                     padding: '10px',
                                     background: usable ? '#4CAF50' : '#555',
                                     color: '#fff',
@@ -1038,8 +1047,26 @@
                                     fontWeight: 600
                                 }}
                             >
-                                {usable ? '사용' : '사용 불가'}
+                                {usable ? '사용하기' : '사용 불가'}
                             </button>
+                            {/* D-94 (2026-04-25 요한 지시): is_bait 플래그 아이템 — [먹이로 유인하기] 버튼.
+                                현재 타일에 먹이를 놓아 보스를 유도. 인벤에서 1개 차감. */}
+                            {(resolved.is_bait || (notionItem && notionItem.is_bait)) && typeof onLureBait === 'function' && (
+                                <button
+                                    onClick={onLureBait}
+                                    style={{
+                                        padding: '10px',
+                                        background: '#7a3a1f',
+                                        color: '#ffd79e',
+                                        border: '1px solid #d4883a',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    🍖 먹이로 유인하기
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1053,7 +1080,7 @@
         //   - 긴 누름 (≥ 400ms 유지) → 기존 동작(선택/이동/머지/회전)
         // 임계값 400ms 채택 근거: Android 표준 long-press(500ms)보다 살짝 빠르게, iOS 기본(≈300ms)보다는 여유롭게.
         // 게임은 연타/드래그가 잦아 짧은 의도를 놓치면 답답하고, 반대로 너무 짧으면 스와이프가 잘못 인식된다.
-        function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory, onUseItem, onFlashMessage }) {
+        function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory, onUseItem, onLureBait, onFlashMessage }) {
             const [, setTick] = React.useState(0);
             const bump = () => setTick(t => t + 1);
             // 확정 대기 위치 (그리드 셀을 눌러 지정)
@@ -1466,6 +1493,11 @@
                         <ItemInfoModal
                             item={infoItem}
                             onUse={handleUseFromInfo}
+                            onLureBait={typeof onLureBait === 'function' ? () => {
+                                const item = infoItem;
+                                setInfoItem(null);
+                                onLureBait(item);
+                            } : null}
                             onClose={() => setInfoItem(null)}
                         />
                     )}
@@ -3207,7 +3239,10 @@
             water: '💧',
             fish: '🐟',
             crab_whole: '🦀',
-            grasshopper_whole: '🦗'
+            grasshopper_whole: '🦗',
+            // D-94: 거대한 먹이 — 1단계 아니지만 보스 유인 시각 일관성을 위해 매핑.
+            giant_bait: '🍖',
+            grilled_giant_bait: '🍗'
         };
         // 1단계 재료면 emoji 반환, 아니면 null.
         const itemEmoji = (typeOrId) => ITEM_EMOJI[typeOrId] || null;
@@ -3320,6 +3355,10 @@
             const [waitConfirmOpen, setWaitConfirmOpen] = useState(false);
             // D-90: listen 시 인접 포식중 보스 발견 모달 데이터 ({preyType, preyName}|null).
             const [predationListenInfo, setPredationListenInfo] = useState(null);
+            // D-94 (2026-04-25 요한 지시): 거대한 먹이 유인 — 타일에 놓인 먹이 tileId Set.
+            //   보스의 predation 후보로 prey와 동일하게 처리(synthetic prey 객체로 onPlayerMove에 전달).
+            //   보스가 도달 시 onPredationStart가 isBait 분기로 baitTiles에서 제거.
+            const [baitTiles, setBaitTiles] = useState(new Set());
             // D-78: listen 카드로 감지된 사체 trace 타일 — 👣 대신 🦴 표시.
             const [carcassTraceTiles, setCarcassTraceTiles] = useState(new Set());
             const mapRef = useRef(null);
@@ -3643,16 +3682,20 @@
                 // D-77: 포식 콜백 연결.
                 //   onPredationStart  — 타겟 L2 prey를 preys에서 제거(보스가 잡아먹기 시작).
                 //   onPredationComplete — 보스가 그 타일에서 2턴 정지를 끝낼 때 사체 타일 생성.
-                newBoss.onPredationStart = (targetPreyId, /*tileId, prey*/) => {
-                    setPreys(prev => prev.filter(p => p.id !== targetPreyId));
-                    setPreyTraceTiles(prev => {
-                        // prey 제거 후 해당 tileId는 carcassTraceTiles로 옮길 수도 있지만,
-                        // 포식 완료 시점까진 아직 "사체"로 보이지 않으므로 기존 trace만 삭제.
-                        const next = new Set(prev);
-                        return next;
-                    });
+                newBoss.onPredationStart = (targetPreyId, tileId, prey) => {
+                    // D-94: prey가 isBait면 baitTiles에서 제거. 그 외(L2 prey)는 기존대로 setPreys.
+                    if (prey && prey.isBait) {
+                        setBaitTiles(prev => {
+                            const next = new Set(prev);
+                            next.delete(tileId);
+                            return next;
+                        });
+                    } else {
+                        setPreys(prev => prev.filter(p => p.id !== targetPreyId));
+                    }
                 };
                 // D-90: 콜백 3번째 인자 preyType 추가 — 사체 도착 메시지에 사냥감 이름 사용.
+                // D-94: preyType='__bait__'이면 사체 메시지가 다른 톤으로 분기.
                 newBoss.onPredationComplete = (tileId, _targetPreyId, preyType) => {
                     setCarcassTiles(prev => {
                         const next = new Map(prev);
@@ -3684,6 +3727,7 @@
                 setActiveHunt(null);
                 setWaitConfirmOpen(false);
                 setPredationListenInfo(null);
+                setBaitTiles(new Set());
                 // 콘솔 검증용 — 릴리스 시 제거해도 무방.
                 if (typeof window !== 'undefined') window.__preys = spawned;
             }
@@ -3807,6 +3851,29 @@
                     setMessage(`${def.name || item.name}을(를) 사용했다. (${label})`);
                 }
                 return result;
+            };
+
+            // D-94 (2026-04-25 요한 지시): 거대한 먹이 [먹이로 유인하기] 핸들러.
+            //   현재 타일에 먹이 placeholder를 등록(baitTiles Set). 보스가 다음 onPlayerMove에서
+            //   synthetic prey로 인식해 BFS 추격 → 도달 시 포식(=먹이 소진 + 사체 타일 생성).
+            //   인벤에서 1개 차감 + 가방 모달 닫기 + 토스트.
+            const handleLureBait = (item) => {
+                if (!inventory || !item) return;
+                inventory.removeItem(item);
+                inventory.items = inventory.items.filter(i => i.id !== item.id);
+                setBaitTiles(prev => {
+                    const next = new Set(prev);
+                    next.add(currentTile);
+                    return next;
+                });
+                setShowInventory(false);
+                setMessage('이곳에 먹이를 놔두었다. 멀리서부터 발소리가 가까워지는 기분이 든다…');
+                showTileEventToast({
+                    emoji: '🍖',
+                    title: '먹이를 놔두었다',
+                    message: '거대한 짐승이 곧 이곳으로 향할 것이다…',
+                    color: '#7a3a1f'
+                });
             };
 
             // D-23: "카드로 아이템 사용" 프레임워크의 공통 진입점.
@@ -4201,10 +4268,17 @@
                         // 직후 "포식중인 짐승" 모달. 일반 토스트 대신 모달 한 장만 띄움.
                         if (boss.predationStay > 0) {
                             const preyType = boss.predationPreyType;
-                            const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
-                            const preyDef = preyDataArr.find(p => p.id === preyType);
-                            const preyName = (preyDef && preyDef.name) || '사냥감';
-                            const preyEmoji = PREY_EMOJI[preyType] || '🐾';
+                            // D-94: bait 포식 시 prey 이름/이모지 분기.
+                            let preyName, preyEmoji;
+                            if (preyType === '__bait__') {
+                                preyName = '거대한 먹이';
+                                preyEmoji = '🍖';
+                            } else {
+                                const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                                const preyDef = preyDataArr.find(p => p.id === preyType);
+                                preyName = (preyDef && preyDef.name) || '사냥감';
+                                preyEmoji = PREY_EMOJI[preyType] || '🐾';
+                            }
                             // 점프스케어 길이 ~0.8s 후에 모달 마운트해 시퀀스 분리.
                             setTimeout(() => {
                                 setPredationListenInfo({ preyType, preyName, preyEmoji });
@@ -4345,15 +4419,22 @@
                 // D-90 (2026-04-25 요한 지시): 사체 타일 첫 도착 시 경고 메시지.
                 //   "거대한 짐승이 무자비하게 (사냥감 이름)을 뜯어먹은 흔적이다, 조심하자."
                 //   재방문/제자리 대기에는 침묵. carcassTiles는 Map<tileId, {preyType}>.
+                // D-94: bait 포식 흔적은 다른 톤 — 이름이 아니라 "거대한 먹이가 사라졌다"로 분기.
                 if (!isWaitInPlace && carcassTiles.has(targetId) && !carcassVisitedTiles.has(targetId)) {
                     const carcassInfo = carcassTiles.get(targetId) || {};
-                    const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
-                    const preyDef = preyDataArr.find(p => p.id === carcassInfo.preyType);
-                    const preyName = (preyDef && preyDef.name) || '사냥감';
+                    let baitMessage;
+                    if (carcassInfo.preyType === '__bait__') {
+                        baitMessage = '놓아둔 먹이가 깨끗이 사라졌다. 거대한 짐승의 식사 흔적이다. 조심하자.';
+                    } else {
+                        const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                        const preyDef = preyDataArr.find(p => p.id === carcassInfo.preyType);
+                        const preyName = (preyDef && preyDef.name) || '사냥감';
+                        baitMessage = `거대한 짐승이 무자비하게 ${preyName}을(를) 뜯어먹은 흔적이다. 조심하자.`;
+                    }
                     showTileEventToast({
                         emoji: '🦴',
                         title: '짐승의 식사 자리',
-                        message: `거대한 짐승이 무자비하게 ${preyName}을(를) 뜯어먹은 흔적이다. 조심하자.`,
+                        message: baitMessage,
                         color: '#a83232'
                     });
                     setCarcassVisitedTiles(prev => {
@@ -4417,12 +4498,23 @@
                     const def = preyDataArrBossMove.find(pd => pd && pd.id === p.preyType);
                     return def && def.level === 2;
                 });
+                // D-94 (2026-04-25): 거대한 먹이가 놓인 타일을 synthetic prey로 변환해 동일 경로로 처리.
+                //   level=2 + isBait 플래그. boss는 prey와 구분 없이 BFS 추격→포식 시작.
+                //   onPredationStart 콜백에서 prey.isBait 분기로 baitTiles 제거.
+                const baitAsPreys = Array.from(baitTiles).map(tid => ({
+                    id: 'bait:' + tid,
+                    tileId: tid,
+                    level: 2,
+                    preyType: '__bait__',
+                    isBait: true
+                }));
+                const allTargets = [...l2Preys, ...baitAsPreys];
 
                 // D-86 (2026-04-24 요한 지시): 플레이어 1이동 = 보스 1이동.
                 // 기존 caller 게이트(`chaseMode || newMoveCount % 2 === 0`)를 제거.
                 // 보스 클래스 내부도 1턴=1칸 고정이므로(이전 D-86 boss.js) 매 호출마다
                 // 정확히 1칸. 일반/추격 무관하게 동기화된 템포 유지.
-                boss.onPlayerMove(targetId, movedDetection, l2Preys);
+                boss.onPlayerMove(targetId, movedDetection, allTargets);
                 newBossPos = boss.position;
 
                 // D-53: 보스가 실제로 이동한 경우에만 history에 push. 같은 자리 유지면 skip.
@@ -4603,6 +4695,7 @@
                         preyTraceTiles={preyTraceTiles}
                         carcassTiles={carcassTiles}
                         carcassTraceTiles={carcassTraceTiles}
+                        baitTiles={baitTiles}
                         moveHistory={moveHistory}
                         bossMoveHistory={bossMoveHistory}
                         showPathView={showPathView}
@@ -4622,6 +4715,7 @@
                             setSelectedItem={setSelectedInventoryItem}
                             closeInventory={() => setShowInventory(false)}
                             onUseItem={handleUseItem}
+                            onLureBait={handleLureBait}
                             onFlashMessage={setMessage}
                         />
                     )}

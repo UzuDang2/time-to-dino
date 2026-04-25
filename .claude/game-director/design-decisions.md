@@ -5,6 +5,77 @@
 
 ---
 
+## D-94. 거대한 먹이 + 보스 유인 시스템 (2026-04-25, 13th 세션, `boss.js`/`index.html`/`inventory.js`/`scripts/fetch_data.py`/`data/*.json`)
+
+요한 원문: "큰생고기 4개를 조합해서 2x2짜리의 '거대한 먹이' 를 만들수 있게 해줘. 기존처럼 사용하기 하면 생명력 패널티 크게 주면서 배고픔 채워주게 하고(기존 큰생고기 수치를 적절히 반영), 이거 요리도 가능하게 해줘. 근데 사용하기 버튼 말고도 특수한 버튼 하나 더 나오게 만들어줘. (먹이로 유인하기) 해당 기능은 타일에 먹이를 놔두어서 보스가 해당 타일로 오게끔 유도한다 (2등급 사냥감과 처리 동일) 유저가 타일에 먹이를 올려놨다는걸 이해하도록 타일에 고기 아이콘 표시해주고, 알림메시지로 (이곳에 먹이를 놔두었다, 멀리서부터 발소리가 가까워지는 기분이 든다) 라고 해줘"
+
+### 신규 아이템 2종
+
+- **giant_bait** (거대한 먹이) — 2단계, **shape 2x2** (4칸), is_bait=true.
+  - 효과: hunger+8 / health-8. 큰생고기(hunger+2/health-2) ×4의 단순 누적 — "큰덩어리 = 큰만족 + 큰페널티" 톤 유지.
+- **grilled_giant_bait** (거대한 먹이 구이) — 3단계, 2x2, is_bait=true.
+  - 효과: hunger+16 / health+8. 큰고기꼬치구이(hunger+4/health+2) ×4. 익히면 페널티 → 회복으로 전환.
+
+### 신규 조합 2건
+
+- `big_meat × 4 → giant_bait` (4재료 동일 종류, 큰생고기 4개 모아 거대한 먹이 1개).
+- `giant_bait → grilled_giant_bait` (1재료 요리 — 휴식 카드 요리 모달 자동 노출).
+
+### [먹이로 유인하기] 버튼 (ItemInfoModal)
+
+- `is_bait` 플래그가 있는 아이템은 정보 팝업창에 [사용하기] 외 [먹이로 유인하기] 버튼이 추가 노출.
+- 클릭 시 `handleLureBait(item)`:
+  - 인벤에서 1개 차감 (`removeItem(item)` + `items.filter`).
+  - `setBaitTiles`에 currentTile 추가.
+  - 가방 모달 닫기, 메시지 "이곳에 먹이를 놔두었다. 멀리서부터 발소리가 가까워지는 기분이 든다…" + 토스트.
+
+### 보스 유인 메커니즘 (synthetic prey)
+
+- `boss.js`는 **무변경**. 대신 index.html에서 baitTiles를 가짜 prey 객체로 변환해 onPlayerMove에 전달:
+  ```
+  baitAsPreys = Array.from(baitTiles).map(tid => ({
+    id: 'bait:'+tid, tileId: tid, level: 2, preyType: '__bait__', isBait: true
+  }));
+  boss.onPlayerMove(targetId, detection, [...l2Preys, ...baitAsPreys]);
+  ```
+- 보스의 기존 predation 로직(거리 ≤ 2 후보 선택, BFS 1홉 추격, 도달 시 stay=3 시작)이 prey와 bait를 구분 없이 처리.
+- **콜백 분기** (index.html):
+  - `onPredationStart(id, tile, prey)`: `prey.isBait`면 `setBaitTiles.delete(tile)`, 아니면 `setPreys.filter`.
+  - `onPredationComplete(tile, id, preyType)`: preyType='__bait__'면 사체 메시지 분기.
+
+### 시각 / 알림 분기
+
+- **HexTile**: `computeTileIcons`에 `hasBait` ctx 추가. bait 타일에는 🍖 아이콘 (carcass와 mutually exclusive — 보스 식사 후 carcass로 전환). trace 표시도 bait 있으면 생략.
+- **사체 도착 메시지** (D-90 분기 확장): bait면 "놓아둔 먹이가 깨끗이 사라졌다. 거대한 짐승의 식사 흔적이다. 조심하자.", 일반 prey면 기존 톤.
+- **listen 인접 + 포식중 모달** (D-90 PredationListenModal): bait면 prey name='거대한 먹이', emoji='🍖'.
+
+### 디자인 의사결정
+
+- **수치 ×4 그대로**: "적절히 반영" 해석을 단순 누적으로. 페널티 -8은 큰편이지만 4칸 인벤 차지하므로 균형. 요리(grilled)는 +16/+8로 큰 보상 — 4칸 비용 정당화.
+- **synthetic prey 패턴**: boss.js 회귀 위험 제거 + bait를 prey와 동일 메커니즘으로 통일. 두 시스템 분리하지 않음.
+- **carcass 시각**: bait 포식 후도 일반 사체와 동일 🦴 (구분 없음). 내러티브상 "짐승이 다 먹어치웠다"는 결과가 같음. 메시지로만 분기.
+- **giant_bait emoji**: 1단계 한정 ITEM_EMOJI 규칙의 예외(2단계+이지만 직관성 우선). 🍖 (큰생고기와 같음 — 시각적 크기 차이로 구분).
+
+### 인프라 동기화
+
+- `data/items.json` +2, `data/combos.json` +2, `data/data.js` 재생성.
+- `inventory.js` ITEMS 폴백 +2 (shape `[[1,1],[1,1]]` 2x2).
+- `scripts/fetch_data.py` ITEM_NAME_TO_ID +2.
+- 시트 SSOT 동기화는 다음 로컬 세션 작업 (pending 명시).
+
+### Node 스모크 (4타일 선형 맵)
+
+- 보스 0, bait at 2: T1 0→1, T2 1→2, predationStay=3 + onPredationStart(id='bait:2', isBait=true). T3-T5 stay 3→2→1→0. T5에서 onPredationComplete(tile=2, preyType='__bait__'). ✓
+
+### 영향 범위
+
+- 신규 state: `baitTiles` Set. initializeGame reset 포함.
+- 신규 함수: `handleLureBait`.
+- 컴포넌트 prop 확장: HexTile/GameMap에 `baitTiles`, ItemInfoModal/InventoryModal에 `onLureBait`.
+- boss.js / 다른 컴포넌트 무변경.
+
+---
+
 ## D-93. 포식 중 보스 타일 진입 안전 + hunt_start 동기화 (2026-04-25, 13th 세션, `index.html`)
 
 **요한 원문**: "매추라기가 평원 타일로 도망갔고, 내가 쫒아서 해당 타일로 들어갔는데 거기에 보스가 있었어, 내가 먼저 이동하고 보스가 이동하는 순서다보니 포식이 일어나기전에 내가 먼저 도착해버려서 조우 순간 죽은것 같은데, 이런 경우라면 포식이 먼저 발생했음 좋겠어. 혹시 일괄적으로 터니 순서를 보스가 먼저 타일이동, 그다음 유저 이동으로 통일하는게 좋을까?"

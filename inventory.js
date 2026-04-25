@@ -91,6 +91,9 @@ class InventorySystem {
         big_meat:                  { name: '큰생고기',         shape: [[1]], grade: 1, mergeable: false, category: '음식', merge_result: null },
         big_meat_skewer:           { name: '큰고기꼬치',       shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
         grilled_big_meat_skewer:   { name: '큰고기꼬치구이',   shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
+        // D-94 (2026-04-25): 거대한 먹이 — 보스 유인용 2x2 음식. is_bait 플래그 = ItemInfoModal에서 [먹이로 유인하기] 버튼 노출 트리거.
+        giant_bait:                { name: '거대한 먹이',      shape: [[1,1],[1,1]], grade: 2, mergeable: false, category: '음식', merge_result: null, is_bait: true },
+        grilled_giant_bait:        { name: '거대한 먹이 구이', shape: [[1,1],[1,1]], grade: 3, mergeable: false, category: '음식', merge_result: null, is_bait: true },
 
         // === D-71 사냥감 확장 1단계 — 게·메뚜기 보상 체인 ===
         //   crab_whole(재료): 단독 섭취 불가. 돌+게 조합으로 게살 2개.

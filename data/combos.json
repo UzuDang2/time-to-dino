@@ -165,5 +165,22 @@
     ],
     "result": "grilled_big_meat_skewer",
     "raw": "큰고기꼬치 → 큰고기꼬치구이"
+  },
+  {
+    "ingredients": [
+      "big_meat",
+      "big_meat",
+      "big_meat",
+      "big_meat"
+    ],
+    "result": "giant_bait",
+    "raw": "큰생고기 + 큰생고기 + 큰생고기 + 큰생고기 → 거대한 먹이"
+  },
+  {
+    "ingredients": [
+      "giant_bait"
+    ],
+    "result": "grilled_giant_bait",
+    "raw": "거대한 먹이 → 거대한 먹이 구이"
   }
 ]

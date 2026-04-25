@@ -1640,6 +1640,76 @@ window.TTD_DATA = {
         ],
         "raw": "hunger+4;health+2"
       }
+    },
+    {
+      "id": "giant_bait",
+      "name": "거대한 먹이",
+      "이름": "거대한 먹이",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "2x2",
+      "무게": 8,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "큰덩어리 살을 한데 모은 미끼. 한 입에 너무 많은 위장 부담이 따르지만, 거대한 짐승조차 끌어들일 만큼 강한 냄새가 풍긴다.",
+      "효과 요약": "배고픔 +8, 생명력 -8.",
+      "사용 효과": "hunger+8;health-8",
+      "merge_result": null,
+      "merge_enabled": false,
+      "is_bait": true,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 8
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -8
+          }
+        ],
+        "raw": "hunger+8;health-8"
+      }
+    },
+    {
+      "id": "grilled_giant_bait",
+      "name": "거대한 먹이 구이",
+      "이름": "거대한 먹이 구이",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "3단계",
+      "가방칸수": "2x2",
+      "무게": 8,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "잘 익힌 거대한 살덩이. 거하게 한 끼를 떼우고도 기력이 회복된다.",
+      "효과 요약": "배고픔 +16, 생명력 +8.",
+      "사용 효과": "hunger+16;health+8",
+      "merge_result": null,
+      "merge_enabled": false,
+      "is_bait": true,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 16
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 8
+          }
+        ],
+        "raw": "hunger+16;health+8"
+      }
     }
   ],
   "WEAPONS": [
@@ -2019,6 +2089,23 @@ window.TTD_DATA = {
       ],
       "result": "grilled_big_meat_skewer",
       "raw": "큰고기꼬치 → 큰고기꼬치구이"
+    },
+    {
+      "ingredients": [
+        "big_meat",
+        "big_meat",
+        "big_meat",
+        "big_meat"
+      ],
+      "result": "giant_bait",
+      "raw": "큰생고기 + 큰생고기 + 큰생고기 + 큰생고기 → 거대한 먹이"
+    },
+    {
+      "ingredients": [
+        "giant_bait"
+      ],
+      "result": "grilled_giant_bait",
+      "raw": "거대한 먹이 → 거대한 먹이 구이"
     }
   ]
 };

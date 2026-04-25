@@ -1,5 +1,14 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-94**).
+D-94 거대한 먹이 + 보스 유인 시스템:
+- 아이템 +2: giant_bait(2x2, hunger+8/health-8, is_bait) + grilled_giant_bait(2x2, hunger+16/health+8). combos +2 (big_meat×4→giant_bait, giant_bait→grilled).
+- ItemInfoModal에 is_bait 조건부 [먹이로 유인하기] 버튼 → handleLureBait 인벤 차감 + baitTiles 등록 + 토스트 "이곳에 먹이를 놔두었다…".
+- 보스 유인은 synthetic prey 패턴 — baitTiles를 가짜 L2 prey({preyType:'__bait__', isBait:true})로 변환해 boss.onPlayerMove에 전달. boss.js 무변경. 콜백 isBait 분기.
+- bait 시각 🍖 (HexTile 스택 통합). 사체 도착·listen 포식 모달 모두 bait 분기 (이름=거대한 먹이).
+변경 파일: `index.html`, `inventory.js`, `scripts/fetch_data.py`, `data/items.json`/`combos.json`/`data.js`. boss.js 무변경.
+Node 스모크: 보스 0, bait at 2 → T1 0→1, T2 도달 stay=3 isBait=true, T5 complete preyType='__bait__' ✓.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-93**).
 D-93 보스 포식 동시 도착 시 즉사 회피 + hunt_start 동기화 (`index.html`):
 - 시나리오: L2 prey가 도망친 타일 → 유저 추격 → 같은 턴에 보스도 BFS 1홉으로 같은 타일 도달해 predation 시작 → 즉시 게임 오버 ← 부자연스러움 (D-90 모달 톤과 모순).
