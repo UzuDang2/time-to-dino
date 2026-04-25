@@ -5,6 +5,64 @@
 
 ---
 
+## D-90. 제자리 시간 보내기 + 포식 3턴 + 사체 알림 + 포식 listen 모달 + 큰생고기 (2026-04-25, 13th 세션, `index.html` / `boss.js` / `inventory.js` / `scripts/fetch_data.py` / `data/*.json`)
+
+요한 4건 + 1건 묶음. 핵심은 보스 포식 시스템의 컨텐츠 표면화 — 보스가 "사라지는 동안 무엇을 하는지"를 플레이어에게 정보·알림·기회로 노출.
+
+### A. 제자리 [시간 보내기] 모달 + moveTo self-target 허용
+
+- 요한 원문: "유저가 현재 자신이 위치한 타일을 터치하면 그또한 이동으로 간주하는 처리를 해줬음 좋겠어, 마치 다른 타일로 이동한것처럼 동일한 규칙을 갖도록 하되, 확인 팝업창으로 '제자리에서 시간을 보내도 될까…?' [시간 보내기] 버튼이 있게 만들어줘."
+- `moveTo(targetId)` 1행 가드를 `isWaitInPlace = (targetId === currentTile)` 분기로 확장 — connections 체크에서 self 허용. 이후 모든 부수 효과(시간/배고픔/발각률+5/보스 이동/손패 사이클/사냥감 hunt_start 카드 push)가 그대로 흐름.
+- HexTile onClick: gameOver/victory/pathUnvisited/showPathView 차단 후 `isCurrent`면 `requestWait()` 콜, 아니면 기존 canMove → moveTo. requestWait는 GameMap 경유로 Game의 `setWaitConfirmOpen(true)` 트리거.
+- `WaitConfirmModal` 신규 — "제자리에서 시간을 보내도 될까…? 한 턴이 지나가고 보스도 함께 움직인다." [취소] [시간 보내기]. 확정 시 `moveTo(currentTile)`.
+- 부수: wait-in-place에서는 사냥감 발견 토스트 생략(`isWaitInPlace ? skip toast : show`). 카드 hunt_start는 그대로 push.
+
+### B. 보스 포식 stay 2 → 3턴
+
+- `boss.js::predationStay = 3` (이전 2). 3턴 정지 동안 player가 인접에 들러 listen할 창이 1턴 더.
+
+### C. 사체 타일 도착 경고
+
+- 요한 원문: "보스가 사냥감을 포식했던 흔적의 타일에 유저가 도착했다면 '거대한 짐승이 무자비하게 (사냥당한 사냥감의 이름) 을 뜯어먹은 흔적이다, 조심하자' 라고 알림 메시지가 뜨게 해줘."
+- **자료구조 변경**: `carcassTiles` Set → Map<tileId, {preyType}>. `.has(tileId)` 호출 호환 — 기존 사용처 무회귀.
+- **boss.js 콜백 시그니처 확장**:
+  - `onPredationStart(preyId, tileId, prey)` — prey 객체 자체 전달.
+  - `onPredationComplete(tileId, preyId, preyType)` — 종(preyType) 전달. 보스 인스턴스에 `predationPreyType` 필드 추가해 stay 동안 보존.
+- **moveTo 분기**: 첫 도착(`!isWaitInPlace && carcassTiles.has(targetId) && !carcassVisitedTiles.has(targetId)`)에 토스트 발사 + `setCarcassVisitedTiles`에 add. 메시지: "거대한 짐승이 무자비하게 OOO을(를) 뜯어먹은 흔적이다. 조심하자." 색 #a83232.
+
+### D. 포식중 보스 인접 + 귀기울이기 → 점프스케어 + 정보 모달
+
+- 요한 원문: "포식중인 보스칸에 인접한 1칸에 도착했고, 그때 귀기울이기를 한다면 점프스케어 이후에 팝업창을 하나 띄워준다 / 타이틀: 포식중인 짐승 / 보스 아이콘, 사냥감 아이콘, 피 아이콘 / '거대한 그림자가 정신없이 무언가를 뜯어먹고 있다…몰래 통과해서 지나갈 수 있는 좋은 기회다' / [확인]"
+- `useCard('listen')` bossDist===1 분기 안에 `boss.predationStay > 0` 체크. 일반 토스트 대신 점프스케어 트리거 + `setTimeout(800ms)`로 `setPredationListenInfo({preyType, preyName, preyEmoji})`. 모달은 점프스케어가 사라진 뒤 자연스럽게 노출.
+- `PredationListenModal` 신규 — 진홍 테두리, 🦖 + prey emoji + 🩸 가로 정렬. 상단 라벨 "포식중인 짐승" #ff8a8a. 본문 메시지 + [확인] 버튼.
+
+### E. 큰생고기 신규 + L2 사냥감 meat 절반 + 파생 조합
+
+- 요한 원문: "레벨2의 사냥감들이 주는 고기가 너무 많아. 대신 큰생고기 아이템을 추가하여 기본 수치가 생고기보다 2배 좋도록 해줘. 그리고 사냥감을 사냥할때의 개수를 수치만큼 줄여줘. … 이에따라 파생되는 조합법이나 요리도 알아서 만들어줘"
+- **신규 아이템 3종** (items.json): big_meat (1단계, hunger+2/health-2) / big_meat_skewer (2단계, hunger+2/health-2) / grilled_big_meat_skewer (3단계, hunger+4/health+2). 각 효과는 `meat → meat_skewer → grilled_meat_skewer` 체인의 정확한 ×2.
+- **수치 해석**: "기본 수치가 생고기보다 2배" → 생고기 hunger+1/health-1 × 2 = hunger+2/health-2. 영양도 페널티도 둘 다 ×2 — "큰덩어리는 만족도 크지만 위장 부담도 크다" 해석. net effect는 동일하지만 인벤토리 1칸으로 2배 효과를 압축 — 공간 효율 보상.
+- **파생 조합 2건**: `big_meat + branch → big_meat_skewer` / `big_meat_skewer → grilled_big_meat_skewer`. 기존 meat 체인 패턴 그대로.
+- **L2 7종 prey.json** drop_item="big_meat" + meat 수량 절반(floor): boar 5→2, dinosaur 4→2, deer 7→3, badger 6→3, fox 5→2, turkey 4→2, armadillo 5→2.
+- **인프라 동기화**:
+  - `inventory.js::ITEMS` 정적 폴백 +3 (TTD_DATA 미로드 시 안전망).
+  - `scripts/fetch_data.py::ITEM_NAME_TO_ID` 매핑 +3 (다음 로컬 시트 동기화 시 자동 처리).
+  - `data/data.js`는 `export_data_js()` 호출로 재생성. 시트 SSOT 동기화는 다음 로컬 세션 작업 (pending.md 명시).
+
+**Node 스모크 (boss 포식 시퀀스)** — 4타일 선형 맵에서:
+- T1: 보스 0→1 (predationStay=0).
+- T2: 보스 1→2(target prey 위치) → predationStay=3, predationPreyType='boar' 캡처, onPredationStart 콜백 호출.
+- T3/T4/T5: stay 3→2→1→0. T5에서 onPredationComplete(tile=2, preyId='p1', preyType='boar') 호출. ✓
+
+**대안(검토)**:
+- 큰생고기 효과 hunger+2/health-1 (페널티 그대로 = 진짜 2배 좋음): 조작 압박 약화. 패스. 기획 톤상 "큰덩어리=큰리스크" 해석이 더 자연스러움.
+- 제자리 클릭 즉시 wait (확인 모달 없이): 의도치 않은 자가 클릭으로 시간 손실 위험. 거부.
+- 포식 4턴 이상: 너무 길어 보스 비활성 구간이 게임 밸런스를 흔듦. 3턴이 적정.
+- 사체 메시지를 모달로: 일회성 알림이라 토스트가 톤상 적합.
+
+**영향 범위**: `boss.js` (콜백 시그니처/필드/3턴) / `index.html` (carcassTiles Map 전환, moveTo self 허용, 4 분기 추가, 2 모달 신규) / `inventory.js` (ITEMS 폴백 +3) / `scripts/fetch_data.py` (이름 매핑 +3) / `data/items.json` `data/combos.json` `data/prey.json` `data/data.js` (재생성).
+
+---
+
 ## D-89. 타일 아이콘 통합 중앙 스택 레이아웃 + 트레이스 자동 생략 (2026-04-25, 13th 세션, `index.html`)
 
 **요한 원문**: "흔적은 정체가 밝혀지면 흔적아이콘이 없어지고 해당 자리에 사냥감 아이콘으로 대체해도 되잖아, 아니 애초에 사냥감 아이콘이나 흔적도 타일의 정 중앙 쪽에 놓아도 되지, 풍족한 땅이나 유저 아이콘, 보스 아이콘도 전부 중앙쪽에 표시되잖아, 동일한 타일에 모두 표시되어야 한다해도 좌우로, 중앙 정렬로 스택되게해서 두개일땐 ㅇㅇ, 세개부터는 ㅇㅇ/ㅇ, 네개일땐 ㅇㅇ/ㅇㅇ"

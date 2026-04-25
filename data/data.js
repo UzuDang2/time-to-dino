@@ -346,10 +346,10 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 15,
       "type": "반격형",
-      "meat": 5,
+      "meat": 2,
       "habitat": "덤불,숲",
       "evade_per_turn": "",
-      "drop_item": "",
+      "drop_item": "big_meat",
       "actions_per_turn": "attack,attack,defend,evade",
       "defense": 1
     },
@@ -361,10 +361,10 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 15,
       "type": "반격형",
-      "meat": 4,
+      "meat": 2,
       "habitat": "동굴",
       "evade_per_turn": "",
-      "drop_item": "",
+      "drop_item": "big_meat",
       "actions_per_turn": "attack,evade,attack,peek",
       "defense": 1
     },
@@ -376,10 +376,10 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 50,
       "type": "회피형",
-      "meat": 7,
+      "meat": 3,
       "habitat": "평원,숲",
       "evade_per_turn": "",
-      "drop_item": "",
+      "drop_item": "big_meat",
       "actions_per_turn": "evade,evade,attack,peek",
       "defense": 1
     },
@@ -391,10 +391,10 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 15,
       "type": "반격형",
-      "meat": 6,
+      "meat": 3,
       "habitat": "덤불",
       "evade_per_turn": "",
-      "drop_item": "",
+      "drop_item": "big_meat",
       "actions_per_turn": "defend,attack,evade,attack",
       "defense": 1
     },
@@ -406,10 +406,10 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 60,
       "type": "회피형",
-      "meat": 5,
+      "meat": 2,
       "habitat": "숲",
       "evade_per_turn": "",
-      "drop_item": "",
+      "drop_item": "big_meat",
       "actions_per_turn": "evade,attack,evade,peek",
       "defense": 1
     },
@@ -421,10 +421,10 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 15,
       "type": "반격형",
-      "meat": 4,
+      "meat": 2,
       "habitat": "평원",
       "evade_per_turn": "",
-      "drop_item": "",
+      "drop_item": "big_meat",
       "actions_per_turn": "attack,evade,defend,peek",
       "defense": 1
     },
@@ -436,10 +436,10 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 10,
       "type": "방어형",
-      "meat": 5,
+      "meat": 2,
       "habitat": "동굴",
       "evade_per_turn": "",
-      "drop_item": "",
+      "drop_item": "big_meat",
       "actions_per_turn": "defend,defend,evade,peek",
       "defense": 1
     }
@@ -1538,6 +1538,108 @@ window.TTD_DATA = {
         ],
         "raw": "hunger+2;health+1"
       }
+    },
+    {
+      "id": "big_meat",
+      "name": "큰생고기",
+      "이름": "큰생고기",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "무게": 2,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "큼직한 살점이 붙은 날고기. 한 끼에 든든하지만 그만큼 위장이 더 시달린다.",
+      "효과 요약": "배고픔 +2, 생명력 -2.",
+      "사용 효과": "hunger+2;health-2",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 2
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -2
+          }
+        ],
+        "raw": "hunger+2;health-2"
+      }
+    },
+    {
+      "id": "big_meat_skewer",
+      "name": "큰고기꼬치",
+      "이름": "큰고기꼬치",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "무게": 2,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "두툼한 살덩어리를 가지에 꿴 꼬치. 익히면 굉장한 한 끼가 된다.",
+      "효과 요약": "배고픔 +2, 생명력 -2.",
+      "사용 효과": "hunger+2;health-2",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 2
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -2
+          }
+        ],
+        "raw": "hunger+2;health-2"
+      }
+    },
+    {
+      "id": "grilled_big_meat_skewer",
+      "name": "큰고기꼬치구이",
+      "이름": "큰고기꼬치구이",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "3단계",
+      "가방칸수": "1x1",
+      "무게": 2,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "잘 구워진 두툼한 살덩이 꼬치. 한 입에 기력이 회복된다.",
+      "효과 요약": "배고픔 +4, 생명력 +2.",
+      "사용 효과": "hunger+4;health+2",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 4
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 2
+          }
+        ],
+        "raw": "hunger+4;health+2"
+      }
     }
   ],
   "WEAPONS": [
@@ -1902,6 +2004,21 @@ window.TTD_DATA = {
         "stone"
       ],
       "result": "scale_mail"
+    },
+    {
+      "ingredients": [
+        "big_meat",
+        "branch"
+      ],
+      "result": "big_meat_skewer",
+      "raw": "큰생고기 + 나뭇가지 → 큰고기꼬치"
+    },
+    {
+      "ingredients": [
+        "big_meat_skewer"
+      ],
+      "result": "grilled_big_meat_skewer",
+      "raw": "큰고기꼬치 → 큰고기꼬치구이"
     }
   ]
 };

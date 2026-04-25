@@ -87,6 +87,11 @@ class InventorySystem {
         grilled_meat_skewer:  { name: '고기꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
         grilled_fish_skewer:  { name: '생선꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
 
+        // D-90 (2026-04-25): L2 사냥감 큰생고기 드롭 체인. 효과 = 생고기 ×2(영양·페널티 모두).
+        big_meat:                  { name: '큰생고기',         shape: [[1]], grade: 1, mergeable: false, category: '음식', merge_result: null },
+        big_meat_skewer:           { name: '큰고기꼬치',       shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
+        grilled_big_meat_skewer:   { name: '큰고기꼬치구이',   shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
+
         // === D-71 사냥감 확장 1단계 — 게·메뚜기 보상 체인 ===
         //   crab_whole(재료): 단독 섭취 불가. 돌+게 조합으로 게살 2개.
         //   crab_meat(음식 2단계): hunger+1. 꼬치 재료로도 사용.

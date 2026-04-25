@@ -621,6 +621,10 @@ ITEM_NAME_TO_ID: dict[str, str] = {
     "천 갑옷": "cloth_armor",
     "강화 방패": "reinforced_shield",
     "비늘 갑옷": "scale_mail",
+    # D-90 (2026-04-25): L2 사냥감 큰생고기 드롭 + 파생 조합. 시트 동기화는 다음 로컬 세션 작업.
+    "큰생고기": "big_meat",
+    "큰고기꼬치": "big_meat_skewer",
+    "큰고기꼬치구이": "grilled_big_meat_skewer",
 }
 
 

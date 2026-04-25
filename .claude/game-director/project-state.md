@@ -1,5 +1,14 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-90**).
+D-90 보스 포식 시스템 표면화 5건 묶음:
+- A. 제자리 [시간 보내기]: moveTo(currentTile) 허용, `WaitConfirmModal`. 부수 효과 전부 흐름.
+- B. 보스 포식 stay 2→3턴 (`boss.js`).
+- C. 사체 도착 경고: `carcassTiles` Set→Map<tileId,{preyType}>. 첫 도착 시 토스트.
+- D. 포식중 인접 listen 모달: bossDist=1 + predationStay>0 → 점프스케어 + `PredationListenModal`.
+- E. 큰생고기 + L2 meat 절반: items 3종 신규(big_meat/skewer/grilled), combos 2건, L2 7종 drop_item=big_meat + meat//2. inventory.js 폴백 + fetch_data.py 매핑 +3. data.js 재생성. 시트 SSOT 동기화는 다음 로컬 세션 작업.
+변경 파일: `boss.js`, `index.html`, `inventory.js`, `scripts/fetch_data.py`, `data/items.json`, `data/combos.json`, `data/prey.json`, `data/data.js`. Node 스모크: 보스 4타일 시퀀스 — predationStay 3턴 정상 + onPredationComplete preyType='boar' 전달 ✓.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-89**).
 D-89 타일 아이콘 통합 중앙 스택. 이전 분산(흔적 우상단/prey 중앙/♟ 큰 폰트) 폐기 → `computeTileIcons` 순수 함수 + `TILE_STACK_LAYOUTS`(1/2/3/4 슬롯)로 통일. HexTile은 비-player/boss 아이콘만 그리고, GameMap이 player/boss 단일 SVG text를 같은 함수의 슬롯 인덱스로 배치 → transition 슬라이드 보존. 흔적은 같은 타일에 prey/carcass visible이면 자동 생략(요한: "정체 밝혀지면 사냥감 아이콘으로 대체"). 폰트 22 통일, paintOrder=stroke. Node 스모크 12케이스 PASS.
 

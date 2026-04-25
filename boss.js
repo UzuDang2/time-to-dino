@@ -11,8 +11,11 @@ class BossMonster {
         //   predationTarget — 현재 쫓는 L2 prey id (null=포식 모드 아님).
         //   predationStay   — 포식 중 남은 정지 턴 수 (0이면 포식 아님 / 종료).
         //   onPredationComplete — 포식 완료 시 호출될 콜백. 사체 타일 생성 세터 주입.
+        // D-90 (2026-04-25): predationPreyType — 포식 진행 중 prey 종(preyType) 보존.
+        //   onPredationComplete 호출 시 콜백에 전달 → 사체 메시지에 사냥감 이름 사용.
         this.predationTarget = null;
         this.predationStay = 0;
+        this.predationPreyType = null;
         this.onPredationComplete = null;
         // D-62: 보스가 밟은 타일 집합 — 일반 모드 랜덤 이동 시
         //   미방문 타일을 우선 선택해 전맵을 잘 돌아다니게 한다.
@@ -157,9 +160,11 @@ class BossMonster {
                 // 포식 완료 — 사체 타일 콜백. 이동 없음.
                 const completedAt = this.position;
                 const targetId = this.predationTarget;
+                const preyType = this.predationPreyType;
                 this.predationTarget = null;
+                this.predationPreyType = null;
                 if (typeof this.onPredationComplete === 'function') {
-                    try { this.onPredationComplete(completedAt, targetId); }
+                    try { this.onPredationComplete(completedAt, targetId, preyType); }
                     catch (e) { console.warn('[boss] onPredationComplete error:', e); }
                 }
             }
@@ -206,10 +211,12 @@ class BossMonster {
                     }
                 }
                 if (this.position === target.tileId) {
-                    // 포식 시작 — 2턴 정지.
-                    this.predationStay = 2;
+                    // D-90 (2026-04-25 요한 지시): 포식 시간 2→3턴 (체감 강화 + 인접 listen 시
+                    // "포식중인 짐승" 모달을 만날 창을 1턴 추가).
+                    this.predationStay = 3;
+                    this.predationPreyType = target.preyType;
                     if (typeof this.onPredationStart === 'function') {
-                        try { this.onPredationStart(target.id, this.position); }
+                        try { this.onPredationStart(target.id, this.position, target); }
                         catch (e) { console.warn('[boss] onPredationStart error:', e); }
                     }
                 }

@@ -344,7 +344,7 @@
         //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스가 있으면 보스 우선)
         //   - 흔적(👣 우상단): preyTraceTiles.has(tile.id) — visited 무관 (청각 단서).
         //   - D-48: 발자국 방향 화살표 제거 — 흔적(👣)만으로 단서 제공.
-        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
+        function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, requestWait, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
             const canMove = tiles[currentTile].connections.includes(tile.id);
@@ -436,7 +436,15 @@
                         strokeWidth={tileStrokeWidth}
                         fillOpacity={tileFillOpacity}
                         strokeOpacity={tileStrokeOpacity}
-                        onClick={() => !gameOver && !victory && !pathUnvisited && canMove && moveTo(tile.id)}
+                        onClick={() => {
+                            if (gameOver || victory || pathUnvisited || showPathView) return;
+                            // D-90: 자기 타일 클릭 → 시간 보내기 확인 모달.
+                            if (isCurrent) {
+                                if (typeof requestWait === 'function') requestWait();
+                                return;
+                            }
+                            if (canMove) moveTo(tile.id);
+                        }}
                     />
                     {regionLabel && (
                         <g className="hex-region-label" pointerEvents="none">
@@ -574,7 +582,7 @@
         // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
         // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
         // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, requestWait, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, moveHistory, bossMoveHistory, showPathView }) {
             // D-53: [맵 보기] 모드에서는 방문/발견 여부와 무관하게 모든 비어있지 않은 타일 공개.
             // 미방문 타일은 HexTile 내부에서 반투명 회색으로 그린다.
             // D-80 보강(2026-04-24): silhouette 플래그도 렌더 대상 — listen 시점에 즉시 노출.
@@ -834,6 +842,7 @@
                                     gameOver={gameOver}
                                     victory={victory}
                                     moveTo={moveTo}
+                                    requestWait={requestWait}
                                     preys={preys}
                                     preyTraceTiles={preyTraceTiles}
                                     carcassTiles={carcassTiles}
@@ -2223,6 +2232,125 @@
             }
         };
 
+        // D-90 (2026-04-25 요한 지시): 제자리 클릭 시간 보내기 확인 모달.
+        //   타일을 자기 자신에게 클릭하면 다른 타일 이동과 동일한 규칙(시간/배고픔/발각률/
+        //   보스 이동/손패 사이클)이 적용된다. 의도치 않은 자가 클릭에 시간이 흘러가는 걸
+        //   방지하기 위해 명시 확인 단계.
+        function WaitConfirmModal({ onConfirm, onCancel }) {
+            return (
+                <div className="modal">
+                    <div style={{
+                        background: '#1a1a2e',
+                        color: '#fff',
+                        padding: '24px 22px',
+                        borderRadius: '10px',
+                        border: '1px solid #4a4a6e',
+                        maxWidth: '320px',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '14px' }}>
+                            제자리에서 시간을 보내도 될까…?
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#bbb', lineHeight: 1.5, marginBottom: '18px' }}>
+                            한 턴이 지나가고 보스도 함께 움직인다.
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                            <button
+                                onClick={onCancel}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#bbb',
+                                    border: '1px solid #4a4a6e',
+                                    padding: '8px 18px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px'
+                                }}
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={onConfirm}
+                                style={{
+                                    background: '#d4b84a',
+                                    color: '#1a1a2e',
+                                    border: 'none',
+                                    padding: '8px 22px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '700'
+                                }}
+                            >
+                                시간 보내기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // D-90 (2026-04-25 요한 지시): 포식중인 보스 인접 1칸에서 귀기울이기 시
+        //   점프스케어 직후 띄우는 정보 모달. "지금이 몰래 통과할 기회다" 알림.
+        function PredationListenModal({ info, onClose }) {
+            if (!info) return null;
+            return (
+                <div className="modal">
+                    <div style={{
+                        background: '#2a1a1e',
+                        color: '#fff',
+                        padding: '24px 22px',
+                        borderRadius: '10px',
+                        border: '1px solid #8B0000',
+                        maxWidth: '340px',
+                        textAlign: 'center',
+                        boxShadow: '0 0 20px rgba(255,44,75,0.25)'
+                    }}>
+                        <div style={{
+                            fontSize: '17px',
+                            fontWeight: '700',
+                            color: '#ff8a8a',
+                            marginBottom: '12px',
+                            letterSpacing: '0.05em'
+                        }}>
+                            포식중인 짐승
+                        </div>
+                        <div style={{
+                            fontSize: '40px',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '12px',
+                            marginBottom: '14px'
+                        }}>
+                            <span>🦖</span>
+                            <span>{info.preyEmoji || '🐾'}</span>
+                            <span>🩸</span>
+                        </div>
+                        <div style={{ fontSize: '13px', lineHeight: 1.6, marginBottom: '18px', color: '#ddd' }}>
+                            거대한 그림자가 정신없이 무언가를 뜯어먹고 있다…<br />
+                            몰래 통과해서 지나갈 수 있는 좋은 기회다.
+                        </div>
+                        <button
+                            onClick={onClose}
+                            style={{
+                                background: '#8B0000',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '8px 26px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: '600'
+                            }}
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         function GameEndModal({ gameOver, victory, deathReason, showPathView, onViewPath }) {
             // 승리 후 '맵 보기' 모드일 때 모달 숨김 — 경로를 볼 수 있게.
             if ((!gameOver && !victory) || showPathView) return null;
@@ -2981,8 +3109,17 @@
             const [activeHunt, setActiveHunt] = useState(null);
             // D-77/D-78: 동물 사체 타일. 보스 포식 완료 시 여기에 tileId가 추가됨.
             //   carcassMeatTaken은 이미 생고기 보너스 1회 소진한 타일(뒤져보기 보상용).
-            const [carcassTiles, setCarcassTiles] = useState(new Set());
+            // D-90 (2026-04-25): carcassTiles는 Set→Map. value={preyType} 보존 → 사체
+            //   타일 도착 시 "거대한 짐승이 OOO을 뜯어먹은 흔적" 메시지에 사냥감 이름 사용.
+            //   .has(tileId) 체크는 Map도 동일 — 기존 사용처 무회귀.
+            const [carcassTiles, setCarcassTiles] = useState(new Map());
             const [carcassMeatTaken, setCarcassMeatTaken] = useState(new Set());
+            // D-90: 사체 타일 첫 도착 시 알림 표시 마커. 이미 도착한 타일은 재방문해도 침묵.
+            const [carcassVisitedTiles, setCarcassVisitedTiles] = useState(new Set());
+            // D-90: 제자리 [시간 보내기] 확인 모달.
+            const [waitConfirmOpen, setWaitConfirmOpen] = useState(false);
+            // D-90: listen 시 인접 포식중 보스 발견 모달 데이터 ({preyType, preyName}|null).
+            const [predationListenInfo, setPredationListenInfo] = useState(null);
             // D-78: listen 카드로 감지된 사체 trace 타일 — 👣 대신 🦴 표시.
             const [carcassTraceTiles, setCarcassTraceTiles] = useState(new Set());
             const mapRef = useRef(null);
@@ -3306,7 +3443,7 @@
                 // D-77: 포식 콜백 연결.
                 //   onPredationStart  — 타겟 L2 prey를 preys에서 제거(보스가 잡아먹기 시작).
                 //   onPredationComplete — 보스가 그 타일에서 2턴 정지를 끝낼 때 사체 타일 생성.
-                newBoss.onPredationStart = (targetPreyId, /*tileId*/) => {
+                newBoss.onPredationStart = (targetPreyId, /*tileId, prey*/) => {
                     setPreys(prev => prev.filter(p => p.id !== targetPreyId));
                     setPreyTraceTiles(prev => {
                         // prey 제거 후 해당 tileId는 carcassTraceTiles로 옮길 수도 있지만,
@@ -3315,10 +3452,11 @@
                         return next;
                     });
                 };
-                newBoss.onPredationComplete = (tileId /*, targetPreyId */) => {
+                // D-90: 콜백 3번째 인자 preyType 추가 — 사체 도착 메시지에 사냥감 이름 사용.
+                newBoss.onPredationComplete = (tileId, _targetPreyId, preyType) => {
                     setCarcassTiles(prev => {
-                        const next = new Set(prev);
-                        next.add(tileId);
+                        const next = new Map(prev);
+                        next.set(tileId, { preyType: preyType || null });
                         return next;
                     });
                 };
@@ -3339,7 +3477,13 @@
                     : [];
                 setPreys(spawned);
                 setPreyTraceTiles(new Set());
+                setCarcassTiles(new Map());
+                setCarcassMeatTaken(new Set());
+                setCarcassVisitedTiles(new Set());
+                setCarcassTraceTiles(new Set());
                 setActiveHunt(null);
+                setWaitConfirmOpen(false);
+                setPredationListenInfo(null);
                 // 콘솔 검증용 — 릴리스 시 제거해도 무방.
                 if (typeof window !== 'undefined') window.__preys = spawned;
             }
@@ -3853,12 +3997,26 @@
                         // D-42: 보스 위치 노출은 이 순간만. 이동 시 moveTo에서 다시 false로.
                         setBossVisible(true);
                         setBossJumpscare(true);
-                        showTileEventToast({
-                            emoji: '🦖',
-                            title: '보스 근접',
-                            message: `가쁜 숨소리가 바로 곁에서 들려온다. 보스는 타일 #${bossPos}에 있다.`,
-                            color: '#ff3b3b'
-                        });
+                        // D-90 (2026-04-25 요한 지시): 인접 1칸 + 보스 포식중이면 점프스케어
+                        // 직후 "포식중인 짐승" 모달. 일반 토스트 대신 모달 한 장만 띄움.
+                        if (boss.predationStay > 0) {
+                            const preyType = boss.predationPreyType;
+                            const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                            const preyDef = preyDataArr.find(p => p.id === preyType);
+                            const preyName = (preyDef && preyDef.name) || '사냥감';
+                            const preyEmoji = PREY_EMOJI[preyType] || '🐾';
+                            // 점프스케어 길이 ~0.8s 후에 모달 마운트해 시퀀스 분리.
+                            setTimeout(() => {
+                                setPredationListenInfo({ preyType, preyName, preyEmoji });
+                            }, 800);
+                        } else {
+                            showTileEventToast({
+                                emoji: '🦖',
+                                title: '보스 근접',
+                                message: `가쁜 숨소리가 바로 곁에서 들려온다. 보스는 타일 #${bossPos}에 있다.`,
+                                color: '#ff3b3b'
+                            });
+                        }
                     } else if (bossDist === 2) {
                         showTileEventToast({
                             emoji: '🦖',
@@ -3917,9 +4075,13 @@
                 setMessage(msg);
             };
 
-            // 타일 이동
+            // 타일 이동 (D-90: targetId === currentTile이면 "제자리에서 시간 보내기" — 다른
+            //   타일로 이동한 것과 동일한 규칙 적용. 모든 부수 효과(시간/배고픔/발각률/보스
+            //   이동/손패 사이클 등)가 그대로 흐른다. HexTile onClick에서 isCurrent면 별도
+            //   확인 모달을 거쳐 이 함수에 self target을 넘기도록 한다).
             const moveTo = (targetId) => {
-                if (!tiles[currentTile].connections.includes(targetId)) {
+                const isWaitInPlace = targetId === currentTile;
+                if (!isWaitInPlace && !tiles[currentTile].connections.includes(targetId)) {
                     setMessage('그곳으로는 갈 수 없습니다!');
                     return;
                 }
@@ -3980,6 +4142,27 @@
                     });
                 }
 
+                // D-90 (2026-04-25 요한 지시): 사체 타일 첫 도착 시 경고 메시지.
+                //   "거대한 짐승이 무자비하게 (사냥감 이름)을 뜯어먹은 흔적이다, 조심하자."
+                //   재방문/제자리 대기에는 침묵. carcassTiles는 Map<tileId, {preyType}>.
+                if (!isWaitInPlace && carcassTiles.has(targetId) && !carcassVisitedTiles.has(targetId)) {
+                    const carcassInfo = carcassTiles.get(targetId) || {};
+                    const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                    const preyDef = preyDataArr.find(p => p.id === carcassInfo.preyType);
+                    const preyName = (preyDef && preyDef.name) || '사냥감';
+                    showTileEventToast({
+                        emoji: '🦴',
+                        title: '짐승의 식사 자리',
+                        message: `거대한 짐승이 무자비하게 ${preyName}을(를) 뜯어먹은 흔적이다. 조심하자.`,
+                        color: '#a83232'
+                    });
+                    setCarcassVisitedTiles(prev => {
+                        const next = new Set(prev);
+                        next.add(targetId);
+                        return next;
+                    });
+                }
+
                 // D-48: 카드 규칙 개정 — 타일 이동 시 손패 전부 무덤으로 보내고 덱에서
                 //   HAND_SIZE(5)장 새로 드로우. 덱 소진 시 무덤 셔플해서 덱 재구성.
                 //   이전 '미사용 카드 유지' 규칙 폐기. hunt_start 카드도 자연 소멸 (손패에
@@ -4005,6 +4188,8 @@
                 }
 
                 // 3) 도착 타일에 사냥감 있으면 hunt_start 카드 overflow로 추가 + 토스트.
+                //    D-90: 제자리 대기(isWaitInPlace)에서는 토스트 생략(이미 본 사냥감) —
+                //    hunt_start 카드는 그대로 다시 push해 손패 사이클 유지.
                 if (preyHere) {
                     newHand.push({
                         ...HUNT_START_CARD,
@@ -4015,17 +4200,19 @@
                             preyType: preyHere.preyType
                         }
                     });
-                    const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
-                    const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
-                    const hpNote = (typeof preyHere.hpCurrent === 'number' && preyHere.hpCurrent < (foundDef.hp || 0))
-                        ? ` (HP ${preyHere.hpCurrent}/${foundDef.hp})`
-                        : '';
-                    showTileEventToast({
-                        emoji: PREY_EMOJI[preyHere.preyType] || '❓',
-                        title: '사냥감 발견',
-                        message: (foundDef.name || preyHere.preyType) + hpNote,
-                        color: '#3dd68c'
-                    });
+                    if (!isWaitInPlace) {
+                        const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                        const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
+                        const hpNote = (typeof preyHere.hpCurrent === 'number' && preyHere.hpCurrent < (foundDef.hp || 0))
+                            ? ` (HP ${preyHere.hpCurrent}/${foundDef.hp})`
+                            : '';
+                        showTileEventToast({
+                            emoji: PREY_EMOJI[preyHere.preyType] || '❓',
+                            title: '사냥감 발견',
+                            message: (foundDef.name || preyHere.preyType) + hpNote,
+                            color: '#3dd68c'
+                        });
+                    }
                 }
 
                 setHand(newHand);
@@ -4187,6 +4374,7 @@
                         gameOver={gameOver}
                         victory={victory}
                         moveTo={moveTo}
+                        requestWait={() => setWaitConfirmOpen(true)}
                         lootToast={lootToast}
                         onLootToastDone={() => setLootToast(null)}
                         tileEventToast={tileEventToast}
@@ -4299,6 +4487,26 @@
                             combatCards={(window.TTD_DATA && window.TTD_DATA.COMBAT_CARDS) || []}
                             onResolve={handleHuntResolve}
                             onCancel={() => setActiveHunt(null)}
+                        />
+                    )}
+
+                    {/* D-90: 제자리 [시간 보내기] 확인. confirm 시 moveTo(currentTile)
+                        호출로 모든 부수 효과(시간/배고픔/발각률/보스 이동/손패 사이클) 그대로 흐름. */}
+                    {waitConfirmOpen && (
+                        <WaitConfirmModal
+                            onCancel={() => setWaitConfirmOpen(false)}
+                            onConfirm={() => {
+                                setWaitConfirmOpen(false);
+                                moveTo(currentTile);
+                            }}
+                        />
+                    )}
+
+                    {/* D-90: 인접 포식중 보스 listen 모달. 점프스케어 직후 자동 마운트. */}
+                    {predationListenInfo && (
+                        <PredationListenModal
+                            info={predationListenInfo}
+                            onClose={() => setPredationListenInfo(null)}
                         />
                     )}
 

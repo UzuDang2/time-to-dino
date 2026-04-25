@@ -150,5 +150,20 @@
       "stone"
     ],
     "result": "scale_mail"
+  },
+  {
+    "ingredients": [
+      "big_meat",
+      "branch"
+    ],
+    "result": "big_meat_skewer",
+    "raw": "큰생고기 + 나뭇가지 → 큰고기꼬치"
+  },
+  {
+    "ingredients": [
+      "big_meat_skewer"
+    ],
+    "result": "grilled_big_meat_skewer",
+    "raw": "큰고기꼬치 → 큰고기꼬치구이"
   }
 ]
