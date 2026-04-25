@@ -1,5 +1,13 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-93**).
+D-93 보스 포식 동시 도착 시 즉사 회피 + hunt_start 동기화 (`index.html`):
+- 시나리오: L2 prey가 도망친 타일 → 유저 추격 → 같은 턴에 보스도 BFS 1홉으로 같은 타일 도달해 predation 시작 → 즉시 게임 오버 ← 부자연스러움 (D-90 모달 톤과 모순).
+- 수정 A: `inPredationSafe = encounter && boss.predationStay > 0`. 게임 오버 대신 토스트 "들키기 전에 빠져나가자!". 식사 끝나는 다음 턴부터는 일반 위협 복귀 → 1~2턴 내 빠져나가야 한다는 제한 시간이 자연 발생.
+- 수정 B: hunt_start push + setHand를 보스 이동 후로 이관. inPredationSafe면 push 생략(prey 즉시 사라진 상태 반영). setDeck/setGraveyard는 기존 위치 유지.
+- 디렉터 의견: 턴 순서 통일(보스→유저)은 회귀·톤 변화로 추천 안 함. 좁은 분기로 해결.
+Node 스모크: 4타일 선형 맵에서 boss 인접→prey타일 동시 도착 시나리오 → encounter=true/inPredationSafe=true 정상.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-92**).
 D-92 1단계 재료 11종(stone/branch/stem/mushroom/berry/meat/big_meat/water/fish/crab_whole/grasshopper_whole) 텍스트 → 이모지 통일. 모듈 레벨 `ITEM_EMOJI` + `itemEmoji()` 헬퍼. 적용 5곳: 가방 그리드 셀(emoji 단독), CraftPanel 재료/결과, CookingModal 재료/결과, CardItemConsumeModal 음식 후보(emoji+이름), ItemInfoModal 헤더(emoji+이름, 요한 추가 지시). 2단계+은 매핑 부재 → 텍스트 폴백 유지.
 

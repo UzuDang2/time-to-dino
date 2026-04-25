@@ -5,6 +5,54 @@
 
 ---
 
+## D-93. 포식 중 보스 타일 진입 안전 + hunt_start 동기화 (2026-04-25, 13th 세션, `index.html`)
+
+**요한 원문**: "매추라기가 평원 타일로 도망갔고, 내가 쫒아서 해당 타일로 들어갔는데 거기에 보스가 있었어, 내가 먼저 이동하고 보스가 이동하는 순서다보니 포식이 일어나기전에 내가 먼저 도착해버려서 조우 순간 죽은것 같은데, 이런 경우라면 포식이 먼저 발생했음 좋겠어. 혹시 일괄적으로 터니 순서를 보스가 먼저 타일이동, 그다음 유저 이동으로 통일하는게 좋을까?"
+
+### 시나리오 분석
+
+1. T-1: L2 prey가 평원 타일 X로 도망(전투 후). 보스도 prey 추적 중 X에 1칸 인접.
+2. T:    유저가 prey 추격해 X로 이동. moveTo 흐름:
+   - `preyHere = preys.find(tileId===X)` → 발견 → hunt_start 카드 손패 push.
+   - `boss.onPlayerMove(X, ...)` → 보스가 prey BFS 1홉 = X로 이동 → predation 시작 (`predationStay=3`, `prey 제거`).
+   - `encounter = newBossPos === X = true` → 즉시 게임 오버 + "보스 몬스터와 조우…".
+3. 결과: 동시 도착으로 즉사. prey도 잃고 손패엔 무용지물 hunt_start.
+
+### 디렉터 의견 (요한 질문 답변)
+
+**일괄 턴 순서 통일(보스 먼저 → 유저)은 추천 안 함**.
+- 현재 모델(유저 행동 → 보스 반응)은 체스 turn 모델로 직관적. 통일하면 첫 턴부터 보스가 움직여 유저가 행동하기 전 위험을 만들 수 있음 → "예측 가능한 추격" → "예고 없는 위협"으로 톤이 바뀜.
+- 회귀 범위가 큼(initializeGame, 손패 사이클, listen 인접 검출 등 모두 영향).
+- 이번 케이스는 "포식 중 같은 타일은 안전" 좁은 분기로 깔끔히 해결됨. D-90 모달 ("정신없이 무언가를 뜯어먹고 있다…몰래 통과해서 지나갈 수 있는 좋은 기회다") 톤과도 일관.
+
+### 결정
+
+**A. 포식 중 같은 타일은 게임 오버 회피**.
+- `inPredationSafe = encounter && boss.predationStay > 0`.
+- safe면 점프스케어/setGameOver 대신 토스트 "거대한 짐승이 식사에 정신이 팔려있다. 들키기 전에 빠져나가자!".
+- bossVisible=true (자연히 같은 타일이라 시각화).
+- 식사 끝나는 턴(predationStay 0으로 감소 후 같은 타일에 머물러 있으면) → 다음 onPlayerMove에서 다시 일반 경로 → 게임 오버 위험. 즉 "1~2턴 내 빠져나가야 한다"는 제한 시간이 자연스럽게 발생.
+
+**B. hunt_start 카드 동기화**.
+- 동일 턴 prey 포식 시작 시 prey 즉시 사라짐 → `hunt_start` 카드는 무용지물.
+- 기존 코드: `setHand(newHand)`가 `boss.onPlayerMove` 이전에 호출 → 손패에 stale 카드 push.
+- 수정: hunt_start push와 `setHand`만 보스 이동 후로 이관. `setDeck/setGraveyard/setGraveyardFlashKey`는 기존 위치 유지(손패에서 떠난 카드들이라 predation에 의존 안 함). `inPredationSafe`이면 hunt_start push 생략.
+
+**Node 스모크** (4타일 선형 맵, 보스가 prey 인접에서 시작):
+- T 시작: 유저가 prey 타일(2)로 이동.
+- `boss.onPlayerMove(2, …)` → boss 1→2, predationStay=3, predationPreyType='boar', onPredationStart 콜백.
+- `encounter = (boss.position===2) = true` / `inPredationSafe = (stay>0) = true` → 안전.
+- ✓ 게임 오버 회피 검증.
+
+**대안(거부)**:
+- 턴 순서 통일: 위 의견 참조.
+- 보스가 player tile로 이동 시 한 칸 양보(BFS 첫 홉을 다른 타일로): 포식 동선이 부자연스러움.
+- predation safe를 보스가 식사 끝낸 후 1턴 추가 안전 grace까지 확장: 도주 여유가 생기지만 긴장감 약화.
+
+**영향 범위**: `index.html` moveTo 두 블록(hunt_start push 이관 + encounter safe 분기). `boss.js` 무변경. 다른 컴포넌트/저장 자료구조 무영향.
+
+---
+
 ## D-92. 1단계 재료 아이콘 통일 + 정보창 아이콘+이름 (2026-04-25, 13th 세션, `index.html`)
 
 요한 원문: "1단계 재료들이 여러곳에서 텍스트로 표현되고 있는데, 이것들 전부 아이콘으로 표시해줘. 가방뿐아니라 조합법, 요리 레시피같은 곳도 전부 동일하게 아이콘으로 표시되게 해줘. 일단 1단계 재료들만." + 추가: "아이템 설명 팝업창엔 해당 아이콘과 이름 함께 표시해줘"

@@ -4387,38 +4387,12 @@
                     newHand.push(newDeck.shift());
                 }
 
-                // 3) 도착 타일에 사냥감 있으면 hunt_start 카드 overflow로 추가 + 토스트.
-                //    D-90: 제자리 대기(isWaitInPlace)에서는 토스트 생략(이미 본 사냥감) —
-                //    hunt_start 카드는 그대로 다시 push해 손패 사이클 유지.
-                if (preyHere) {
-                    newHand.push({
-                        ...HUNT_START_CARD,
-                        uid: `hunt_start_${preyHere.id}_${Date.now()}`,
-                        target: {
-                            tileId: targetId,
-                            preyId: preyHere.id,
-                            preyType: preyHere.preyType
-                        }
-                    });
-                    if (!isWaitInPlace) {
-                        const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
-                        const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
-                        const hpNote = (typeof preyHere.hpCurrent === 'number' && preyHere.hpCurrent < (foundDef.hp || 0))
-                            ? ` (HP ${preyHere.hpCurrent}/${foundDef.hp})`
-                            : '';
-                        showTileEventToast({
-                            emoji: PREY_EMOJI[preyHere.preyType] || '❓',
-                            title: '사냥감 발견',
-                            message: (foundDef.name || preyHere.preyType) + hpNote,
-                            color: '#3dd68c'
-                        });
-                    }
-                }
-
-                setHand(newHand);
+                // 3) hunt_start 카드 push는 보스 이동 이후로 미룬다 (D-93).
+                //    이유: 같은 턴에 보스가 같은 타일 prey를 포식 시작하면 prey가 즉시 사라지므로
+                //    hunt_start를 손패에 넣어도 더 이상 유효한 대상이 없다(유저가 카드 못 씀).
+                //    setHand/Deck/Graveyard도 보스 이동 후로 이관 — 동일 프레임이라 시각 차이 없음.
                 setDeck(newDeck);
                 setGraveyard(newGraveyard);
-                // D-48: 이동으로 손패가 전부 무덤행임을 시각적으로 안내.
                 setGraveyardFlashKey(k => k + 1);
                 
                 // 보스 이동 로직
@@ -4463,8 +4437,43 @@
                 const encounter = newBossPos === targetId;
                 const tile = newTiles[targetId];
                 let msg = '';
-                
-                if (encounter) {
+
+                // D-93 (2026-04-25 요한 지시): 보스가 포식 중인 타일에 유저가 도착하면
+                //   게임 오버 대신 "정신없이 식사 중" 안내. D-90 모달 톤과 일관 — 보스는
+                //   먹이에 정신 팔려 플레이어를 알아차리지 못함. 식사가 끝나는 다음 턴부터는
+                //   다시 위협이라 빠져나가야 함(별도 분기 없이 일반 onPlayerMove 흐름이 처리).
+                const inPredationSafe = encounter && boss.predationStay > 0;
+
+                // D-93: hunt_start 카드 push 시점 — 보스 이동 이후. 같은 턴에 보스가
+                //   prey를 포식 시작했다면(boss.position===targetId && stay>0) prey가 사라져
+                //   카드가 무용지물 → push 생략. 그 외 케이스는 기존 동작 유지.
+                if (preyHere && !inPredationSafe) {
+                    newHand.push({
+                        ...HUNT_START_CARD,
+                        uid: `hunt_start_${preyHere.id}_${Date.now()}`,
+                        target: {
+                            tileId: targetId,
+                            preyId: preyHere.id,
+                            preyType: preyHere.preyType
+                        }
+                    });
+                    if (!isWaitInPlace) {
+                        const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                        const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
+                        const hpNote = (typeof preyHere.hpCurrent === 'number' && preyHere.hpCurrent < (foundDef.hp || 0))
+                            ? ` (HP ${preyHere.hpCurrent}/${foundDef.hp})`
+                            : '';
+                        showTileEventToast({
+                            emoji: PREY_EMOJI[preyHere.preyType] || '❓',
+                            title: '사냥감 발견',
+                            message: (foundDef.name || preyHere.preyType) + hpNote,
+                            color: '#3dd68c'
+                        });
+                    }
+                }
+                setHand(newHand);
+
+                if (encounter && !inPredationSafe) {
                     // D-56 (2026-04-24 요한 지시): 보스 조우 시 점프스케어 선재생 → 0.55s 뒤
                     // 게임오버 모달. 같은 타일 진입 기준(listen 인접 1칸 연출과는 별개 경로).
                     setBossJumpscare(true);
@@ -4474,6 +4483,17 @@
                         setDeathReason('boss');
                     }, 550);
                     msg = '보스 몬스터와 조우했다! 게임 오버...';
+                } else if (inPredationSafe) {
+                    // 같은 타일이지만 보스가 식사에 정신없음 — 사체 + 보스 + 유저 한 칸에 공존.
+                    // bossVisible은 자연히 true(같은 타일 시각). 별도 jumpscare 없음.
+                    setBossVisible(true);
+                    showTileEventToast({
+                        emoji: '🦖',
+                        title: '아슬아슬한 조우',
+                        message: '거대한 짐승이 식사에 정신이 팔려있다. 들키기 전에 빠져나가자!',
+                        color: '#a83232'
+                    });
+                    msg = '보스가 정신없이 사냥감을 뜯고 있다. 살금살금 움직여야 한다…';
                 } else if (tile.type === 'normal') {
                     msg = '평범한 숲길이다.';
                 } else if (tile.type === 'good') {
