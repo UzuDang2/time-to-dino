@@ -6,6 +6,10 @@
 # 데이터 파이프라인 로컬 캐시 (재생성 가능)
 data/.sheet_cache.xlsx
 
+# Python 캐시 (fetch_data.py 직접 호출 시 생성)
+__pycache__/
+*.pyc
+
 # 서비스 계정 키 (커밋 절대 금지)
 .secrets/
 *.sa.json
