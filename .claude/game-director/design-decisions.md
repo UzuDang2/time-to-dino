@@ -5,6 +5,83 @@
 
 ---
 
+## D-91. 사냥 전투 UI 가독성 개선 + 음식 효과 정렬 (2026-04-25, 13th 세션, `index.html`)
+
+요한 원문: "2등급 사냥감과 전투할때 상대가 몇의 공격력으로 공격하는지, 방어수치는 몇인지 같은 수치들이 잘 나오게 해주고, 턴결과 로그가 사용자에게 직관적이지 않아서 알아보기 어려워, 내가 때린게 결국 맞았다는건지 회피했다는건지 내가 방어에 성공했는지 어쩐지 모르게어 직관적으로 제안해줘. 휴식카드에서 사용할 음식 선택할때 효과의 수치가 높은것부터 맨 위에서 보여지도록 조정해줘"
+
+### A. Prey 공격력/방어력 배지 노출 (HuntCombatModal 상단)
+
+**이전 상태**: 상단 prey 라인 = `사냥: {name} 🥩×{meat}` + HP 막대 + `HP cur/max`. attack/defense는 적 슬롯 영역에서만 간접 노출(턴별 행동 라벨 + 회피율). L2 사냥감은 attack=2 + defense=다양인데 수치를 한눈에 가늠 어려움.
+
+**수정**: HP 라인을 `flex` 행으로 확장해 동급 정보 인라인.
+- `🗡️ 공격력 N` (#ff9999) — `prey.attack > 0`일 때만.
+- `🛡️ 방어력 N` (#4db8ff) — `prey.defense > 0`일 때만.
+
+색상은 D-58 StatBadges 컨벤션 재사용(공격=붉은 톤, 방어=푸른 톤).
+
+### B. 턴 결과 로그 2층 카드 재설계
+
+**이전 형식 (한 줄, 모호)**:
+```
+T1: punch → 데미지 2 (HP 3)
+T2: throw → 빗나감
+T3: dodge → prey 공격
+```
+문제: 적 행동(공격/방어/회피) 결과가 라벨 한 단어로 압축돼 "내가 맞은 건지/막은 건지/회피한 건지" 불명. 색 구분도 없음.
+
+**개선 형식 (2줄/턴 카드, 색상 분기)**:
+```
+T1 ┃ 👤 펀치 → 명중! -2 HP        (초록)
+   ┃ 🦌 회피 자세                  (회색)
+T2 ┃ 👤 새총 → 회피당함 〰️ (20%)   (노랑)
+   ┃ 🦌 회피 성공 〰️               (노랑)
+T3 ┃ 👤 웅크리기 → 방어 자세 🛡️ +1  (파랑)
+   ┃ 🦌 공격 💥 → 내 HP -2          (빨강)
+```
+
+**색상 SSOT**:
+- `#3dd68c` 초록 — 명중/회피 실패(내 입장 성공).
+- `#d4b84a` 노랑 — 회피당함/회피 성공.
+- `#9bd6ff` 파랑 — 방어 자세/감쇄.
+- `#ff6666` 빨강 — 받은 피해.
+- `#aaa` 회색 — 빗나감/대기/중립.
+- `#ff9999` 분홍 — 무산(autoFail/무기 부재).
+
+**플레이어 분기 로직** (10가지 케이스):
+1. `outcome='flee_signal'` → 사냥감 도망 표기.
+2. `outcome='player_flee'` → 도망 성공 ✓.
+3. `userCard=null` → 빈 슬롯 표기.
+4. `autoFail` → 무기 부재 또는 행동 무산.
+5. `damage>0 && !hit` → 빗나감.
+6. `damage>0 && hit && preyEvaded` → 회피당함 + (회피율%).
+7. `damage>0 && hit && preyDefended>0` → 명중하지만 방어 감쇄.
+8. `damage>0 && hit && !preyEvaded && !preyDefended` → 명중! -N HP.
+9. `id='run_away'` → 도망 시도 실패.
+10. `defense>0` → 방어 자세 🛡️ +N.
+
+**적 분기 로직** (preyAction 4종):
+- `공격` → `playerDamage>0 ? 받음 -N : (cardDefense>0 ? 막아냄 : 빗나감)`.
+- `방어` → `preyDefended>0 ? 감쇄 N : 자세`.
+- `회피` → `preyEvaded ? 성공 : (hit ? 실패 : 자세)`.
+- `눈치` → 회피 못 함.
+
+UI: 각 턴이 좌측 색 보더(`borderLeft: 3px solid {playerColor}`) + 두 줄. maxHeight 110→180으로 확장.
+
+### C. 휴식 카드 음식 후보 효과 높은 순 정렬
+
+**이전 상태**: `CardItemConsumeModal::candidates`가 `inventory.items` 배치 순서 그대로. 큰고기꼬치구이가 가방 아래쪽에 있으면 산딸기보다 아래 노출 → 회복 컨텍스트에서 효과 큰 음식을 일일이 찾아야 함.
+
+**수정**: filter 결과를 `scoreItem(notionItem)` 내림차순 sort.
+- `score = sum(scaledDelta + bonus)` for stat actions. 양수 페널티는 그대로 합산(페널티 음식 자동 후순위).
+- `recoverScale=2` 휴식 컨텍스트에서: grilled_big_meat_skewer(12) > grilled_meat_skewer(6) > mushroom/berry(2) > meat/big_meat(0).
+- 동점 → 이름순 가나다.
+
+**대안(검토)**: `max(0, ...)` 양수만 누적 — 큰생고기·생고기가 산딸기와 같은 점수가 됨. 안전한 선택을 위로 올리는 의도와 어긋남. 패스.
+
+**영향 범위**: HuntCombatModal 상단 prey 라인 + 턴 로그 블록 + CardItemConsumeModal의 candidates sort 1곳. 기존 컴포넌트 시그니처/State 변경 없음.
+
+---
+
 ## D-90. 제자리 시간 보내기 + 포식 3턴 + 사체 알림 + 포식 listen 모달 + 큰생고기 (2026-04-25, 13th 세션, `index.html` / `boss.js` / `inventory.js` / `scripts/fetch_data.py` / `data/*.json`)
 
 요한 4건 + 1건 묶음. 핵심은 보스 포식 시스템의 컨텐츠 표면화 — 보스가 "사라지는 동안 무엇을 하는지"를 플레이어에게 정보·알림·기회로 노출.

@@ -1,5 +1,12 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-91**).
+D-91 사냥 전투 UI 가독성 + 음식 정렬 (`index.html`):
+- A. HuntCombatModal 상단 HP 라인에 🗡️/🛡️ 인라인 배지(prey.attack/defense > 0일 때).
+- B. 턴 로그 2층 카드 재설계 — 좌측 색 보더 + 👤/{prey} 두 줄. 색상 SSOT(초록/노랑/파랑/빨강/회색/분홍)로 명중/회피/방어/피해/무산 즉시 구분. maxHeight 110→180.
+- C. CardItemConsumeModal candidates를 효과 score(scaledDelta+bonus 합) 내림차순 sort. 동점은 이름. 휴식 recoverScale=2에서 grilled_big_meat_skewer(12) → grilled_meat_skewer(6) → mushroom/berry(2) → meat/big_meat(0).
+Node 스모크: sort 점수 계산 6 케이스 정상.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-90**).
 D-90 보스 포식 시스템 표면화 5건 묶음:
 - A. 제자리 [시간 보내기]: moveTo(currentTile) 허용, `WaitConfirmModal`. 부수 효과 전부 흐름.

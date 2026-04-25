@@ -1501,11 +1501,37 @@
             //   리스트에서 제외. inventory.items는 selectedItem도 포함하므로, selected는 사용 불가로 간주.
             //   가방 "닫기" 경로에서 cancelSelection 보장이 주 방어선, 이것은 엣지 케이스 이중 방어.
             const selectedId = inventory?.selectedItem?.id;
+            // D-91 (2026-04-25 요한 지시): 효과 수치 높은 순 내림차순 정렬.
+            //   휴식 카드 회복 컨텍스트(recoverScale 반영) 후 stat delta 합산.
+            //   페널티(health-N)도 합에 포함 — "안전한 음식이 위" 의도와 일치.
+            //   생고기 hunger+1/health-1 합=0보다 산딸기 hunger+1 합=1이 위로.
+            const scoreItem = (notionItem) => {
+                const parsed = notionItem && notionItem.effect;
+                if (!parsed || !Array.isArray(parsed.actions)) return -Infinity;
+                let s = 0;
+                for (const a of parsed.actions) {
+                    if (a.type !== 'stat') continue;
+                    const d = Number(a.delta) || 0;
+                    const scaled = d > 0 ? d * recoverScale + recoverBonus : d * recoverScale;
+                    s += scaled;
+                }
+                return s;
+            };
             const candidates = (inventory?.items || []).filter(invItem => {
                 if (selectedId && invItem.id === selectedId) return false;
                 const def = InventorySystem.ITEMS[invItem.type] || {};
                 const notionItem = byName(def.name || invItem.name);
                 return filter ? filter(invItem, notionItem, def) : true;
+            }).slice().sort((a, b) => {
+                const aDef = InventorySystem.ITEMS[a.type] || {};
+                const bDef = InventorySystem.ITEMS[b.type] || {};
+                const aNotion = byName(aDef.name || a.name);
+                const bNotion = byName(bDef.name || b.name);
+                const sb = scoreItem(bNotion);
+                const sa = scoreItem(aNotion);
+                if (sb !== sa) return sb - sa;
+                // 동점 → 이름순(가독성)
+                return String(aDef.name || a.name || '').localeCompare(String(bDef.name || b.name || ''));
             });
             const hasAny = candidates.length > 0;
             const showCookBtn = typeof onCookClick === 'function';
@@ -2729,6 +2755,9 @@
                         overflowY: 'auto'
                     }}>
                         {/* 상단: prey 정보 */}
+                        {/* D-91 (2026-04-25 요한 지시): L2 사냥감 공격력/방어력 배지 노출.
+                            기존엔 evade 배지만 표시되어 prey가 어느 정도 위협인지 가늠 어려움.
+                            🗡️ attack / 🛡️ defense를 HP 옆에 함께 표시. 0이면 배지 생략. */}
                         <div style={{ marginBottom: '14px' }}>
                             <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '6px' }}>
                                 사냥: {preyName} 🥩×{prey.meat}
@@ -2746,8 +2775,14 @@
                                     transition: 'width 0.3s ease'
                                 }} />
                             </div>
-                            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px' }}>
-                                HP {hpCurrent}/{prey.hp}
+                            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <span>HP {hpCurrent}/{prey.hp}</span>
+                                {Number(prey.attack) > 0 && (
+                                    <span style={{ color: '#ff9999' }}>🗡️ 공격력 {prey.attack}</span>
+                                )}
+                                {Number(prey.defense) > 0 && (
+                                    <span style={{ color: '#4db8ff' }}>🛡️ 방어력 {prey.defense}</span>
+                                )}
                             </div>
                         </div>
 
@@ -2877,7 +2912,9 @@
                             {phase === 'select' ? '확정' : phase === 'resolve' ? '전투 중...' : '결과 확인'}
                         </button>
 
-                        {/* 턴 로그 (resolve/done 페이즈) */}
+                        {/* D-91 (2026-04-25 요한 지시): 턴 로그 직관적 재설계.
+                            한 줄 요약 → 2줄(내 행동 / 적 행동) 카드 형식.
+                            결과별 색상 분기로 명중/회피/방어/피해를 한눈에 식별. */}
                         {logs.length > 0 && (
                             <div style={{
                                 background: '#0f0f1a',
@@ -2885,25 +2922,116 @@
                                 borderRadius: '6px',
                                 marginBottom: '10px',
                                 fontSize: '11px',
-                                maxHeight: '110px',
+                                maxHeight: '180px',
                                 overflowY: 'auto'
                             }}>
-                                {logs.map((log, i) => (
-                                    <div key={i} style={{ marginBottom: '3px' }}>
-                                        T{log.turn}: {log.userCard ? `${log.userCard.name} → ` : '빈 슬롯 → '}
-                                        {log.outcome === 'flee_signal' && '사냥감이 빠르게 도망친다!'}
-                                        {log.outcome === 'player_flee' && '물러섰다.'}
-                                        {log.outcome === undefined && (
-                                            log.autoFail ? (log.reason === 'weapon_missing'
-                                                    ? '무기가 없어 실패'
-                                                    : '실패')
-                                            : log.userCard == null ? `prey ${log.preyAction}`
-                                            : !log.hit ? '빗나감'
-                                            : log.preyEvaded ? `명중했지만 회피당함`
-                                            : `데미지 ${log.damage} (HP ${log.preyHpAfter})`
-                                        )}
-                                    </div>
-                                ))}
+                                {logs.map((log, i) => {
+                                    const card = log.userCard;
+                                    const preyEmoji = PREY_EMOJI[prey.preyType] || '🐾';
+
+                                    // 내 라인 — 색상 + 텍스트 결정
+                                    let playerColor = '#ddd';
+                                    let playerText;
+                                    if (log.outcome === 'flee_signal') {
+                                        playerColor = '#aaa';
+                                        playerText = '— (사냥감이 먼저 도망)';
+                                    } else if (log.outcome === 'player_flee') {
+                                        playerColor = '#d4b84a';
+                                        playerText = `${card ? card.name + ' → ' : ''}도망 성공 ✓`;
+                                    } else if (!card) {
+                                        playerColor = '#666';
+                                        playerText = '— (빈 슬롯)';
+                                    } else if (log.autoFail) {
+                                        playerColor = '#ff9999';
+                                        playerText = `${card.name} → ${log.reason === 'weapon_missing' ? '무기 부재로 무산' : '행동 무산'}`;
+                                    } else if (Number(card.damage) > 0) {
+                                        // 공격 카드
+                                        if (!log.hit) {
+                                            playerColor = '#aaa';
+                                            playerText = `${card.name} → 빗나감 ✗`;
+                                        } else if (log.preyEvaded) {
+                                            playerColor = '#d4b84a';
+                                            const evPct = (typeof log.effectiveEvade === 'number') ? ` (${log.effectiveEvade}%)` : '';
+                                            playerText = `${card.name} → 회피당함 〰️${evPct}`;
+                                        } else if (Number(log.preyDefended) > 0) {
+                                            playerColor = '#9bd6ff';
+                                            playerText = `${card.name} → 명중하지만 -${log.damage} (방어 감쇄 ${log.preyDefended})`;
+                                        } else {
+                                            playerColor = '#3dd68c';
+                                            playerText = `${card.name} → 명중! -${log.damage} HP`;
+                                        }
+                                    } else if (card.id === 'run_away') {
+                                        playerColor = '#aaa';
+                                        playerText = `${card.name} → 도망 시도 실패`;
+                                    } else if (Number(card.defense) > 0) {
+                                        playerColor = '#9bd6ff';
+                                        playerText = `${card.name} → 방어 자세 🛡️ +${card.defense}`;
+                                    } else {
+                                        playerColor = '#ddd';
+                                        playerText = `${card.name}`;
+                                    }
+
+                                    // 적 라인
+                                    let preyColor = '#aaa';
+                                    let preyText;
+                                    const playerDmg = Number(log.playerDamage) || 0;
+                                    if (log.outcome === 'flee_signal' || log.outcome === 'player_flee') {
+                                        preyText = '—';
+                                    } else if (log.preyAction === '공격') {
+                                        if (playerDmg > 0) {
+                                            preyColor = '#ff6666';
+                                            preyText = `공격 💥 → 내 HP -${playerDmg}`;
+                                        } else if (Number(card && card.defense) > 0) {
+                                            preyColor = '#9bd6ff';
+                                            preyText = `공격 → 막아냄 (방어 ${card.defense}로 감쇄)`;
+                                        } else {
+                                            preyColor = '#aaa';
+                                            preyText = '공격 → 빗나감';
+                                        }
+                                    } else if (log.preyAction === '방어') {
+                                        if (Number(log.preyDefended) > 0) {
+                                            preyColor = '#9bd6ff';
+                                            preyText = `방어 자세 🛡️ (감쇄 ${log.preyDefended})`;
+                                        } else {
+                                            preyColor = '#aaa';
+                                            preyText = '방어 자세 🛡️';
+                                        }
+                                    } else if (log.preyAction === '회피') {
+                                        if (log.hit && log.preyEvaded) {
+                                            preyColor = '#d4b84a';
+                                            preyText = '회피 성공 〰️';
+                                        } else if (log.hit && !log.preyEvaded && Number(card && card.damage) > 0) {
+                                            preyColor = '#3dd68c';
+                                            preyText = '회피 실패';
+                                        } else {
+                                            preyColor = '#aaa';
+                                            preyText = '회피 자세';
+                                        }
+                                    } else if (log.preyAction === '눈치') {
+                                        preyColor = '#aaa';
+                                        preyText = '눈치 보기 👁️ (회피 못 함)';
+                                    } else {
+                                        preyText = log.preyAction || '—';
+                                    }
+
+                                    return (
+                                        <div key={i} style={{
+                                            marginBottom: '8px',
+                                            paddingLeft: '8px',
+                                            borderLeft: `3px solid ${playerColor}`,
+                                            lineHeight: 1.45
+                                        }}>
+                                            <div style={{ color: playerColor, fontWeight: 600 }}>
+                                                <span style={{ color: '#888', fontWeight: 400, marginRight: '4px' }}>T{log.turn}</span>
+                                                👤 {playerText}
+                                            </div>
+                                            <div style={{ color: preyColor, fontSize: '10.5px' }}>
+                                                <span style={{ marginRight: '4px' }}>{preyEmoji}</span>
+                                                {preyText}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
 
