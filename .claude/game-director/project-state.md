@@ -1,7 +1,10 @@
 # project-state.md
 
 마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80~D-86**).
-D-86 보스 이동 템포 단순화: `boss.js::onPlayerMove` 이동 분기에서 일반 모드 `playerMoveCount % 2 === 0` 2턴 스킵과 추격 모드 `bossMovePhase` 1/2 교대를 모두 제거. 매 플레이어 턴 정확히 1칸(`chaseMode ? moveTowards() : moveRandom()`). 인스턴스 필드 `playerMoveCount`, `bossMovePhase` 제거(boss.js 내부 전용 확인됨; `index.html` 동명 React state와 무관). 포식(D-77) 경로는 무변경(이미 1홉 구조).
+D-86 보스 이동 템포 단순화 (2단계):
+1) `boss.js::onPlayerMove` 일반 모드 2턴 스킵·추격 모드 1·2 교대 제거 → 매 호출 1칸(`chaseMode ? moveTowards() : moveRandom()`). 인스턴스 필드 `playerMoveCount`, `bossMovePhase` 제거.
+2) **보강**: `index.html::moveTo`의 caller 게이트 `if (boss.chaseMode || newMoveCount % 2 === 0)` 제거 — 일반 모드에서 호출 빈도 자체가 절반이던 게 진짜 원인이었음. 이제 모든 모드에서 1턴=1칸 동작.
+포식(D-77) 경로는 무변경(이미 1홉 구조). React state `playerMoveCount`는 set만 되는 dead state로 잔존(이번 범위 외).
 D-85 canMove 테두리 dim 우선순위 역전: `HexTile`에서 `tileStroke = showCanMove ? '#4CAF50' : (dimmed ? '#555' : '#0f3460')` 순서로 변경. `showCanMove = canMove && !pathUnvisited`로 [맵 보기]에서 클릭 안 되는 타일 녹색 승격 생략. silhouette/discovered 잔존 플래그로 dim 처리되던 인접 타일이 더 이상 "못 가는 타일"처럼 회색으로 보이지 않음.
 
 마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80/D-81/D-82**).

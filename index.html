@@ -3953,11 +3953,12 @@
                     return def && def.level === 2;
                 });
 
-                // 일반 모드에서는 2턴마다, chase 모드에선 매 턴 호출.
-                if (boss.chaseMode || newMoveCount % 2 === 0) {
-                    boss.onPlayerMove(targetId, movedDetection, l2Preys);
-                    newBossPos = boss.position;
-                }
+                // D-86 (2026-04-24 요한 지시): 플레이어 1이동 = 보스 1이동.
+                // 기존 caller 게이트(`chaseMode || newMoveCount % 2 === 0`)를 제거.
+                // 보스 클래스 내부도 1턴=1칸 고정이므로(이전 D-86 boss.js) 매 호출마다
+                // 정확히 1칸. 일반/추격 무관하게 동기화된 템포 유지.
+                boss.onPlayerMove(targetId, movedDetection, l2Preys);
+                newBossPos = boss.position;
 
                 // D-53: 보스가 실제로 이동한 경우에만 history에 push. 같은 자리 유지면 skip.
                 if (newBossPos !== bossStartPos) {

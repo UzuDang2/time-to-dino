@@ -8,15 +8,19 @@
 
 ### D-86 (2026-04-24 요한 지시): 보스 이동 템포를 플레이어와 동기화
 
-- [x] **[디렉터/웹]** ✅ **boss.js 이동 로직을 매 턴 1칸 고정으로 단순화**
+- [x] **[디렉터/웹]** ✅ **보스 이동 로직 1턴=1칸 고정 — boss.js + index.html 양쪽 모두**
   - 요한 지시: "보스가 이동 하는 방식을 유저가 타일을 이동한 후에 한칸씩 이동하도록 변경해줘".
+  - 첫 커밋(`59aa5bb`)은 `boss.js`만 수정 — 일반 모드에서 여전히 2턴에 1번만 움직였다는 요한 제보. 원인:
+    - `index.html::moveTo` 안에 caller-side 게이트 `if (boss.chaseMode || newMoveCount % 2 === 0)`가 별도로 있어, 클래스 내부를 1칸으로 바꿔도 **호출 빈도 자체가 절반**이라 평균 0.5칸/턴 유지.
+  - 보강 커밋: 해당 caller 게이트 제거. 이제 `boss.onPlayerMove(targetId, movedDetection, l2Preys)` 매 호출. 클래스 내부에서 `chaseMode ? moveTowards() : moveRandom()`로 1홉.
   - 변경 전:
-    - 일반 모드 `playerMoveCount % 2 === 0` → **2턴에 1칸(평균 0.5칸/턴)**.
-    - 추격 모드 `bossMovePhase` 0/1 교대 `moves = phase===0 ? 1 : 2` + `phase = (phase+1)%3` 로직 → 실제 패턴 1,2,1,2... (phase=2 재설정이 불필요하게 코드에 있었음). **평균 1.5칸/턴**.
-  - 변경 후: `chaseMode ? moveTowards() : moveRandom()` 매 턴 정확히 1홉.
+    - 일반 모드: caller `% 2 === 0` 게이트 + 클래스 `% 2 === 0` 이중 → 2턴에 1칸(평균 0.5칸/턴).
+    - 추격 모드: caller 게이트 통과 + 클래스 `bossMovePhase` 0/1 교대 → 평균 1.5칸/턴.
+  - 변경 후: 일반/추격 모두 매 턴 1칸(평균 1.0칸/턴).
   - 포식 경로(D-77)는 이미 `_bfsFirstHopToAny` 한 홉 구조라 무변경. `predationStay>0` 정지 턴도 그대로.
-  - 제거된 인스턴스 필드: `playerMoveCount`, `bossMovePhase` (boss.js 내부에서만 읽히고 있어 안전하게 제거. `index.html`의 동명 state는 별개 React state로 무관).
-  - 스모크(6타일 선형 맵): 일반 5턴 모두 step≤1, 추격 5턴 모두 step≤1, 포식 시퀀스(0→1→2→stay2→stay1→complete) 정상.
+  - 제거된 인스턴스 필드: `playerMoveCount`, `bossMovePhase` (boss.js 내부 전용 확인됨; `index.html`의 동명 React state는 별개).
+  - `index.html`의 React state `playerMoveCount`는 set만 되고 더 이상 읽히지 않는 죽은 코드 상태로 남음 — 이번 범위 외이므로 그대로 유지(다음 청소 이터레이션에서 정리 후보).
+  - 스모크(6타일 선형 맵, 보강 전 boss.js 단독 검증): 일반 5턴 step≤1, 추격 5턴 step≤1, 포식 시퀀스 정상. 보강 후엔 caller 게이트만 제거된 형태라 별도 회귀 테스트 불필요.
 
 ### 요한 QA 대기 (D-86)
 
