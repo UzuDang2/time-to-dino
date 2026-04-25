@@ -158,6 +158,28 @@ window.TTD_DATA = {
       "defense": ""
     },
     {
+      "id": "chipped_stone_strike",
+      "name": "뗀석기로 치기",
+      "damage": 2,
+      "success_rate": 100,
+      "requirement": "뗀석기",
+      "count": 1,
+      "accuracy": 0,
+      "full_loss": "N",
+      "defense": ""
+    },
+    {
+      "id": "chipped_stone_throw",
+      "name": "뗀석기 던지기",
+      "damage": 3,
+      "success_rate": 100,
+      "requirement": "뗀석기",
+      "count": 1,
+      "accuracy": 1,
+      "full_loss": "Y",
+      "defense": ""
+    },
+    {
       "id": "crouch",
       "name": "웅크리기",
       "damage": 0,
@@ -1039,6 +1061,30 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "chipped_stone",
+      "name": "뗀석기",
+      "이름": "뗀석기",
+      "카테고리": "무기",
+      "재료 타입": null,
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "돌을 깨뜨려 날을 세운 가장 원시적인 도구. '뗀석기로 치기' / '뗀석기 던지기' 카드 사용 조건.",
+      "효과 요약": "원시적인 석기 무기.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "내구도": 3,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
       "id": "stem",
       "name": "줄기",
       "이름": "줄기",
@@ -1741,6 +1787,20 @@ window.TTD_DATA = {
       "accuracy": 0,
       "설명 텍스트": "돌맹이를 장전해 날리는 소형 무기. 새총 쏘기 카드 사용.",
       "효과 요약": "새총 쏘기 카드 소지 조건."
+    },
+    {
+      "id": "chipped_stone",
+      "name": "뗀석기",
+      "이름": "뗀석기",
+      "카테고리": "무기",
+      "가방칸수": "1x1",
+      "무게": 1,
+      "아이템 등급": "1단계",
+      "내구도": 3,
+      "공격력": 0,
+      "accuracy": 0,
+      "설명 텍스트": "돌을 깨뜨려 날을 세운 가장 원시적인 도구. 치기·던지기 카드 사용.",
+      "효과 요약": "뗀석기로 치기 / 뗀석기 던지기 카드 소지 조건."
     }
   ],
   "ARMORS": [
@@ -1988,6 +2048,14 @@ window.TTD_DATA = {
         "plant_fiber"
       ],
       "result": "slingshot"
+    },
+    {
+      "ingredients": [
+        "stone",
+        "stone",
+        "stone"
+      ],
+      "result": "chipped_stone"
     },
     {
       "ingredients": [

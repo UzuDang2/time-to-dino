@@ -121,6 +121,9 @@ class InventorySystem {
         //   name/내구도만 덮고 shape는 static 유지.
         slingshot:    { name: '새총',   shape: [[1]],    grade: 1, mergeable: false, category: '무기' },
 
+        // D-99 신규: 뗀석기 — 1x1 원시 무기. stone×3 합성. 뗀석기 카드 2종 사용 조건.
+        chipped_stone: { name: '뗀석기', shape: [[1]],   grade: 1, mergeable: false, category: '무기' },
+
         // === D-72 방어구 5종 (2026-04-24) ===
         //   shape 1x1 고정, mergeable=false. category는 type과 동일('shield' | 'armor').
         //   런타임 TTD_DATA.ARMORS가 defense/name/size/grade 등을 덮어씀.

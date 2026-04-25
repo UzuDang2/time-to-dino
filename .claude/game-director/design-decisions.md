@@ -5,6 +5,41 @@
 
 ---
 
+## D-99. 새 무기 뗀석기 + 치기·던지기 카드 (2026-04-25, 13th 세션, `data/combos.json` / `data/weapons.json` / `data/items.json` / `inventory.js` / `data/combat_cards.json`)
+
+요한 원문: "새로운 아이템 돌맹이 3개로 뗀석기 만들수 있게 해줘, 내구도 3로 해줘 무기로 등록하고 공격키드 생성하는데 공격력 2, 명중은 없음, 뗀석기 던지기 카드도 생성하고 공격력 3, 명중1. 사용 시 뗀석기 잃어버림."
+
+### 데이터
+
+- **합성**: `combos.json` `["stone","stone","stone"] → "chipped_stone"`. (combos는 같은 재료 다중 허용 — `["berry","berry"]` 패턴.)
+- **무기 메타** (`weapons.json`):
+  - id `chipped_stone`, name `뗀석기`, 카테고리 무기, 1단계, 내구도 3, 공격력 0, accuracy 0.
+  - 가방칸수 1x1, 무게 1 (새총과 동일 라인).
+- **아이템 메타** (`items.json`): slingshot과 동일 패턴(카테고리=무기, mergeable=false, effect.usable=false).
+- **static ITEMS** (`inventory.js`): `chipped_stone: { shape: [[1]], grade: 1, mergeable: false, category: '무기' }`. shape는 weapons.json에 없으니 여기서만 정의(SSOT 분리는 D-47 이후 관례).
+
+### 카드 (`combat_cards.json`)
+
+- `chipped_stone_strike` (뗀석기로 치기): damage 2, success_rate 100, requirement "뗀석기", accuracy 0, full_loss "N".
+- `chipped_stone_throw` (뗀석기 던지기): damage 3, success_rate 100, requirement "뗀석기", accuracy 1, full_loss "Y". → 1회 사용에 무기 분실(D-50 fullLoss 시 내구도 전부 차감).
+
+### 디자인 의도
+
+- **뗀석기 정체성**: stone×3로 만들어지는 가장 원시적인 무기. 내구도 3 = 치기 3회 또는 던지기 1회.
+  - 치기: 안정적 근접 공격 (acc 0 → evade 0 사냥감만 명중. peek/defend 턴에 유효).
+  - 던지기: 강력한 일격 (acc 1로 evade 1까지 뚫음, dmg 3) 대신 전부 잃음.
+- **무기 격차 채우기**: 새총(돌맹이 별도 소비, dmg 3 acc 1)과 나무창(stab dmg 4 acc 1, throw dmg 6 acc 2 / 50% 분실) 사이의 초기 무기.
+  - stone만 있으면 만들 수 있어 진입 장벽 낮음.
+  - throw_spear(50% 분실)와 달리 chipped_stone_throw는 100% 분실 — 명중 1로 격차 보존.
+
+### 검증 (Node 스모크)
+
+- 토끼+치기/치기/던지기 → T1 dmg 2 / T2 dmg 1(def-1) / T3 dmg 3, weaponUsage `used:3 broken:true fullLossCount:1 durability:0` ✓.
+- 메뚜기+던지기 단독 → T1 dmg 3 즉살, weaponUsage `used:3 broken:true fullLoss:1` ✓.
+- 토끼+치기 단독(슬롯 1개) → weaponUsage `used:1 broken:false durability:2` ✓.
+
+---
+
 ## D-98. L1 사냥감 행동 패턴 도입 (2026-04-25, 13th 세션, `data/prey.json` / `combatDeck.js` / `index.html`)
 
 요한 원문: "1단계 사냥감들 패턴을 눈치보기는 최대2회, 회피는 최대 1회, 방어는 최대1회로 제한하여 3턴을 구성하는데. 사냥감들에 따라 너의 판단으로 적절히 구성해면 좋겠어. 예를들어 토끼는 회피 회피 회피 였는데 이렇게가 아니라. 토끼는 좀 재빠르니까 눈치보기, 방어, 회피 이런식으로 구성해봐"

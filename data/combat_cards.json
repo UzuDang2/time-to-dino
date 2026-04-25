@@ -78,6 +78,28 @@
     "defense": ""
   },
   {
+    "id": "chipped_stone_strike",
+    "name": "뗀석기로 치기",
+    "damage": 2,
+    "success_rate": 100,
+    "requirement": "뗀석기",
+    "count": 1,
+    "accuracy": 0,
+    "full_loss": "N",
+    "defense": ""
+  },
+  {
+    "id": "chipped_stone_throw",
+    "name": "뗀석기 던지기",
+    "damage": 3,
+    "success_rate": 100,
+    "requirement": "뗀석기",
+    "count": 1,
+    "accuracy": 1,
+    "full_loss": "Y",
+    "defense": ""
+  },
+  {
     "id": "crouch",
     "name": "웅크리기",
     "damage": 0,

@@ -66,6 +66,14 @@
   },
   {
     "ingredients": [
+      "stone",
+      "stone",
+      "stone"
+    ],
+    "result": "chipped_stone"
+  },
+  {
+    "ingredients": [
       "meat",
       "branch"
     ],
