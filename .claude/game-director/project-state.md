@@ -1,5 +1,10 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-88**).
+D-88 핀치줌 중심점 드리프트 수정 + 같은 타일 사냥감 식별 배지 (`index.html` 2 블록).
+- A. 핀치줌: D-82가 매 프레임 `el.scrollLeft` 직접 읽다가, rAF가 도착하기 전 다음 touchmove(120Hz)가 들어오면 "새 zoom + 옛 scroll" 혼합 계산이 누적되어 손가락 중점에서 점점 어긋남. useEffect 클로저에 `scrollRef={x,y}` 객체 도입, 줌/팬 모두 이 ref만 사용+동기 갱신. `beginPan/continuePan`에도 `syncScrollFromDOM()` 연결.
+- B. 사냥감 식별: `getTileLabel`이 `isCurrent`면 ''를 돌려 ♟ 만 보이던 문제. HexTile에 좌상단(x-20,y-18) prey emoji 배지 추가. trace 마커(우상단)와 좌우 대칭, ♟(중앙)과 미겹침. `!dimmed && isCurrent && showPrey` 조건.
+
 마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80~D-87**).
 D-87 맵 크기 11x11 → 8x8 (64타일, 변 ×0.73, 면적 -47%). `index.html:38` `MAP_SIZE` 한 줄 변경. mapGenerator는 D-61 gridSize 비율 기반 자동 스케일 — 빈 슬롯 12~19, good=5/trap=3, minBossDist=5. Node 스모크 20회 재생성 + spawnPrey 10/10 통과. D-86 보스 동기화 이동과 결합해 추격 압박 정상화.
 

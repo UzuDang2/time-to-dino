@@ -450,6 +450,24 @@
                             {hasCarcassTrace ? '🦴' : '👣'}
                         </text>
                     )}
+                    {/* D-88 (2026-04-25 요한 지시): 플레이어와 사냥감이 같은 타일에 있을 때
+                        식별 보강. 기존엔 isCurrent에서 getTileLabel이 ''를 돌려 prey emoji가
+                        사라지고 ♟ 만 보였음 — 토스트가 사라진 뒤 어떤 사냥감인지 알 수 없었음.
+                        ♟ 와 겹치지 않도록 좌상단 코너에 배지. trace 마커(우상단)와 좌우 대칭. */}
+                    {!dimmed && isCurrent && showPrey && (
+                        <text
+                            x={x - 20}
+                            y={y - 18}
+                            textAnchor="middle"
+                            fontSize="22"
+                            pointerEvents="none"
+                            stroke="#0a1020"
+                            strokeWidth="3"
+                            paintOrder="stroke"
+                        >
+                            {preyEmoji}
+                        </text>
+                    )}
                     {/* 맵 보기 모드 — 플레이어가 방문한 순서 번호. 첫 방문 기준(indexOf). */}
                     {showPathView && moveHistory && (() => {
                         const pathIdx = moveHistory.indexOf(tile.id);
@@ -569,14 +587,26 @@
                 const pinch = { active: false, dist: 0, zoomStart: 1 };
                 let blockNextClick = false;
 
+                // D-88 (2026-04-25): pinch 중심점 드리프트 수정.
+                // 한 프레임에 setZoom + rAF로 scrollLeft을 적용하는 구조에서, touchmove가
+                // rAF보다 빠르게 연속 발생하면 다음 프레임 계산이 "새 zoom + DOM의 옛 scrollLeft"
+                // 를 섞어 cx 계산이 어긋남(중심점이 손가락에서 점점 멀어짐). 의도된 스크롤
+                // 위치를 ref에 동기로 기록하고 줌 계산은 전부 이 ref만 보게 한다.
+                const scrollRef = { x: el.scrollLeft, y: el.scrollTop };
+                const syncScrollFromDOM = () => {
+                    scrollRef.x = el.scrollLeft;
+                    scrollRef.y = el.scrollTop;
+                };
+
                 const getDist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
 
                 const beginPan = (x, y) => {
+                    syncScrollFromDOM();
                     drag.active = true;
                     drag.startX = x;
                     drag.startY = y;
-                    drag.sL = el.scrollLeft;
-                    drag.sT = el.scrollTop;
+                    drag.sL = scrollRef.x;
+                    drag.sT = scrollRef.y;
                     drag.moved = false;
                     el.classList.add('dragging');
                 };
@@ -589,6 +619,7 @@
                     }
                     el.scrollLeft = drag.sL - dx;
                     el.scrollTop = drag.sT - dy;
+                    syncScrollFromDOM();
                 };
                 const endPan = () => {
                     if (drag.moved) blockNextClick = true;
@@ -596,21 +627,22 @@
                     el.classList.remove('dragging');
                 };
 
+                // 핵심: focusOffset(viewport 내 픽셀) 기준으로 콘텐츠 좌표를 계산.
+                // scrollRef.x는 마지막으로 "의도한" 스크롤이라 rAF 대기 중에도 일관됨.
                 const applyZoomAt = (ratio, focusClientX, focusClientY) => {
                     const prev = zoomRef.current;
                     const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev * ratio));
                     if (Math.abs(next - prev) < 0.001) return;
-                    // 줌 중심 보정: focus 지점의 컨텐츠 좌표가 줌 전후 동일하도록 scroll 조정.
                     const rect = el.getBoundingClientRect();
-                    const cx = focusClientX - rect.left + el.scrollLeft;
-                    const cy = focusClientY - rect.top + el.scrollTop;
+                    const focusOffsetX = focusClientX - rect.left;
+                    const focusOffsetY = focusClientY - rect.top;
                     const factor = next / prev;
-                    const newScrollL = cx * factor - (focusClientX - rect.left);
-                    const newScrollT = cy * factor - (focusClientY - rect.top);
+                    const newScrollL = (focusOffsetX + scrollRef.x) * factor - focusOffsetX;
+                    const newScrollT = (focusOffsetY + scrollRef.y) * factor - focusOffsetY;
                     zoomRef.current = next;
+                    scrollRef.x = newScrollL;
+                    scrollRef.y = newScrollT;
                     setZoom(next);
-                    // 스크롤은 zoom 반영된 다음 프레임에 적용해야 정확 — 간단히 직후에 설정하면
-                    // SVG width/height 재계산 이후 사용자 체감엔 충분히 일치.
                     requestAnimationFrame(() => {
                         el.scrollLeft = newScrollL;
                         el.scrollTop = newScrollT;
@@ -655,11 +687,13 @@
                         const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                         const factor = next / zoomRef.current;
                         const rect = el.getBoundingClientRect();
-                        const cx = midX - rect.left + el.scrollLeft;
-                        const cy = midY - rect.top + el.scrollTop;
-                        const newScrollL = cx * factor - (midX - rect.left);
-                        const newScrollT = cy * factor - (midY - rect.top);
+                        const focusOffsetX = midX - rect.left;
+                        const focusOffsetY = midY - rect.top;
+                        const newScrollL = (focusOffsetX + scrollRef.x) * factor - focusOffsetX;
+                        const newScrollT = (focusOffsetY + scrollRef.y) * factor - focusOffsetY;
                         zoomRef.current = next;
+                        scrollRef.x = newScrollL;
+                        scrollRef.y = newScrollT;
                         setZoom(next);
                         requestAnimationFrame(() => {
                             el.scrollLeft = newScrollL;

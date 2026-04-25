@@ -5,6 +5,41 @@
 
 ---
 
+## D-88. 핀치줌 중심점 드리프트 수정 + 같은 타일 사냥감 식별 보강 (2026-04-25, 13th 세션, `index.html`)
+
+**요한 원문**: "핀치줌을 할때 중심점이 이상해 버그인가 확인해줘. 그리고 사냥감과 같은타일에 있게 되었을때 누굴 만난건지 확실히 알수가 없어."
+
+### A. 핀치줌 중심점 드리프트 (D-82 회귀 보강)
+
+**증상**: 두 손가락으로 핀치 줌 할수록 손가락 사이 중점이 점점 화면 가운데/모서리로 어긋남.
+
+**원인**: D-82에서 zoom 적용 시 SVG width/height만 키우고 `requestAnimationFrame`으로 `el.scrollLeft`을 보정하는 구조. 이 때 매 프레임 `cx = midX - rect.left + el.scrollLeft` 로 콘텐츠 좌표를 계산하는데, touchmove는 ~120Hz 까지 빠르게 발생할 수 있어 이전 프레임의 rAF가 아직 실행되기 전에 다음 touchmove가 들어옴. 결과적으로 한 프레임 안에서 `zoomRef.current`는 새 값(next_N)이지만 `el.scrollLeft`는 이전 프레임 보정 전(scrollL_(N-1))이라 "새 zoom + 옛 scroll"을 섞어 cx가 어긋남. 매 프레임 누적되어 손가락 중점에서 멀어지는 드리프트가 발생.
+
+**수정**: `useEffect` 내부 클로저에 `scrollRef = { x, y }` 평범한 객체 도입. 줌 계산은 전부 이 ref를 보고, rAF 직전에 동기로 갱신. 즉:
+1. `applyZoomAt`/pinch onTouchMove에서 `scrollRef.x/y`로 `(focusOffset + scroll) * factor - focusOffset` 계산.
+2. 즉시 `scrollRef.x = newScrollL; scrollRef.y = newScrollT`.
+3. rAF는 여전히 DOM `el.scrollLeft = newScrollL` 적용을 담당(SVG 리사이즈 후 paint).
+4. `beginPan`에서 `syncScrollFromDOM()`으로 ref ↔ DOM 재동기(스크롤바 사용 케이스).
+5. `continuePan`에서도 매 프레임 `syncScrollFromDOM()`.
+
+이로써 touchmove가 rAF보다 빨리 와도 다음 프레임의 cx 계산이 "의도된 다음 scroll"을 일관되게 사용 → 드리프트 0.
+
+**대안(검토)**: CSS `transform: scale()` + `transform-origin` 으로 통일 → SVG width/height 변경 회피. 채택 안 함: 스크롤 가능 영역도 transform으로 변하지 않아 별도 wrapper 필요, 변경 폭 큼. scrollRef 트래킹이 D-82 구조에 최소 침습.
+
+### B. 같은 타일 사냥감 식별 (D-46 보강)
+
+**증상**: 플레이어가 사냥감 타일에 진입하면 1) `TileEventToast`가 사냥감 이름·이모지를 잠깐 띄움, 2) `hunt_start` 카드가 손패에 overflow로 추가됨. 그러나 토스트가 사라지면 타일 위에는 ♟ 만 남아 어떤 종을 만났는지 시각적으로 확인 불가.
+
+**근본 원인**: `HexTile::getTileLabel`이 `if (isCurrent || isBoss) return '';` — 플레이어/보스가 올라온 타일은 라벨 자리를 SVG text 말(piece) 에게 양보. 그래서 `showPrey`(=visited && preyOnTile && !isBoss)가 true라도 prey emoji가 그려지지 않음.
+
+**수정**: trace(👣) 마커가 우상단(x+20, y-18)을 쓰는 패턴을 그대로 차용해, 좌상단(x-20, y-18)에 prey emoji 배지를 추가. 조건: `!dimmed && isCurrent && showPrey`. 폰트 22px, stroke #0a1020, paintOrder=stroke로 어두운 타일에서도 대비 확보. ♟ (중앙, fontSize 32) 와 겹치지 않음. 영역 라벨(top-center, y-32)·trace(top-right, x+20)와 위치도 분리되어 동시 표시 가능.
+
+**대안**: 1) ♟ 와 prey를 좌·우로 나란히 배치 → 위치가 흔들려 시선 분산. 2) prey emoji를 ♟ 위 작게 겹침 → 가독성 저하. 3) info 패널에 표기 → 시야 분리 비용. 코너 배지가 가장 단순.
+
+**영향 범위**: `index.html` HexTile JSX 한 블록. 다른 마커/오버레이 무영향. dimmed/showPathView 모드에선 표시 생략(맵 보기 시 스포일러 방지 일관).
+
+---
+
 ## D-87. 맵 크기 8x8 (D-61 11x11 축소) (2026-04-24, 13th 세션, `index.html`)
 
 **요한 원문**: "맵크기좀 줄이자 지금보다 75% 작게 만들고 싶어" → "64타일 좋아"로 확정.
