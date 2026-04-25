@@ -5,6 +5,55 @@
 
 ---
 
+## D-89. 타일 아이콘 통합 중앙 스택 레이아웃 + 트레이스 자동 생략 (2026-04-25, 13th 세션, `index.html`)
+
+**요한 원문**: "흔적은 정체가 밝혀지면 흔적아이콘이 없어지고 해당 자리에 사냥감 아이콘으로 대체해도 되잖아, 아니 애초에 사냥감 아이콘이나 흔적도 타일의 정 중앙 쪽에 놓아도 되지, 풍족한 땅이나 유저 아이콘, 보스 아이콘도 전부 중앙쪽에 표시되잖아, 동일한 타일에 모두 표시되어야 한다해도 좌우로, 중앙 정렬로 스택되게해서 두개일땐 ㅇㅇ, 세개부터는 ㅇㅇ/ㅇ, 네개일땐 ㅇㅇ/ㅇㅇ"
+
+**이전 상태 (분산 배치)**:
+- 사냥감/사체/풍족/함정/탈출구 라벨 → 타일 중앙 (D-50/D-78/getTileLabel)
+- 흔적 👣/사체trace 🦴 → 우상단(x+20, y-18) (D-46/D-78)
+- 플레이어 ♟ + 보스 🦖 → 타일 중앙(별도 SVG text 오버레이, fontSize 32/30) (D-50)
+- D-88 임시 처치: 플레이어가 사냥감 위에 올라오면 좌상단(x-20, y-18) prey 배지
+
+**문제**: 위치가 분산되어 동일 타일 다중 정보가 비대칭(코너 ↔ 중앙) → 스캔 비용. 또한 trace는 사냥감 위치 단서인데, 같은 타일의 prey가 가시화되어도 trace가 따로 그려져 정보 중복.
+
+**결정**: 한 타일의 모든 아이콘을 "타일 중앙 영역의 정사각 슬롯 스택"으로 통합. 슬롯 수에 따라 자동 정렬:
+- n=1 → 중앙 단독
+- n=2 → 가로 ㅇㅇ
+- n=3 → 위 ㅇㅇ / 아래 ㅇ (가운데 정렬)
+- n=4 → 2×2 ㅇㅇ / ㅇㅇ
+- n>4 → 우선순위 낮은 트레이스/지형부터 잘림(player/boss 보존)
+
+**규칙**:
+1. **trace 자동 생략** — 같은 타일에 prey나 carcass가 visible이면 흔적은 push 안 함. 정체가 밝혀진 자리에는 흔적 표시 안 함.
+2. **player/boss는 GameMap이 단일 SVG text로 그려 transition 슬라이드 보존** — HexTile은 같은 list에서 그 두 슬롯만 skip. 양쪽이 `computeTileIcons` 순수 함수로 동일 입력→동일 결과 → 슬롯 인덱스 자동 일치.
+3. **폰트 22로 통일** + `dominantBaseline=middle` + `paintOrder=stroke` (이전 ♟ 32/🦖 30 → 22로 축소). 어두운 배경 대비 위해 emoji에도 stroke #0a1020 strokeWidth 3.
+4. **슬롯 좌표(타일 중심 대비)**: layout dx ±16, dy 1행=-7~+8/2행 23. 영역 라벨(top y-32~-44)·trace 옛 좌표와 분리.
+5. **dimmed(silhouette/path-unvisited) 타일은 스택 비표시** — 기존 동작과 동일.
+
+**구현 디테일** (`index.html`):
+- 모듈 레벨에 `TILE_STACK_LAYOUTS` 상수 + `computeTileIcons(tile, ctx)` 순수 함수.
+- 입력 ctx: `isCurrent / isBoss / showPrey / preyEmoji / hasCarcass / hasTrace / hasCarcassTrace`.
+- 출력: `[{ kind, emoji|text, isPlayer?, isBoss? }, …]`.
+- Push 순서 (priority 낮음 → 높음): 지형 → carcass → prey → trace(조건부) → player → boss. 4 초과 시 `slice(len-4)` — 앞쪽(낮은 priority)부터 잘려 player/boss 살아남음.
+- HexTile 렌더: 미공개 타일은 '?' 단독, 그 외엔 `visibleIcons.map`으로 슬롯 위치에 text. `isPlayer/isBoss`는 skip.
+- GameMap 렌더: `computeStackOffset(tile, isPlayerTile, isBossTile)` 헬퍼로 player/boss 슬롯 위치 계산. 단일 SVG text로 슬라이드.
+
+**Node 스모크 (12 케이스, 전부 PASS)**:
+- 미공개=빈 list / 탈출구 단독 / 탈출구+player(2) / 풍족+player(2) / 함정 단독 / 흔적 단독
+- **흔적+prey → 흔적 생략** ✓ / **사체 trace+carcass → trace 생략** ✓
+- 사체+prey+player(3) / 함정+사체+prey+player+boss(5→4 slice, player/boss 보존)
+- 보스만 / player+boss
+
+**대안(검토)**:
+- HexTile에서 player/boss까지 다 그리고 transition 포기: ♟의 매끄러운 슬라이드 손실. 거부.
+- player/boss는 항상 슬롯 0 고정: 다른 아이콘과 겹침. 거부.
+- 슬롯 위치를 ref로 외부 노출: 타이밍 복잡. `computeTileIcons` 순수 함수로 양쪽 호출이 더 단순.
+
+**영향 범위**: `index.html` HexTile 렌더 블록 + GameMap player/boss text 좌표. CSS·다른 컴포넌트 무영향. D-88의 좌상단 prey 배지는 폐기(스택에 자연 흡수). D-46 trace 우상단도 폐기.
+
+---
+
 ## D-88. 핀치줌 중심점 드리프트 수정 + 같은 타일 사냥감 식별 보강 (2026-04-25, 13th 세션, `index.html`)
 
 **요한 원문**: "핀치줌을 할때 중심점이 이상해 버그인가 확인해줘. 그리고 사냥감과 같은타일에 있게 되었을때 누굴 만난건지 확실히 알수가 없어."

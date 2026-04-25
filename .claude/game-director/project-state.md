@@ -1,5 +1,8 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-89**).
+D-89 타일 아이콘 통합 중앙 스택. 이전 분산(흔적 우상단/prey 중앙/♟ 큰 폰트) 폐기 → `computeTileIcons` 순수 함수 + `TILE_STACK_LAYOUTS`(1/2/3/4 슬롯)로 통일. HexTile은 비-player/boss 아이콘만 그리고, GameMap이 player/boss 단일 SVG text를 같은 함수의 슬롯 인덱스로 배치 → transition 슬라이드 보존. 흔적은 같은 타일에 prey/carcass visible이면 자동 생략(요한: "정체 밝혀지면 사냥감 아이콘으로 대체"). 폰트 22 통일, paintOrder=stroke. Node 스모크 12케이스 PASS.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-88**).
 D-88 핀치줌 중심점 드리프트 수정 + 같은 타일 사냥감 식별 배지 (`index.html` 2 블록).
 - A. 핀치줌: D-82가 매 프레임 `el.scrollLeft` 직접 읽다가, rAF가 도착하기 전 다음 touchmove(120Hz)가 들어오면 "새 zoom + 옛 scroll" 혼합 계산이 누적되어 손가락 중점에서 점점 어긋남. useEffect 클로저에 `scrollRef={x,y}` 객체 도입, 줌/팬 모두 이 ref만 사용+동기 갱신. `beginPan/continuePan`에도 `syncScrollFromDOM()` 연결.
