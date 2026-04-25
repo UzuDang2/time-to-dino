@@ -2918,6 +2918,14 @@
                                                         내구 {slotWeaponDur[i].before}/{slotWeaponDur[i].after}
                                                     </div>
                                                 )}
+                                                {/* D-97: 분실 확률 안내 — 슬롯에 배치된 카드도 동일 표기. */}
+                                                {(() => {
+                                                    const fl = String(card.full_loss || '').toUpperCase() === 'Y';
+                                                    const lc = Number(card.loss_chance) || 0;
+                                                    if (fl) return <div style={{ fontSize: '10px', color: '#ff9999' }}>⚠ 100% 분실</div>;
+                                                    if (lc > 0) return <div style={{ fontSize: '10px', color: '#ff9999' }}>⚠ {lc}% 분실</div>;
+                                                    return null;
+                                                })()}
                                             </div>
                                         ) : <span style={{ color: '#666' }}>비었음</span>}
                                     </div>
@@ -3200,6 +3208,14 @@
                                                             {durBadge}
                                                         </div>
                                                     )}
+                                                    {/* D-97: 분실 확률 안내 (창던지기 등). full_loss=Y면 "분실", 확률이면 "N% 분실". */}
+                                                    {(() => {
+                                                        const fl = String(card.full_loss || '').toUpperCase() === 'Y';
+                                                        const lc = Number(card.loss_chance) || 0;
+                                                        if (fl) return <div style={{ fontSize: '10px', color: '#ff9999' }}>⚠ 100% 분실</div>;
+                                                        if (lc > 0) return <div style={{ fontSize: '10px', color: '#ff9999' }}>⚠ {lc}% 분실</div>;
+                                                        return null;
+                                                    })()}
                                                 </div>
                                             );
                                         })}

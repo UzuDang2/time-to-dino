@@ -5,6 +5,58 @@
 
 ---
 
+## D-97. 무기 카드 명중·데미지 재조정 + 창던지기 확률 분실 (2026-04-25, 13th 세션, `data/combat_cards.json` / `combatDeck.js` / `index.html`)
+
+요한 원문: "새총의 명중을 1로 조정해줘, 창찌르기도 1로, 창 던지기는 2인데 특수규칙으로 창던지기는 50%확률로 창을 잃어버릴수 있다고 적어줘, 창던지기시 대미지는 6"
+
+### 카드 수치 변경
+
+- `slingshot_shot` (새총 쏘기): accuracy 3 → **1**.
+- `stab_weapon` (창으로 찌르기): accuracy 3 → **1**.
+- `throw_spear` (창던지기): accuracy 3 → **2**, damage 4 → **6**, full_loss "Y" → "N", **loss_chance: 50** (신규).
+
+### 신규 필드: `loss_chance`
+
+이전 `full_loss="Y"`는 100% 무기 손실. 요한이 "50% 확률로 잃어버릴수 있다"로 수정 → 확률 손실을 일급 표현으로 신설.
+
+- `combat_cards.json` 카드 객체에 `loss_chance: 0~100` 필드.
+- 0/없음 = 비손실, 100 = 항상 손실, 그 외 = 매 사용 시 그 % 확률.
+- `full_loss="Y"`와 공존 (Y가 우선, 100%로 강제).
+- 시트 SSOT 동기화는 다음 로컬 세션 작업 — 시트 `전투카드` 탭에 `loss_chance` 컬럼 추가 필요.
+
+### 판정 (combatDeck.js::resolveHunt)
+
+```js
+const fullLoss = String(card.full_loss || '').toUpperCase() === 'Y';
+const lossChance = clamp(0, 100, Number(card.loss_chance) || 0);
+const probLoss = !fullLoss && lossChance > 0 && (Math.random() * 100 < lossChance);
+recordWeaponUse(card.weaponId, fullLoss || probLoss);
+```
+
+`recordWeaponUse(wid, true)`는 기존 동작 그대로 — `durabilityLeft = 0` + `fullLossCount += 1` + `broken=true`. `consumeWeaponUse` (인벤 측)가 사후 정리.
+
+확률 부분만 결정론에서 예외 — 무기 분실은 본질적으로 random이고 D-96 결정론(회피·명중 판정)과 직교.
+
+### UI 표기
+
+- 손패/슬롯 카드 카드에 `⚠ 100% 분실` 또는 `⚠ N% 분실` 작은 라인 (#ff9999, fontSize 10).
+- StatBadges/EvadeBadge와 별도 행. 내구도 라인 아래.
+- 요한 원문 "분실할수 있다고 적어줘" 응답.
+
+### Node 스모크
+
+- throw_spear 1000회 시뮬 → 분실 513회 (~51%, 기대 50% ±). ✓
+- 시트 동기화 시 `loss_chance` 컬럼이 비어있으면 0으로 처리 (default).
+
+### 영향 범위
+
+- `data/combat_cards.json` 3카드 + `data/data.js` 재생성.
+- `combatDeck.js::resolveHunt` weapon use 블록.
+- `index.html` HuntCombatModal 손패 카드 + 슬롯 카드 분실 안내 라인.
+- inventory.js / fetch_data.py 무변경 (다음 시트 동기화 시 fetch_data에 loss_chance 캐스팅 추가 필요 — 현재 sheet에 컬럼 없음).
+
+---
+
 ## D-96. 회피율/명중률 % → 회피/명중 정수 시스템 통일 (2026-04-25, 13th 세션, `combatDeck.js` / `data/prey.json` / `data/combat_cards.json` / `index.html`)
 
 요한 원문: "회피율이라는게 넘 어렵고 계산도 복잡해지능거 같아. 회피율은 모두 회피라는수치로 통일하자. 그에 대응하는 명중률도 명중이라고 통일하자 어떤 개념이냐면 회피2는 명중2가 붙은 공격으로 상쇄할수 있다. 만약 회피가 명중보다 높르면 무조건 회피하고 명중은 값이 같거나 높으면 무조건 명중한다. … 가장 높은 회피율을 100%로 봤을때 회피로 전환하면 가장 높은 수치가 3이다. … 정수로 떨어지게 하되 반올림한다."

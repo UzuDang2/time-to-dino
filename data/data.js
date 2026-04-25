@@ -108,7 +108,7 @@ window.TTD_DATA = {
       "success_rate": 100,
       "requirement": "나무창",
       "count": 1,
-      "accuracy": 3,
+      "accuracy": 1,
       "full_loss": "N",
       "defense": ""
     },
@@ -141,9 +141,10 @@ window.TTD_DATA = {
       "success_rate": 100,
       "requirement": "나무창",
       "count": 1,
-      "accuracy": 3,
-      "full_loss": "Y",
-      "defense": ""
+      "accuracy": 2,
+      "full_loss": "N",
+      "defense": "",
+      "loss_chance": 50
     },
     {
       "id": "slingshot_shot",
@@ -152,7 +153,7 @@ window.TTD_DATA = {
       "success_rate": 100,
       "requirement": "새총 + 돌맹이",
       "count": 1,
-      "accuracy": 3,
+      "accuracy": 1,
       "full_loss": "N",
       "defense": ""
     },

@@ -1,5 +1,12 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-97**).
+D-97 무기 카드 명중·데미지 재조정 + 창던지기 확률 분실:
+- combat_cards.json: slingshot_shot acc 3→1, stab_weapon acc 3→1, throw_spear acc 3→2 dmg 4→6 full_loss "Y"→"N" + 신규 `loss_chance: 50`.
+- combatDeck.js::resolveHunt: `probLoss = !fullLoss && lossChance>0 && Math.random()*100 < lossChance` → recordWeaponUse(wid, fullLoss||probLoss). 분실 부분은 결정론 예외(무기 손실은 본질적으로 random).
+- UI: 손패/슬롯 카드에 ⚠ N% 분실 라인 (#ff9999, fontSize 10). full_loss=Y면 "100% 분실".
+- Node 스모크: throw_spear 1000회 시뮬 분실 ~50% (loss_chance=50 기대치 일치) ✓.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-96**).
 D-96 회피율/명중률 % → 회피/명중 정수 시스템 통일:
 - 변환 round(% / max * 3) half-up. 회피 max=60→3, 명중 max=20→3 (별도 정규화).

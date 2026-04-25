@@ -351,9 +351,13 @@
                 const preyEvaded = effectiveEvade > cardAccuracy;
 
                 // 공격 실행 자체는 성공 — 무기 사용 카운트(명중/회피 무관).
+                // D-97 (2026-04-25 요한 지시): full_loss="Y" 100% 손실 외, loss_chance(0~100)
+                //   확률 손실도 지원. throw_spear는 50% 확률로 창을 잃는다.
                 if (card.weaponId) {
                     const fullLoss = String(card.full_loss || '').toUpperCase() === 'Y';
-                    recordWeaponUse(card.weaponId, fullLoss);
+                    const lossChance = Math.max(0, Math.min(100, Number(card.loss_chance) || 0));
+                    const probLoss = !fullLoss && lossChance > 0 && (Math.random() * 100 < lossChance);
+                    recordWeaponUse(card.weaponId, fullLoss || probLoss);
                 }
 
                 if (!preyEvaded) {
