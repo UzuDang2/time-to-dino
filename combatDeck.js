@@ -188,12 +188,13 @@
         return deck;
     }
 
-    // D-60: prey.evade_per_turn (CSV "T1,T2,T3") 파싱 → 턴별 회피율 배열.
+    // D-60/D-96: prey.evade_per_turn (CSV "T1,T2,T3") 파싱 → 턴별 회피(정수) 배열.
     //   빈 값/미지정 → fallback [evade_rate, evade_rate, evade_rate] (3턴 공통).
+    //   D-96: 회피율(%) → 회피(정수) 시스템 변경. 기본값 fallback 20 → 1.
     //   항상 길이 3 보장. 부분 CSV("30,30")면 나머지는 마지막 값으로 패딩.
     function parseEvadesByTurn(prey) {
         const fallback = (Number(prey && prey.evade_rate) >= 0)
-            ? Number(prey.evade_rate) : 20;
+            ? Number(prey.evade_rate) : 1;
         const raw = prey && prey.evade_per_turn;
         if (raw == null || raw === '') return [fallback, fallback, fallback];
         const parts = String(raw).split(',').map(s => s.trim()).filter(Boolean);
@@ -233,7 +234,8 @@
     //     - evade : 기존 회피 로직 그대로 (evadesByTurn 기반).
     //     - peek  : 아무 행동 없음. evade=0 간주 → 유저 공격 100% 명중(success_rate만 굴림).
     //   D-74: 반환 객체에 `playerDamageTaken` — 유저 HP 차감에 사용.
-    //   D-60: 턴별 회피율(evade_per_turn) + 도주 누적 패널티(fleeCount*10).
+    //   D-60/D-96: 턴별 회피(evade_per_turn 정수) + 도주 누적 패널티(fleeCount당 -1).
+    //     명중 ≥ 회피 → 명중. 회피 > 명중 → 회피.
     //
     // opts.weaponState: { [weaponId]: { durabilityLeft:number, fullLossSeed:false } }
     function resolveHunt(prey, userSlots, opts) {
@@ -336,15 +338,17 @@
 
             const damageOut = Number(card.damage) || 0;
             if (cardHit && damageOut > 0) {
-                // D-50/D-60: effectiveEvade = max(0, evadesByTurn[t] - fleeCount*10 - card.accuracy).
-                //   D-75: preyAction='peek' → evade 0 (회피 포기, 명중 보장). 'defend'도 회피는 별도.
-                let baseEvadeT = Math.max(0, (evadesByTurn[t] || 0) - fleeCount * 10);
+                // D-96 (2026-04-25 요한 지시): 회피율(%) → 회피(정수), 명중률(%) → 명중(정수).
+                //   판정: 명중 ≥ 회피이면 무조건 명중, 회피 > 명중이면 무조건 회피.
+                //   확률 굴림 제거(결정론). fleeCount는 회피 -1씩 차감(누적 패널티 단순화).
+                //   L2 turn-action 분기: peek/attack/defend는 회피 0 (회피 굴림 없음).
+                let baseEvadeT = Math.max(0, (evadesByTurn[t] || 0) - fleeCount);
                 if (isLevel2 && (preyActionRaw === 'peek' || preyActionRaw === 'attack' || preyActionRaw === 'defend')) {
-                    // L2에서는 'evade' 턴만 회피 굴림. 그 외는 0.
                     if (preyActionRaw !== 'evade') baseEvadeT = 0;
                 }
-                const effectiveEvade = Math.max(0, baseEvadeT - (Number(card.accuracy) || 0));
-                const preyEvaded = Math.random() * 100 < effectiveEvade;
+                const cardAccuracy = Number(card.accuracy) || 0;
+                const effectiveEvade = baseEvadeT;
+                const preyEvaded = effectiveEvade > cardAccuracy;
 
                 // 공격 실행 자체는 성공 — 무기 사용 카운트(명중/회피 무관).
                 if (card.weaponId) {

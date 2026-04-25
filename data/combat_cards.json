@@ -28,7 +28,7 @@
     "success_rate": 100,
     "requirement": "나무창",
     "count": 1,
-    "accuracy": 20,
+    "accuracy": 3,
     "full_loss": "N",
     "defense": ""
   },
@@ -61,7 +61,7 @@
     "success_rate": 100,
     "requirement": "나무창",
     "count": 1,
-    "accuracy": 20,
+    "accuracy": 3,
     "full_loss": "Y",
     "defense": ""
   },
@@ -72,7 +72,7 @@
     "success_rate": 100,
     "requirement": "새총 + 돌맹이",
     "count": 1,
-    "accuracy": 20,
+    "accuracy": 3,
     "full_loss": "N",
     "defense": ""
   },

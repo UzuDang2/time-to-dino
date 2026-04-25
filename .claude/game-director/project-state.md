@@ -1,5 +1,14 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-96**).
+D-96 회피율/명중률 % → 회피/명중 정수 시스템 통일:
+- 변환 round(% / max * 3) half-up. 회피 max=60→3, 명중 max=20→3 (별도 정규화).
+- 데이터: prey evade_rate(L1 토끼/다람쥐/새/개구리 30~40%→2, 메뚜기/사슴/여우 50~60%→3, 그 외 →1), evade_per_turn CSV 동일 변환. card accuracy 20%→3.
+- 판정: `preyEvaded = baseEvade > cardAccuracy` (결정론, Math.random 제거). 도주 누적 fleeCount×10 → -1/회.
+- UI: EvadeBadge `회피 N` (% 제거). 적 슬롯 peek `회피 0`. 턴 로그 회피당함 `(회피 N)`. computedEvades final = acc>=base ? 0 : base.
+- 변경: `combatDeck.js` (parseEvadesByTurn fallback 1, resolveHunt 결정론), `data/prey.json` `data/combat_cards.json` `data/data.js`, `index.html` (EvadeBadge/peek/턴 로그/computedEvades).
+- Node 스모크 5 케이스 전부 PASS.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-95**).
 D-95 L2 meat -1 일괄 + 적 행동 슬롯 수치 배지:
 - prey.json L2 7종 meat -1 (boar/dinosaur/fox/turkey/armadillo 2→1, deer/badger 3→2). data.js 재생성.

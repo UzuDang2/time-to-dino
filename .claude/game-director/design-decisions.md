@@ -5,6 +5,82 @@
 
 ---
 
+## D-96. 회피율/명중률 % → 회피/명중 정수 시스템 통일 (2026-04-25, 13th 세션, `combatDeck.js` / `data/prey.json` / `data/combat_cards.json` / `index.html`)
+
+요한 원문: "회피율이라는게 넘 어렵고 계산도 복잡해지능거 같아. 회피율은 모두 회피라는수치로 통일하자. 그에 대응하는 명중률도 명중이라고 통일하자 어떤 개념이냐면 회피2는 명중2가 붙은 공격으로 상쇄할수 있다. 만약 회피가 명중보다 높르면 무조건 회피하고 명중은 값이 같거나 높으면 무조건 명중한다. … 가장 높은 회피율을 100%로 봤을때 회피로 전환하면 가장 높은 수치가 3이다. … 정수로 떨어지게 하되 반올림한다."
+
+### 변환 규칙
+
+- **공식**: `정수 = round(percent / max * 3)` (half-up).
+- **회피 max** = 60% (fox / deer L2의 이전 값) → 3.
+- **명중 max** = 20% (창/새총/찌르기의 이전 accuracy) → 3.
+- 별도 max 정규화로 회피와 명중이 각각 0~3 범위.
+
+### 변환 결과
+
+**Prey evade_rate** (data/prey.json):
+- 토끼/다람쥐/새/개구리: 30~40% → **2**
+- 메뚜기/사슴/여우: 50~60% → **3**
+- 그 외 (boar/dinosaur/badger/turkey/armadillo 등): 10~20% → **1**
+
+**evade_per_turn** CSV도 같은 공식으로 일괄 변환 (T1,T2,T3).
+
+**Card accuracy** (data/combat_cards.json):
+- stab_weapon / throw_spear / slingshot_shot: 20% → **3**
+- 나머지 카드: 0 → 0.
+
+### 판정 로직 (combatDeck.js::resolveHunt)
+
+이전 (확률식):
+```
+effectiveEvade = max(0, base - card.accuracy)
+preyEvaded = Math.random() * 100 < effectiveEvade
+```
+
+변경 (결정론):
+```
+baseEvadeT = max(0, evadesByTurn[t] - fleeCount)   // 도주 누적은 -1/회
+preyEvaded = baseEvadeT > cardAccuracy             // 회피 > 명중 → 회피
+                                                    // 회피 ≤ 명중 → 명중
+```
+
+- 도주 누적 패널티(D-60): 이전 fleeCount × 10%p → 정수 -1/회.
+- 확률 굴림 제거 → 동일 입력에 동일 결과(디버그/체감 일관).
+- L2 turn-action(peek/attack/defend) 처리는 그대로 — evade 턴만 회피 판정.
+
+### UI 변경
+
+- `EvadeBadge`: `회피 N%` → `회피 N` (% 제거).
+- 적 행동 슬롯 peek 라벨: `회피 0%` → `회피 0`.
+- 턴 로그 (D-91) 회피당함 주석: `(N%)` → `(회피 N)`.
+- StatBadges accuracy 표기 (`🏹+N`)는 이미 `%` 없음 — 그대로 유지(데이터만 정수로 변환됨).
+- HuntCombatModal `computedEvades`: `final = (acc >= base) ? 0 : base` (UI에서도 결정론 표시).
+
+### 디자인 의사결정
+
+- **별도 max 정규화 (회피·명중 각각)**: 같은 변환 비율을 강제하면 명중률 max=20%가 회피 max=60%와 같은 척도로 보여 의미 흐려짐. 요한 의도는 "각 시스템 안에서 가장 높은 값=3" — 분리.
+- **half-up vs banker's**: Python `round`는 banker's라 1.5→2 정상이지만 2.5→2가 됨. 모든 변환은 `floor(x + 0.5)`로 강제 half-up. 결과 일관.
+- **fleeCount × 10 → -1/회**: 정수 시스템에서 ×10이 너무 강함. -1/회가 자연 단위.
+
+### Node 스모크 (5 케이스, 전부 PASS)
+
+- `acc=2, evade=2 → hit` ✓ (명중 ≥ 회피)
+- `acc=2, evade=3 → evade` ✓ (회피 > 명중)
+- `acc=0, evade=0 → hit` ✓
+- `acc=0, evade=1 → evade` ✓
+- `acc=3, evade=1 → hit` ✓
+
+### 영향 범위
+
+- `combatDeck.js`: `parseEvadesByTurn` fallback 20→1, `resolveHunt` 판정식 결정론.
+- `data/prey.json`: evade_rate / evade_per_turn 정수 변환.
+- `data/combat_cards.json`: accuracy 정수 변환.
+- `data/data.js`: 재생성.
+- `index.html`: EvadeBadge / 슬롯 peek 라벨 / 턴 로그 회피당함 주석 / computedEvades.
+- 시트 SSOT 동기화는 다음 로컬 세션 작업.
+
+---
+
 ## D-95. L2 사냥감 meat -1 일괄 차감 + 적 행동 슬롯 수치 배지 (2026-04-25, 13th 세션, `data/prey.json` / `index.html`)
 
 요한 원문: "레벨2짜리 사냥감들의 드로우되는 고기 개수가 아직 많아 일괄적으로 -1개 차감해줘. 사냥감의 공격수치를 모르겠어 유저처럼 각 행동마다 수치가 나오도록해줘"

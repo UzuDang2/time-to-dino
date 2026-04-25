@@ -2614,7 +2614,7 @@
                         opacity: consumed ? 0.5 : 1,
                         transition: 'color 0.2s, opacity 0.2s'
                     }}>
-                    회피 {finalEvade}%
+                    회피 {finalEvade}
                 </span>
             );
         }
@@ -2628,12 +2628,12 @@
             const [logs, setLogs] = useState([]);             // 표시된 턴 로그
             const [result, setResult] = useState(null);
 
-            // D-58/D-60: 슬롯별 최종 회피율 계산 (턴별 base 반영).
-            //   SSOT: combatDeck.js::resolveHunt effectiveEvade 공식과 동일.
-            //     baseEvadeT = max(0, evadesByTurn[t] - fleeCount*10)
-            //     finalEvade = max(0, baseEvadeT - card.accuracy)
+            // D-58/D-60/D-96: 슬롯별 최종 회피 계산 (턴별 base 반영).
+            //   SSOT: combatDeck.js::resolveHunt 공식과 동일.
+            //     baseEvadeT = max(0, evadesByTurn[t] - fleeCount)
+            //     finalEvade = baseEvadeT (명중 vs 회피는 결정론 비교 — UI에선 base 표시).
             //   damage=0 카드 / 빈 슬롯 → base(턴별) 그대로.
-            //   card.accuracy 는 buildHuntDeck 이 이미 카드+무기 합산한 값(D-50). 이중 합산 금지.
+            //   card.accuracy(명중)는 buildHuntDeck 이 이미 카드+무기 합산(D-50).
             // D-75: Level 2 prey — actions_per_turn CSV 파싱. 적 행동 슬롯 라벨에 사용.
             const preyActions = React.useMemo(() => {
                 if (SLOT_COUNT !== 4) return null;
@@ -2655,11 +2655,14 @@
                 const byTurn = CombatDeck.parseEvadesByTurn(prey);
                 const fleeCount = Math.max(0, Number(prey.fleeCount) || 0);
                 return slots.map((card, i) => {
-                    const base = Math.max(0, (byTurn[i] ?? 20) - fleeCount * 10);
+                    // D-96: % → 정수. 도주 누적 패널티는 1당 회피 -1.
+                    const base = Math.max(0, (byTurn[i] ?? 1) - fleeCount);
                     if (!card || !((Number(card.damage) || 0) > 0)) {
                         return { base, final: base };
                     }
-                    const final = Math.max(0, base - (Number(card.accuracy) || 0));
+                    // D-96: 결정론 — 명중 ≥ 회피 → 무조건 명중(final=0). 회피 > 명중 → 무효(final=base).
+                    const acc = Number(card.accuracy) || 0;
+                    const final = (acc >= base) ? 0 : base;
                     return { base, final };
                 });
             }, [slots, prey.evade_rate, prey.evade_per_turn, prey.fleeCount]);
@@ -2953,7 +2956,7 @@
                                             return <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />;
                                         }
                                         if (action === 'peek') {
-                                            return <span style={{ color: '#d4b84a' }}>회피 0%</span>;
+                                            return <span style={{ color: '#d4b84a' }}>회피 0</span>;
                                         }
                                         return null;
                                     };
@@ -3047,8 +3050,8 @@
                                             playerText = `${card.name} → 빗나감 ✗`;
                                         } else if (log.preyEvaded) {
                                             playerColor = '#d4b84a';
-                                            const evPct = (typeof log.effectiveEvade === 'number') ? ` (${log.effectiveEvade}%)` : '';
-                                            playerText = `${card.name} → 회피당함 〰️${evPct}`;
+                                            const evNote = (typeof log.effectiveEvade === 'number') ? ` (회피 ${log.effectiveEvade})` : '';
+                                            playerText = `${card.name} → 회피당함 〰️${evNote}`;
                                         } else if (Number(log.preyDefended) > 0) {
                                             playerColor = '#9bd6ff';
                                             playerText = `${card.name} → 명중하지만 -${log.damage} (방어 감쇄 ${log.preyDefended})`;
