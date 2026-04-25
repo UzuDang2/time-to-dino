@@ -3,9 +3,9 @@
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-99**).
 D-99 새 무기 뗀석기 + 치기·던지기 카드:
 - combos.json: stone×3 → chipped_stone.
-- weapons.json: chipped_stone (내구도 3, 공격력 0, accuracy 0, 1x1).
-- items.json: chipped_stone (slingshot 패턴, 카테고리=무기).
-- inventory.js static ITEMS: chipped_stone (shape=[[1]], grade 1, category='무기').
+- weapons.json: chipped_stone (내구도 3, 공격력 0, accuracy 0, 2x1 — 요한 후속 지시).
+- items.json: chipped_stone (slingshot 패턴, 카테고리=무기, 2x1).
+- inventory.js static ITEMS: chipped_stone (shape=[[1,1]], grade 1, category='무기').
 - combat_cards.json:
   - chipped_stone_strike (뗀석기로 치기) damage 2 acc 0 full_loss N — 1차감.
   - chipped_stone_throw (뗀석기 던지기) damage 3 acc 1 full_loss Y — 1회에 분실.

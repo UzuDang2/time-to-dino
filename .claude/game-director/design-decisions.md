@@ -14,9 +14,9 @@
 - **합성**: `combos.json` `["stone","stone","stone"] → "chipped_stone"`. (combos는 같은 재료 다중 허용 — `["berry","berry"]` 패턴.)
 - **무기 메타** (`weapons.json`):
   - id `chipped_stone`, name `뗀석기`, 카테고리 무기, 1단계, 내구도 3, 공격력 0, accuracy 0.
-  - 가방칸수 1x1, 무게 1 (새총과 동일 라인).
-- **아이템 메타** (`items.json`): slingshot과 동일 패턴(카테고리=무기, mergeable=false, effect.usable=false).
-- **static ITEMS** (`inventory.js`): `chipped_stone: { shape: [[1]], grade: 1, mergeable: false, category: '무기' }`. shape는 weapons.json에 없으니 여기서만 정의(SSOT 분리는 D-47 이후 관례).
+  - 가방칸수 2x1, 무게 1 (요한 후속 지시 — 1x1 → 2x1로 변경. 나무창과 동일 폭).
+- **아이템 메타** (`items.json`): slingshot과 동일 패턴(카테고리=무기, mergeable=false, effect.usable=false), 가방칸수 2x1.
+- **static ITEMS** (`inventory.js`): `chipped_stone: { shape: [[1, 1]], grade: 1, mergeable: false, category: '무기' }`. shape는 weapons.json에 없으니 여기서만 정의(SSOT 분리는 D-47 이후 관례).
 
 ### 카드 (`combat_cards.json`)
 
