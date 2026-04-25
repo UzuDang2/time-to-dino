@@ -1,5 +1,11 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-95**).
+D-95 L2 meat -1 일괄 + 적 행동 슬롯 수치 배지:
+- prey.json L2 7종 meat -1 (boar/dinosaur/fox/turkey/armadillo 2→1, deer/badger 3→2). data.js 재생성.
+- HuntCombatModal 적 슬롯: T번호 + 행동 라벨 + 수치 3행. attack→🗡️N, defend→🛡️N, evade→EvadeBadge, peek→`회피 0%`. 유저 StatBadges와 색상·아이콘 통일(#ff9999/#4db8ff/#d4b84a).
+변경: `data/prey.json`, `data/data.js`, `index.html` HuntCombatModal 적 슬롯 한 블록.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-94**).
 D-94 거대한 먹이 + 보스 유인 시스템:
 - 아이템 +2: giant_bait(2x2, hunger+8/health-8, is_bait) + grilled_giant_bait(2x2, hunger+16/health+8). combos +2 (big_meat×4→giant_bait, giant_bait→grilled).
