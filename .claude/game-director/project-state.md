@@ -1,5 +1,8 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80~D-87**).
+D-87 맵 크기 11x11 → 8x8 (64타일, 변 ×0.73, 면적 -47%). `index.html:38` `MAP_SIZE` 한 줄 변경. mapGenerator는 D-61 gridSize 비율 기반 자동 스케일 — 빈 슬롯 12~19, good=5/trap=3, minBossDist=5. Node 스모크 20회 재생성 + spawnPrey 10/10 통과. D-86 보스 동기화 이동과 결합해 추격 압박 정상화.
+
 마지막 검증: 2026-04-24 (**13th session — 웹 세션, D-80~D-86**).
 D-86 보스 이동 템포 단순화 (2단계):
 1) `boss.js::onPlayerMove` 일반 모드 2턴 스킵·추격 모드 1·2 교대 제거 → 매 호출 1칸(`chaseMode ? moveTowards() : moveRandom()`). 인스턴스 필드 `playerMoveCount`, `bossMovePhase` 제거.
