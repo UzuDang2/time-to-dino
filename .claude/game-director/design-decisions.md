@@ -5,6 +5,38 @@
 
 ---
 
+## D-92. 1단계 재료 아이콘 통일 + 정보창 아이콘+이름 (2026-04-25, 13th 세션, `index.html`)
+
+요한 원문: "1단계 재료들이 여러곳에서 텍스트로 표현되고 있는데, 이것들 전부 아이콘으로 표시해줘. 가방뿐아니라 조합법, 요리 레시피같은 곳도 전부 동일하게 아이콘으로 표시되게 해줘. 일단 1단계 재료들만." + 추가: "아이템 설명 팝업창엔 해당 아이콘과 이름 함께 표시해줘"
+
+**대상**: 1단계 재료 11종 (slingshot 무기 제외) — `stone/branch/stem/mushroom/berry/meat/big_meat/water/fish/crab_whole/grasshopper_whole`.
+
+**ITEM_EMOJI 매핑** (모듈 레벨):
+- 🪨 stone, 🪵 branch (작은가지 — wood가 2단계라 충돌 없음), 🌿 stem
+- 🍄 mushroom, 🍓 berry, 🥩 meat, 🍖 big_meat, 💧 water
+- 🐟 fish, 🦀 crab_whole, 🦗 grasshopper_whole
+- 헬퍼: `itemEmoji(typeOrId)` — 1단계면 emoji, 그 외 null.
+
+**적용 위치 5곳**:
+1. **가방 그리드 셀** — `{item.name}` 텍스트 → 1단계면 26px emoji 중앙 단독, 2단계 이상은 기존 이름 폴백.
+2. **CraftPanel** — 재료 + 결과 양쪽. 1단계면 18px emoji + `has/count` 잔여 표기 유지.
+3. **CookingModal** — `재료 → 결과` 행에 양쪽 emoji 적용. 결과(`grilled_*`)는 2단계+이라 텍스트 유지.
+4. **CardItemConsumeModal** — 음식 후보 카드. 이름 prefix로 emoji + 이름 병기 (효과 라인은 기존).
+5. **ItemInfoModal (요한 추가 지시)** — H3 타이틀에 24px emoji prefix + 이름. "아이콘과 이름 함께".
+
+**디자인 원칙**:
+- 1단계만 자동 변환. 2단계/3단계는 emoji 매핑이 없어 자동 텍스트 폴백 — 데이터 SSOT 확장 시 매핑 추가만 하면 됨.
+- 가방 셀처럼 공간 빡빡한 곳은 emoji 단독, 정보가 필요한 곳(InfoModal/ConsumeModal)은 emoji + 이름.
+- 메시지/토스트/LootToast는 변경 안 함 (요한 명시 범위 외 + 텍스트 가독성).
+
+**대안(검토)**:
+- emoji + 작은 이름 항상 병기: 셀 빡빡함, 시각적 노이즈. 거부.
+- branch에 다른 emoji 시도 (🥢 chopsticks): 너무 인공적. 🪵(log)이 시각적으로 가장 가까움.
+
+**영향 범위**: `index.html` 1곳 매핑 + 5곳 렌더 분기. 데이터/inventory.js/combatDeck.js 무변경. 새 1단계 아이템 추가 시 `ITEM_EMOJI`에 한 줄 추가.
+
+---
+
 ## D-91. 사냥 전투 UI 가독성 개선 + 음식 효과 정렬 (2026-04-25, 13th 세션, `index.html`)
 
 요한 원문: "2등급 사냥감과 전투할때 상대가 몇의 공격력으로 공격하는지, 방어수치는 몇인지 같은 수치들이 잘 나오게 해주고, 턴결과 로그가 사용자에게 직관적이지 않아서 알아보기 어려워, 내가 때린게 결국 맞았다는건지 회피했다는건지 내가 방어에 성공했는지 어쩐지 모르게어 직관적으로 제안해줘. 휴식카드에서 사용할 음식 선택할때 효과의 수치가 높은것부터 맨 위에서 보여지도록 조정해줘"

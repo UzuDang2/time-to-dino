@@ -996,7 +996,16 @@
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <h3 style={{ margin: 0 }}>{invDef.name || item.name}</h3>
+                            {/* D-92 (2026-04-25 요한 지시): 아이템 설명 팝업창엔 아이콘 + 이름 함께. */}
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {(() => {
+                                    const e = itemEmoji(item.type);
+                                    return e
+                                        ? <span style={{ fontSize: '24px', lineHeight: 1 }}>{e}</span>
+                                        : null;
+                                })()}
+                                <span>{invDef.name || item.name}</span>
+                            </h3>
                             <button onClick={onClose}>닫기</button>
                         </div>
 
@@ -1349,7 +1358,14 @@
                                         onPointerLeave={onItemPointerCancel}
                                         onContextMenu={(e) => e.preventDefault()}
                                     >
-                                        {item.name}
+                                        {/* D-92: 1단계 재료는 이모지 아이콘으로 표시. 2단계 이상은 텍스트. */}
+                                        {(() => {
+                                            const emoji = itemEmoji(item.type);
+                                            if (emoji) return (
+                                                <span style={{ fontSize: '26px', lineHeight: 1, display: 'block', textAlign: 'center' }}>{emoji}</span>
+                                            );
+                                            return item.name;
+                                        })()}
                                         {canAutoMerge && (
                                             <span className="inventory-merge-check" title="같은 재료가 있어 머지 가능">
                                                 ✓
@@ -1655,7 +1671,16 @@
                                                 border: '1px solid #16213e'
                                             }}
                                         >
-                                            <div style={{ fontWeight: 600, fontSize: '14px' }}>{def.name || invItem.name}</div>
+                                            <div style={{ fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {/* D-92: 1단계 재료(음식)는 emoji prefix + 이름. */}
+                                                {(() => {
+                                                    const e = itemEmoji(invItem.type);
+                                                    return e
+                                                        ? <span style={{ fontSize: '20px', lineHeight: 1 }}>{e}</span>
+                                                        : null;
+                                                })()}
+                                                <span>{def.name || invItem.name}</span>
+                                            </div>
                                             {renderEffectRow(notionItem)}
                                         </button>
                                     );
@@ -1733,11 +1758,26 @@
                                                 borderRadius: '6px'
                                             }}
                                         >
-                                            <div style={{ fontSize: '13px', marginBottom: '6px' }}>
-                                                <span style={{ color: canDo ? '#ffd79e' : '#888' }}>{ingName}</span>
-                                                <span style={{ color: '#666', margin: '0 6px' }}>→</span>
-                                                <span style={{ color: canDo ? '#fff' : '#888', fontWeight: 600 }}>{resultName}</span>
-                                                <span style={{ color: '#888', marginLeft: '8px', fontSize: '11px' }}>
+                                            <div style={{ fontSize: '13px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {/* D-92: 1단계 재료는 emoji로. 결과(2단계+)는 이름 그대로. */}
+                                                <span style={{ color: canDo ? '#ffd79e' : '#888', display: 'inline-flex', alignItems: 'center' }}>
+                                                    {(() => {
+                                                        const e = itemEmoji(ingType);
+                                                        return e
+                                                            ? <span style={{ fontSize: '20px', lineHeight: 1 }}>{e}</span>
+                                                            : ingName;
+                                                    })()}
+                                                </span>
+                                                <span style={{ color: '#666', margin: '0 4px' }}>→</span>
+                                                <span style={{ color: canDo ? '#fff' : '#888', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                                    {(() => {
+                                                        const e = itemEmoji(recipe.result);
+                                                        return e
+                                                            ? <span style={{ fontSize: '20px', lineHeight: 1 }}>{e}</span>
+                                                            : resultName;
+                                                    })()}
+                                                </span>
+                                                <span style={{ color: '#888', marginLeft: 'auto', fontSize: '11px' }}>
                                                     (보유 {has})
                                                 </span>
                                             </div>
@@ -1850,15 +1890,22 @@
                                         {Object.entries(need).map(([type, count], i) => {
                                             const short = shortage[type] || 0;
                                             const has = (evalR.have[type] || 0);
+                                            // D-92: 1단계 재료는 emoji로 노출.
+                                            const emoji = itemEmoji(type);
                                             return (
                                                 <React.Fragment key={`${type}:${i}`}>
                                                     {i > 0 && <span style={{ color: '#666' }}>+</span>}
                                                     <span style={{
                                                         fontSize: '12px',
                                                         color: short > 0 ? '#ff7777' : '#fff',
-                                                        fontWeight: 500
+                                                        fontWeight: 500,
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '2px'
                                                     }}>
-                                                        {nameOf(type)}
+                                                        {emoji
+                                                            ? <span style={{ fontSize: '18px', lineHeight: 1 }}>{emoji}</span>
+                                                            : nameOf(type)}
                                                         <span style={{ fontSize: '10px', color: short > 0 ? '#ff9999' : '#aaa', marginLeft: '2px' }}>
                                                             {has}/{count}
                                                         </span>
@@ -1867,8 +1914,13 @@
                                             );
                                         })}
                                         <span style={{ color: '#666', margin: '0 4px' }}>=</span>
-                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#d4b84a' }}>
-                                            {nameOf(recipe.result)}
+                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#d4b84a', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                            {(() => {
+                                                const e = itemEmoji(recipe.result);
+                                                return e
+                                                    ? <span style={{ fontSize: '18px', lineHeight: 1 }}>{e}</span>
+                                                    : nameOf(recipe.result);
+                                            })()}
                                         </span>
                                     </div>
                                     <button
@@ -3140,6 +3192,26 @@
             grasshopper: ['평원'],
             crab:        ['시냇물']
         };
+        // D-92 (2026-04-25 요한 지시): 1단계 재료 아이콘 매핑.
+        //   가방/조합/요리 등 텍스트로 노출되던 1단계 재료를 이모지로 통일.
+        //   2단계 이상은 매핑 부재 → 자동 텍스트 폴백(기존 동작 유지).
+        //   slingshot(1단계 무기)은 제외 — 무기/도구는 별도 ID 표기 유지.
+        const ITEM_EMOJI = {
+            stone: '🪨',
+            branch: '🪵',  // 작은 가지 — 통나무 emoji 차용(1단계 안에서 wood와 충돌 없음)
+            stem: '🌿',
+            mushroom: '🍄',
+            berry: '🍓',
+            meat: '🥩',
+            big_meat: '🍖',
+            water: '💧',
+            fish: '🐟',
+            crab_whole: '🦀',
+            grasshopper_whole: '🦗'
+        };
+        // 1단계 재료면 emoji 반환, 아니면 null.
+        const itemEmoji = (typeOrId) => ITEM_EMOJI[typeOrId] || null;
+
         // PREY_EMOJI — 런타임 UI 매핑 (SSOT와 무관, 아이콘만).
         const PREY_EMOJI = {
             // Level 1

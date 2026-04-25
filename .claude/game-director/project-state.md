@@ -1,5 +1,8 @@
 # project-state.md
 
+마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-92**).
+D-92 1단계 재료 11종(stone/branch/stem/mushroom/berry/meat/big_meat/water/fish/crab_whole/grasshopper_whole) 텍스트 → 이모지 통일. 모듈 레벨 `ITEM_EMOJI` + `itemEmoji()` 헬퍼. 적용 5곳: 가방 그리드 셀(emoji 단독), CraftPanel 재료/결과, CookingModal 재료/결과, CardItemConsumeModal 음식 후보(emoji+이름), ItemInfoModal 헤더(emoji+이름, 요한 추가 지시). 2단계+은 매핑 부재 → 텍스트 폴백 유지.
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-91**).
 D-91 사냥 전투 UI 가독성 + 음식 정렬 (`index.html`):
 - A. HuntCombatModal 상단 HP 라인에 🗡️/🛡️ 인라인 배지(prey.attack/defense > 0일 때).
