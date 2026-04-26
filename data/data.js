@@ -149,7 +149,7 @@ window.TTD_DATA = {
     {
       "id": "slingshot_shot",
       "name": "새총 쏘기",
-      "damage": 3,
+      "damage": 2,
       "success_rate": 100,
       "requirement": "새총 + 돌맹이",
       "count": 1,

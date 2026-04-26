@@ -1,5 +1,11 @@
 # project-state.md
 
+마지막 검증: 2026-04-26 (**14th session — 웹 세션, D-100**).
+D-100 새총 데미지 너프:
+- combat_cards.json: slingshot_shot damage 3 → 2 (acc 1, success 100 유지).
+- 무기 위계: 뗀석기 던지기(dmg 3, 1회용) > 새총(dmg 2 acc 1, 반복) > 뗀석기 치기(dmg 2 acc 0).
+- 시트 SSOT 동기화는 다음 로컬 세션 (D-97/D-99 미반영분과 함께).
+
 마지막 검증: 2026-04-25 (**13th session — 웹 세션, D-99**).
 D-99 새 무기 뗀석기 + 치기·던지기 카드:
 - combos.json: stone×3 → chipped_stone.
