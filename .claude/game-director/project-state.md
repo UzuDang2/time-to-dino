@@ -1,5 +1,24 @@
 # project-state.md
 
+마지막 검증: 2026-04-26 (**14th session — 웹 세션, D-102**).
+D-102 L1 evade 수치 1로 통일 + dodge 카드 evade 신설:
+- prey.json L1 9종 모두 evade_per_turn="1,1,1", evade_rate=1.
+  - 변경: rabbit 2,2,1→1,1,1 / squirrel 2,2,1→1,1,1 / bird 2,2,1→1,1,1 / frog 2,2,1→1,1,1 / grasshopper 3,3,2→1,1,1.
+  - 미변경(이미 1,1,1): mouse / salamander / snake / crab.
+- D-98 규칙(evade≤1)을 횟수+수치 양쪽 적용. acc 0(주먹·뗀석기 치기)는 evade 1 못 뚫음, acc 1(돌·새총·창 찌르기·뗀석기 던지기)는 정확 명중.
+
+마지막 검증: 2026-04-26 (**14th session — 웹 세션, D-101**).
+D-101 유저 회피 시스템 — dodge 카드 evade=1:
+- combat_cards.json `dodge`: success_rate 75→100, evade=1 신설.
+- combatDeck.js::takeDamageThisTurn: cardEvade > preyAttackAccuracy(미정의=0)면 0 데미지.
+- index.html StatBadges: evade 배지 (💨+N, #d4b84a) 손패/슬롯에 노출.
+
+⚠️ **github.io 호스팅 이슈** (2026-04-26 발견):
+- 사용자 화면(uzudang2.github.io)은 origin/main 빌드.
+- main HEAD = `792cc8d` (D-96, 2026-04-25). D-97/98/99/100/101/102 모두 claude/continue-session-rsuY2 브랜치에만 존재.
+- 화면에 모든 사냥감이 evade,evade,evade로 보이는 직접 원인 = D-98 actions_per_turn 패턴이 main에 미반영.
+- 해결 필요: 작업 브랜치를 main에 머지(또는 PR) → GitHub Pages 재배포.
+
 마지막 검증: 2026-04-26 (**14th session — 웹 세션, D-100**).
 D-100 새총 데미지 너프:
 - combat_cards.json: slingshot_shot damage 3 → 2 (acc 1, success 100 유지).

@@ -2575,12 +2575,13 @@
         //   - damage=0 && defense>0 → 🗡️ 숨기고 🛡️ 표시 (크아 웅크리기/방패 막기).
         //   - damage=0 && defense=0 (dodge/run_away) → 🗡️·🏹 생략, N%만.
         //   - 라벨 텍스트 전부 제거 — 아이콘 + 숫자로 통일.
-        const STAT_ICONS = { damage: '🗡️', accuracy: '🏹', defense: '🛡️' };
-        const STAT_COLORS = { damage: '#e06666', accuracy: '#8bd17c', defense: '#4db8ff' };
+        const STAT_ICONS = { damage: '🗡️', accuracy: '🏹', defense: '🛡️', evade: '💨' };
+        const STAT_COLORS = { damage: '#e06666', accuracy: '#8bd17c', defense: '#4db8ff', evade: '#d4b84a' };
         function StatBadges({ card }) {
             const dmg = Number(card.damage) || 0;
             const acc = Number(card.accuracy) || 0;
             const def = Number(card.defense) || 0;
+            const eva = Number(card.evade) || 0;
             const sr = card.success_rate;
             return (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
@@ -2595,6 +2596,9 @@
                     )}
                     {def > 0 && (
                         <span style={{ color: STAT_COLORS.defense }}>{STAT_ICONS.defense}+{def}</span>
+                    )}
+                    {eva > 0 && (
+                        <span style={{ color: STAT_COLORS.evade }}>{STAT_ICONS.evade}+{eva}</span>
                     )}
                 </span>
             );

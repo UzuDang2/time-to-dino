@@ -36,12 +36,13 @@
     "id": "dodge",
     "name": "회피하기",
     "damage": 0,
-    "success_rate": 75,
+    "success_rate": 100,
     "requirement": "없음",
     "count": 3,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": ""
+    "defense": "",
+    "evade": 1
   },
   {
     "id": "run_away",

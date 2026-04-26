@@ -298,9 +298,14 @@
             );
 
             // D-74: 유저 카드의 defense로 prey 공격 감쇄 — preyAction='attack'일 때만 적용.
+            // D-101: 카드 evade(정수)가 prey.attack_accuracy(미정의면 0)를 초과하면 prey 공격 무효.
+            //   D-96 결정론(명중≥회피→명중) 대칭 — 유저 측 회피도 정수 비교.
             const cardDefense = Math.max(0, Number(card && card.defense) || 0);
+            const cardEvade = Math.max(0, Number(card && card.evade) || 0);
+            const preyAttackAccuracy = Math.max(0, Number(prey && prey.attack_accuracy) || 0);
             const takeDamageThisTurn = () => {
                 if (preyActionRaw !== 'attack' || preyAttack <= 0) return 0;
+                if (cardEvade > preyAttackAccuracy) return 0;
                 const dmg = Math.max(0, preyAttack - cardDefense);
                 playerDamageTaken += dmg;
                 return dmg;

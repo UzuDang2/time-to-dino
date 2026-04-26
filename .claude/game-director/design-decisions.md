@@ -5,6 +5,71 @@
 
 ---
 
+## D-102. L1 사냥감 evade 수치 1로 통일 (2026-04-26, 14th 세션, `data/prey.json`)
+
+요한 원문: "이미지에 제시된 사냥감 모두 회피, 회피, 회피야. 거기다가 수치도 너무높아. 규칙대로해야지"
+
+### 배경
+
+- D-98 규칙: peek≤2 / evade≤1 / defend≤1 (3턴). actions_per_turn 패턴은 이미 반영.
+- 그러나 evade_per_turn 수치는 옛 차등 그대로(메뚜기 "3,3,2" / 토끼·다람쥐·새·개구리 "2,2,1" 등). evade 턴의 회피값이 과대.
+- D-96 결정론(명중 ≥ 회피 → 명중)에서 새총 명중 1 < 메뚜기 회피 3 → 잡을 수 없음.
+
+### 변경 (`prey.json`)
+
+L1 9종 모두 `evade_per_turn = "1,1,1"`, `evade_rate = 1`로 통일.
+
+| ID | before evade_per_turn | after |
+|---|---|---|
+| rabbit | 2,2,1 | 1,1,1 |
+| mouse | 1,1,1 | 1,1,1 (변경 없음) |
+| squirrel | 2,2,1 | 1,1,1 |
+| bird | 2,2,1 | 1,1,1 |
+| salamander | 1,1,1 | 1,1,1 (변경 없음) |
+| snake | 1,1,1 | 1,1,1 (변경 없음) |
+| frog | 2,2,1 | 1,1,1 |
+| crab | 1,1,1 | 1,1,1 (변경 없음) |
+| grasshopper | 3,3,2 | 1,1,1 |
+
+### 의도
+
+- evade≤1 규칙을 횟수 + 수치 두 측면에서 모두 적용.
+- L1 사냥감 차등은 actions_per_turn 행동 패턴(예: peek,peek,evade vs peek,defend,evade)과 hp/meat로 표현. 회피값 자체의 수치 차등 폐기.
+- D-96 정수 결정론에서 acc 0(주먹/뗀석기 치기)는 evade 1 못 뚫음, acc 1(돌·새총·뗀석기 던지기·창 찌르기)는 evade 1 정확 명중. 깔끔한 진입 장벽.
+
+---
+
+## D-101. 유저 회피 시스템 — dodge 카드 evade=1 (2026-04-26, 14th 세션, `data/combat_cards.json` / `combatDeck.js` / `index.html`)
+
+요한 원문: "내 회피하기가 75%야, 나의 회피는 1로 지정해줘"
+
+### 배경
+
+- 기존 `dodge` 카드: damage 0, success_rate 75, accuracy 0, defense ""(없음). 실제 회피 로직 없어 사실상 빈 카드(prey attack 그대로 받음).
+- D-96 정수 결정론(명중≥회피→명중)을 유저 회피 측에도 대칭 적용 — 카드 evade 정수 vs prey attack_accuracy 정수.
+
+### 변경
+
+- `combat_cards.json` `dodge`:
+  - `success_rate: 75 → 100` (D-96 결정론).
+  - `evade: 1` 신규 필드.
+- `combatDeck.js::resolveHunt::takeDamageThisTurn`:
+  - `cardEvade = Number(card.evade) || 0`, `preyAttackAccuracy = Number(prey.attack_accuracy) || 0`.
+  - prey가 attack 행동일 때 `cardEvade > preyAttackAccuracy`면 0 데미지(회피 성공).
+- `index.html` `StatBadges`: `evade` 필드 표시(💨+N, #d4b84a). 손패/슬롯 카드에 회피 1 배지 노출.
+- `STAT_ICONS.evade = '💨'`, `STAT_COLORS.evade = '#d4b84a'` 신설.
+
+### 동작
+
+- 모든 L2 prey의 attack_accuracy 미정의(=0). dodge 카드(evade 1)가 attack 턴에 배치되면 1 > 0 → 100% 회피. 향후 prey에 `attack_accuracy: 1` 추가 시 dodge 무력화 가능 — 확장 여지 유지.
+- success_rate 100으로 카드 자체 발동은 결정론.
+
+### 시트 SSOT
+
+- 다음 로컬 세션: `전투카드.회피하기.success_rate=100` + `evade=1` 컬럼 동기화.
+
+---
+
 ## D-100. 새총 데미지 3 → 2 (2026-04-26, 14th 세션, `data/combat_cards.json`)
 
 요한 원문: "새총 대미지 2로 수정해줘"
