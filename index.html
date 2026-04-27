@@ -3381,7 +3381,9 @@
             if ((!gameOver && !victory) || showPathView) return null;
 
             const narrative = !victory && deathReason ? DEATH_NARRATIVE[deathReason] : null;
-            const bgColor = victory ? '#4CAF50' : '#2a2a3e';
+            // D-112 (요한 지시): 승리 모달도 다크 배경 통일 — 녹색 배경에 노랑 텍스트가 잘 안 보임.
+            //   타이틀(승리/게임오버)에만 색 차이를 주고, 모달 배경은 표준 다크.
+            const bgColor = '#2a2a3e';
             const accentColor = victory ? '#fff' : '#e94560';
 
             // D-110: 승리 시에만 점수 배지 + [전리품 확인] 노출.
