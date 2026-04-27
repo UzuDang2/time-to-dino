@@ -8,9 +8,11 @@ class BossMonster {
         this.health = 10;
         this.name = '티라노사우루스';
         // D-77 (2026-04-24): 포식 상태.
-        //   predationTarget — 현재 쫓는 L2 prey id (null=포식 모드 아님).
+        //   predationTarget — 현재 쫓는 prey id (null=포식 모드 아님).
         //   predationStay   — 포식 중 남은 정지 턴 수 (0이면 포식 아님 / 종료).
         //   onPredationComplete — 포식 완료 시 호출될 콜백. 사체 타일 생성 세터 주입.
+        // D-139 (2026-04-27): L2 한정 → L1 포함 모든 prey가 포식 후보. "사냥감 타일에 보스 도착
+        //   = 무조건 포식"이 사용자 멘탈 모델 — L1 토끼 타일에서도 포식 시작되어 플레이어 안전.
         // D-90 (2026-04-25): predationPreyType — 포식 진행 중 prey 종(preyType) 보존.
         //   onPredationComplete 호출 시 콜백에 전달 → 사체 메시지에 사냥감 이름 사용.
         this.predationTarget = null;
@@ -171,11 +173,11 @@ class BossMonster {
             return this.position === playerTile;
         }
 
-        // D-77: 포식 타겟 탐색/추적 — L2 prey가 타일거리 2 이내면 포식 경로 우선.
-        //   1) 타겟이 없으면 탐색 (L2 prey 중 거리 ≤ 2).
+        // D-77 / D-139: 포식 타겟 탐색/추적 — 모든 prey(L1·L2)가 거리 2 이내면 포식 경로 우선.
+        //   1) 타겟이 없으면 탐색 (prey 중 거리 ≤ 2).
         //   2) 타겟이 있으면 해당 prey를 preys 배열에서 찾아 BFS 첫 홉으로 전진.
         //      타겟이 이미 사라졌으면(이미 잡힌 경우 등) 타겟 해제하고 일반 경로.
-        //   3) 타겟 타일 도달 시 포식 시작(predationStay=2, onPredationStart 콜백).
+        //   3) 타겟 타일 도달 시 포식 시작(predationStay=3, onPredationStart 콜백).
         if (Array.isArray(preys)) {
             let target = null;
             if (this.predationTarget) {
@@ -186,18 +188,17 @@ class BossMonster {
                 }
             }
             if (!target && !this.predationTarget) {
-                // 타겟 탐색: L2 + 거리 2 이내.
-                const nearL2 = preys.filter(p => {
+                // D-139: 타겟 탐색은 L1·L2 가리지 않음. 거리 2 이내 모든 prey 후보.
+                const nearby = preys.filter(p => {
                     if (!p || typeof p.tileId !== 'number') return false;
-                    if (p.level != null && p.level !== 2) return false;
                     const d = this.calculateDistance(this.position, p.tileId);
                     return Number.isFinite(d) && d <= 2;
                 });
-                if (nearL2.length > 0) {
-                    nearL2.sort((a, b) =>
+                if (nearby.length > 0) {
+                    nearby.sort((a, b) =>
                         this.calculateDistance(this.position, a.tileId)
                         - this.calculateDistance(this.position, b.tileId));
-                    target = nearL2[0];
+                    target = nearby[0];
                     this.predationTarget = target.id;
                 }
             }
