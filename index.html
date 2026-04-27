@@ -2550,7 +2550,498 @@
             );
         }
 
-        function GameEndModal({ gameOver, victory, deathReason, showPathView, onViewPath }) {
+        // ============================================
+        // D-109 (2026-04-24): 베이스캠프 1단계 — 시나리오·캠프 화면·퀘스트.
+        //   게임 흐름: intro → play → camp → play → camp ...
+        //   App 컴포넌트가 view state로 분기, Game은 한 번의 탐험 루프.
+        // ============================================
+
+        // 시나리오 텍스트 — 디렉터 작성, 변경 금지.
+        const INTRO_SCENARIO_TEXT = `정신이 든다.
+
+흙냄새가 코에 닿는다. 차갑고 축축하다.
+풀뿌리를 움켜쥔 손가락이 차게 식어 있다.
+얼마나 의식을 잃었는지 모르겠다.
+
+빽빽한 잎사귀가 하늘을 가린 채,
+새벽인지 황혼인지 모를 빛이 새어든다.
+저 멀리 잎 사이에서, 들숨과 날숨이 너무 길고 너무 깊은
+어떤 짐승의 호흡이 흘러나온다.
+
+…저런 소리를 내는 것을 본 적은 없다.
+그러나 분명히 안다.
+저것은 나를 잡아먹을 만큼 크다.
+
+도구가 필요하다. 먹을 것이 필요하다.
+잠시라도 숨을 곳이 필요하다.
+
+풀이 짓이겨진 작은 빈터, 둘러친 풀숲—
+이곳을 임시로 '집'이라 부르기로 한다.
+
+여기서부터, 시작이다.`;
+
+        // 텐트 퀘스트 정의 — 1단계는 이 한 종만.
+        //   재료는 캠프 인벤 보유량으로 실시간 계산(저장된 progress 무관).
+        //   1단계는 효과 없음 — completed 마킹만.
+        const TENT_QUEST = {
+            id: 'tent',
+            name: '텐트 재료 구하기',
+            icon: '🔧',
+            requirements: { branch: 6, stone: 4, stem: 4 }
+        };
+
+        // 시나리오 풀스크린. [정신을 차린다] 클릭 시 onDismiss.
+        function IntroScenarioScreen({ onDismiss }) {
+            return (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 4000,
+                    background: '#0a0a10',
+                    color: '#eee',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '32px 24px',
+                    overflowY: 'auto',
+                    animation: 'ttdIntroFade 1.2s ease-out'
+                }}>
+                    <div style={{
+                        whiteSpace: 'pre-wrap',
+                        fontSize: '17px',
+                        lineHeight: 1.7,
+                        color: '#e8e8e8',
+                        maxWidth: '520px',
+                        width: '100%',
+                        marginBottom: '36px',
+                        fontFamily: 'inherit',
+                        textAlign: 'left'
+                    }}>
+                        {INTRO_SCENARIO_TEXT}
+                    </div>
+                    <button
+                        onClick={onDismiss}
+                        style={{
+                            background: '#1a1a2e',
+                            color: '#d4b84a',
+                            border: '1px solid #d4b84a',
+                            padding: '12px 32px',
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            letterSpacing: '0.04em'
+                        }}
+                    >
+                        정신을 차린다
+                    </button>
+                </div>
+            );
+        }
+
+        // 첫 캠프 복귀 시 텐트 퀘스트 부여 모달.
+        //   outcome: 'victory' | 'death' — 첫 줄 분기.
+        function TentQuestModal({ outcome, onDismiss }) {
+            const firstLine = outcome === 'death'
+                ? '…정신을 차려 보니 다시 흙냄새 나는 자리였다.'
+                : '…살아 돌아왔다.';
+            return (
+                <div className="modal" style={{ zIndex: 3500 }}>
+                    <div style={{
+                        background: '#1a1a2e',
+                        color: '#eee',
+                        padding: '28px 26px',
+                        borderRadius: '10px',
+                        border: '1px solid #4a4a6e',
+                        maxWidth: '440px',
+                        width: '90vw',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.55)'
+                    }}>
+                        <div style={{
+                            fontSize: '15px',
+                            lineHeight: 1.7,
+                            marginBottom: '18px',
+                            color: '#ddd',
+                            whiteSpace: 'pre-line'
+                        }}>
+                            {`숨이 차오를 즈음 익숙한 흙냄새가 났다.\n${firstLine}\n\n이 빈터에 다시 서니 비로소 알겠다.\n밤이 되면 짐승은 이곳도 찾아온다.\n무방비한 풀숲 가운데서 잠을 청할 수는 없다.\n텐트가 필요하다.`}
+                        </div>
+                        <div style={{
+                            background: 'rgba(0,0,0,0.25)',
+                            padding: '12px 14px',
+                            borderRadius: '6px',
+                            marginBottom: '20px',
+                            fontSize: '13px',
+                            lineHeight: 1.6
+                        }}>
+                            <div style={{ color: '#d4b84a', fontWeight: 700, marginBottom: '4px' }}>가져와야 할 것</div>
+                            <div>· 나뭇가지 6</div>
+                            <div>· 돌맹이 4</div>
+                            <div>· 줄기 4</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <button
+                                onClick={onDismiss}
+                                style={{
+                                    background: '#d4b84a',
+                                    color: '#1a1a2e',
+                                    border: 'none',
+                                    padding: '10px 28px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 700
+                                }}
+                            >
+                                알겠다
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // 데이터 초기화 경고.
+        function ResetConfirmModal({ onConfirm, onCancel }) {
+            return (
+                <div className="modal" style={{ zIndex: 3600 }}>
+                    <div style={{
+                        background: '#2a1a1e',
+                        color: '#fff',
+                        padding: '24px 22px',
+                        borderRadius: '10px',
+                        border: '1px solid #8B0000',
+                        maxWidth: '340px',
+                        width: '90vw',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', color: '#ff8a8a' }}>
+                            데이터 초기화
+                        </div>
+                        <div style={{ fontSize: '13px', lineHeight: 1.6, marginBottom: '20px', color: '#ddd' }}>
+                            정말 모든 진행을 초기화? 되돌릴 수 없다.
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                            <button
+                                onClick={onCancel}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#bbb',
+                                    border: '1px solid #4a4a6e',
+                                    padding: '8px 18px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px'
+                                }}
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={onConfirm}
+                                style={{
+                                    background: '#8B0000',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '8px 22px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px',
+                                    fontWeight: 700
+                                }}
+                            >
+                                확인
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // 캠프 인벤 그리드 (8x12, disabled 없음). InventoryModal과 동일 룩 — 정적 표시 전용.
+        //   읽기 전용: 셀 클릭/드래그 없음. 1단계는 보관·조회만.
+        function CampInventoryGrid({ inventory }) {
+            if (!inventory) return null;
+            const ROWS = inventory.rows, COLS = inventory.cols, CELL = 36, PAD = 3;
+            return (
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${COLS}, ${CELL - 2}px)`,
+                        gridTemplateRows: `repeat(${ROWS}, ${CELL - 2}px)`,
+                        gap: '2px',
+                        background: '#0f3460',
+                        padding: `${PAD}px`,
+                        borderRadius: '8px'
+                    }}>
+                        {Array(ROWS).fill(null).map((_, row) =>
+                            Array(COLS).fill(null).map((_, col) => {
+                                const occupied = !!inventory.grid[row][col];
+                                return (
+                                    <div
+                                        key={`${row}-${col}`}
+                                        className={`inventory-cell ${occupied ? 'occupied' : ''}`}
+                                    />
+                                );
+                            })
+                        )}
+                    </div>
+                    {inventory.items.map(item => {
+                        const w = item.shape[0].length;
+                        const h = item.shape.length;
+                        const emoji = itemEmoji(item.type);
+                        return (
+                            <div
+                                key={item.id}
+                                className="inventory-item"
+                                style={{
+                                    left: `${item.x * CELL + PAD}px`,
+                                    top: `${item.y * CELL + PAD}px`,
+                                    width: `${w * CELL - PAD}px`,
+                                    height: `${h * CELL - PAD}px`,
+                                    fontSize: '9px',
+                                    cursor: 'default',
+                                    pointerEvents: 'none'
+                                }}
+                            >
+                                {emoji
+                                    ? <span style={{ fontSize: '20px', lineHeight: 1 }}>{emoji}</span>
+                                    : item.name}
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        // 캠프 메인 화면.
+        //   props.campState — 영속화 상태. quests/inventory(InventorySystem 인스턴스)/runs.
+        //   props.onDepart — [탐험 떠나기] 클릭.
+        //   props.onCompleteQuest(questId) — [완수] 클릭.
+        //   props.onResetData — [데이터 초기화] 확정.
+        function CampScreen({ campState, onDepart, onCompleteQuest, onResetData }) {
+            const [resetOpen, setResetOpen] = React.useState(false);
+            const inv = campState && campState.inventory;
+            const runs = (campState && campState.runs) || { total: 0, victories: 0, deaths: 0 };
+            const activeQuests = (campState && campState.quests && campState.quests.active) || [];
+            const completedQuests = (campState && campState.quests && campState.quests.completed) || [];
+
+            // 인벤에서 type별 보유량 계산 (실시간). 저장된 progress보다 정확.
+            const countOfType = (type) => {
+                if (!inv || !Array.isArray(inv.items)) return 0;
+                return inv.items.filter(it => it.type === type).length;
+            };
+
+            const renderQuestCard = (quest) => {
+                const def = quest.id === TENT_QUEST.id ? TENT_QUEST : null;
+                if (!def) return null;
+                const reqs = def.requirements || {};
+                const progress = Object.entries(reqs).map(([type, need]) => {
+                    const have = countOfType(type);
+                    const dispDef = InventorySystem.resolveDef(type) || {};
+                    const name = dispDef.name || type;
+                    return { type, name, have, need, ok: have >= need };
+                });
+                const canComplete = progress.every(p => p.ok);
+                return (
+                    <div key={quest.id} style={{
+                        background: '#16213e',
+                        border: '1px solid #2a3a5e',
+                        borderRadius: '8px',
+                        padding: '12px 14px',
+                        marginBottom: '10px'
+                    }}>
+                        <div style={{
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            color: '#d4b84a',
+                            marginBottom: '8px'
+                        }}>
+                            {def.icon} {def.name}
+                        </div>
+                        <div style={{ fontSize: '12px', lineHeight: 1.7, color: '#ddd', marginBottom: '10px' }}>
+                            {progress.map(p => (
+                                <div key={p.type} style={{ color: p.ok ? '#8bd17c' : '#ddd' }}>
+                                    · {p.name} {p.have}/{p.need}
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => canComplete && onCompleteQuest && onCompleteQuest(quest.id)}
+                            disabled={!canComplete}
+                            style={{
+                                background: canComplete ? '#d4b84a' : '#2a2a3e',
+                                color: canComplete ? '#1a1a2e' : '#666',
+                                border: 'none',
+                                padding: '7px 18px',
+                                borderRadius: '5px',
+                                cursor: canComplete ? 'pointer' : 'not-allowed',
+                                fontSize: '12px',
+                                fontWeight: 700
+                            }}
+                        >
+                            완수
+                        </button>
+                    </div>
+                );
+            };
+
+            return (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    overflowY: 'auto',
+                    background: '#0d0d18',
+                    color: '#eee',
+                    padding: '20px 16px 80px',
+                    boxSizing: 'border-box',
+                    zIndex: 100
+                }}>
+                    <div style={{ maxWidth: '720px', margin: '0 auto' }}>
+                        <div style={{
+                            fontSize: '22px',
+                            fontWeight: 700,
+                            color: '#d4b84a',
+                            marginBottom: '4px',
+                            textAlign: 'center',
+                            letterSpacing: '0.06em'
+                        }}>
+                            🏕️ 베이스캠프
+                        </div>
+                        <div style={{
+                            fontSize: '11px',
+                            color: '#888',
+                            textAlign: 'center',
+                            marginBottom: '20px'
+                        }}>
+                            탐험 {runs.total} · 생환 {runs.victories} · 사망 {runs.deaths}
+                        </div>
+
+                        {/* 인벤 */}
+                        <div style={{
+                            background: '#1a1a2e',
+                            border: '1px solid #2a3a5e',
+                            borderRadius: '10px',
+                            padding: '14px',
+                            marginBottom: '16px'
+                        }}>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '10px' }}>
+                                보관함
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <CampInventoryGrid inventory={inv} />
+                            </div>
+                        </div>
+
+                        {/* 퀘스트 */}
+                        <div style={{
+                            background: '#1a1a2e',
+                            border: '1px solid #2a3a5e',
+                            borderRadius: '10px',
+                            padding: '14px',
+                            marginBottom: '16px'
+                        }}>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '10px' }}>
+                                퀘스트
+                            </div>
+                            {activeQuests.length === 0 && completedQuests.length === 0 && (
+                                <div style={{ fontSize: '12px', color: '#777' }}>
+                                    아직 받은 퀘스트가 없다.
+                                </div>
+                            )}
+                            {activeQuests.map(renderQuestCard)}
+                            {completedQuests.length > 0 && (
+                                <div style={{ marginTop: '8px' }}>
+                                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>완료</div>
+                                    {completedQuests.map(q => {
+                                        const def = q.id === TENT_QUEST.id ? TENT_QUEST : null;
+                                        if (!def) return null;
+                                        return (
+                                            <div key={q.id} style={{
+                                                fontSize: '12px',
+                                                color: '#666',
+                                                textDecoration: 'line-through'
+                                            }}>
+                                                ✓ {def.name}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 건설 placeholder */}
+                        <div style={{
+                            background: '#1a1a2e',
+                            border: '1px dashed #2a3a5e',
+                            borderRadius: '10px',
+                            padding: '14px',
+                            marginBottom: '20px',
+                            textAlign: 'center',
+                            color: '#666',
+                            fontSize: '12px'
+                        }}>
+                            건설 (추후 단계에서 열림)
+                        </div>
+
+                        {/* 탐험 떠나기 */}
+                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                            <button
+                                onClick={onDepart}
+                                style={{
+                                    background: '#4CAF50',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '14px 36px',
+                                    fontSize: '16px',
+                                    fontWeight: 700,
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 12px rgba(76,175,80,0.3)'
+                                }}
+                            >
+                                🌲 탐험 떠나기
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 데이터 초기화 — 우하단 */}
+                    <div style={{
+                        position: 'fixed',
+                        right: '12px',
+                        bottom: '12px',
+                        zIndex: 100
+                    }}>
+                        <button
+                            onClick={() => setResetOpen(true)}
+                            style={{
+                                background: 'transparent',
+                                color: '#666',
+                                border: '1px solid #333',
+                                padding: '6px 12px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '11px'
+                            }}
+                        >
+                            데이터 초기화
+                        </button>
+                    </div>
+
+                    {resetOpen && (
+                        <ResetConfirmModal
+                            onCancel={() => setResetOpen(false)}
+                            onConfirm={() => {
+                                setResetOpen(false);
+                                onResetData && onResetData();
+                            }}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        function GameEndModal({ gameOver, victory, deathReason, showPathView, onViewPath, onReturnCamp }) {
             // 승리 후 '맵 보기' 모드일 때 모달 숨김 — 경로를 볼 수 있게.
             if ((!gameOver && !victory) || showPathView) return null;
 
