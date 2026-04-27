@@ -1,5 +1,20 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**D-109, 베이스캠프 1단계 — 시나리오·캠프 화면·퀘스트·localStorage 영속화**).
+D-109 베이스캠프 1단계:
+- 게임 흐름 전면 리팩토링: 단일 Game 컴포넌트 → App(view) + Game/CampScreen 분기.
+  - view='intro' → IntroScenarioScreen (풀스크린 시나리오, [정신을 차린다]).
+  - view='play' → 기존 Game 한 사이클(맵·HUD·전투).
+  - view='camp' → CampScreen (8x12 보관함 + 퀘스트 + 건설 placeholder + [탐험 떠나기]).
+- localStorage 'ttd:campState:v1' 영속화. 첫 마운트: 부재→intro / 존재→camp(시나리오 스킵).
+  - InventorySystem 직렬화는 items만 {type,x,y,rotation}. deserialize 시 placeItem 복원, 충돌 시 addItem 폴백.
+- GameEndModal: [다시 시작](window.location.reload) → [🏕️ 베이스캠프로 귀환]. 맵 보기 footer 동일.
+  - resetRun 별도 함수 없음 — view 전환 시 Game 자연 unmount/remount로 fresh state.
+- 자원 인입 정책: 승리 100%, 사망 0. 첫 캠프 복귀 시 텐트 퀘스트 부여 + TentQuestModal.
+- 텐트 퀘스트(branch 6, stone 4, stem 4): 인벤 보유량 실시간 계산, [완수] 클릭 시 차감 + completed 이동 + 알림.
+- [데이터 초기화] 우하단: ResetConfirmModal → localStorage 제거 → 시나리오부터 재생.
+- 검증: Babel transform + node --check PASS. 브라우저 검증은 후속.
+
 마지막 검증: 2026-04-24 (**D-108, 사냥감행동 시트 신설 + 종별 특수공격 + HuntModal 정리**).
 D-108 사냥감 행동 풀 SSOT 분리:
 - 새 시트 탭 `사냥감행동` (id, name, type, damage, accuracy, defense, description) — 20행. 기본 4 + 종별 특수 16.
