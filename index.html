@@ -195,8 +195,28 @@
                         </div>
                     </div>
 
-                    <div className="stat-box" style={{ fontSize: '13px', marginBottom: '8px', padding: '6px 8px' }}>
-                        {message}
+                    {/* D-119 (요한 지시): 메시지 영역을 1인칭 구어체 인용 카드로.
+                        - 따옴표 감싸기 ("...")
+                        - 2줄 여유, 상하·좌우 중앙 정렬
+                        - 검정 배경으로 UI와 분리. */}
+                    <div style={{
+                        background: '#000',
+                        border: '1px solid #1f2538',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        marginBottom: '8px',
+                        minHeight: '48px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        fontSize: '13px',
+                        lineHeight: 1.45,
+                        color: '#e7e1c8',
+                        fontStyle: 'italic',
+                        letterSpacing: '0.2px'
+                    }}>
+                        {message ? `“${message}”` : '\u00A0'}
                     </div>
                 </div>
             );
