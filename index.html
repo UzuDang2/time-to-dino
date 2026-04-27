@@ -2006,7 +2006,9 @@
                     background: '#0f1a2e',
                     border: '1px solid #2a3a5e',
                     borderRadius: '8px',
-                    padding: '10px',
+                    /* D-130: padding-bottom 24px — 스크롤 끝 카드와 panel 하단 사이 여유.
+                       카드 리스트 마지막 행이 잘려 보이지 않도록 panel 자체 내부 마진 확보. */
+                    padding: '10px 10px 24px',
                     marginTop: '8px',
                     maxHeight: '55dvh',
                     overflowY: 'auto',
