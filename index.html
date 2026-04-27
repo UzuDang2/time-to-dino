@@ -60,10 +60,21 @@
         // - 라벨 제거, 아이콘만 표시. 숫자 폰트 크기 축소.
         // - 게이지 높이 12 → 10, 발각 바 20 → 14.
         // - 기존 stat-box padding 축소 필요 시 인라인으로만 오버라이드(전역 .stat-box는 다른 곳에서 재사용).
+        // D-125 (요한 지시): 지역 도착 1인칭 내레이션.
+        //   타일 진입 시 setMessage로 분위기 텍스트 노출. 시스템스러운 [지역명]
+        //   대괄호 prefix는 제거하고, 도착 자체가 어디에 왔는지 알려주는 역할을 한다.
+        const REGION_ARRIVE_NARRATIVE = {
+            '숲':   '숲의 어둑한 그늘 아래로 발을 내디뎠다. 젖은 흙냄새와 나뭇잎 부스럭임.',
+            '덤불': '가시덤불 사이로 몸을 비집고 들어선다. 어딘가 작은 짐승이 숨죽이고 있다.',
+            '평원': '평원으로 이동했다. 낮은 풀과 돌맹이가 발에 치인다.',
+            '시냇물': '물소리가 가까워진다. 시냇가에 서니 발끝이 차갑게 식는다.',
+            '동굴': '동굴 입구의 서늘한 공기가 폐를 채운다. 바닥엔 잔돌이 흩어져 있다.'
+        };
+
         // D-124 (요한 지시): 메시지 인-라인 색상 강조.
-        //   - 대괄호 안 지역명 [숲] → 노랑 #d4b84a
         //   - TTD_DATA.ITEMS 한글 이름(돌맹이/생고기/...) → 청록 #8bd17c (득템 강조)
         //   매칭 외 부분은 그대로 본문 색.
+        //   D-125: 대괄호 [지역] 라벨식 표기는 메시지에서 제거됐다 — 패턴 매칭도 제외.
         function MessageText({ text }) {
             if (!text) return '\u00A0';
             const TTD = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : {};
@@ -72,18 +83,14 @@
                 .map(it => it && (it['이름'] || it.name))
                 .filter(Boolean);
             const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const tokens = ['\\[[^\\]]+\\]'];
-            if (itemNames.length > 0) tokens.push(itemNames.map(escape).join('|'));
-            const re = new RegExp(`(${tokens.join('|')})`, 'g');
+            if (itemNames.length === 0) return text;
+            const re = new RegExp(`(${itemNames.map(escape).join('|')})`, 'g');
             const parts = text.split(re);
             const itemSet = new Set(itemNames);
             return (
                 <>
                     {parts.map((p, i) => {
                         if (!p) return null;
-                        if (/^\[[^\]]+\]$/.test(p)) {
-                            return <span key={i} style={{ color: '#d4b84a' }}>{p}</span>;
-                        }
                         if (itemSet.has(p)) {
                             return <span key={i} style={{ color: '#8bd17c' }}>{p}</span>;
                         }
@@ -5947,7 +5954,7 @@
                                 drops: allDrops,
                                 region: currentRegion
                             });
-                            msg += `[${currentRegion}] 무언가를 발견했다. 챙길 것을 골라라.`;
+                            msg += `무언가를 발견했다. 챙길 것을 골라라.`;
                         } else {
                             // 단일 드롭(또는 0개) — 기존 자동 인입 흐름.
                             const counter = new Map();
@@ -5981,13 +5988,13 @@
                                     entries.push({ name: displayName, count, grade });
                                     nameParts.push(count > 1 ? `${displayName} ×${count}` : displayName);
                                 });
-                                msg += `[${currentRegion}] ${nameParts.join(', ')}을(를) 발견했다.`;
+                                msg += `${nameParts.join(', ')}을(를) 발견했다.`;
                                 if (overflow > 0) msg += ` (가방이 가득 차 ${overflow}개는 두고 왔다.)`;
                                 showLootToast(entries);
                             } else if (overflow > 0) {
-                                msg += `[${currentRegion}] 쓸 만한 걸 찾았지만 가방이 가득 차 들고 오지 못했다.`;
+                                msg += `쓸 만한 걸 찾았지만 가방이 가득 차 들고 오지 못했다.`;
                             } else {
-                                msg += `[${currentRegion}] 이 근처에는 쓸만한 게 없다.`;
+                                msg += `이 근처에는 쓸만한 게 없다.`;
                             }
 
                             setTiles(prev => prev.map(t =>
@@ -6016,17 +6023,17 @@
                             const def = InventorySystem.ITEMS[item];
                             const added = inventory.addItem(item);
                             if (added) {
-                                msg += `[${currentRegion}] ${def?.name || item}을(를) 찾아냈다.`;
+                                msg += `${def?.name || item}을(를) 찾아냈다.`;
                                 const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
                                 const displayName = def?.name || item;
                                 const notionItem = notionItems.find(it => it && it['이름'] === displayName);
                                 const grade = notionItem && notionItem['아이템 등급'];
                                 showLootToast([{ name: displayName, count: 1, grade }]);
                             } else {
-                                msg += `[${currentRegion}] ${def?.name || item}을(를) 찾았지만 가방이 가득 찼다.`;
+                                msg += `${def?.name || item}을(를) 찾았지만 가방이 가득 찼다.`;
                             }
                         } else {
-                            msg += `[${currentRegion}] 먹을 만한 건 보이지 않는다.`;
+                            msg += `먹을 만한 건 보이지 않는다.`;
                         }
                     } else {
                         msg += '먹을 만한 건 보이지 않는다.';
@@ -6225,6 +6232,15 @@
                 setTiles(newTiles);
                 setCurrentTile(targetId);
                 setMoveHistory(prev => [...prev, targetId]);
+
+                // D-125: 도착 지역 1인칭 내레이션. 카드 액션 후속 메시지가 없으면
+                //   이 텍스트가 화면에 남는다. 후속 카드 사용 시 자연 덮어쓰기.
+                {
+                    const arrivedTile = newTiles[targetId];
+                    const region = arrivedTile && arrivedTile.region;
+                    const narrative = (region && REGION_ARRIVE_NARRATIVE[region]) || null;
+                    if (narrative) setMessage(narrative);
+                }
 
                 // D-78: 방문한 타일이 carcassTrace에 있었다면 정리 (이제 visited → 중앙 🦴로 표시).
                 if (carcassTraceTiles.has(targetId)) {
