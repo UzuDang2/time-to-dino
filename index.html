@@ -1613,18 +1613,19 @@
                                 </div>
                             )}
 
-                            {/* D-147/D-149: 보관함 모드 — 선택 시 화면 중앙에 floating 합성 popover.
-                               D-149 (요한 지시): 슬롯 아래 absolute → viewport 가로 중앙 fixed.
-                               레시피 리스트가 가로/세로 모두 viewport 안에 들어오게 — 우측 스크롤 불필요. */}
-                            {mode === 'storage' && pendingCraft && selectedItem && (
+                            {/* D-147/D-149/D-150: 보관함 합성 popover.
+                               D-150 (요한 지시): viewport 하단 fixed → 그리드 wrapper 기준 absolute,
+                               선택 슬롯 바로 아래에. 가로는 wrapper 50% + translateX로 그리드 중앙.
+                               우측 가로 스크롤 없이 가운데 + 슬롯 가까이 두 마리 토끼. */}
+                            {mode === 'storage' && pendingCraft && selectedItem && pendingPos && (
                                 <div style={{
-                                    position: 'fixed',
+                                    position: 'absolute',
+                                    top: `${(pendingPos.y + selectedItem.shape.length) * CELL + PAD + 8}px`,
                                     left: '50%',
-                                    bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
                                     transform: 'translateX(-50%)',
-                                    width: 'min(340px, calc(100vw - 32px))',
-                                    maxHeight: '55dvh',
-                                    zIndex: 1500,
+                                    width: 'min(300px, calc(100vw - 32px))',
+                                    maxHeight: '40dvh',
+                                    zIndex: 50,
                                     boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
                                 }}>
                                     <CraftPanel
@@ -4709,7 +4710,23 @@
                         s + (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0), 0);
                     weaponState[c.weaponId] = { durabilityLeft: total };
                 }
-                const res = CombatDeck.resolveHunt(prey, slots, { weaponState });
+                // D-150: armorState — 인벤 모든 방어구(shield/armor) 인스턴스별 잔여 durability.
+                //   item.id를 키로 인스턴스 단위 추적(동일 type 여러 개 보유 가능).
+                const armorState = {};
+                {
+                    const items = (inventory && inventory.items) || [];
+                    for (const it of items) {
+                        const def = InventorySystem.resolveDef(it.type) || {};
+                        const cat = def.category;
+                        if (cat !== 'shield' && cat !== 'armor') continue;
+                        const dur = (typeof it.durabilityLeft === 'number')
+                            ? it.durabilityLeft
+                            : (typeof def.durability === 'number' ? def.durability : 0);
+                        if (dur <= 0) continue;
+                        armorState[it.id] = { durabilityLeft: dur };
+                    }
+                }
+                const res = CombatDeck.resolveHunt(prey, slots, { weaponState, armorState });
                 setResult(res);
                 setPhase('resolve');
 
@@ -5459,6 +5476,28 @@
                         }
                         if (info.broken) {
                             consumedSummary.push(`${displayName} 파손`);
+                        }
+                    }
+
+                    // D-150: 방어구 차감 — armorUsage {armorItemId: {used, broken, durabilityFinal}}.
+                    //   인스턴스 단위 추적. broken=true면 인벤에서 제거.
+                    const armorUsage = (result && result.armorUsage) || {};
+                    for (const [armorItemId, info] of Object.entries(armorUsage)) {
+                        const itemId = (typeof armorItemId === 'string' && /^\d/.test(armorItemId))
+                            ? Number(armorItemId) : armorItemId;
+                        const inst = inventory.items.find(it =>
+                            it.id === itemId || String(it.id) === String(armorItemId));
+                        if (!inst) continue;
+                        const def = InventorySystem.resolveDef(inst.type) || {};
+                        const displayName = def.name || inst.type;
+                        if (info.broken) {
+                            inventory.removeItem(inst);
+                            inventory.items = inventory.items.filter(x => x.id !== inst.id);
+                            consumedSummary.push(`${displayName} 파손`);
+                        } else {
+                            inst.durabilityLeft = Number(info.durabilityFinal) || 0;
+                            const used = Number(info.used) || 0;
+                            if (used > 0) consumedSummary.push(`${displayName} 내구 ${used}`);
                         }
                     }
                 }

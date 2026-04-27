@@ -187,6 +187,9 @@ class InventorySystem {
                 // type이 있으면 category로 사용 (shield/armor). 없으면 static category 유지.
                 if (aDef.type) merged.category = aDef.type;
                 if (aDef.defense != null) merged.defense = Number(aDef.defense);
+                // D-150: 방어구 내구도 — 방어 카드 사용마다 1씩 차감.
+                if (aDef['내구도'] != null) merged.durability = Number(aDef['내구도']);
+                else if (aDef.durability != null) merged.durability = Number(aDef.durability);
                 merged.type = aDef.type || merged.type;
             }
         }

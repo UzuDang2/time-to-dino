@@ -275,6 +275,7 @@
     //     명중 ≥ 회피 → 명중. 회피 > 명중 → 회피.
     //
     // opts.weaponState: { [weaponId]: { durabilityLeft:number, fullLossSeed:false } }
+    // opts.armorState (D-150): { [armorId]: { durabilityLeft:number } } — 방어구 인스턴스별 잔여 내구.
     function resolveHunt(prey, userSlots, opts) {
         opts = opts || {};
         const weaponState = {};
@@ -284,12 +285,20 @@
                 weaponState[k] = { durabilityLeft: Number(v && v.durabilityLeft) || 0 };
             }
         }
+        // D-150: armorState 얕은 복사. 방어 카드 사용 시 모든 잔여 방어구 1씩 차감.
+        const armorState = {};
+        if (opts.armorState) {
+            for (const [k, v] of Object.entries(opts.armorState)) {
+                armorState[k] = { durabilityLeft: Number(v && v.durabilityLeft) || 0 };
+            }
+        }
 
         let hp = prey.hp;
         const evadesByTurn = parseEvadesByTurn(prey);
         const fleeCount = Math.max(0, Number(prey && prey.fleeCount) || 0);
         const turns = [];
         const weaponUsage = {}; // 턴 내 누적 소모량
+        const armorUsage = {};  // D-150: 방어구 누적 차감
         // D-74: 유저가 받은 누적 대미지. prey.attack이 있을 때만 의미 있음.
         //   유저 카드의 defense로 감쇄 — finalDamage = max(0, preyAttack - cardDefense).
         let playerDamageTaken = 0;
@@ -309,6 +318,19 @@
             if (fullLoss) slot.fullLossCount += 1;
             slot.durabilityFinal = state.durabilityLeft;
             weaponUsage[wid] = slot;
+        };
+
+        // D-150: 방어구 사용 기록 — 방어 카드 슬롯 발동 시 모든 잔여 방어구 1씩 차감.
+        const recordArmorUseAll = () => {
+            for (const [aid, state] of Object.entries(armorState)) {
+                if (!state || state.durabilityLeft <= 0) continue;
+                state.durabilityLeft = Math.max(0, state.durabilityLeft - 1);
+                const slot = armorUsage[aid] || { used: 0, broken: false };
+                slot.used += 1;
+                slot.broken = slot.broken || state.durabilityLeft <= 0;
+                slot.durabilityFinal = state.durabilityLeft;
+                armorUsage[aid] = slot;
+            }
         };
 
         let terminatedOutcome = null;
@@ -362,6 +384,11 @@
                 });
                 continue;
             }
+
+            // D-150: 방어 카드 슬롯이면 인벤 모든 방어구 내구도 1씩 차감.
+            //   cardDefense > 0 = 카드의 finalDefense가 인벤 합산까지 포함되어 있으니
+            //   자체 defense가 양수라는 뜻 — crouch/shield_block 등.
+            if (cardDefense > 0) recordArmorUseAll();
 
             // D-51 auto-fail: 무기 요구 카드인데 무기 재고가 0이면 시도조차 하지 않음.
             if (card.weaponId) {
@@ -449,7 +476,7 @@
         }
 
         const outcome = terminatedOutcome || (hp <= 0 ? 'victory' : 'prey_fled');
-        return { outcome, turns, preyHpFinal: hp, weaponUsage, playerDamageTaken };
+        return { outcome, turns, preyHpFinal: hp, weaponUsage, armorUsage, playerDamageTaken };
     }
 
     const api = {

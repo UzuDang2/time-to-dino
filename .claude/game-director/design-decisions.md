@@ -5,6 +5,49 @@
 
 ---
 
+## D-150. 방어구 내구도 — 방어 카드 사용 시 1씩 차감 (2026-04-27, `data/armors.json` / `data/data.js` / `inventory.js` / `combatDeck.js` / `index.html`)
+
+요한 원문: "방어구는 방어를 사용하는 카드를 사용할때마다 내구도가 깎이게끔 설정해줘 결국 파손되게끔".
+
+### 결정
+
+#### A. 방어구 내구도 데이터
+
+| 방어구 | 등급 | 내구도 |
+|--------|------|--------|
+| 잎사귀 조끼 | 1단계 | 3 |
+| 나무 방패 | 2단계 | 4 |
+| 천 갑옷 | 2단계 | 4 |
+| 강화 방패 | 3단계 | 6 |
+| 비늘 갑옷 | 3단계 | 6 |
+
+`data/armors.json` + `data/data.js` 양쪽 동기. `inventory.js::resolveDef`가 `aDef['내구도']`/`aDef.durability`를 merged.durability로 합산 → placement 시 `durabilityLeft` 자동 부여 (기존 무기와 동일 메커니즘).
+
+#### B. 차감 로직
+
+`combatDeck.js::resolveHunt`에 armorState 도입 (weaponState와 동일 패턴):
+- `opts.armorState: { [itemId]: { durabilityLeft } }` 받음 — 인벤 인스턴스별 추적.
+- `cardDefense > 0` 슬롯이 활성화되는 턴마다 모든 잔여 방어구 1씩 차감(`recordArmorUseAll`).
+- 결과 `armorUsage: { [itemId]: { used, broken, durabilityFinal } }` 반환.
+
+#### C. 차감 적용 (게임 측)
+
+`HuntCombatModal::handleConfirm`에서:
+- 사냥 시작 시 인벤 모든 shield/armor 카테고리 인스턴스를 armorState로 빌드.
+- `resolveHunt` 호출에 전달.
+
+사냥 종료 후 reward/소모 처리에서:
+- `armorUsage` 순회 — broken=true면 인벤에서 제거(파손), 아니면 `durabilityLeft` 갱신.
+- `consumedSummary`에 "X 내구 Y" / "X 파손" 라인 추가.
+
+### 효과
+
+- 잎사귀 입고 웅크리기 3번 사용 → 파손.
+- 강화 방패 6번 → 파손.
+- 여러 방어구 동시 보유 시 모두 동일 턴에 1씩 차감 — 수명이 동시에 줄어 강력한 풀세트도 결국 소모.
+
+---
+
 ## D-149. 보관함 합성 popover — viewport 가로 중앙 fixed (2026-04-27, `index.html`)
 
 요한 원문: "보관함에서 선택모드시 보이는 제작 가능 레시피 목록이 화면의 중앙에 오게끔 해줘 우측 스크롤 따로 안해도 버튼까지 다 잘보이게".
