@@ -258,7 +258,7 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
-      "drop_item": "",
+      "drop_item": "meat",
       "actions_per_turn": "peek,defend,evade",
       "defense": 1
     },
@@ -273,7 +273,7 @@ window.TTD_DATA = {
       "meat": 1,
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
-      "drop_item": "",
+      "drop_item": "meat",
       "actions_per_turn": "peek,peek,evade",
       "defense": 1
     },
@@ -288,7 +288,7 @@ window.TTD_DATA = {
       "meat": 1,
       "habitat": "숲",
       "evade_per_turn": "1,1,1",
-      "drop_item": "",
+      "drop_item": "meat",
       "actions_per_turn": "peek,evade,peek",
       "defense": 1
     },
@@ -303,7 +303,7 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "평원",
       "evade_per_turn": "1,1,1",
-      "drop_item": "",
+      "drop_item": "meat",
       "actions_per_turn": "peek,peek,evade",
       "defense": 1
     },
@@ -318,7 +318,7 @@ window.TTD_DATA = {
       "meat": 1,
       "habitat": "숲",
       "evade_per_turn": "1,1,1",
-      "drop_item": "",
+      "drop_item": "meat",
       "actions_per_turn": "peek,evade,defend",
       "defense": 1
     },
@@ -333,7 +333,7 @@ window.TTD_DATA = {
       "meat": 2,
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
-      "drop_item": "",
+      "drop_item": "meat",
       "actions_per_turn": "peek,defend,evade",
       "defense": 1
     },
@@ -348,7 +348,7 @@ window.TTD_DATA = {
       "meat": 1,
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
-      "drop_item": "",
+      "drop_item": "meat",
       "actions_per_turn": "peek,evade,peek",
       "defense": 1
     },
@@ -392,7 +392,7 @@ window.TTD_DATA = {
       "type": "반격형",
       "meat": 1,
       "habitat": "덤불,숲",
-      "evade_per_turn": "",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
       "actions_per_turn": "attack,attack,defend,evade",
       "defense": 1
@@ -407,7 +407,7 @@ window.TTD_DATA = {
       "type": "반격형",
       "meat": 1,
       "habitat": "동굴",
-      "evade_per_turn": "",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
       "actions_per_turn": "attack,evade,attack,peek",
       "defense": 1
@@ -422,7 +422,7 @@ window.TTD_DATA = {
       "type": "회피형",
       "meat": 2,
       "habitat": "평원,숲",
-      "evade_per_turn": "",
+      "evade_per_turn": "3,3,3,3",
       "drop_item": "big_meat",
       "actions_per_turn": "evade,evade,attack,peek",
       "defense": 1
@@ -437,7 +437,7 @@ window.TTD_DATA = {
       "type": "반격형",
       "meat": 2,
       "habitat": "덤불",
-      "evade_per_turn": "",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
       "actions_per_turn": "defend,attack,evade,attack",
       "defense": 1
@@ -452,7 +452,7 @@ window.TTD_DATA = {
       "type": "회피형",
       "meat": 1,
       "habitat": "숲",
-      "evade_per_turn": "",
+      "evade_per_turn": "3,3,3,3",
       "drop_item": "big_meat",
       "actions_per_turn": "evade,attack,evade,peek",
       "defense": 1
@@ -467,7 +467,7 @@ window.TTD_DATA = {
       "type": "반격형",
       "meat": 1,
       "habitat": "평원",
-      "evade_per_turn": "",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
       "actions_per_turn": "attack,evade,defend,peek",
       "defense": 1
@@ -482,7 +482,7 @@ window.TTD_DATA = {
       "type": "방어형",
       "meat": 1,
       "habitat": "동굴",
-      "evade_per_turn": "",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
       "actions_per_turn": "defend,defend,evade,peek",
       "defense": 1

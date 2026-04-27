@@ -287,10 +287,57 @@ def export_sheets_via_api(sh) -> bool:
                 row["attack_pattern_raw"] = raw
                 row["attack_pattern"] = parse_attack_pattern(raw or "")
 
+        # D-107 (2026-04-27): 사냥감 시트 가독성 정리.
+        #   시트 헤더(turn1~turn4 분리, evade 단일, drop_count)를 JSON 호환 형식으로 변환.
+        if tab_name == "사냥감":
+            rows = transform_prey_rows(rows)
+
         out_path = DATA_DIR / out_file
         write_json(out_path, rows)
         print(f"[api] {tab_name:12s} → {out_path.name}  ({len(rows)} rows)")
     return True
+
+
+def transform_prey_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """D-107: 사냥감 시트 → prey.json 변환.
+    시트 헤더: id, name, level, hp, attack, defense, evade, type, habitat,
+              drop_item, drop_count, turn1, turn2, turn3, turn4
+    JSON 출력 (런타임 호환):
+      id, name, level, hp, attack, evade_rate, type, meat, habitat,
+      evade_per_turn (turn 수만큼 evade 반복), drop_item,
+      actions_per_turn (turn1..N CSV), defense
+    """
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        if not r.get("id"):
+            continue
+        evade = int(r.get("evade") or 0)
+        # turn1~turn4 → actions_per_turn CSV (빈 토큰은 무시)
+        turns = []
+        for i in range(1, 5):
+            v = (str(r.get(f"turn{i}") or "")).strip()
+            if v:
+                turns.append(v)
+        actions_csv = ",".join(turns)
+        # evade_per_turn: 턴 수만큼 evade 반복 (L1=3, L2=4가 일반).
+        n_turns = len(turns) if turns else 3
+        evade_csv = ",".join([str(evade)] * n_turns)
+        out.append({
+            "id": r.get("id"),
+            "name": r.get("name"),
+            "level": int(r.get("level") or 1),
+            "hp": int(r.get("hp") or 1),
+            "attack": int(r.get("attack") or 0),
+            "evade_rate": evade,
+            "type": r.get("type") or "",
+            "meat": int(r.get("drop_count") or 0),
+            "habitat": r.get("habitat") or "",
+            "evade_per_turn": evade_csv,
+            "drop_item": r.get("drop_item") or "",
+            "actions_per_turn": actions_csv,
+            "defense": int(r.get("defense") or 0),
+        })
+    return out
 
 
 def _parse_weights_csv(raw: Any) -> list[int]:
