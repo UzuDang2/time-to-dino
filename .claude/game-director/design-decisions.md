@@ -5,6 +5,34 @@
 
 ---
 
+## D-134. 가방 모달 자체 스크롤 허용 + stage 추가 stretch (2026-04-27, `gameStyles.css` / `index.html`)
+
+요한 원문: "편의를 위해 가방 ui창 전체의 스크롤도 좀 가능하게 해줘, 지금보다 가방 ui의 최대 길이가 좀 더 길어도 될것같아. 가로모드는 특히 아주 좀더 길어도 좋아".
+
+### D-105 SUPERSEDED
+
+D-105는 "가방 모달 자체 스크롤 차단, 합성 패널 내부만 스크롤"이었지만, 사용자 편의 우선으로 정책 뒤집음.
+
+### 결정
+
+- **`.modal-content.inventory-modal`**: `overflow: hidden` → `overflow-y: auto + -webkit-overflow-scrolling: touch`. 가방 모달 자체가 세로 스크롤 가능. panel 내부 scroll과 함께 이중 스크롤 — 어색하지 않게 panel maxHeight 한도 안에서는 panel scroll, 그 이상은 모달 scroll로 자연스럽게 흡수.
+- **portrait `.inventory-stage max-height`**: `100dvh - 72px - safe` → `100dvh - 36px - safe` (top 12 + bottom 24). +36px 추가 길이.
+- **portrait `.modal:has(.inventory-stage) padding-bottom`**: `60px + safe` → `24px + safe`. D-129가 도구바 가림 안전 여유로 60px 잡았지만, 자체 스크롤 허용으로 사용자가 스크롤로 해소 가능 → 24px로 축소.
+- **landscape padding**: `top 12 / bottom 12` → `top 6 / bottom 6 + safe`. landscape `.inventory-stage max-height`: `100dvh - 24` → `100dvh - 12 - safe`. 사용자 "가로모드는 특히 아주 좀 더" 반영.
+- **CraftPanel 인라인 `maxHeight`**: `40dvh` → `50dvh`. portrait에서 panel 가시 카드 ~5개 → ~6.5개. 자식 자연 크기 stage 초과 시 inventory-modal scroll 흡수.
+
+### 트레이드오프
+
+- 이중 스크롤(panel + 모달)은 일반적으로 UX 안티패턴이지만, 사용자가 명시적 요청. 한쪽 끝에 도달하면 다른 쪽으로 자연 전환 (iOS/Android 모두 잘 처리).
+- panel 내부 sticky 헤더(D-127)는 panel scroll 컨텍스트 안에서만 동작. inventory-modal scroll로 panel 박스가 viewport 밖으로 나가면 sticky도 같이 사라짐 — 이건 자연스러움(panel 자체가 안 보이니까).
+
+### 검증
+
+- portrait/landscape 양쪽 가방 모달이 viewport 거의 가득 채우는지 확인.
+- panel 카드가 panel 자체 스크롤 + 모달 스크롤로 모두 도달 가능 확인.
+
+---
+
 ## D-133. landscape 전용 stage stretch — padding-bottom 12px (2026-04-27, `gameStyles.css`)
 
 요한 원문: "가로모드시에 엄청 잘리는데? 디바이스 해상도에 맞게 상하 길이를 최대로 스트레치 해줘야지".

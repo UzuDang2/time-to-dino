@@ -2012,9 +2012,9 @@
                     marginTop: '8px',
                     /* D-132: 하단 마진 16px — CraftPanel과 inventory-modal 외곽 사이 여유. */
                     marginBottom: '16px',
-                    /* D-132: 45dvh → 40dvh. marginBottom 16px 추가로 자식 자연 크기 합이 늘어
-                       stage 압축이 다시 살아나는 것 방지 + 잘림 추가 해소. */
-                    maxHeight: '40dvh',
+                    /* D-134: 40dvh → 50dvh. inventory-modal 자체 스크롤 허용으로 자식 자연
+                       크기 stage 초과 시 모달이 스크롤 흡수 → panel 자체도 더 길게 가능. */
+                    maxHeight: '50dvh',
                     overflowY: 'auto',
                     WebkitOverflowScrolling: 'touch'
                 }}>

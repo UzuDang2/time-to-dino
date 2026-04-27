@@ -367,22 +367,22 @@ button:disabled {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-    /* D-129: D-128 calc(100dvh - 24px)로는 iOS Safari 하단 도구바/마지막 카드
-       잘림 문제 미해결 + 패널 최하단이 viewport에 딱 붙어 거슬린다는 요한 지시.
-       하단 여유를 60px로 키우고 home indicator도 추가 차감. */
-    max-height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
+    /* D-134: 가방 UI 더 stretch — 36px(top 12 + bottom 24)만 차감. D-105 해제로
+       자체 스크롤 가능해져 길이 부족 시 자체 스크롤로 흡수. */
+    max-height: calc(100dvh - 36px - env(safe-area-inset-bottom, 0px));
 }
 
 .inventory-modal {
     max-width: min(92vw, 760px);
 }
 
-/* D-105 (2026-04-27 요한 지시): 가방 모달 자체 스크롤 차단.
-   합성 패널이 길어졌을 때 모달 전체가 스크롤되지 않고, 합성 패널 내부만
-   스크롤되어야 함. .modal-content의 overflow:auto를 .inventory-modal에서
-   덮어써 외곽 스크롤 막고, 내부 패널은 자체 max-height + overflow-y:auto로 스크롤. */
+/* D-134 (2026-04-27 요한 지시 — D-105 SUPERSEDED): 가방 모달 자체 스크롤 허용.
+   가방 그리드 + 안내 + 합성 패널 합산이 stage max-height 초과 시 모달 자체가
+   세로 스크롤. 합성 패널 자체도 maxHeight + overflow-y:auto 유지 — 카드 많을 때
+   panel 내부 + 모달 자체 둘 다 스크롤 가능 (이중 스크롤 허용). */
 .modal-content.inventory-modal {
-    overflow: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* D-115 (요한 지시): 가방 모달 상단 고정 정렬.
@@ -391,9 +391,9 @@ button:disabled {
 .modal:has(.inventory-stage) {
     align-items: flex-start;
     padding-top: 12px;
-    /* D-129: 하단 padding 60px — 패널 최하단과 viewport 끝 사이 시각 마진 확보 +
-       iOS Safari 도구바/주소창 변동에 대한 안전 여유. safe-area로 home indicator 추가 보정. */
-    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    /* D-134 (D-129 SUPERSEDED): 하단 padding 24px — 가방 UI 더 stretch.
+       iOS Safari 도구바 가림 문제는 D-134 자체 스크롤 허용으로 사용자가 스크롤로 해결. */
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
 /* landscape 전용 우측 카드 — 기본은 숨김(portrait에서는 인라인 CraftPanel만 보인다). */
@@ -435,14 +435,14 @@ button:disabled {
     .inventory-stage {
         overflow: hidden;
     }
-    /* D-133: landscape에서는 D-129의 padding-bottom 60px가 viewport를 과도하게 잡아먹어
-       stage가 작아짐 → panel 카드 잘림. landscape는 안전 여유 12px만 두고 stage를
-       viewport 끝까지 최대 stretch. */
+    /* D-134 (D-133 강화): landscape는 더욱 stretch — 상하 padding 6px씩만.
+       사용자 지시 "가로모드는 특히 아주 좀 더 길어도 좋아". */
     .modal:has(.inventory-stage) {
-        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        padding-top: 6px;
+        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
     }
     .inventory-stage {
-        max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
+        max-height: calc(100dvh - 12px - env(safe-area-inset-bottom, 0px));
     }
 }
 
