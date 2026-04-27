@@ -88,7 +88,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": ""
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "throw_stone",
@@ -99,7 +101,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": ""
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "stab_weapon",
@@ -110,7 +114,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 1,
       "full_loss": "N",
-      "defense": ""
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "dodge",
@@ -122,7 +128,8 @@ window.TTD_DATA = {
       "accuracy": 0,
       "full_loss": "N",
       "defense": "",
-      "evade": 1
+      "evade": 1,
+      "loss_chance": ""
     },
     {
       "id": "run_away",
@@ -133,7 +140,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": ""
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "throw_spear",
@@ -145,6 +154,7 @@ window.TTD_DATA = {
       "accuracy": 2,
       "full_loss": "N",
       "defense": "",
+      "evade": "",
       "loss_chance": 50
     },
     {
@@ -156,29 +166,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 1,
       "full_loss": "N",
-      "defense": ""
-    },
-    {
-      "id": "chipped_stone_strike",
-      "name": "뗀석기로 치기",
-      "damage": 2,
-      "success_rate": 100,
-      "requirement": "뗀석기",
-      "count": 1,
-      "accuracy": 0,
-      "full_loss": "N",
-      "defense": ""
-    },
-    {
-      "id": "chipped_stone_throw",
-      "name": "뗀석기 던지기",
-      "damage": 3,
-      "success_rate": 100,
-      "requirement": "뗀석기",
-      "count": 1,
-      "accuracy": 1,
-      "full_loss": "Y",
-      "defense": ""
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "crouch",
@@ -189,7 +179,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": 1
+      "defense": 1,
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "shield_block",
@@ -200,7 +192,35 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": 1
+      "defense": 1,
+      "evade": "",
+      "loss_chance": ""
+    },
+    {
+      "id": "chipped_stone_strike",
+      "name": "뗀석기로 치기",
+      "damage": 2,
+      "success_rate": 100,
+      "requirement": "뗀석기",
+      "count": 1,
+      "accuracy": 0,
+      "full_loss": "N",
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
+    },
+    {
+      "id": "chipped_stone_throw",
+      "name": "뗀석기 던지기",
+      "damage": 3,
+      "success_rate": 100,
+      "requirement": "뗀석기",
+      "count": 1,
+      "accuracy": 1,
+      "full_loss": "Y",
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     }
   ],
   "MONSTERS": [
@@ -864,6 +884,40 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "big_meat",
+      "name": "큰생고기",
+      "이름": "큰생고기",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "무게": 2,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "큼직한 살점이 붙은 날고기. 한 끼에 든든하지만 그만큼 위장이 더 시달린다.",
+      "효과 요약": "배고픔 +2, 생명력 -2.",
+      "사용 효과": "hunger+2;health-2",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 2
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -2
+          }
+        ],
+        "raw": "hunger+2;health-2"
+      }
+    },
+    {
       "id": "branch",
       "name": "나뭇가지",
       "이름": "나뭇가지",
@@ -882,6 +936,30 @@ window.TTD_DATA = {
       "사용 효과": "",
       "merge_result": "wood",
       "merge_enabled": true,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
+      "id": "chipped_stone",
+      "name": "뗀석기",
+      "이름": "뗀석기",
+      "카테고리": "무기",
+      "재료 타입": null,
+      "아이템 등급": "1단계",
+      "가방칸수": "2x1",
+      "무게": 1,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "돌을 깨뜨려 날을 세운 가장 원시적인 도구. '뗀석기로 치기' / '뗀석기 던지기' 카드 사용 조건.",
+      "효과 요약": "원시적인 석기 무기.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "내구도": 3,
       "effect": {
         "usable": false,
         "actions": [],
@@ -1062,30 +1140,6 @@ window.TTD_DATA = {
       }
     },
     {
-      "id": "chipped_stone",
-      "name": "뗀석기",
-      "이름": "뗀석기",
-      "카테고리": "무기",
-      "재료 타입": null,
-      "아이템 등급": "1단계",
-      "가방칸수": "2x1",
-      "무게": 1,
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": false,
-      "설명 텍스트": "돌을 깨뜨려 날을 세운 가장 원시적인 도구. '뗀석기로 치기' / '뗀석기 던지기' 카드 사용 조건.",
-      "효과 요약": "원시적인 석기 무기.",
-      "사용 효과": "",
-      "merge_result": null,
-      "merge_enabled": false,
-      "내구도": 3,
-      "effect": {
-        "usable": false,
-        "actions": [],
-        "raw": ""
-      }
-    },
-    {
       "id": "stem",
       "name": "줄기",
       "이름": "줄기",
@@ -1233,6 +1287,40 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "big_meat_skewer",
+      "name": "큰고기꼬치",
+      "이름": "큰고기꼬치",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "무게": 2,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "두툼한 살덩어리를 가지에 꿴 꼬치. 익히면 굉장한 한 끼가 된다.",
+      "효과 요약": "배고픔 +2, 생명력 -2.",
+      "사용 효과": "hunger+2;health-2",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 2
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -2
+          }
+        ],
+        "raw": "hunger+2;health-2"
+      }
+    },
+    {
       "id": "clean_cloth",
       "name": "깨끗한 천",
       "이름": "깨끗한 천",
@@ -1345,6 +1433,40 @@ window.TTD_DATA = {
           }
         ],
         "raw": "hunger+1;health-1"
+      }
+    },
+    {
+      "id": "giant_bait",
+      "name": "거대한 먹이",
+      "이름": "거대한 먹이",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "2x2",
+      "무게": 8,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "큼직한 생고기 덩어리들을 한 데 묶은 거대한 미끼. 큰 짐승의 시선을 끌 만하다.",
+      "효과 요약": "배고픔 +8, 생명력 -8.",
+      "사용 효과": "hunger+8;health-8",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 8
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": -8
+          }
+        ],
+        "raw": "hunger+8;health-8"
       }
     },
     {
@@ -1486,6 +1608,40 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "grilled_big_meat_skewer",
+      "name": "큰고기꼬치구이",
+      "이름": "큰고기꼬치구이",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "3단계",
+      "가방칸수": "1x1",
+      "무게": 2,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "탄 듯한 향이 도는 두툼한 꼬치 구이. 한 끼에 끝나는 만찬이다.",
+      "효과 요약": "배고픔 +4, 생명력 +2.",
+      "사용 효과": "hunger+4;health+2",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 4
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 2
+          }
+        ],
+        "raw": "hunger+4;health+2"
+      }
+    },
+    {
       "id": "grilled_crab_skewer",
       "name": "구운게살꼬치",
       "이름": "구운게살꼬치",
@@ -1554,6 +1710,40 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "grilled_giant_bait",
+      "name": "거대한 먹이 구이",
+      "이름": "거대한 먹이 구이",
+      "카테고리": "음식",
+      "재료 타입": "음식재료",
+      "아이템 등급": "3단계",
+      "가방칸수": "2x2",
+      "무게": 8,
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "거대한 미끼 덩어리를 통째 구워낸 잔칫상.",
+      "효과 요약": "배고픔 +16, 생명력 +8.",
+      "사용 효과": "hunger+16;health+8",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 16
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 8
+          }
+        ],
+        "raw": "hunger+16;health+8"
+      }
+    },
+    {
       "id": "grilled_meat_skewer",
       "name": "고기꼬치구이",
       "이름": "고기꼬치구이",
@@ -1585,178 +1775,6 @@ window.TTD_DATA = {
           }
         ],
         "raw": "hunger+2;health+1"
-      }
-    },
-    {
-      "id": "big_meat",
-      "name": "큰생고기",
-      "이름": "큰생고기",
-      "카테고리": "음식",
-      "재료 타입": "음식재료",
-      "아이템 등급": "1단계",
-      "가방칸수": "1x1",
-      "무게": 2,
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "큼직한 살점이 붙은 날고기. 한 끼에 든든하지만 그만큼 위장이 더 시달린다.",
-      "효과 요약": "배고픔 +2, 생명력 -2.",
-      "사용 효과": "hunger+2;health-2",
-      "merge_result": null,
-      "merge_enabled": false,
-      "effect": {
-        "usable": true,
-        "actions": [
-          {
-            "type": "stat",
-            "stat": "hunger",
-            "delta": 2
-          },
-          {
-            "type": "stat",
-            "stat": "health",
-            "delta": -2
-          }
-        ],
-        "raw": "hunger+2;health-2"
-      }
-    },
-    {
-      "id": "big_meat_skewer",
-      "name": "큰고기꼬치",
-      "이름": "큰고기꼬치",
-      "카테고리": "음식",
-      "재료 타입": "음식재료",
-      "아이템 등급": "2단계",
-      "가방칸수": "1x1",
-      "무게": 2,
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "두툼한 살덩어리를 가지에 꿴 꼬치. 익히면 굉장한 한 끼가 된다.",
-      "효과 요약": "배고픔 +2, 생명력 -2.",
-      "사용 효과": "hunger+2;health-2",
-      "merge_result": null,
-      "merge_enabled": false,
-      "effect": {
-        "usable": true,
-        "actions": [
-          {
-            "type": "stat",
-            "stat": "hunger",
-            "delta": 2
-          },
-          {
-            "type": "stat",
-            "stat": "health",
-            "delta": -2
-          }
-        ],
-        "raw": "hunger+2;health-2"
-      }
-    },
-    {
-      "id": "grilled_big_meat_skewer",
-      "name": "큰고기꼬치구이",
-      "이름": "큰고기꼬치구이",
-      "카테고리": "음식",
-      "재료 타입": "음식재료",
-      "아이템 등급": "3단계",
-      "가방칸수": "1x1",
-      "무게": 2,
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "잘 구워진 두툼한 살덩이 꼬치. 한 입에 기력이 회복된다.",
-      "효과 요약": "배고픔 +4, 생명력 +2.",
-      "사용 효과": "hunger+4;health+2",
-      "merge_result": null,
-      "merge_enabled": false,
-      "effect": {
-        "usable": true,
-        "actions": [
-          {
-            "type": "stat",
-            "stat": "hunger",
-            "delta": 4
-          },
-          {
-            "type": "stat",
-            "stat": "health",
-            "delta": 2
-          }
-        ],
-        "raw": "hunger+4;health+2"
-      }
-    },
-    {
-      "id": "giant_bait",
-      "name": "거대한 먹이",
-      "이름": "거대한 먹이",
-      "카테고리": "음식",
-      "재료 타입": "음식재료",
-      "아이템 등급": "2단계",
-      "가방칸수": "2x2",
-      "무게": 8,
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "큰덩어리 살을 한데 모은 미끼. 한 입에 너무 많은 위장 부담이 따르지만, 거대한 짐승조차 끌어들일 만큼 강한 냄새가 풍긴다.",
-      "효과 요약": "배고픔 +8, 생명력 -8.",
-      "사용 효과": "hunger+8;health-8",
-      "merge_result": null,
-      "merge_enabled": false,
-      "is_bait": true,
-      "effect": {
-        "usable": true,
-        "actions": [
-          {
-            "type": "stat",
-            "stat": "hunger",
-            "delta": 8
-          },
-          {
-            "type": "stat",
-            "stat": "health",
-            "delta": -8
-          }
-        ],
-        "raw": "hunger+8;health-8"
-      }
-    },
-    {
-      "id": "grilled_giant_bait",
-      "name": "거대한 먹이 구이",
-      "이름": "거대한 먹이 구이",
-      "카테고리": "음식",
-      "재료 타입": "음식재료",
-      "아이템 등급": "3단계",
-      "가방칸수": "2x2",
-      "무게": 8,
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "잘 익힌 거대한 살덩이. 거하게 한 끼를 떼우고도 기력이 회복된다.",
-      "효과 요약": "배고픔 +16, 생명력 +8.",
-      "사용 효과": "hunger+16;health+8",
-      "merge_result": null,
-      "merge_enabled": false,
-      "is_bait": true,
-      "effect": {
-        "usable": true,
-        "actions": [
-          {
-            "type": "stat",
-            "stat": "hunger",
-            "delta": 16
-          },
-          {
-            "type": "stat",
-            "stat": "health",
-            "delta": 8
-          }
-        ],
-        "raw": "hunger+16;health+8"
       }
     }
   ],
@@ -2052,14 +2070,6 @@ window.TTD_DATA = {
     },
     {
       "ingredients": [
-        "stone",
-        "stone",
-        "stone"
-      ],
-      "result": "chipped_stone"
-    },
-    {
-      "ingredients": [
         "meat",
         "branch"
       ],
@@ -2147,18 +2157,24 @@ window.TTD_DATA = {
     },
     {
       "ingredients": [
+        "stone",
+        "stone",
+        "stone"
+      ],
+      "result": "chipped_stone"
+    },
+    {
+      "ingredients": [
         "big_meat",
         "branch"
       ],
-      "result": "big_meat_skewer",
-      "raw": "큰생고기 + 나뭇가지 → 큰고기꼬치"
+      "result": "big_meat_skewer"
     },
     {
       "ingredients": [
         "big_meat_skewer"
       ],
-      "result": "grilled_big_meat_skewer",
-      "raw": "큰고기꼬치 → 큰고기꼬치구이"
+      "result": "grilled_big_meat_skewer"
     },
     {
       "ingredients": [
@@ -2167,15 +2183,13 @@ window.TTD_DATA = {
         "big_meat",
         "big_meat"
       ],
-      "result": "giant_bait",
-      "raw": "큰생고기 + 큰생고기 + 큰생고기 + 큰생고기 → 거대한 먹이"
+      "result": "giant_bait"
     },
     {
       "ingredients": [
         "giant_bait"
       ],
-      "result": "grilled_giant_bait",
-      "raw": "거대한 먹이 → 거대한 먹이 구이"
+      "result": "grilled_giant_bait"
     }
   ]
 };

@@ -8,7 +8,9 @@
     "count": 1,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": ""
+    "defense": "",
+    "evade": "",
+    "loss_chance": ""
   },
   {
     "id": "throw_stone",
@@ -19,7 +21,9 @@
     "count": 1,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": ""
+    "defense": "",
+    "evade": "",
+    "loss_chance": ""
   },
   {
     "id": "stab_weapon",
@@ -30,7 +34,9 @@
     "count": 1,
     "accuracy": 1,
     "full_loss": "N",
-    "defense": ""
+    "defense": "",
+    "evade": "",
+    "loss_chance": ""
   },
   {
     "id": "dodge",
@@ -42,7 +48,8 @@
     "accuracy": 0,
     "full_loss": "N",
     "defense": "",
-    "evade": 1
+    "evade": 1,
+    "loss_chance": ""
   },
   {
     "id": "run_away",
@@ -53,7 +60,9 @@
     "count": 1,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": ""
+    "defense": "",
+    "evade": "",
+    "loss_chance": ""
   },
   {
     "id": "throw_spear",
@@ -65,6 +74,7 @@
     "accuracy": 2,
     "full_loss": "N",
     "defense": "",
+    "evade": "",
     "loss_chance": 50
   },
   {
@@ -76,29 +86,9 @@
     "count": 1,
     "accuracy": 1,
     "full_loss": "N",
-    "defense": ""
-  },
-  {
-    "id": "chipped_stone_strike",
-    "name": "뗀석기로 치기",
-    "damage": 2,
-    "success_rate": 100,
-    "requirement": "뗀석기",
-    "count": 1,
-    "accuracy": 0,
-    "full_loss": "N",
-    "defense": ""
-  },
-  {
-    "id": "chipped_stone_throw",
-    "name": "뗀석기 던지기",
-    "damage": 3,
-    "success_rate": 100,
-    "requirement": "뗀석기",
-    "count": 1,
-    "accuracy": 1,
-    "full_loss": "Y",
-    "defense": ""
+    "defense": "",
+    "evade": "",
+    "loss_chance": ""
   },
   {
     "id": "crouch",
@@ -109,7 +99,9 @@
     "count": 1,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": 1
+    "defense": 1,
+    "evade": "",
+    "loss_chance": ""
   },
   {
     "id": "shield_block",
@@ -120,6 +112,34 @@
     "count": 1,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": 1
+    "defense": 1,
+    "evade": "",
+    "loss_chance": ""
+  },
+  {
+    "id": "chipped_stone_strike",
+    "name": "뗀석기로 치기",
+    "damage": 2,
+    "success_rate": 100,
+    "requirement": "뗀석기",
+    "count": 1,
+    "accuracy": 0,
+    "full_loss": "N",
+    "defense": "",
+    "evade": "",
+    "loss_chance": ""
+  },
+  {
+    "id": "chipped_stone_throw",
+    "name": "뗀석기 던지기",
+    "damage": 3,
+    "success_rate": 100,
+    "requirement": "뗀석기",
+    "count": 1,
+    "accuracy": 1,
+    "full_loss": "Y",
+    "defense": "",
+    "evade": "",
+    "loss_chance": ""
   }
 ]

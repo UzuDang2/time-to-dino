@@ -66,14 +66,6 @@
   },
   {
     "ingredients": [
-      "stone",
-      "stone",
-      "stone"
-    ],
-    "result": "chipped_stone"
-  },
-  {
-    "ingredients": [
       "meat",
       "branch"
     ],
@@ -161,18 +153,24 @@
   },
   {
     "ingredients": [
+      "stone",
+      "stone",
+      "stone"
+    ],
+    "result": "chipped_stone"
+  },
+  {
+    "ingredients": [
       "big_meat",
       "branch"
     ],
-    "result": "big_meat_skewer",
-    "raw": "큰생고기 + 나뭇가지 → 큰고기꼬치"
+    "result": "big_meat_skewer"
   },
   {
     "ingredients": [
       "big_meat_skewer"
     ],
-    "result": "grilled_big_meat_skewer",
-    "raw": "큰고기꼬치 → 큰고기꼬치구이"
+    "result": "grilled_big_meat_skewer"
   },
   {
     "ingredients": [
@@ -181,14 +179,12 @@
       "big_meat",
       "big_meat"
     ],
-    "result": "giant_bait",
-    "raw": "큰생고기 + 큰생고기 + 큰생고기 + 큰생고기 → 거대한 먹이"
+    "result": "giant_bait"
   },
   {
     "ingredients": [
       "giant_bait"
     ],
-    "result": "grilled_giant_bait",
-    "raw": "거대한 먹이 → 거대한 먹이 구이"
+    "result": "grilled_giant_bait"
   }
 ]
