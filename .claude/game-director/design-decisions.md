@@ -5,6 +5,38 @@
 
 ---
 
+## D-147. 보관함 12x6 + 보관함 모드 floating 합성 popover (2026-04-27, `index.html`)
+
+요한 원문: "보관함을 6x12로 하자 세로에서도 그게 더 깔끔하겠어. 보관함에서만 선택시 제작 가능한 레시피를 건택한 슬롯의 바로 아래 30px정도 위치에 띄워주자. 리스트가 너무길어서 스크롤을 아래로 내려갔다 올라오기 힘들어".
+
+### 결정
+
+#### A. 보관함 사이즈 12x8 → 12x6
+
+- `makeInitialCampState`: `new InventorySystem(12, 6, { disabled: [] })`.
+- `deserializeCampState`: 동일하게 cols 6. 기존 12x8 저장본의 cols=6 이상 좌표 아이템은 `restoreItemEntry` fallback(`findEmptySpace`)으로 자동 재배치.
+- 모바일 portrait에서 보관함 가로폭이 줄어 화면에 깔끔히 들어옴.
+
+#### B. 보관함 모드 — floating 합성 popover
+
+`InventoryModal`에 `mode` prop 추가. `mode === 'storage'`이면:
+- inline `inventory-craft-inline` / `inventory-craft-side` 둘 다 미렌더 (인라인 패널 비활성).
+- `selectedItem + pendingPos + pendingCraft` 모두 만족할 때만 그리드 wrapper 안에 `position: absolute` popover.
+- 위치: `top: (pendingPos.y + selectedItem.shape.length) * CELL + PAD + 30`, `left: pendingPos.x * CELL + PAD` — 선택 슬롯 바로 아래 30px gap.
+- 폭: `min(280px, calc(100vw - 80px))`.
+- z-index 50 + boxShadow로 그리드/아이템 위에 명확히 떠 있음.
+- showCategoryTabs=false — 선택된 아이템 기준 candidates만(레시피 선별 노출).
+
+`CampScreen`에서 `<InventoryModal mode="storage" .../>` 전달.
+
+### 효과
+
+- 보관함에서 슬롯 탭으로 선택 → 그 슬롯 아래 작은 카드로 가능 레시피 노출 → [만들기] 버튼.
+- 스크롤 왕복 부담 해소.
+- 일반 가방(`mode` 미지정)은 기존 인라인 합성 패널 그대로 동작.
+
+---
+
 ## D-146. 방어 카드 +1 보너스 제거 (D-143 정정) (2026-04-27, `combatDeck.js`)
 
 요한 원문: "방어 효과 예시가 이상하네 잎사귀 는 방어가 1이라면 내 기본 방어는 0이야. 웅크리기를 쓰면 해당 기술 자체가 가진 방어+1이 있으니, 잎사귀를 갑고 있다면 방어+1 이므로 웅크리기의 총값은 방어2야. 누적방식이 아니고 턴마다 공격만 방어하고 내 방어 적용 수치는 초기화야".

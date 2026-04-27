@@ -1219,7 +1219,7 @@
         //   - 긴 누름 (≥ 400ms 유지) → 기존 동작(선택/이동/머지/회전)
         // 임계값 400ms 채택 근거: Android 표준 long-press(500ms)보다 살짝 빠르게, iOS 기본(≈300ms)보다는 여유롭게.
         // 게임은 연타/드래그가 잦아 짧은 의도를 놓치면 답답하고, 반대로 너무 짧으면 스와이프가 잘못 인식된다.
-        function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory, onUseItem, onLureBait, onFlashMessage, title }) {
+        function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory, onUseItem, onLureBait, onFlashMessage, title, mode }) {
             const [, setTick] = React.useState(0);
             const bump = () => setTick(t => t + 1);
             // 확정 대기 위치 (그리드 셀을 눌러 지정)
@@ -1612,6 +1612,28 @@
                                     {selectedItem.name}
                                 </div>
                             )}
+
+                            {/* D-147: 보관함 모드 — 선택 슬롯 바로 아래 30px에 floating 합성 popover.
+                               레시피 리스트가 길어 스크롤 왕복 부담 컸다는 요한 지시 반영.
+                               selectedItem.shape의 height만큼 내려간 다음 +30px gap. */}
+                            {mode === 'storage' && pendingCraft && selectedItem && pendingPos && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: `${(pendingPos.y + selectedItem.shape.length) * CELL + PAD + 30}px`,
+                                    left: `${pendingPos.x * CELL + PAD}px`,
+                                    width: 'min(280px, calc(100vw - 80px))',
+                                    zIndex: 50,
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
+                                }}>
+                                    <CraftPanel
+                                        recipes={displayedRecipes}
+                                        inventory={inventory}
+                                        onCraft={handleCraft}
+                                        onClose={panelOnClose}
+                                        showCategoryTabs={false}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {selectedItem ? (
@@ -1650,8 +1672,24 @@
                             닫기 = 선택 해제 (패널은 selectedItem이 null이면 자동으로 닫힘).
                             D-84b (2026-04-24 요한 지시): portrait에서는 이 인라인 인스턴스가,
                             landscape에서는 아래 .inventory-craft-side 인스턴스가 노출된다 (CSS로 택일).
-                            두 인스턴스는 동일 props이며 CraftPanel은 내부 state가 없어 중복 렌더 안전. */}
-                        <div className="inventory-craft-inline">
+                            두 인스턴스는 동일 props이며 CraftPanel은 내부 state가 없어 중복 렌더 안전.
+                            D-147: mode='storage'면 인라인/사이드 둘 다 미렌더 — 보관함은 floating popover. */}
+                        {mode !== 'storage' && (
+                            <div className="inventory-craft-inline">
+                                <CraftPanel
+                                    recipes={displayedRecipes}
+                                    inventory={inventory}
+                                    onCraft={handleCraft}
+                                    onClose={panelOnClose}
+                                    showCategoryTabs={showCategoryTabs}
+                                    category={recipeCategory}
+                                    onCategoryChange={updateRecipeCategory}
+                                />
+                            </div>
+                        )}
+                    </div>
+                    {mode !== 'storage' && (
+                        <div className="inventory-craft-side">
                             <CraftPanel
                                 recipes={displayedRecipes}
                                 inventory={inventory}
@@ -1662,18 +1700,7 @@
                                 onCategoryChange={updateRecipeCategory}
                             />
                         </div>
-                    </div>
-                    <div className="inventory-craft-side">
-                        <CraftPanel
-                            recipes={displayedRecipes}
-                            inventory={inventory}
-                            onCraft={handleCraft}
-                            onClose={panelOnClose}
-                            showCategoryTabs={showCategoryTabs}
-                            category={recipeCategory}
-                            onCategoryChange={updateRecipeCategory}
-                        />
-                    </div>
+                    )}
                     </div>
 
                     {infoItem && (
@@ -3951,6 +3978,7 @@
                                 if (typeof onInventoryChange === 'function') onInventoryChange();
                             }}
                             title="📦 보관함"
+                            mode="storage"
                         />
                     )}
                     {packOpen && inv && pack && (
@@ -6991,12 +7019,13 @@
 
         // 빈 상태(첫 신규 유저).
         // D-113: 보관함은 12x8(rows=12, cols=8 — 세로로 김). 탐험용 가방(pack)은 5x5(D-47 모양).
+        // D-147 (2026-04-27 요한): 보관함 12x6로 좁힘 — 세로 모바일에서 더 깔끔.
         function makeInitialCampState() {
             return {
                 version: 1,
                 seenIntro: false,
                 firstReturnDone: false,
-                inventory: new InventorySystem(12, 8, { disabled: [] }),
+                inventory: new InventorySystem(12, 6, { disabled: [] }),
                 pack: new InventorySystem(5, 5),  // D-113: 탐험 시 들고 가는 가방. 기본 disabled 패턴.
                 quests: { active: [], completed: [] },
                 // D-110: bestScore(최고 점수) / totalScore(누적합) / lastScore(마지막 런).
@@ -7085,11 +7114,13 @@
             }
         }
 
-        // 역직렬화 — items 배열을 새 12x8 InventorySystem에 복원.
+        // 역직렬화 — items 배열을 새 12x6 InventorySystem에 복원.
         //   D-113: 기존 8x12 → 12x8 마이그레이션. 좌표 충돌 시 빈 자리로 자동 재배치.
+        //   D-147: 12x8 → 12x6. 기존 저장본의 cols=7 이상 아이템은 좌표 부적합 → restoreItemEntry가
+        //     placeItem 실패 시 빈자리로 재배치 fallback (있다면).
         function deserializeCampState(raw) {
             if (!raw || typeof raw !== 'object') return null;
-            const inv = new InventorySystem(12, 8, { disabled: [] });
+            const inv = new InventorySystem(12, 6, { disabled: [] });
             const itemsRaw = Array.isArray(raw.inventory) ? raw.inventory : [];
             for (const entry of itemsRaw) restoreItemEntry(inv, entry);
 
