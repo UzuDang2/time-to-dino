@@ -1,5 +1,22 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**D-113, 베이스캠프 화면 재구성 + 가방(탐험용 인벤) + 보관함 팝업 + transfer + 전투 % 정리**).
+D-113 캠프 2단계:
+- 보관함 인벤 InventorySystem(8,12) → InventorySystem(12,8) (세로로 김). 마이그레이션: 좌표 충돌·범위 초과 시 빈 자리 자동 폴백(addItem-like) — 모든 아이템 데이터 보존, 시각 위치는 일부 변경 가능.
+- 직렬화 스키마 v2: `inventory[]`에 durabilityLeft 추가, 신규 필드 `pack[]`. v1 저장본도 무손실 로드(pack 없으면 빈 5x5).
+- `campState.pack` 신규(InventorySystem(5,5), D-47 기본 disabled). [탐험 떠나기]가 pack 인스턴스를 Game `initialInventory`로 인계 + pack을 새 빈 인벤으로 교체.
+  - 탐험 중 인벤이 가방의 후속(획득 누적). 사망 → 폐기, 승리 → handleRunEnd가 보관함 인입.
+- `transferItems(src, dst, ids)` 헬퍼: 인스턴스 직접 placeItem(durabilityLeft/rotation 보존, 새 id 발급으로 충돌 가드). 공간 부족 시 부분 이전 + 토스트.
+- `StorageModal`: 보관함 단독 풀스크린 팝업. 길게 누르기(500ms)→ItemInfoModal.
+- `PackTransferModal`: 보관함↔가방 다중선택. selStorage/selPack Set<itemId>.
+  - 활성: storage만→[가방으로], pack만→[보관함으로], 양쪽→[서로 바꾸기]. swap은 양방향 동시, 부분 실패 시 원래 인벤으로 폴백.
+- `CampScreen` 레이아웃: [점수통계]→[📦 보관함] 버튼→[퀘스트 목록]→[진행 중인 퀘스트]→[건설]→하단 [🎒 물건 챙기기][🌲 탐험 떠나기]. [데이터 초기화]는 우하단 유지.
+- 퀘스트 목록 패널: active+completed 한 줄씩 (🔧 진행 중 / ✅ 완수). 1단계는 텐트만.
+- handleRunEnd 보관함 인입을 인스턴스 직접 placeItem으로 변경 — durabilityLeft/rotation 보존(이전엔 addItem(type)으로 새로 만들어 내구도 초기화).
+- `StatBadges`: success_rate=100 숨김(공격/회피 카드 기본값). run_away(25%) 등 100 미만만 표시.
+- 검증: 마이그레이션 — 8x12 좌표가 12x8 범위 밖이면 폴백, 모든 아이템 보존. 내구도 — 무기를 가방 ↔ 보관함 transfer 시 인스턴스 직접 placement로 durabilityLeft 유지. 사망 시 가방 비움(handleDepart에서 새 빈 인벤으로 이미 교체).
+- 발견 이슈: 캠프 인벤 가득 시 승리 인입이 조용히 누락(throw 없이 continue) — 추후 토스트 안내 필요.
+
 마지막 검증: 2026-04-24 (**D-110, 런 점수 시스템 + 전리품 결과창 + 이동거리 점수**).
 D-110 점수·전리품:
 - `calculateRunScore` 순수 함수 (index.html:2603) — victory=false→0. 생존 100 + uniqueTilesVisited×3 + (detection<80 ? 30 : 0) + L1×5/L2×20/보스위협권×15 + 자원(무기 5, shield/armor 8, grade 1/2/3 → 1/3/6).

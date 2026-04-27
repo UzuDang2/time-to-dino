@@ -3979,7 +3979,9 @@
                     {dmg > 0 && (
                         <span style={{ color: STAT_COLORS.damage }}>{STAT_ICONS.damage}+{dmg}</span>
                     )}
-                    {(sr !== undefined && sr !== null) && (
+                    {/* D-113: success_rate=100은 모든 공격/회피 카드의 기본값 — 정보 가치 없어 숨김.
+                        run_away 등 100 미만 카드만 % 표시. */}
+                    {(sr !== undefined && sr !== null && Number(sr) !== 100) && (
                         <span style={{ color: '#aaa' }}>{sr}%</span>
                     )}
                     {dmg > 0 && acc > 0 && (
