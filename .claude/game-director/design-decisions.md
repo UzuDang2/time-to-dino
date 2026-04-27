@@ -5,6 +5,37 @@
 
 ---
 
+## D-131. CraftPanel maxHeight 55dvh → 45dvh — 부모 압축 클리핑 해소 (2026-04-27, `index.html`)
+
+요한 원문: "큰고기꼬치구이 아래쪽이 안보이지? 스크롤이 맨아래로 내려와있음에도".
+
+### 진짜 원인 (D-130까지의 panel 내부 padding 조정만으로 해결 안 됨)
+
+레이아웃 체인 추적:
+- `.inventory-stage` (column flex, max-height calc(100dvh-72px-safe) ≈ 760px on iPhone Pro)
+  - `.inventory-modal` (block, 자식 자연 크기 stack, **overflow: hidden** by D-105)
+    - 가방 헤더 (~40px) + grid (~233px) + 안내 (~20px) + padding 40px ≈ **333px**
+    - `.inventory-craft-inline` → CraftPanel (maxHeight 55dvh ≈ **458px**)
+    - 자식 자연 크기 합 ≈ **791px**.
+
+stage max-height 760px < inventory-modal 자연 크기 791px → stage가 자식(inventory-modal)을 flex shrink로 ~31px 압축 → `overflow: hidden`에 의해 **panel 마지막 부분이 시각적으로 잘림**. panel 자체 scroll은 본인 maxHeight 55dvh 기준으로 동작 → "스크롤 끝까지 갔다"고 판단하지만 보이는 영역은 더 작아 마지막 카드가 안 보임.
+
+### 결정
+
+CraftPanel `maxHeight: '55dvh'` → `'45dvh'`. iPhone Pro 기준 458→374px. 자식 자연 크기 합 ≈ 707px ≤ stage 760px → 압축 없음 → overflow:hidden에 의한 클리핑 없음 → panel scroll bottom이 실제 panel viewport bottom과 일치.
+
+### 왜 동적 flex(`flex: 1`) 대신 정적 dvh 축소
+
+- 동적 해법(inventory-modal을 flex column으로 + craft-inline flex:1)은 더 정확하지만 inventory-modal 다른 자식들의 사이즈 가정과 D-105 overflow 정책을 모두 건드려야 해 회귀 위험 큼.
+- 작은 화면(iPhone SE 667px dvh)에서는 45dvh = 300px. 가방 grid 등 333px + 300 = 633px ≤ stage 595px? 595px이라 약간 부족할 수 있음. 추후 SE 환경 검증 필요.
+
+### 검증
+
+- iPhone 14 Pro 시크릿 탭에서 panel scroll 끝까지 갔을 때 마지막 카드 완전 노출 확인.
+- iPhone SE 등 작은 화면은 추후 보고에 따라 추가 축소(40dvh) 또는 동적 flex 전환 고려.
+
+---
+
 ## D-130. CraftPanel — 내부 padding-bottom 24px (카드 리스트 끝 잘림 해소) (2026-04-27, `index.html`)
 
 요한 원문: "iOS 환경에서의 문제가 아니라 도구바랑 이런 거랑 상관 없고 가방 UI 패널 자체가 스크롤을 담당하는 패널의 영역 안에 최 하단부에 목록이 잘려 보인다고 UI가 잘려 보이는 게 아니라 목록이 잘려 보인다고".

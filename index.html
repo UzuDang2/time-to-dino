@@ -2010,7 +2010,10 @@
                        카드 리스트 마지막 행이 잘려 보이지 않도록 panel 자체 내부 마진 확보. */
                     padding: '10px 10px 24px',
                     marginTop: '8px',
-                    maxHeight: '55dvh',
+                    /* D-131: 55dvh → 45dvh. inventory-stage가 자식 자연 크기를 못 담아
+                       inventory-modal이 압축 + overflow:hidden으로 panel 끝이 잘리던 문제.
+                       panel 자체 maxHeight를 부모 가용 공간 안에 들어오도록 축소. */
+                    maxHeight: '45dvh',
                     overflowY: 'auto',
                     WebkitOverflowScrolling: 'touch'
                 }}>
