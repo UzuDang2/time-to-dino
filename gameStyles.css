@@ -499,3 +499,37 @@ button:disabled {
 .evade-changed {
     transition: color 0.2s ease, opacity 0.2s ease;
 }
+
+/* D-110: 전리품 결과창 — 선택된 아이템 시각 강조. */
+.loot-item.selected {
+    box-shadow: 0 0 0 2px #48bb78, 0 0 8px rgba(72,187,120,0.45);
+    border-color: #48bb78 !important;
+}
+
+/* D-110: 점수 배지 — GameEndModal/LootResultScreen 헤더·CampScreen에서 공통 사용. */
+.score-badge {
+    display: inline-block;
+    background: rgba(212, 184, 74, 0.12);
+    border: 1px solid #d4b84a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #f3e0a0;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+}
+.score-badge .score-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: #ffe88a;
+    margin-bottom: 4px;
+}
+.score-badge .score-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: #cdb96a;
+}
+.score-badge .score-row .lbl {
+    color: #b09753;
+}

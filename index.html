@@ -2594,17 +2594,16 @@
         // D-110 (2026-04-24): 런 점수 계산 — 순수 함수.
         //   입력: 런 종료 시점 스냅샷 + runStats(누적 추적) + selectedItems(LootResult 선택).
         //   - victory=false → 0 (사망은 점수 무효).
-        //   - 생존 100 + (maxTime - time)*5 + (detection<80 ? 30 : 0).
+        //   - 생존 100 + uniqueTilesVisited*3 + (detection<80 ? 30 : 0).
+        //     ↑ 요한 지시 (2026-04-24): 시간 잔여 점수는 모호 → 이동거리(직접 밟은 고유 타일 수)로 교체.
         //   - L1 prey 5 / L2 prey 20 / 보스 거리≤2 진입 15 (각각 누적 카운트 * 가중치).
         //   - selectedItems: 무기 5, shield/armor 8, grade 1/2/3 → 1/3/6.
         //   selectedItems가 null이면 items 전체로 계산.
         // ============================================
-        function calculateRunScore({ victory, time, maxTime, detection, items, runStats, selectedItems }) {
+        function calculateRunScore({ victory, uniqueTilesVisited, detection, items, runStats, selectedItems }) {
             if (!victory) return 0;
             let score = 100;
-            const maxT = Number(maxTime) || 0;
-            const t = Number(time) || 0;
-            score += Math.max(0, maxT - t) * 5;
+            score += Math.max(0, Number(uniqueTilesVisited) || 0) * 3;
             if ((Number(detection) || 0) < 80) score += 30;
 
             const stats = runStats || {};
@@ -5294,16 +5293,19 @@
             //   호출 후 App이 view='camp'로 전환 → Game은 자동 unmount(다음 탐험 시 fresh state).
             // D-110: selectedItems(LootResult에서 선택한 itemId 배열)도 함께 전달.
             //   미지정이면 기존처럼 전체 인입(GameEndModal에서 [전리품 확인] 안 누르고 직접 귀환).
+            //   요한 지시 (2026-04-24): 시간 잔여 점수 → 이동거리(고유 타일) 점수로 교체.
+            //   uniqueTilesVisited는 moveHistory(플레이어가 실제 위치한 타일 id 누적)의 Set 크기.
             const returnToCamp = (selectedIds = null) => {
                 const outcome = victory ? 'victory' : 'death';
                 if (typeof onRunEnd === 'function') {
+                    const uniqueTilesVisited = new Set(moveHistory).size;
                     onRunEnd({
                         outcome,
                         runInventory: inventory,  // 승리 시 App에서 인입 처리(selectedIds 반영), 사망 시 폐기.
                         selectedIds,
                         runStats,
                         runFinal: {
-                            health, hunger, time, maxTime, detection
+                            health, hunger, time, maxTime, detection, uniqueTilesVisited
                         }
                     });
                 }
@@ -5760,8 +5762,7 @@
                 // 점수 계산 — 인입한 아이템 기준.
                 const score = calculateRunScore({
                     victory: outcome === 'victory',
-                    time: runFinal.time,
-                    maxTime: runFinal.maxTime,
+                    uniqueTilesVisited: runFinal.uniqueTilesVisited,
                     detection: runFinal.detection,
                     items: itemsAll,
                     runStats,
