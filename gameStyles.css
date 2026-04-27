@@ -435,6 +435,15 @@ button:disabled {
     .inventory-stage {
         overflow: hidden;
     }
+    /* D-133: landscape에서는 D-129의 padding-bottom 60px가 viewport를 과도하게 잡아먹어
+       stage가 작아짐 → panel 카드 잘림. landscape는 안전 여유 12px만 두고 stage를
+       viewport 끝까지 최대 stretch. */
+    .modal:has(.inventory-stage) {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    .inventory-stage {
+        max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
+    }
 }
 
 .modal-content {

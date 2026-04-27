@@ -5,6 +5,36 @@
 
 ---
 
+## D-133. landscape 전용 stage stretch — padding-bottom 12px (2026-04-27, `gameStyles.css`)
+
+요한 원문: "가로모드시에 엄청 잘리는데? 디바이스 해상도에 맞게 상하 길이를 최대로 스트레치 해줘야지".
+
+### 문제
+
+D-129에서 portrait용으로 `.modal:has(.inventory-stage) padding-bottom: 60px + safe-area`를 도입. iOS Safari portrait의 도구바·시각 마진 확보 목적. 그러나 landscape에서는:
+- viewport height가 작음 (iPhone Pro Max landscape ≈ 430dvh).
+- 60px+safe ≈ 81px가 viewport의 19%를 잡아먹음.
+- stage max-height calc(100dvh - 72px - safe) ≈ 337px만 남음 → CraftPanel 카드 3개 정도 + 다음 카드 일부만 보이고 잘림.
+
+### 결정
+
+`@media (orientation: landscape) and (min-width: 720px)` 블록에 portrait 룰 덮어쓰기:
+- `.modal:has(.inventory-stage) padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px))` — landscape는 도구바가 좌우에 있고 하단 영역이 없으므로 12px 안전 여유면 충분.
+- `.inventory-stage max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px))` — top/bottom 12px씩 차감.
+
+### 효과
+
+- iPhone Pro Max landscape (430dvh): stage max-height 337 → 406px (+69px). panel이 viewport 가까이 stretch.
+- iPad Pro landscape (1024dvh): stage 952 → 1000px. 기존에도 충분했지만 추가 여유.
+- panel 자체는 D-105 룰의 `max-height: none !important + height: 100% !important`로 craft-side에 stretch — 인라인 maxHeight 40dvh는 !important에 덮여 무시됨.
+
+### 검증
+
+- landscape에서 패널 상단/하단 viewport에 거의 가득 차고 카드 잘림 없음 확인.
+- portrait는 D-129 padding 60px 유지 — iOS Safari 하단 도구바 영역 안전.
+
+---
+
 ## D-132. CraftPanel — 하단 마진 16px + maxHeight 40dvh (2026-04-27, `index.html`)
 
 요한 원문: "여전히 하단부가 잘리지만 전보다는 나아진듯, 근데 스크롤을 담아내는 패널과 그 부모인 가방 ui 전체의 패널간의 바텀 마진값이 없이 딱붙었네 마진 값 16px 정도 넣어줘".
