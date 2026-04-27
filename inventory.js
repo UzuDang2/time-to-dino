@@ -164,21 +164,18 @@ class InventorySystem {
             if (itemDef) {
                 merged.mergeable = itemDef.merge_enabled === true;
                 merged.merge_result = itemDef.merge_result || null;
-                // items bundle에도 '내구도'·'공격력'·accuracy가 있으면 반영.
+                // D-106: 시트에서 weight/attack/accuracy 컬럼 제거됨. 내구도만 유지.
                 if (itemDef['내구도'] != null) merged.durability = Number(itemDef['내구도']);
-                if (itemDef['공격력'] != null) merged.attack = Number(itemDef['공격력']);
-                if (itemDef.accuracy != null) merged.accuracy = Number(itemDef.accuracy);
             }
         }
         if (weaponsBundle) {
             const wDef = weaponsBundle.find(w => w && w.id === type);
             if (wDef) {
                 // 무기 메타 덮어씀. weapons 탭이 더 최신 SSOT라고 간주.
+                // D-106: weight/attack/accuracy 제거 — 무기는 name/category/내구도만 의미 있음.
                 if (wDef.name) merged.name = wDef.name;
                 merged.category = wDef['카테고리'] || merged.category || '무기';
                 if (wDef['내구도'] != null) merged.durability = Number(wDef['내구도']);
-                if (wDef['공격력'] != null) merged.attack = Number(wDef['공격력']);
-                if (wDef.accuracy != null) merged.accuracy = Number(wDef.accuracy);
             }
         }
         // D-72: 방어구 번들 병합. type은 'shield' | 'armor' — category로도 그대로 사용.

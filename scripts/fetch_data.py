@@ -856,7 +856,6 @@ def rows_to_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "재료 타입": str(r.get("material_type") or "").strip() or None,
             "아이템 등급": str(r.get("grade") or "").strip() or None,
             "가방칸수": str(r.get("size") or "").strip() or "1x1",
-            "무게": r.get("weight"),
             "나오는 지역": regions,
             "머지 가능": mergeable,
             "일회용": disposable,
@@ -970,8 +969,9 @@ def build_combos_from_sheet(
 
 
 def rows_to_weapons(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """D-47 무기 탭 파서. 스키마(헤더):
-    id, name, size, weight, grade, durability, attack, description, summary
+    """D-47 무기 탭 파서. D-106(2026-04-27) 시트 헤더 슬림화:
+    id, name, size, grade, durability, description, summary
+    (제거: weight·attack·accuracy — 모두 미사용 dead 필드)
     출력은 items.json 스타일과 키 네이밍을 맞춤(한글 키 병행) — inventory.js
     resolveDef가 동일 경로에서 덮어쓰기로 사용할 수 있도록.
     """
@@ -987,12 +987,8 @@ def rows_to_weapons(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "이름": name,
             "카테고리": "무기",
             "가방칸수": str(r.get("size") or "").strip() or "1x1",
-            "무게": r.get("weight"),
             "아이템 등급": str(r.get("grade") or "").strip() or None,
             "내구도": r.get("durability"),
-            "공격력": r.get("attack"),
-            # D-50: accuracy — 카드에 합산될 무기 명중 보너스. 없으면 0.
-            "accuracy": int(r.get("accuracy") or 0),
             "설명 텍스트": str(r.get("description") or "").strip(),
             "효과 요약": str(r.get("summary") or "").strip(),
         }
@@ -1021,7 +1017,6 @@ def rows_to_armors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "카테고리": str(r.get("type") or "").strip() or None,  # 런타임 카테고리 = type
             "아이템 등급": str(r.get("grade") or "").strip() or None,
             "가방칸수": str(r.get("size") or "").strip() or "1x1",
-            "무게": r.get("weight"),
             "defense": int(r.get("defense") or 0),
             "방어력": int(r.get("defense") or 0),
             "설명 텍스트": str(r.get("설명") or r.get("description") or "").strip(),

@@ -151,16 +151,16 @@
             }
             if (missing) continue;
 
-            // accuracy 합산: 카드 자체 accuracy + (요구 재료 중 무기의 accuracy).
-            //   카테고리 토큰은 무기가 아니므로 무기 매칭에서 자동 제외 (weaponByName에 없음).
-            let totalAccuracy = Number(card.accuracy) || 0;
+            // D-106: 카드 자체 accuracy만 사용 (무기 accuracy 컬럼 제거됨).
+            //   weaponId 추적은 D-51 내구도 차감을 위해 유지.
+            const totalAccuracy = Number(card.accuracy) || 0;
             let owningWeaponId = null;
             for (const r of reqs) {
                 if (CATEGORY_REQ_TOKENS.has(r)) continue;
                 const wdef = weaponByName[r];
                 if (wdef) {
-                    totalAccuracy += Number(wdef.accuracy) || 0;
                     owningWeaponId = owningWeaponId || wdef.id;
+                    break;
                 }
             }
 
