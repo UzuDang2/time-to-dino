@@ -195,28 +195,9 @@
                         </div>
                     </div>
 
-                    {/* D-119 (요한 지시): 메시지 영역을 1인칭 구어체 인용 카드로.
-                        - 따옴표 감싸기 ("...")
-                        - 2줄 여유, 상하·좌우 중앙 정렬
-                        - 검정 배경으로 UI와 분리. */}
-                    <div style={{
-                        background: 'rgba(0, 0, 0, 0.95)',
-                        border: '1px solid #1f2538',
-                        borderRadius: '8px',
-                        padding: '10px 14px',
-                        marginBottom: '8px',
-                        minHeight: '48px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        fontSize: '13px',
-                        lineHeight: 1.45,
-                        color: '#e7e1c8',
-                        letterSpacing: '0.2px'
-                    }}>
-                        {message ? `“${message}”` : '\u00A0'}
-                    </div>
+                    {/* D-120 (요한 지시): 메시지 카드는 ui-panel에서 분리.
+                        StatPanel은 체력·배고픔·시간·순찰·발각률만. 메시지는 GameMap 영역 위에
+                        absolute float (한 뎁스 위에 떠 있는 느낌). 아래 GameMap에 message prop 전달. */}
                 </div>
             );
         }
@@ -609,7 +590,7 @@
         // 자식이 콘텐츠와 함께 밀려 시야에서 사라지는 문제가 있었음.
         // .map-area는 HUD 바로 아래 영역이라, 토스트는 스크롤과 무관하게
         // 그 상단에 고정으로 뜨고 HUD/카드와도 겹치지 않는다.
-        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, requestWait, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, baitTiles, moveHistory, bossMoveHistory, showPathView }) {
+        function GameMap({ tiles, currentTile, boss, bossVisible, gameOver, victory, moveTo, requestWait, lootToast, onLootToastDone, tileEventToast, onTileEventToastDone, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, baitTiles, moveHistory, bossMoveHistory, showPathView, message }) {
             // D-53: [맵 보기] 모드에서는 방문/발견 여부와 무관하게 모든 비어있지 않은 타일 공개.
             // 미방문 타일은 HexTile 내부에서 반투명 회색으로 그린다.
             // D-80 보강(2026-04-24): silhouette 플래그도 렌더 대상 — listen 시점에 즉시 노출.
@@ -852,6 +833,35 @@
 
             return (
                 <div className="map-area">
+                    {/* D-120: 메시지 카드 — 맵 컨테이너 위에 absolute 띄움.
+                        한 뎁스 위에 떠 있는 느낌, 좌우 중앙·상단 고정.
+                        rgba(0,0,0,0.95) + 작은따옴표 인용 + 살짝 글로우. */}
+                    <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 1300,
+                        pointerEvents: 'none',
+                        background: 'rgba(0, 0, 0, 0.95)',
+                        border: '1px solid #2a2f4a',
+                        borderRadius: '8px',
+                        padding: '10px 16px',
+                        minHeight: '48px',
+                        maxWidth: 'calc(100% - 24px)',
+                        boxShadow: '0 6px 18px rgba(0,0,0,0.55)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        fontSize: '13px',
+                        lineHeight: 1.45,
+                        color: '#e7e1c8',
+                        letterSpacing: '0.2px',
+                        whiteSpace: 'pre-wrap'
+                    }}>
+                        {message ? `‘${message}’` : '\u00A0'}
+                    </div>
                     <div className="map-container" ref={containerRef}>
                         <svg
                             className="map-svg"
@@ -6482,6 +6492,7 @@
                         moveHistory={moveHistory}
                         bossMoveHistory={bossMoveHistory}
                         showPathView={showPathView}
+                        message={message}
                     />
 
                     {/* D-117: 하단 ui-panel — 카드 자원/손패. 맵 아래에 배치. */}
