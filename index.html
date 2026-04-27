@@ -3117,7 +3117,7 @@
                                 🗺️ 맵 보기
                             </button>
                             <button
-                                onClick={() => window.location.reload()}
+                                onClick={() => onReturnCamp && onReturnCamp()}
                                 style={{
                                     background: 'white',
                                     color: '#333',
@@ -3129,7 +3129,7 @@
                                     cursor: 'pointer'
                                 }}
                             >
-                                다시 시작
+                                🏕️ 베이스캠프로 귀환
                             </button>
                         </div>
                     </div>
@@ -3876,7 +3876,7 @@
             count: 1
         };
 
-        function Game() {
+        function Game({ onRunEnd } = {}) {
             // 상태 관리
             const [tiles, setTiles] = useState([]);
             const [currentTile, setCurrentTile] = useState(0);
@@ -5222,6 +5222,19 @@
                 setMessage(msg);
             };
 
+            // D-109: 베이스캠프 귀환 — GameEndModal/맵 보기 footer에서 호출.
+            //   payload는 App.handleRunEnd가 인벤 자원 인입(승리만)·runs 카운팅에 사용.
+            //   호출 후 App이 view='camp'로 전환 → Game은 자동 unmount(다음 탐험 시 fresh state).
+            const returnToCamp = () => {
+                const outcome = victory ? 'victory' : 'death';
+                if (typeof onRunEnd === 'function') {
+                    onRunEnd({
+                        outcome,
+                        runInventory: inventory  // 승리 시 App에서 100% 인입, 사망 시 폐기.
+                    });
+                }
+            };
+
             if (tiles.length === 0) {
                 return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>게임 로딩 중...</div>;
             }
@@ -5437,6 +5450,7 @@
                         deathReason={deathReason}
                         showPathView={showPathView}
                         onViewPath={() => setShowPathView(true)}
+                        onReturnCamp={returnToCamp}
                     />
 
                     <BossJumpscare active={bossJumpscare} onDone={() => setBossJumpscare(false)} />
@@ -5467,7 +5481,7 @@
                                 {victory ? '← 승리 화면' : '← 결과 화면'}
                             </button>
                             <button
-                                onClick={() => window.location.reload()}
+                                onClick={returnToCamp}
                                 style={{
                                     background: '#4CAF50',
                                     color: 'white',
@@ -5478,7 +5492,7 @@
                                     fontWeight: 600
                                 }}
                             >
-                                다시 시작
+                                🏕️ 베이스캠프로 귀환
                             </button>
                         </div>
                     )}
@@ -5640,11 +5654,24 @@
                 setView('play');
             };
 
-            // 탐험 결과 처리 — Game이 호출. payload: { outcome:'victory'|'death', runInventory }.
-            //   다음 커밋(3/5)에서 인벤 transfer 구현. 지금은 view 전환만.
+            // 탐험 결과 처리 — Game이 returnToCamp에서 호출.
+            //   payload: { outcome:'victory'|'death', runInventory: InventorySystem }.
+            //   - 승리: runInventory.items 100%를 캠프 인벤(8x12)에 addItem (가방이 가득 차면 잔여 폐기).
+            //   - 사망: 인벤 0 인입.
+            //   - 첫 캠프 복귀(firstReturnDone=false)면 텐트 퀘스트 부여 + TentQuestModal.
             const handleRunEnd = (payload) => {
-                const outcome = payload && payload.outcome;
+                const outcome = (payload && payload.outcome) || 'death';
+                const runInv = payload && payload.runInventory;
+                const isFirstReturn = !campState.firstReturnDone;
+
                 setCampState(prev => {
+                    // 캠프 인벤 인스턴스를 직접 변형(같은 참조 유지). React 재렌더는 ...prev 객체 새로 만들어서 트리거.
+                    if (outcome === 'victory' && runInv && Array.isArray(runInv.items)) {
+                        for (const it of runInv.items) {
+                            if (!it || !it.type) continue;
+                            prev.inventory.addItem(it.type);
+                        }
+                    }
                     const next = {
                         ...prev,
                         runs: {
@@ -5653,8 +5680,7 @@
                             deaths: prev.runs.deaths + (outcome === 'death' ? 1 : 0)
                         }
                     };
-                    // 첫 캠프 복귀: 텐트 퀘스트 부여 + firstReturnDone.
-                    if (!prev.firstReturnDone) {
+                    if (isFirstReturn) {
                         next.firstReturnDone = true;
                         next.quests = {
                             active: [...(prev.quests.active || []), { id: TENT_QUEST.id, progress: { branch: 0, stone: 0, stem: 0 } }],
@@ -5663,8 +5689,8 @@
                     }
                     return next;
                 });
-                if (!campState.firstReturnDone) {
-                    setPendingTentModal(outcome || 'victory');
+                if (isFirstReturn) {
+                    setPendingTentModal(outcome);
                 }
                 setView('camp');
             };
