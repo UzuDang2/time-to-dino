@@ -1624,9 +1624,7 @@
                                     left: '50%',
                                     transform: 'translateX(-50%)',
                                     width: 'min(300px, calc(100vw - 32px))',
-                                    maxHeight: '40dvh',
-                                    zIndex: 50,
-                                    boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
+                                    zIndex: 50
                                 }}>
                                     <CraftPanel
                                         recipes={displayedRecipes}
@@ -1634,6 +1632,7 @@
                                         onCraft={handleCraft}
                                         onClose={panelOnClose}
                                         showCategoryTabs={false}
+                                        floating={true}
                                     />
                                 </div>
                             )}
@@ -2069,7 +2068,7 @@
         //   D-104 (2026-04-27 요한 지시): 항상 렌더. 비선택 시 카테고리 탭 5종 노출.
         //     showCategoryTabs=true면 [전체][음식][무기][방어구][재료] 탭, onCategoryChange로 변경.
         //     onClose가 null이면 헤더 닫기 버튼 숨김(비선택 상태 = 가방 닫기로만 종료).
-        function CraftPanel({ recipes, inventory, onCraft, onClose, showCategoryTabs, category, onCategoryChange, allowCooking }) {
+        function CraftPanel({ recipes, inventory, onCraft, onClose, showCategoryTabs, category, onCategoryChange, allowCooking, floating }) {
             const items = (inventory && inventory.items) || [];
             const defOf = (type) => InventorySystem.ITEMS[type] || {};
             const nameOf = (type) => defOf(type).name || type;
@@ -2106,17 +2105,19 @@
 
             return (
                 <div style={{
-                    position: 'sticky',
-                    bottom: 0,
+                    position: floating ? 'static' : 'sticky',
+                    bottom: floating ? 'auto' : 0,
                     background: '#0f1a2e',
                     border: '1px solid #2a3a5e',
                     borderRadius: '8px',
                     /* D-130: padding-bottom 24px — 스크롤 끝 카드와 panel 하단 사이 여유.
                        카드 리스트 마지막 행이 잘려 보이지 않도록 panel 자체 내부 마진 확보. */
                     padding: '10px 10px 24px',
-                    marginTop: '8px',
-                    /* D-132: 하단 마진 16px — CraftPanel과 inventory-modal 외곽 사이 여유. */
-                    marginBottom: '16px',
+                    /* D-152: floating(보관함 popover) 모드면 외곽 margin 0 + boxShadow 직접 적용.
+                       margin 24px이 wrapper와 panel 사이 격차를 만들어 그림자가 panel 밖에 그려지던 문제. */
+                    marginTop: floating ? 0 : '8px',
+                    marginBottom: floating ? 0 : '16px',
+                    boxShadow: floating ? '0 8px 24px rgba(0,0,0,0.6)' : 'none',
                     /* D-134: 40dvh → 50dvh. inventory-modal 자체 스크롤 허용으로 자식 자연
                        크기 stage 초과 시 모달이 스크롤 흡수 → panel 자체도 더 길게 가능. */
                     maxHeight: '50dvh',

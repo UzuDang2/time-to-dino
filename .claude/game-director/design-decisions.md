@@ -5,6 +5,30 @@
 
 ---
 
+## D-152. 보관함 popover — 그림자/패널 격차 제거 (2026-04-27, `index.html`)
+
+요한 원문: "패널 사이즈와 그림자간의 격차가 있네 보관함 레시피 창에" + 스크린샷.
+
+### 진단
+
+D-150에서 popover wrapper에 `boxShadow`를 적용했지만 wrapper 안 CraftPanel root가 자체 `marginTop: 8px / marginBottom: 16px`를 보유. 결과:
+- wrapper 박스 = panel + 24px margin = panel보다 큰 영역.
+- 그림자가 wrapper 외곽에 그려져 panel과 그림자 박스 사이 격차 발생.
+
+### 결정
+
+`CraftPanel`에 `floating` prop 추가 (boolean):
+- `floating=true`: position `static`, marginTop/Bottom 0, `boxShadow: 0 8px 24px rgba(0,0,0,0.6)` 직접 적용.
+- `floating=false`(기본): 기존 동작 — sticky bottom, margin 8/16, 그림자 없음.
+
+popover wrapper는 boxShadow 제거 — 그림자는 panel 자체에 정확히 깔림. wrapper와 panel 외곽 일치.
+
+### 효과
+
+panel과 그림자 박스가 정확히 같은 영역 — 격차 없음.
+
+---
+
 ## D-151. 퀘스트 [받기] — 스토리·정보 모달 → [수락] 후 active push (2026-04-27, `index.html`)
 
 요한 원문: "퀘스트 목록에서 퀘스트를 선택하면 이전처럼 퀘스트 스토리 보여준후 퀘스트 정보와 함께 퀘스트 수락 해야 받아지게 해줘야지".
