@@ -361,6 +361,14 @@ button:disabled {
     max-width: min(92vw, 760px);
 }
 
+/* D-105 (2026-04-27 요한 지시): 가방 모달 자체 스크롤 차단.
+   합성 패널이 길어졌을 때 모달 전체가 스크롤되지 않고, 합성 패널 내부만
+   스크롤되어야 함. .modal-content의 overflow:auto를 .inventory-modal에서
+   덮어써 외곽 스크롤 막고, 내부 패널은 자체 max-height + overflow-y:auto로 스크롤. */
+.modal-content.inventory-modal {
+    overflow: hidden;
+}
+
 /* landscape 전용 우측 카드 — 기본은 숨김(portrait에서는 인라인 CraftPanel만 보인다). */
 .inventory-craft-side {
     display: none;
@@ -386,13 +394,19 @@ button:disabled {
         max-width: 380px;
     }
     /* CraftPanel 내부 루트 div의 인라인 스타일(sticky/maxHeight/marginTop)을
-       landscape에 한해 해제 — 가방 카드 높이(stretch)만큼 꽉 채우도록 */
+       landscape에 한해 해제 — 가방 카드 높이(stretch)만큼 꽉 채우도록.
+       D-105: max-height는 가방 카드 높이에 맞추고 overflow-y:auto 유지. */
     .inventory-craft-side > div {
         position: static !important;
         margin-top: 0 !important;
         max-height: none !important;
         height: 100% !important;
+        overflow-y: auto !important;
         box-sizing: border-box;
+    }
+    /* D-105: landscape stage 자체에 max-height 92vh + overflow hidden — 자식 panel이 자체 스크롤. */
+    .inventory-stage {
+        overflow: hidden;
     }
 }
 
