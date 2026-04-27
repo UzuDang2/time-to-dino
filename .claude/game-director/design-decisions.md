@@ -5,6 +5,36 @@
 
 ---
 
+## D-128. 가방 모달 — viewport 잘림 + iOS safe-area 보정 (2026-04-27, `gameStyles.css`)
+
+요한 원문: "스크롤의 최하단 패널이 잘려 최대로 내렸거든?" (D-127 sticky 고정 후에도 craft panel 마지막 카드가 viewport 밖으로 잘림 — iOS Safari 시크릿 탭 스크린샷).
+
+### 문제
+
+D-126에서 `.inventory-stage { max-height: 92dvh }`로 줄였지만 padding 합산이 viewport를 초과:
+- `.modal:has(.inventory-stage)`: `padding-top: 12px`, `padding-bottom: 0`.
+- `.inventory-stage`: `max-height: 92dvh` (= 100dvh의 92%).
+- 합계: `12px + 92dvh ≈ 100dvh + 8dvh` → stage 끝이 viewport bottom 아래로 약 8dvh 잘림.
+- 추가로 iOS home indicator 영역(`safe-area-inset-bottom ≈ 34px`)도 고려 안 됨.
+
+### 결정
+
+- `.inventory-stage { max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px)) }` — 24px는 modal padding-top 12 + padding-bottom 12 합계.
+- `.modal:has(.inventory-stage) { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) }` — home indicator 위 여유.
+
+### 왜 calc + env
+
+- `92dvh` 같은 비율은 viewport 크기와 무관하게 padding 합산을 못 맞춤. 절대 단위 차감(`100dvh - 24px`)이 정확.
+- `env(safe-area-inset-bottom)`은 iOS Safari에서 home indicator 높이 자동 반영. 데스크톱·non-iOS는 0px fallback.
+- `calc()` 안에 `env()` 중첩은 모든 모던 브라우저 지원.
+
+### 검증
+
+- iOS Safari 시크릿 탭에서 가방 모달 → 합성 패널 최하단까지 스크롤 시 마지막 카드 잘리지 않고 끝까지 노출 확인.
+- landscape는 `.inventory-stage`가 row 방향이므로 max-height 줄이는 영향 동일하게 적용 (정상).
+
+---
+
 ## D-127. CraftPanel — 헤더·카테고리 탭 sticky 고정 (2026-04-27, `index.html`)
 
 요한 원문: "세로화면에서 카테고리 탭이 스크롤안에 포함되어있어 근데 그럼 안돼 스크롤을 내려도 탭은 보여야 하거든".
