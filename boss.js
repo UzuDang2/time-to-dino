@@ -212,9 +212,11 @@ class BossMonster {
                     }
                 }
                 if (this.position === target.tileId) {
-                    // D-90 (2026-04-25 요한 지시): 포식 시간 2→3턴 (체감 강화 + 인접 listen 시
+                    // D-90 (2026-04-25): 포식 시간 2→3턴 (체감 강화 + 인접 listen 시
                     // "포식중인 짐승" 모달을 만날 창을 1턴 추가).
-                    this.predationStay = 3;
+                    // D-140 (2026-04-27 요한 지시): L1 prey는 2턴(작은 먹이라 빠르게 끝남).
+                    //   L2는 3턴 유지. target.level이 명시 안 되면 L1로 간주(보수적 짧은 stay).
+                    this.predationStay = (Number(target.level) === 2) ? 3 : 2;
                     this.predationPreyType = target.preyType;
                     if (typeof this.onPredationStart === 'function') {
                         try { this.onPredationStart(target.id, this.position, target); }
