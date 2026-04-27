@@ -3220,13 +3220,20 @@
         }
 
         // 캠프 메인 화면.
-        //   props.campState — 영속화 상태. quests/inventory(InventorySystem 인스턴스)/runs.
+        //   props.campState — 영속화 상태. quests/inventory(InventorySystem 인스턴스)/pack/runs.
         //   props.onDepart — [탐험 떠나기] 클릭.
         //   props.onCompleteQuest(questId) — [완수] 클릭.
         //   props.onResetData — [데이터 초기화] 확정.
-        function CampScreen({ campState, onDepart, onCompleteQuest, onResetData }) {
+        //   props.onInventoryChange — 보관함/가방 변경 후 부모 재렌더 트리거 (campState 객체 새로 만들기).
+        // D-113: 레이아웃 재구성.
+        //   상단: 점수 → [보관함] 버튼 → [퀘스트 목록] → [현재 진행 중 퀘스트] → 건설.
+        //   하단: [물건 챙기기] [탐험 떠나기] 두 버튼.
+        function CampScreen({ campState, onDepart, onCompleteQuest, onResetData, onInventoryChange }) {
             const [resetOpen, setResetOpen] = React.useState(false);
+            const [storageOpen, setStorageOpen] = React.useState(false);
+            const [packOpen, setPackOpen] = React.useState(false);
             const inv = campState && campState.inventory;
+            const pack = campState && campState.pack;
             const runs = (campState && campState.runs) || { total: 0, victories: 0, deaths: 0 };
             const activeQuests = (campState && campState.quests && campState.quests.active) || [];
             const completedQuests = (campState && campState.quests && campState.quests.completed) || [];
@@ -3355,23 +3362,26 @@
                             </div>
                         )}
 
-                        {/* 인벤 */}
-                        <div style={{
-                            background: '#1a1a2e',
-                            border: '1px solid #2a3a5e',
-                            borderRadius: '10px',
-                            padding: '14px',
-                            marginBottom: '16px'
-                        }}>
-                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '10px' }}>
-                                보관함
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                <CampInventoryGrid inventory={inv} />
-                            </div>
+                        {/* D-113: [보관함] 버튼 — StorageModal 트리거. 인벤 미리보기는 모달에서. */}
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                            <button
+                                onClick={() => setStorageOpen(true)}
+                                style={{
+                                    background: '#1a1a2e',
+                                    color: '#d4b84a',
+                                    border: '1px solid #4a4a6e',
+                                    padding: '11px 28px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 700
+                                }}
+                            >
+                                📦 보관함 ({(inv && inv.items && inv.items.length) || 0})
+                            </button>
                         </div>
 
-                        {/* 퀘스트 */}
+                        {/* D-113: 퀘스트 목록 — 모든 퀘스트 (active + completed) 한눈에. */}
                         <div style={{
                             background: '#1a1a2e',
                             border: '1px solid #2a3a5e',
@@ -3380,33 +3390,48 @@
                             marginBottom: '16px'
                         }}>
                             <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '10px' }}>
-                                퀘스트
+                                퀘스트 목록
                             </div>
                             {activeQuests.length === 0 && completedQuests.length === 0 && (
                                 <div style={{ fontSize: '12px', color: '#777' }}>
                                     아직 받은 퀘스트가 없다.
                                 </div>
                             )}
-                            {activeQuests.map(renderQuestCard)}
-                            {completedQuests.length > 0 && (
-                                <div style={{ marginTop: '8px' }}>
-                                    <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>완료</div>
-                                    {completedQuests.map(q => {
-                                        const def = q.id === TENT_QUEST.id ? TENT_QUEST : null;
-                                        if (!def) return null;
-                                        return (
-                                            <div key={q.id} style={{
-                                                fontSize: '12px',
-                                                color: '#666',
-                                                textDecoration: 'line-through'
-                                            }}>
-                                                ✓ {def.name}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                            {activeQuests.map(quest => {
+                                const def = quest.id === TENT_QUEST.id ? TENT_QUEST : null;
+                                if (!def) return null;
+                                return (
+                                    <div key={quest.id} style={{ fontSize: '12px', color: '#ddd', lineHeight: 1.7 }}>
+                                        {def.icon} {def.name} <span style={{ color: '#888' }}>(진행 중)</span>
+                                    </div>
+                                );
+                            })}
+                            {completedQuests.map(q => {
+                                const def = q.id === TENT_QUEST.id ? TENT_QUEST : null;
+                                if (!def) return null;
+                                return (
+                                    <div key={q.id} style={{ fontSize: '12px', color: '#8bd17c', lineHeight: 1.7 }}>
+                                        ✅ {def.name} <span style={{ color: '#666' }}>(완수)</span>
+                                    </div>
+                                );
+                            })}
                         </div>
+
+                        {/* 현재 진행 중 퀘스트 — 카드 형태로 재료 진행 + [완수] 버튼 */}
+                        {activeQuests.length > 0 && (
+                            <div style={{
+                                background: '#1a1a2e',
+                                border: '1px solid #2a3a5e',
+                                borderRadius: '10px',
+                                padding: '14px',
+                                marginBottom: '16px'
+                            }}>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '10px' }}>
+                                    진행 중인 퀘스트
+                                </div>
+                                {activeQuests.map(renderQuestCard)}
+                            </div>
+                        )}
 
                         {/* 건설 placeholder */}
                         <div style={{
@@ -3422,26 +3447,65 @@
                             건설 (추후 단계에서 열림)
                         </div>
 
-                        {/* 탐험 떠나기 */}
-                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                        {/* D-113: 하단 — [물건 챙기기] [탐험 떠나기] */}
+                        <div style={{
+                            display: 'flex',
+                            gap: '10px',
+                            justifyContent: 'center',
+                            marginBottom: '20px'
+                        }}>
+                            <button
+                                onClick={() => setPackOpen(true)}
+                                style={{
+                                    background: '#1a1a2e',
+                                    color: '#d4b84a',
+                                    border: '1px solid #d4b84a',
+                                    padding: '14px 22px',
+                                    fontSize: '15px',
+                                    fontWeight: 700,
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    flex: 1,
+                                    maxWidth: '200px'
+                                }}
+                            >
+                                🎒 물건 챙기기
+                            </button>
                             <button
                                 onClick={onDepart}
                                 style={{
                                     background: '#4CAF50',
                                     color: 'white',
                                     border: 'none',
-                                    padding: '14px 36px',
-                                    fontSize: '16px',
+                                    padding: '14px 22px',
+                                    fontSize: '15px',
                                     fontWeight: 700,
                                     borderRadius: '8px',
                                     cursor: 'pointer',
-                                    boxShadow: '0 4px 12px rgba(76,175,80,0.3)'
+                                    boxShadow: '0 4px 12px rgba(76,175,80,0.3)',
+                                    flex: 1,
+                                    maxWidth: '200px'
                                 }}
                             >
                                 🌲 탐험 떠나기
                             </button>
                         </div>
                     </div>
+
+                    {storageOpen && inv && (
+                        <StorageModal
+                            inventory={inv}
+                            onClose={() => setStorageOpen(false)}
+                        />
+                    )}
+                    {packOpen && inv && pack && (
+                        <PackTransferModal
+                            storage={inv}
+                            pack={pack}
+                            onChange={onInventoryChange}
+                            onClose={() => setPackOpen(false)}
+                        />
+                    )}
 
                     {/* 데이터 초기화 — 우하단 */}
                     <div style={{
@@ -6671,6 +6735,7 @@
                         onDepart={handleDepart}
                         onCompleteQuest={handleCompleteQuest}
                         onResetData={handleResetData}
+                        onInventoryChange={() => setCampState(prev => ({ ...prev }))}
                     />
                     {pendingTentModal && (
                         <TentQuestModal
