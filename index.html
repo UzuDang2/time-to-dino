@@ -2035,10 +2035,15 @@
         //   D-104 (2026-04-27 요한 지시): 항상 렌더. 비선택 시 카테고리 탭 5종 노출.
         //     showCategoryTabs=true면 [전체][음식][무기][방어구][재료] 탭, onCategoryChange로 변경.
         //     onClose가 null이면 헤더 닫기 버튼 숨김(비선택 상태 = 가방 닫기로만 종료).
-        function CraftPanel({ recipes, inventory, onCraft, onClose, showCategoryTabs, category, onCategoryChange }) {
+        function CraftPanel({ recipes, inventory, onCraft, onClose, showCategoryTabs, category, onCategoryChange, allowCooking }) {
             const items = (inventory && inventory.items) || [];
             const defOf = (type) => InventorySystem.ITEMS[type] || {};
             const nameOf = (type) => defOf(type).name || type;
+
+            // D-137: '구운' 음식(result가 grilled_로 시작)은 휴식 카드 → 요리 모달에서만 제작.
+            //   가방의 일반 합성 패널에서는 카드 노출은 하되 만들기 버튼은 비활성("🔥 휴식 필요").
+            //   allowCooking=true면 휴식 컨텍스트(현재는 사용 없음, 미래 확장 여지) — grilled도 활성.
+            const isCookOnly = (recipe) => typeof recipe.result === 'string' && recipe.result.startsWith('grilled_');
 
             // 각 레시피 상태 계산: 재료 충분 + 결과 배치 공간 여부.
             const cards = recipes.map(recipe => {
@@ -2048,11 +2053,12 @@
                 let disabledReason = null;
                 if (!evalR.canCraft) disabledReason = 'short';
                 else if (!hasSpace) disabledReason = 'no_space';
+                else if (isCookOnly(recipe) && !allowCooking) disabledReason = 'rest_required';
                 return { recipe, evalR, hasSpace, disabledReason };
             });
-            // 만들 수 있는 것 먼저, 공간부족, 재료부족 순.
+            // 만들 수 있는 것 먼저, 휴식필요, 공간부족, 재료부족 순.
             cards.sort((a, b) => {
-                const rank = { null: 0, 'no_space': 1, 'short': 2 };
+                const rank = { null: 0, 'rest_required': 1, 'no_space': 2, 'short': 3 };
                 return (rank[a.disabledReason] ?? 0) - (rank[b.disabledReason] ?? 0);
             });
 
@@ -2149,7 +2155,9 @@
                                 ? '공간부족'
                                 : disabledReason === 'short'
                                     ? '재료부족'
-                                    : '만들기';
+                                    : disabledReason === 'rest_required'
+                                        ? '🔥 휴식 필요'
+                                        : '만들기';
                             return (
                                 <div
                                     key={`recipe:${idx}:${recipe.result}`}
