@@ -208,12 +208,12 @@
         return out;
     }
 
-    // D-75/D-98: prey.actions_per_turn DSL 파싱 → 턴별 행동 배열.
-    //   CSV ('attack,evade,peek,defend'). 빈값이면 레벨별 기본값.
-    //   D-98 (2026-04-25 요한 지시): L1도 행동 패턴 도입(peek≤2 / evade≤1 / defend≤1, 3턴).
-    //   각 토큰이 허용 집합에 없으면 'evade'로 치환(안전 폴백).
+    // D-75/D-98/D-108: prey.actions_per_turn DSL 파싱 → 턴별 행동 id 배열.
+    //   CSV. 빈값이면 레벨별 기본값.
+    //   D-108: 행동 풀 SSOT(`사냥감행동` 시트, TTD_DATA.PREY_ACTIONS)로 분리.
+    //     토큰은 행동 id(예: 'tusk_charge', 'iron_curl'). 알 수 없는 토큰은 그대로 두고
+    //     resolveHunt에서 findPreyAction으로 lookup·fallback 처리.
     function parsePreyActions(prey, turnCount) {
-        const allowed = new Set(['attack', 'defend', 'evade', 'peek']);
         const lvl = Number(prey && prey.level) || 1;
         const defaults = lvl === 2
             ? ['attack', 'evade', 'attack', 'peek']
@@ -225,9 +225,32 @@
         const out = [];
         for (let i = 0; i < turnCount; i++) {
             const token = parts[i] != null ? parts[i] : parts[parts.length - 1] || 'evade';
-            out.push(allowed.has(token) ? token : 'evade');
+            out.push(token || 'evade');
         }
         return out;
+    }
+
+    // D-108: 행동 id → 행동 정의 lookup. SSOT는 시트 '사냥감행동' (TTD_DATA.PREY_ACTIONS).
+    //   못 찾으면 fallback — id를 type으로 보고 기본값(damage/accuracy/defense=0).
+    //   기본 type 토큰('attack'/'defend'/'evade'/'peek')도 시트에 row로 있으므로 lookup 성공이 정상 경로.
+    const FALLBACK_TYPES = new Set(['attack', 'defend', 'evade', 'peek']);
+    function findPreyAction(id) {
+        const TTD = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : null;
+        const pool = (TTD && Array.isArray(TTD.PREY_ACTIONS)) ? TTD.PREY_ACTIONS : [];
+        const hit = pool.find(a => a && a.id === id);
+        if (hit) {
+            return {
+                id: hit.id,
+                name: hit.name || hit.id,
+                type: hit.type || 'peek',
+                damage: Number(hit.damage) || 0,
+                accuracy: Number(hit.accuracy) || 0,
+                defense: Number(hit.defense) || 0,
+            };
+        }
+        // Fallback: id 자체가 기본 type이면 그대로, 아니면 peek로.
+        const t = FALLBACK_TYPES.has(id) ? id : 'peek';
+        return { id, name: id, type: t, damage: 0, accuracy: 0, defense: 0 };
     }
 
     // D-48/D-50/D-51/D-60/D-74/D-75/D-98 개정: 사냥 전투 해결 로직.
@@ -262,7 +285,8 @@
         // D-74: 유저가 받은 누적 대미지. prey.attack이 있을 때만 의미 있음.
         //   유저 카드의 defense로 감쇄 — finalDamage = max(0, preyAttack - cardDefense).
         let playerDamageTaken = 0;
-        const preyAttack = Math.max(0, Number(prey && prey.attack) || 0);
+        // D-108: prey.attack은 fallback. 우선 turn별 actionDef.damage 사용.
+        const preyAttackFallback = Math.max(0, Number(prey && prey.attack) || 0);
 
         // 무기 사용 기록 헬퍼.
         const recordWeaponUse = (wid, fullLoss) => {
@@ -285,28 +309,38 @@
         const turnCount = isLevel2 ? 4 : 3;
         // D-98: L1도 actions_per_turn DSL 사용 — L1/L2 공통 처리.
         const preyActions = parsePreyActions(prey, turnCount);
-        const preyDefense = Math.max(0, Number(prey && prey.defense) || 0);
+        const preyDefenseFallback = Math.max(0, Number(prey && prey.defense) || 0);
 
         for (let t = 0; t < turnCount; t++) {
             const card = userSlots[t];
-            const preyActionRaw = preyActions[t];
-            const preyActionLabel = (
-                preyActionRaw === 'attack' ? '공격'
-                : preyActionRaw === 'defend' ? '방어'
-                : preyActionRaw === 'peek'   ? '눈치'
+            // D-108: 행동 id → actionDef lookup. type/damage/accuracy/defense 모두 actionDef 기준.
+            const actionDef = findPreyAction(preyActions[t]);
+            const preyActionType = actionDef.type;
+            const preyActionLabel = actionDef.name || (
+                preyActionType === 'attack' ? '공격'
+                : preyActionType === 'defend' ? '방어'
+                : preyActionType === 'peek'   ? '눈치'
                 : '회피'
             );
 
-            // D-74: 유저 카드의 defense로 prey 공격 감쇄 — preyAction='attack'일 때만 적용.
-            // D-101: 카드 evade(정수)가 prey.attack_accuracy(미정의면 0)를 초과하면 prey 공격 무효.
+            // 턴별 prey 수치 — actionDef 우선, 0이면 prey 폴백.
+            const preyAttackThisTurn = (actionDef.damage > 0)
+                ? actionDef.damage : preyAttackFallback;
+            const preyDefenseThisTurn = (actionDef.defense > 0)
+                ? actionDef.defense : preyDefenseFallback;
+            // D-74: 유저 카드의 defense로 prey 공격 감쇄 — preyAction.type='attack'일 때만 적용.
+            // D-101/D-108: 카드 evade가 actionDef.accuracy(없으면 prey.attack_accuracy)를 초과하면 prey 공격 무효.
             //   D-96 결정론(명중≥회피→명중) 대칭 — 유저 측 회피도 정수 비교.
             const cardDefense = Math.max(0, Number(card && card.defense) || 0);
             const cardEvade = Math.max(0, Number(card && card.evade) || 0);
-            const preyAttackAccuracy = Math.max(0, Number(prey && prey.attack_accuracy) || 0);
+            const preyAttackAccuracy = Math.max(
+                0,
+                Number(actionDef.accuracy) || Number(prey && prey.attack_accuracy) || 0
+            );
             const takeDamageThisTurn = () => {
-                if (preyActionRaw !== 'attack' || preyAttack <= 0) return 0;
+                if (preyActionType !== 'attack' || preyAttackThisTurn <= 0) return 0;
                 if (cardEvade > preyAttackAccuracy) return 0;
-                const dmg = Math.max(0, preyAttack - cardDefense);
+                const dmg = Math.max(0, preyAttackThisTurn - cardDefense);
                 playerDamageTaken += dmg;
                 return dmg;
             };
@@ -354,7 +388,7 @@
                 //   확률 굴림 제거(결정론). fleeCount는 회피 -1씩 차감(누적 패널티 단순화).
                 //   D-98: turn-action 분기 L1/L2 공통 — peek/attack/defend는 회피 0.
                 let baseEvadeT = Math.max(0, (evadesByTurn[t] || 0) - fleeCount);
-                if (preyActionRaw !== 'evade') baseEvadeT = 0;
+                if (preyActionType !== 'evade') baseEvadeT = 0;
                 const cardAccuracy = Number(card.accuracy) || 0;
                 const effectiveEvade = baseEvadeT;
                 const preyEvaded = effectiveEvade > cardAccuracy;
@@ -370,8 +404,8 @@
                 }
 
                 if (!preyEvaded) {
-                    // D-75/D-98: preyAction='defend' → 유저 공격 대미지에서 prey.defense 감쇄 (L1/L2 공통).
-                    const defenseReduction = (preyActionRaw === 'defend') ? preyDefense : 0;
+                    // D-75/D-98/D-108: preyAction.type='defend' → 유저 공격 대미지에서 actionDef.defense 감쇄.
+                    const defenseReduction = (preyActionType === 'defend') ? preyDefenseThisTurn : 0;
                     const appliedDamage = Math.max(0, damageOut - defenseReduction);
                     hp -= appliedDamage;
                     const dmgTaken = takeDamageThisTurn();
@@ -413,6 +447,7 @@
     const api = {
         buildCombatDeck, consumeExtraCard, RUNTIME_CARDS,
         buildHuntDeck, resolveHunt, parseRequirement, parseEvadesByTurn,
+        parsePreyActions, findPreyAction,
         CATEGORY_REQ_TOKENS
     };
 
