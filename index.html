@@ -2797,11 +2797,44 @@
             );
         }
 
-        // 캠프 인벤 그리드 (8x12, disabled 없음). InventoryModal과 동일 룩 — 정적 표시 전용.
-        //   읽기 전용: 셀 클릭/드래그 없음. 1단계는 보관·조회만.
-        function CampInventoryGrid({ inventory }) {
+        // 캠프 인벤 그리드 (12x8 등). InventoryModal과 동일 룩.
+        //   D-113: cellSize·onItemClick·selectedIds·onCellLongPress 옵션 추가.
+        //     - 셀 크기를 호출부에서 조절(작은 미리보기 / PackTransferModal에서 더 작게).
+        //     - selectedIds: Set 또는 배열. 포함된 item.id는 'selected' 클래스 부여.
+        //     - onItemClick(item): 아이템 영역 탭 — 다중선택 토글 등에 사용.
+        //     - onItemLongPress(item): 길게 누르면 ItemInfoModal 열기 등.
+        //   기본은 정적 표시(클릭 핸들러 없음).
+        function CampInventoryGrid({ inventory, cellSize, selectedIds, onItemClick, onItemLongPress }) {
             if (!inventory) return null;
-            const ROWS = inventory.rows, COLS = inventory.cols, CELL = 36, PAD = 3;
+            const ROWS = inventory.rows, COLS = inventory.cols;
+            const CELL = Number(cellSize) > 0 ? Number(cellSize) : 36;
+            const PAD = 3;
+            const selSet = selectedIds instanceof Set
+                ? selectedIds
+                : (Array.isArray(selectedIds) ? new Set(selectedIds) : null);
+
+            // 길게 누르기(롱프레스) 감지 — 500ms.
+            const pressTimerRef = React.useRef(null);
+            const longFiredRef = React.useRef(false);
+            const startPress = (item) => {
+                longFiredRef.current = false;
+                if (typeof onItemLongPress !== 'function') return;
+                pressTimerRef.current = setTimeout(() => {
+                    longFiredRef.current = true;
+                    onItemLongPress(item);
+                }, 500);
+            };
+            const cancelPress = () => {
+                if (pressTimerRef.current) {
+                    clearTimeout(pressTimerRef.current);
+                    pressTimerRef.current = null;
+                }
+            };
+            const handleClick = (item) => {
+                if (longFiredRef.current) return;
+                if (typeof onItemClick === 'function') onItemClick(item);
+            };
+
             return (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                     <div style={{
@@ -2816,10 +2849,12 @@
                         {Array(ROWS).fill(null).map((_, row) =>
                             Array(COLS).fill(null).map((_, col) => {
                                 const occupied = !!inventory.grid[row][col];
+                                const disabled = inventory.isDisabled && inventory.isDisabled(col, row);
                                 return (
                                     <div
                                         key={`${row}-${col}`}
-                                        className={`inventory-cell ${occupied ? 'occupied' : ''}`}
+                                        className={`inventory-cell ${occupied ? 'occupied' : ''} ${disabled ? 'disabled' : ''}`}
+                                        style={disabled ? { background: '#0a1a2a', opacity: 0.35 } : undefined}
                                     />
                                 );
                             })
@@ -2829,26 +2864,92 @@
                         const w = item.shape[0].length;
                         const h = item.shape.length;
                         const emoji = itemEmoji(item.type);
+                        const selected = selSet && selSet.has(item.id);
+                        const interactive = typeof onItemClick === 'function' || typeof onItemLongPress === 'function';
                         return (
                             <div
                                 key={item.id}
-                                className="inventory-item"
+                                className={`inventory-item${selected ? ' selected' : ''}`}
                                 style={{
                                     left: `${item.x * CELL + PAD}px`,
                                     top: `${item.y * CELL + PAD}px`,
                                     width: `${w * CELL - PAD}px`,
                                     height: `${h * CELL - PAD}px`,
                                     fontSize: '9px',
-                                    cursor: 'default',
-                                    pointerEvents: 'none'
+                                    cursor: interactive ? 'pointer' : 'default',
+                                    pointerEvents: interactive ? 'auto' : 'none',
+                                    outline: selected ? '2px solid #4dd0e1' : undefined,
+                                    boxShadow: selected ? '0 0 8px rgba(77,208,225,0.55)' : undefined,
+                                    zIndex: selected ? 2 : 1
                                 }}
+                                onClick={() => handleClick(item)}
+                                onMouseDown={() => startPress(item)}
+                                onMouseUp={cancelPress}
+                                onMouseLeave={cancelPress}
+                                onTouchStart={() => startPress(item)}
+                                onTouchEnd={cancelPress}
+                                onTouchCancel={cancelPress}
                             >
                                 {emoji
-                                    ? <span style={{ fontSize: '20px', lineHeight: 1 }}>{emoji}</span>
+                                    ? <span style={{ fontSize: Math.round(CELL * 0.55) + 'px', lineHeight: 1 }}>{emoji}</span>
                                     : item.name}
                             </div>
                         );
                     })}
+                </div>
+            );
+        }
+
+        // D-113: 보관함 단독 풀스크린 팝업.
+        //   캠프 [보관함] 버튼에서 열림. 12x8 그리드를 한눈에.
+        //   아이템 길게 누르면 ItemInfoModal로 정보 표시.
+        function StorageModal({ inventory, onClose }) {
+            const [infoItem, setInfoItem] = React.useState(null);
+            return (
+                <div className="modal" style={{ zIndex: 3300, alignItems: 'flex-start', overflowY: 'auto' }}>
+                    <div style={{
+                        background: '#1a1a2e',
+                        color: '#eee',
+                        padding: '20px 18px 24px',
+                        borderRadius: '10px',
+                        border: '1px solid #2a3a5e',
+                        width: 'min(94vw, 460px)',
+                        margin: '24px auto',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.55)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#d4b84a' }}>📦 보관함</div>
+                            <button
+                                onClick={onClose}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#bbb',
+                                    border: '1px solid #4a4a6e',
+                                    padding: '5px 14px',
+                                    borderRadius: '5px',
+                                    cursor: 'pointer',
+                                    fontSize: '12px'
+                                }}
+                            >닫기</button>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <CampInventoryGrid
+                                inventory={inventory}
+                                cellSize={40}
+                                onItemLongPress={(it) => setInfoItem(it)}
+                            />
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', marginTop: '10px' }}>
+                            아이템을 길게 누르면 정보를 볼 수 있다.
+                        </div>
+                    </div>
+                    {infoItem && (
+                        <ItemInfoModal
+                            item={infoItem}
+                            onUse={() => setInfoItem(null)}
+                            onClose={() => setInfoItem(null)}
+                        />
+                    )}
                 </div>
             );
         }
@@ -5964,37 +6065,42 @@
         const CAMP_STATE_KEY = 'ttd:campState:v1';
 
         // 빈 상태(첫 신규 유저).
+        // D-113: 보관함은 12x8(rows=12, cols=8 — 세로로 김). 탐험용 가방(pack)은 5x5(D-47 모양).
         function makeInitialCampState() {
             return {
                 version: 1,
                 seenIntro: false,
                 firstReturnDone: false,
-                inventory: new InventorySystem(8, 12, { disabled: [] }),
+                inventory: new InventorySystem(12, 8, { disabled: [] }),
+                pack: new InventorySystem(5, 5),  // D-113: 탐험 시 들고 가는 가방. 기본 disabled 패턴.
                 quests: { active: [], completed: [] },
                 // D-110: bestScore(최고 점수) / totalScore(누적합) / lastScore(마지막 런).
                 runs: { total: 0, victories: 0, deaths: 0, bestScore: 0, totalScore: 0, lastScore: 0 }
             };
         }
 
-        // 직렬화 — InventorySystem.items만 {type,x,y,rotation} 배열로 보존.
+        // 직렬화 — InventorySystem.items만 {type,x,y,rotation,durabilityLeft} 배열로 보존.
         //   InventorySystem 인스턴스 자체를 JSON.stringify하면 grid 2D배열·class 메타가 따라가
-        //   복원 시 메서드가 없어진다. items만 저장 → 로드 시 새 인스턴스 + addItem-like 복원.
+        //   복원 시 메서드가 없어진다. items만 저장 → 로드 시 새 인스턴스 + placeItem 복원.
+        // D-113: 무기 durabilityLeft 포함. pack(가방) 인벤도 함께 직렬화.
+        function serializeInvItems(inv) {
+            if (!inv || !Array.isArray(inv.items)) return [];
+            return inv.items.map(it => ({
+                type: it.type,
+                x: it.x,
+                y: it.y,
+                rotation: it.rotation || 0,
+                ...(typeof it.durabilityLeft === 'number' ? { durabilityLeft: it.durabilityLeft } : {})
+            }));
+        }
         function serializeCampState(state) {
             if (!state) return null;
-            const inv = state.inventory;
-            const items = (inv && Array.isArray(inv.items))
-                ? inv.items.map(it => ({
-                    type: it.type,
-                    x: it.x,
-                    y: it.y,
-                    rotation: it.rotation || 0
-                }))
-                : [];
             return {
-                version: 1,
+                version: 2,
                 seenIntro: !!state.seenIntro,
                 firstReturnDone: !!state.firstReturnDone,
-                inventory: items,
+                inventory: serializeInvItems(state.inventory),
+                pack: serializeInvItems(state.pack),
                 quests: {
                     active: (state.quests && state.quests.active) || [],
                     completed: (state.quests && state.quests.completed) || []
@@ -6010,48 +6116,69 @@
             };
         }
 
-        // 역직렬화 — items 배열을 새 8x12 InventorySystem에 placeItem으로 복원.
-        //   저장된 좌표가 충돌·범위 초과면 자동으로 빈 자리에 배치(addItem 폴백).
-        function deserializeCampState(raw) {
-            if (!raw || typeof raw !== 'object') return null;
-            const inv = new InventorySystem(8, 12, { disabled: [] });
-            const itemsRaw = Array.isArray(raw.inventory) ? raw.inventory : [];
-            for (const entry of itemsRaw) {
-                if (!entry || !entry.type) continue;
-                const def = InventorySystem.resolveDef(entry.type) || InventorySystem.ITEMS[entry.type];
-                if (!def || !def.shape) continue;
-                let shape = def.shape;
-                // 회전 보존 — 90단위 회전.
-                const rot = Number(entry.rotation) || 0;
-                for (let r = 0; r < (rot / 90) % 4; r++) {
-                    shape = inv.rotate90(shape);
-                }
-                const item = {
-                    id: Date.now() + Math.random(),
-                    type: entry.type,
-                    ...InventorySystem.ITEMS[entry.type],
-                    shape,
-                    rotation: rot,
-                    x: Number(entry.x) || 0,
-                    y: Number(entry.y) || 0
-                };
-                const resolved = InventorySystem.resolveDef(entry.type) || {};
-                if (typeof resolved.durability === 'number' && resolved.durability > 0) {
-                    item.durabilityLeft = resolved.durability;
-                }
-                if (inv.canPlace(shape, item.x, item.y)) {
+        // 아이템 항목을 InventorySystem 인스턴스에 복원.
+        //   좌표가 유효하면 placeItem으로, 아니면 addItem(type)으로 폴백.
+        //   D-113: durabilityLeft 보존. 인스턴스 직접 placement (rotation·durability 모두 유지).
+        function restoreItemEntry(inv, entry) {
+            if (!entry || !entry.type) return;
+            const def = InventorySystem.resolveDef(entry.type) || InventorySystem.ITEMS[entry.type];
+            if (!def || !def.shape) return;
+            let shape = def.shape;
+            const rot = Number(entry.rotation) || 0;
+            for (let r = 0; r < (rot / 90) % 4; r++) {
+                shape = inv.rotate90(shape);
+            }
+            const item = {
+                id: Date.now() + Math.random(),
+                type: entry.type,
+                ...InventorySystem.ITEMS[entry.type],
+                shape,
+                rotation: rot,
+                x: Number(entry.x) || 0,
+                y: Number(entry.y) || 0
+            };
+            const resolved = InventorySystem.resolveDef(entry.type) || {};
+            const maxDur = (typeof resolved.durability === 'number' && resolved.durability > 0)
+                ? resolved.durability : null;
+            if (maxDur != null) {
+                item.durabilityLeft = (typeof entry.durabilityLeft === 'number')
+                    ? Math.max(0, Math.min(maxDur, entry.durabilityLeft))
+                    : maxDur;
+            }
+            if (inv.canPlace(shape, item.x, item.y)) {
+                inv.placeItem(item);
+                inv.items.push(item);
+            } else {
+                // 좌표 충돌·범위 초과(예: 8x12→12x8 마이그레이션) → 빈 자리로 재배치.
+                const pos = inv.findEmptySpace(shape);
+                if (pos) {
+                    item.x = pos.x;
+                    item.y = pos.y;
                     inv.placeItem(item);
                     inv.items.push(item);
-                } else {
-                    // 좌표 충돌·범위 초과 → 빈 자리로.
-                    inv.addItem(entry.type);
                 }
             }
+        }
+
+        // 역직렬화 — items 배열을 새 12x8 InventorySystem에 복원.
+        //   D-113: 기존 8x12 → 12x8 마이그레이션. 좌표 충돌 시 빈 자리로 자동 재배치.
+        function deserializeCampState(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+            const inv = new InventorySystem(12, 8, { disabled: [] });
+            const itemsRaw = Array.isArray(raw.inventory) ? raw.inventory : [];
+            for (const entry of itemsRaw) restoreItemEntry(inv, entry);
+
+            // pack — 신규 필드. 기존 저장본엔 없을 수 있으니 빈 인벤으로 시작.
+            const pack = new InventorySystem(5, 5);
+            const packRaw = Array.isArray(raw.pack) ? raw.pack : [];
+            for (const entry of packRaw) restoreItemEntry(pack, entry);
+
             return {
-                version: 1,
+                version: 2,
                 seenIntro: !!raw.seenIntro,
                 firstReturnDone: !!raw.firstReturnDone,
                 inventory: inv,
+                pack,
                 quests: {
                     active: (raw.quests && Array.isArray(raw.quests.active)) ? raw.quests.active : [],
                     completed: (raw.quests && Array.isArray(raw.quests.completed)) ? raw.quests.completed : []
