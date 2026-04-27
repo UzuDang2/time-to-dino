@@ -12,6 +12,10 @@ body {
 #root {
     width: 100vw;
     height: 100vh;
+    /* D-118 (요한 보고): 웹 모바일 주소창·하단 바로 100vh가 실제 visible보다
+       커서 하단 ui-panel이 잘림. dvh(dynamic viewport) 지원 환경에서는
+       그 값을 우선 사용. 미지원 환경은 위 100vh 폴백. */
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     /* D-41 (2026-04-23 요한 지시): 게임 영역 롱프레스 시
@@ -325,6 +329,9 @@ button:disabled {
 .ui-panel {
     background: #16213e;
     padding: 8px 10px;
+    /* D-118: 3구역 레이아웃에서 상단·하단 ui-panel은 고정 크기.
+       map-area(flex:1)가 줄어들면서 ui-panel 잘림 방지. */
+    flex-shrink: 0;
 }
 
 /* D-37: 모바일 폭에서 HUD 여백 축소 → 맵 가시 영역 확보. */

@@ -6415,11 +6415,11 @@
             };
 
             if (tiles.length === 0) {
-                return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>게임 로딩 중...</div>;
+                return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>게임 로딩 중...</div>;
             }
 
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
                     {/* D-114: 게임 화면 우상단 진행 퀘스트 HUD. activeQuests 비어있으면 자체 미렌더. */}
                     <ActiveQuestHUDPanel
                         activeQuests={activeQuests}
