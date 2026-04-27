@@ -5486,7 +5486,241 @@
             );
         }
 
-        ReactDOM.render(<Game />, document.getElementById('root'));
+        // ============================================
+        // D-109 (2026-04-24): App — 게임 흐름 컨트롤러.
+        //   view: 'intro' | 'play' | 'camp'
+        //   campState 영속화(localStorage 'ttd:campState:v1') — load on mount, save on change.
+        //   첫 마운트:
+        //     - localStorage 없음 → view='intro'
+        //     - localStorage 있음 → view='camp' (시나리오 스킵, 새로고침은 항상 캠프)
+        //   진행 중 런(view='play')은 새로고침 시 폐기됨 (의도된 동작).
+        // ============================================
+
+        const CAMP_STATE_KEY = 'ttd:campState:v1';
+
+        // 빈 상태(첫 신규 유저).
+        function makeInitialCampState() {
+            return {
+                version: 1,
+                seenIntro: false,
+                firstReturnDone: false,
+                inventory: new InventorySystem(8, 12, { disabled: [] }),
+                quests: { active: [], completed: [] },
+                runs: { total: 0, victories: 0, deaths: 0 }
+            };
+        }
+
+        // 직렬화 — InventorySystem.items만 {type,x,y,rotation} 배열로 보존.
+        //   InventorySystem 인스턴스 자체를 JSON.stringify하면 grid 2D배열·class 메타가 따라가
+        //   복원 시 메서드가 없어진다. items만 저장 → 로드 시 새 인스턴스 + addItem-like 복원.
+        function serializeCampState(state) {
+            if (!state) return null;
+            const inv = state.inventory;
+            const items = (inv && Array.isArray(inv.items))
+                ? inv.items.map(it => ({
+                    type: it.type,
+                    x: it.x,
+                    y: it.y,
+                    rotation: it.rotation || 0
+                }))
+                : [];
+            return {
+                version: 1,
+                seenIntro: !!state.seenIntro,
+                firstReturnDone: !!state.firstReturnDone,
+                inventory: items,
+                quests: {
+                    active: (state.quests && state.quests.active) || [],
+                    completed: (state.quests && state.quests.completed) || []
+                },
+                runs: {
+                    total: Number((state.runs && state.runs.total) || 0),
+                    victories: Number((state.runs && state.runs.victories) || 0),
+                    deaths: Number((state.runs && state.runs.deaths) || 0)
+                }
+            };
+        }
+
+        // 역직렬화 — items 배열을 새 8x12 InventorySystem에 placeItem으로 복원.
+        //   저장된 좌표가 충돌·범위 초과면 자동으로 빈 자리에 배치(addItem 폴백).
+        function deserializeCampState(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+            const inv = new InventorySystem(8, 12, { disabled: [] });
+            const itemsRaw = Array.isArray(raw.inventory) ? raw.inventory : [];
+            for (const entry of itemsRaw) {
+                if (!entry || !entry.type) continue;
+                const def = InventorySystem.resolveDef(entry.type) || InventorySystem.ITEMS[entry.type];
+                if (!def || !def.shape) continue;
+                let shape = def.shape;
+                // 회전 보존 — 90단위 회전.
+                const rot = Number(entry.rotation) || 0;
+                for (let r = 0; r < (rot / 90) % 4; r++) {
+                    shape = inv.rotate90(shape);
+                }
+                const item = {
+                    id: Date.now() + Math.random(),
+                    type: entry.type,
+                    ...InventorySystem.ITEMS[entry.type],
+                    shape,
+                    rotation: rot,
+                    x: Number(entry.x) || 0,
+                    y: Number(entry.y) || 0
+                };
+                const resolved = InventorySystem.resolveDef(entry.type) || {};
+                if (typeof resolved.durability === 'number' && resolved.durability > 0) {
+                    item.durabilityLeft = resolved.durability;
+                }
+                if (inv.canPlace(shape, item.x, item.y)) {
+                    inv.placeItem(item);
+                    inv.items.push(item);
+                } else {
+                    // 좌표 충돌·범위 초과 → 빈 자리로.
+                    inv.addItem(entry.type);
+                }
+            }
+            return {
+                version: 1,
+                seenIntro: !!raw.seenIntro,
+                firstReturnDone: !!raw.firstReturnDone,
+                inventory: inv,
+                quests: {
+                    active: (raw.quests && Array.isArray(raw.quests.active)) ? raw.quests.active : [],
+                    completed: (raw.quests && Array.isArray(raw.quests.completed)) ? raw.quests.completed : []
+                },
+                runs: {
+                    total: Number((raw.runs && raw.runs.total) || 0),
+                    victories: Number((raw.runs && raw.runs.victories) || 0),
+                    deaths: Number((raw.runs && raw.runs.deaths) || 0)
+                }
+            };
+        }
+
+        // localStorage I/O — 실패해도 게임은 굴러가야 함(시크릿 모드 등).
+        function loadCampStateFromStorage() {
+            try {
+                const raw = localStorage.getItem(CAMP_STATE_KEY);
+                if (!raw) return null;
+                return deserializeCampState(JSON.parse(raw));
+            } catch (e) {
+                console.warn('campState load failed', e);
+                return null;
+            }
+        }
+        function saveCampStateToStorage(state) {
+            try {
+                localStorage.setItem(CAMP_STATE_KEY, JSON.stringify(serializeCampState(state)));
+            } catch (e) {
+                console.warn('campState save failed', e);
+            }
+        }
+
+        function App() {
+            // 첫 마운트: localStorage 있으면 캠프, 없으면 인트로.
+            //   loaded는 useRef-like 한 번만 평가 — 두 useState lazy initializer가 동일 값을 참조.
+            const initialLoadedRef = useRef(undefined);
+            const getInitialLoaded = () => {
+                if (initialLoadedRef.current === undefined) {
+                    initialLoadedRef.current = loadCampStateFromStorage();
+                }
+                return initialLoadedRef.current;
+            };
+            const [campState, setCampState] = useState(() => getInitialLoaded() || makeInitialCampState());
+            const [view, setView] = useState(() => (getInitialLoaded() ? 'camp' : 'intro'));
+            // 첫 캠프 도착 모달용 outcome ('victory'|'death'|null).
+            const [pendingTentModal, setPendingTentModal] = useState(null);
+
+            // campState 변화 시마다 저장.
+            useEffect(() => {
+                saveCampStateToStorage(campState);
+            }, [campState]);
+
+            // [정신을 차린다] — 시나리오 → 첫 탐험.
+            const handleIntroDismiss = () => {
+                setCampState(prev => ({ ...prev, seenIntro: true }));
+                setView('play');
+            };
+
+            // 탐험 결과 처리 — Game이 호출. payload: { outcome:'victory'|'death', runInventory }.
+            //   다음 커밋(3/5)에서 인벤 transfer 구현. 지금은 view 전환만.
+            const handleRunEnd = (payload) => {
+                const outcome = payload && payload.outcome;
+                setCampState(prev => {
+                    const next = {
+                        ...prev,
+                        runs: {
+                            total: prev.runs.total + 1,
+                            victories: prev.runs.victories + (outcome === 'victory' ? 1 : 0),
+                            deaths: prev.runs.deaths + (outcome === 'death' ? 1 : 0)
+                        }
+                    };
+                    // 첫 캠프 복귀: 텐트 퀘스트 부여 + firstReturnDone.
+                    if (!prev.firstReturnDone) {
+                        next.firstReturnDone = true;
+                        next.quests = {
+                            active: [...(prev.quests.active || []), { id: TENT_QUEST.id, progress: { branch: 0, stone: 0, stem: 0 } }],
+                            completed: prev.quests.completed || []
+                        };
+                    }
+                    return next;
+                });
+                if (!campState.firstReturnDone) {
+                    setPendingTentModal(outcome || 'victory');
+                }
+                setView('camp');
+            };
+
+            // [탐험 떠나기]
+            const handleDepart = () => setView('play');
+
+            // [완수] — 1단계는 마킹만. 다음 커밋(4/5)에서 재료 차감 구현.
+            const handleCompleteQuest = (questId) => {
+                setCampState(prev => {
+                    const active = prev.quests.active.filter(q => q.id !== questId);
+                    const moved = prev.quests.active.find(q => q.id === questId);
+                    return {
+                        ...prev,
+                        quests: {
+                            active,
+                            completed: moved ? [...(prev.quests.completed || []), moved] : prev.quests.completed
+                        }
+                    };
+                });
+            };
+
+            // [데이터 초기화] — localStorage 삭제 + 초기 상태 + 시나리오부터.
+            const handleResetData = () => {
+                try { localStorage.removeItem(CAMP_STATE_KEY); } catch {}
+                setCampState(makeInitialCampState());
+                setPendingTentModal(null);
+                setView('intro');
+            };
+
+            if (view === 'intro') {
+                return <IntroScenarioScreen onDismiss={handleIntroDismiss} />;
+            }
+            if (view === 'play') {
+                return <Game onRunEnd={handleRunEnd} />;
+            }
+            // camp
+            return (
+                <>
+                    <CampScreen
+                        campState={campState}
+                        onDepart={handleDepart}
+                        onCompleteQuest={handleCompleteQuest}
+                        onResetData={handleResetData}
+                    />
+                    {pendingTentModal && (
+                        <TentQuestModal
+                            outcome={pendingTentModal}
+                            onDismiss={() => setPendingTentModal(null)}
+                        />
+                    )}
+                </>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
 
         // D-41 (2026-04-23 요한 지시): 게임 영역 내부의 contextmenu(우클릭/롱프레스)
         // 기본 동작 차단. CSS user-select:none만으로는 iOS Safari 롱프레스 복사 메뉴가
