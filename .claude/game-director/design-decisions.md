@@ -5,6 +5,52 @@
 
 ---
 
+## D-146. 방어 카드 +1 보너스 제거 (D-143 정정) (2026-04-27, `combatDeck.js`)
+
+요한 원문: "방어 효과 예시가 이상하네 잎사귀 는 방어가 1이라면 내 기본 방어는 0이야. 웅크리기를 쓰면 해당 기술 자체가 가진 방어+1이 있으니, 잎사귀를 갑고 있다면 방어+1 이므로 웅크리기의 총값은 방어2야. 누적방식이 아니고 턴마다 공격만 방어하고 내 방어 적용 수치는 초기화야".
+
+### D-143 SUPERSEDED (부분)
+
+D-143에서 "방어 카드 사용 시 +1 추가 보너스" 해석이 잘못. 사용자 의도는 단순 합산:
+- 카드 자체 defense + 방어구 defense 합 = 최종 방어.
+- 잎사귀(1) + 웅크리기(card 1) = **2**.
+- 강화방패(3) + 비늘갑옷(3) + 방패막기(card 1) = **7** (D-143은 8이었음).
+
+### 결정
+
+`combatDeck.js`에서 무한카드/요구 있는 카드 양쪽의 finalDefense 계산에서 `+ 1` 제거.
+
+### 누적/리셋
+
+매 턴 슬롯에 배치된 카드 기준으로 그 턴 방어가 산출되고, 다음 턴은 다시 그 턴 카드 기준 — 누적 아니라 매 턴 새로 평가. combatDeck.js의 resolveHunt가 이미 그렇게 동작하므로 추가 변경 없음.
+
+---
+
+## D-145. 캠프 보관함을 InventoryModal로 재사용 — 선택/머지/조합/레시피 (2026-04-27, `index.html`)
+
+요한 원문: "베이스캠프에서 보여지는 보관함도 가방처럼 선택모드, 머지 조합같은것, 그리고 선책한 레시피 리스트와 기본 레시피 목록 보여주는것도 동작해야해".
+
+### 결정
+
+기존 `StorageModal`(D-113, 단순 그리드 + 길게 눌러 정보)을 캠프에서 호출하지 않고, 가방과 동일한 `InventoryModal`을 보관함용으로 재사용. 보관함 인벤(rows=12, cols=8)을 그대로 받아 모든 상호작용(선택모드/머지/swap/조합/레시피 패널) 그대로 동작.
+
+### 변경
+
+1. `InventoryModal` signature에 `title` prop 추가 — 헤더 라벨 분기 ('가방' vs '📦 보관함').
+2. `.inventory-grid`에 인라인 `gridTemplateColumns: repeat(${COLS}, 45px)` / `gridTemplateRows: repeat(${ROWS}, 45px)` — 5x5 고정 CSS를 덮어 보관함 12x8도 정확히 그려짐.
+3. `CampScreen`에 `storageSelectedItem` state 추가, `storageOpen` 분기를 `<StorageModal />` → `<InventoryModal />`로 교체. closeInventory에서 selectedItem 정리 + onInventoryChange로 부모 재렌더 트리거.
+4. `onUseItem`/`onLureBait`는 미전달 — 캠프에서는 음식 사용·미끼 컨텍스트 없음. `InventoryModal` 내부 `handleUseFromInfo`는 `onUseItem`가 함수일 때만 호출하므로 안전.
+
+### 효과
+
+- 보관함 12x8 그리드가 동적으로 그려짐 (가방과 동일 룩).
+- 짧은 탭으로 아이템 선택, 다른 셀 탭으로 이동/머지/swap.
+- 합성 패널: 비선택 시 카테고리 탭 + 전체 레시피 / 선택 시 해당 아이템 포함 레시피만.
+- ItemInfoModal 길게 누르기는 그대로.
+- 닫기 시 onInventoryChange 호출로 캠프 재렌더 — 변경 사항 즉시 반영.
+
+---
+
 ## D-144. 전리품 결과창 그리드 — 실제 런 가방 사이즈로 (2026-04-27, `index.html`)
 
 요한 원문: "전리품 챙기기 화면은 내 가방 사이즈만 보여주면 되는거야".

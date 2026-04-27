@@ -126,14 +126,15 @@
             const cardDefense = Number(card.defense) || 0;
 
             // 무한카드 (요구 없음) — 주먹/회피/도망/웅크리기.
-            // D-143: 무한 방어카드(예: 웅크리기)도 인벤 방어구 합 + 추가 1 적용.
+            // D-143/D-146: 무한 방어카드(예: 웅크리기)도 인벤 방어구 합 적용.
+            //   D-146 (요한 정정): +1 추가 보너스 제거. 카드 defense + 방어구 합만.
+            //   잎사귀(1) + 웅크리기(card 1) = 2 방어.
             if (reqs.length === 0) {
                 let infDefense = cardDefense;
                 if (cardDefense > 0) {
                     infDefense = cardDefense
                         + (defenseSumByCategory.shield || 0)
-                        + (defenseSumByCategory.armor  || 0)
-                        + 1;
+                        + (defenseSumByCategory.armor  || 0);
                 }
                 const base = {
                     ...card, infinite: true,
@@ -172,15 +173,14 @@
                 }
             }
 
-            // D-73 / D-143: 모든 방어카드(cardDefense > 0)는 인벤 내 방어구(shield+armor)의
-            //   defense 합산 + 추가 1 보너스. 방어구 단계별 1/2/3은 잎사귀=1·2단계=2·3단계=3.
-            //   요한 지시: "방어와 관련한 전투카드 사용시 기존 방어력에 추가로 1 부여" = +1 상수.
+            // D-73 / D-143 / D-146: 모든 방어카드(cardDefense > 0)는 인벤 방어구(shield+armor) 합산.
+            //   D-146 (요한 정정): +1 추가 보너스 제거. 잎사귀(1) + 웅크리기(card 1) = 2 방어.
+            //   누적 아니고 턴별 — combat 해석은 그 턴 슬롯 카드 기준으로만 적용(이미 동작).
             let finalDefense = cardDefense;
             if (cardDefense > 0) {
                 finalDefense = cardDefense
                     + (defenseSumByCategory.shield || 0)
-                    + (defenseSumByCategory.armor  || 0)
-                    + 1;
+                    + (defenseSumByCategory.armor  || 0);
             }
 
             deck.push({
