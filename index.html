@@ -4094,8 +4094,12 @@
                 selectedItems
             });
 
-            // 그리드 사이즈 — items의 최대 좌표로부터 추정. 기본 8x12.
-            const ROWS = 8, COLS = 12, CELL = 36, PAD = 3;
+            // D-144: 그리드 사이즈는 실제 런 가방(inventory.rows/cols) 기준. fallback 5x5.
+            //   가방 disabled 셀(좌우 상단 구석)도 동일하게 비활성 표시 — 시각 일관성.
+            const lootInv = runFinal && runFinal.inventory;
+            const ROWS = (lootInv && Number(lootInv.rows)) || 5;
+            const COLS = (lootInv && Number(lootInv.cols)) || 5;
+            const CELL = 44, PAD = 3;
 
             return (
                 <div className="modal" style={{
@@ -4147,9 +4151,16 @@
                                     borderRadius: '8px'
                                 }}>
                                     {Array(ROWS).fill(null).map((_, row) =>
-                                        Array(COLS).fill(null).map((_, col) => (
-                                            <div key={`${row}-${col}`} className="inventory-cell" />
-                                        ))
+                                        Array(COLS).fill(null).map((_, col) => {
+                                            const disabled = lootInv && typeof lootInv.isDisabled === 'function'
+                                                ? lootInv.isDisabled(col, row) : false;
+                                            return (
+                                                <div
+                                                    key={`${row}-${col}`}
+                                                    className={`inventory-cell ${disabled ? 'disabled' : ''}`}
+                                                />
+                                            );
+                                        })
                                     )}
                                 </div>
                                 {items.map(item => {
@@ -6598,6 +6609,8 @@
             const runFinalForUi = {
                 victory: !!victory,
                 items: (inventory && Array.isArray(inventory.items)) ? inventory.items : [],
+                // D-144: LootResultScreen 그리드를 실제 런 가방 사이즈로 그릴 수 있게 inventory 전체 전달.
+                inventory,
                 runStats,
                 uniqueTilesVisited: new Set(moveHistory).size,
                 detection

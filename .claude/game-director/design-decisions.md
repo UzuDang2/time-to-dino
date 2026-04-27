@@ -5,6 +5,19 @@
 
 ---
 
+## D-144. 전리품 결과창 그리드 — 실제 런 가방 사이즈로 (2026-04-27, `index.html`)
+
+요한 원문: "전리품 챙기기 화면은 내 가방 사이즈만 보여주면 되는거야".
+
+### 결정
+
+- `runFinalForUi`에 `inventory` reference 추가 — LootResultScreen이 실제 런 가방 메타(rows/cols/isDisabled) 참조.
+- `LootResultScreen` ROWS/COLS = `inventory.rows`/`inventory.cols` (fallback 5x5). 기존 8x12 고정 → 5x5(또는 향후 가방 확장 시 자동).
+- disabled 셀(`inventory-cell.disabled`)도 InventoryModal과 동일하게 표시 — 가방 모양 시각 일관성.
+- CELL 36 → 44px — 그리드가 작아진 만큼 셀 키워 가독성 보존.
+
+---
+
 ## D-143. 방어구 효과 일반화 + 방어 카드 +1 보너스 (2026-04-27, `combatDeck.js`)
 
 요한 원문: "방어구들에 방어력을 추가해줘, 잎사귀는 방어+1 추가야, 방어와 관련한 전투카드 사용시 기존 방어력에 추가로 1을 부여해줘. 더 높은 단계로 올라가는 방어구일수록 +1씩 추가해줘".
