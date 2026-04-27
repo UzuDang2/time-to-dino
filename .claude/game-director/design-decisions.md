@@ -5,6 +5,21 @@
 
 ---
 
+## D-142. 퀘스트 HUD 탭으로 접기/펼치기 (2026-04-27, `index.html`)
+
+요한 원문: "퀘스트 패널을 터치하면 최소화 해서 재목만 보이는 사이즈가 되도록 접었다 펼쳤다 할 수 있게 해줘".
+
+### 결정
+
+`ActiveQuestHUDPanel`에 `collapsed` state 추가, onClick으로 토글.
+- `collapsed=true`: 제목(아이콘+이름) + ▾ 표시기만 노출, rows 숨김.
+- `collapsed=false`(기본): 제목 + ▴ + 재료 진행 rows 전부 노출.
+- `pointerEvents: 'none'` 제거 — 패널 자체가 클릭 받을 수 있어야.
+- `cursor: pointer + userSelect: none` 추가 — 탭 인터랙션 명확.
+- minWidth는 collapsed일 때 0으로 — 접힌 상태에서 좁게.
+
+---
+
 ## D-141. 진행 중 퀘스트 HUD — top 12 → 110px (2026-04-27, `index.html`)
 
 요한 원문: "퀘스트 패널이 맵 타일 위치를 벗어나서 다른 ui를 가리고 있어 위치 내려줘".

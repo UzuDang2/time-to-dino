@@ -2762,6 +2762,8 @@
         //     캠프 [완수] 버튼은 별도로 캠프 보관함을 본다(handleCompleteQuest).
         //   - active 비어있으면 null 반환 → 패널 자체 미마운트.
         function ActiveQuestHUDPanel({ activeQuests, inventoryItems }) {
+            // D-142: 터치로 접기/펼치기 토글. 기본 펼침 상태.
+            const [collapsed, setCollapsed] = React.useState(false);
             if (!Array.isArray(activeQuests) || activeQuests.length === 0) return null;
             const quest = activeQuests[0];
             const def = quest && quest.id === TENT_QUEST.id ? TENT_QUEST : null;
@@ -2782,33 +2784,44 @@
                 };
             });
             return (
-                <div style={{
-                    position: 'fixed',
-                    /* D-141: 12px → 110px. 상단 ui-panel(2줄 HUD 약 90px) 아래로 내려
-                       맵 영역 우상단 모서리에 자리. 다른 UI 가림 방지. */
-                    top: '110px',
-                    right: '12px',
-                    zIndex: 1400,
-                    background: 'rgba(22, 33, 62, 0.78)',
-                    border: '1px solid rgba(212, 184, 74, 0.45)',
-                    borderRadius: '8px',
-                    padding: '8px 10px',
-                    minWidth: '150px',
-                    color: '#eee',
-                    boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-                    pointerEvents: 'none',
-                    fontSize: '11px',
-                    lineHeight: 1.5
-                }}>
+                <div
+                    onClick={() => setCollapsed(c => !c)}
+                    style={{
+                        position: 'fixed',
+                        /* D-141: 12px → 110px. 상단 ui-panel(2줄 HUD 약 90px) 아래로 내려
+                           맵 영역 우상단 모서리에 자리. 다른 UI 가림 방지. */
+                        top: '110px',
+                        right: '12px',
+                        zIndex: 1400,
+                        background: 'rgba(22, 33, 62, 0.78)',
+                        border: '1px solid rgba(212, 184, 74, 0.45)',
+                        borderRadius: '8px',
+                        padding: '8px 10px',
+                        minWidth: collapsed ? 0 : '150px',
+                        color: '#eee',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                        // D-142: pointerEvents:'none' 제거 — 탭으로 접기/펼치기.
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        fontSize: '11px',
+                        lineHeight: 1.5
+                    }}
+                >
                     <div style={{
                         fontSize: '12px',
                         fontWeight: 700,
                         color: '#d4b84a',
-                        marginBottom: '4px'
+                        marginBottom: collapsed ? 0 : '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
                     }}>
-                        {def.icon} {def.name}
+                        <span>{def.icon} {def.name}</span>
+                        <span style={{ marginLeft: 'auto', color: '#888', fontSize: '10px' }}>
+                            {collapsed ? '▾' : '▴'}
+                        </span>
                     </div>
-                    {rows.map(r => (
+                    {!collapsed && rows.map(r => (
                         <div key={r.type} style={{ color: r.ok ? '#8bd17c' : '#ddd' }}>
                             · {r.name} {r.have}/{r.need}
                         </div>
