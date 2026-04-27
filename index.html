@@ -3701,7 +3701,7 @@
         // D-113: 레이아웃 재구성.
         //   상단: 점수 → [보관함] 버튼 → [퀘스트 목록] → [현재 진행 중 퀘스트] → 건설.
         //   하단: [물건 챙기기] [탐험 떠나기] 두 버튼.
-        function CampScreen({ campState, onDepart, onCompleteQuest, onResetData, onInventoryChange }) {
+        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange }) {
             const [resetOpen, setResetOpen] = React.useState(false);
             const [storageOpen, setStorageOpen] = React.useState(false);
             const [packOpen, setPackOpen] = React.useState(false);
@@ -3856,7 +3856,7 @@
                             </button>
                         </div>
 
-                        {/* D-113: 퀘스트 목록 — 모든 퀘스트 (active + completed) 한눈에. */}
+                        {/* D-113/D-148: 퀘스트 목록 — 받기 가능 / 진행 중 / 완수 한눈에. */}
                         <div style={{
                             background: '#1a1a2e',
                             border: '1px solid #2a3a5e',
@@ -3867,11 +3867,50 @@
                             <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '10px' }}>
                                 퀘스트 목록
                             </div>
-                            {activeQuests.length === 0 && completedQuests.length === 0 && (
-                                <div style={{ fontSize: '12px', color: '#777' }}>
-                                    아직 받은 퀘스트가 없다.
-                                </div>
-                            )}
+                            {(() => {
+                                // D-148: 받을 수 있는 퀘스트 — active/completed 어디에도 없는 정의.
+                                const taken = new Set([
+                                    ...activeQuests.map(q => q.id),
+                                    ...completedQuests.map(q => q.id)
+                                ]);
+                                const available = [TENT_QUEST].filter(q => !taken.has(q.id));
+                                if (available.length === 0 && activeQuests.length === 0 && completedQuests.length === 0) {
+                                    return (
+                                        <div style={{ fontSize: '12px', color: '#777' }}>
+                                            받을 수 있는 퀘스트가 없다.
+                                        </div>
+                                    );
+                                }
+                                return available.map(def => (
+                                    <div key={`avail:${def.id}`} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '6px 0',
+                                        borderBottom: '1px dashed #2a3a5e'
+                                    }}>
+                                        <span style={{ fontSize: '12px', color: '#d4b84a' }}>
+                                            ✨ {def.icon} {def.name} <span style={{ color: '#888' }}>(받기 가능)</span>
+                                        </span>
+                                        <button
+                                            onClick={() => onTakeQuest && onTakeQuest(def.id)}
+                                            style={{
+                                                background: '#d4b84a',
+                                                color: '#1a1a2e',
+                                                border: 'none',
+                                                padding: '4px 10px',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '11px',
+                                                fontWeight: 700
+                                            }}
+                                        >
+                                            받기
+                                        </button>
+                                    </div>
+                                ));
+                            })()}
                             {activeQuests.map(quest => {
                                 const def = quest.id === TENT_QUEST.id ? TENT_QUEST : null;
                                 if (!def) return null;
@@ -7017,16 +7056,30 @@
 
         const CAMP_STATE_KEY = 'ttd:campState:v1';
 
+        // D-148: 가방(pack) 생성 헬퍼 — bonusSlots 만큼 disabled 줄임.
+        //   기본 disabled: (0,0), (4,0), (0,1), (4,1) — 좌우 위 구석 4칸.
+        //   bonusSlots=1이면 (0,0) 풀어 좌측 위 1칸 활성. 텐트 완수 보상.
+        function makePackInventory(bonusSlots) {
+            const n = Math.max(0, Math.min(4, Number(bonusSlots) || 0));
+            const fullDisabled = [
+                { x: 0, y: 0 }, { x: 4, y: 0 },
+                { x: 0, y: 1 }, { x: 4, y: 1 }
+            ];
+            return new InventorySystem(5, 5, { disabled: fullDisabled.slice(n) });
+        }
+
         // 빈 상태(첫 신규 유저).
         // D-113: 보관함은 12x8(rows=12, cols=8 — 세로로 김). 탐험용 가방(pack)은 5x5(D-47 모양).
         // D-147 (2026-04-27 요한): 보관함 12x6로 좁힘 — 세로 모바일에서 더 깔끔.
+        // D-148 (2026-04-27 요한): tentBuilt 플래그 — true면 가방 좌측 위 1칸 추가 활성(텐트 보상).
         function makeInitialCampState() {
             return {
                 version: 1,
                 seenIntro: false,
                 firstReturnDone: false,
+                tentBuilt: false,
                 inventory: new InventorySystem(12, 6, { disabled: [] }),
-                pack: new InventorySystem(5, 5),  // D-113: 탐험 시 들고 가는 가방. 기본 disabled 패턴.
+                pack: makePackInventory(0),  // D-113/D-148: 탐험 시 들고 가는 가방. 기본 disabled 패턴.
                 quests: { active: [], completed: [] },
                 // D-110: bestScore(최고 점수) / totalScore(누적합) / lastScore(마지막 런).
                 runs: { total: 0, victories: 0, deaths: 0, bestScore: 0, totalScore: 0, lastScore: 0 }
@@ -7053,6 +7106,7 @@
                 version: 2,
                 seenIntro: !!state.seenIntro,
                 firstReturnDone: !!state.firstReturnDone,
+                tentBuilt: !!state.tentBuilt,
                 inventory: serializeInvItems(state.inventory),
                 pack: serializeInvItems(state.pack),
                 quests: {
@@ -7125,7 +7179,9 @@
             for (const entry of itemsRaw) restoreItemEntry(inv, entry);
 
             // pack — 신규 필드. 기존 저장본엔 없을 수 있으니 빈 인벤으로 시작.
-            const pack = new InventorySystem(5, 5);
+            // D-148: tentBuilt면 좌측 위 1칸 활성 — pack은 그 disabled 패턴으로 생성.
+            const tentBuiltRestored = !!raw.tentBuilt;
+            const pack = makePackInventory(tentBuiltRestored ? 1 : 0);
             const packRaw = Array.isArray(raw.pack) ? raw.pack : [];
             for (const entry of packRaw) restoreItemEntry(pack, entry);
 
@@ -7133,6 +7189,7 @@
                 version: 2,
                 seenIntro: !!raw.seenIntro,
                 firstReturnDone: !!raw.firstReturnDone,
+                tentBuilt: tentBuiltRestored,
                 inventory: inv,
                 pack,
                 quests: {
@@ -7260,17 +7317,11 @@
                         }
                     };
                     if (isFirstReturn) {
+                        // D-148: 자동 퀘스트 부여 제거. 캠프에서 [받기] 버튼으로 명시 수령.
                         next.firstReturnDone = true;
-                        next.quests = {
-                            active: [...(prev.quests.active || []), { id: TENT_QUEST.id, progress: { branch: 0, stone: 0, stem: 0 } }],
-                            completed: prev.quests.completed || []
-                        };
                     }
                     return next;
                 });
-                if (isFirstReturn) {
-                    setPendingTentModal(outcome);
-                }
                 setView('camp');
             };
 
@@ -7284,7 +7335,8 @@
             const handleDepart = () => {
                 const carried = campState.pack;
                 setDepartInv(carried || null);
-                setCampState(prev => ({ ...prev, pack: new InventorySystem(5, 5) }));
+                // D-148: 새 빈 pack은 tentBuilt 보너스 반영.
+                setCampState(prev => ({ ...prev, pack: makePackInventory(prev.tentBuilt ? 1 : 0) }));
                 setView('play');
             };
 
@@ -7330,7 +7382,9 @@
                     };
                 });
                 if (questId === TENT_QUEST.id) {
-                    setQuestCompleteMsg('텐트 자리를 잡았다. 이제 밤이 조금은 견딜 만하다.');
+                    // D-148: 텐트 보상 — tentBuilt=true → 다음 탐험부터 가방 좌측 위 1칸 추가 활성.
+                    setCampState(prev => ({ ...prev, tentBuilt: true }));
+                    setQuestCompleteMsg('텐트 자리를 잡았다. 가방 한 칸이 더 생겼다 (좌측 위).');
                 }
             };
 
@@ -7363,6 +7417,23 @@
                         campState={campState}
                         onDepart={handleDepart}
                         onCompleteQuest={handleCompleteQuest}
+                        onTakeQuest={(questId) => {
+                            // D-148: [받기] — quests.active에 추가. 이미 active/completed면 무시.
+                            setCampState(prev => {
+                                const taken = new Set([
+                                    ...((prev.quests && prev.quests.active) || []).map(q => q.id),
+                                    ...((prev.quests && prev.quests.completed) || []).map(q => q.id)
+                                ]);
+                                if (taken.has(questId)) return prev;
+                                return {
+                                    ...prev,
+                                    quests: {
+                                        active: [...(prev.quests.active || []), { id: questId, progress: { branch: 0, stone: 0, stem: 0 } }],
+                                        completed: prev.quests.completed || []
+                                    }
+                                };
+                            });
+                        }}
                         onResetData={handleResetData}
                         onInventoryChange={() => setCampState(prev => ({ ...prev }))}
                     />

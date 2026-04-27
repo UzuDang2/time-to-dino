@@ -5,6 +5,34 @@
 
 ---
 
+## D-148. 텐트 퀘스트 명시 수령 + 가방 1칸 확장 보상 (2026-04-27, `index.html`)
+
+요한 원문: "이제 텐트 퀘스트 바로 부여하지말고 베이스 캠프로 돌아오면 퀘스트 목록에서 직접 퀘스트를 받을 수 있게 해줘. 텐트를 지으면 보상으로 가방칸 1칸 확장되게 해줘, 가방의 상단 부분이 3x2 인데 이부분에 1칸 늘어나는 것으로".
+
+### 결정
+
+#### A. 자동 부여 → 명시 수령
+
+- `handleRunEnd`의 첫 복귀 시 `quests.active.push(TENT_QUEST)` 자동 부여 제거.
+- `setPendingTentModal` 호출도 제거(자동 모달 미표시).
+- CampScreen 퀘스트 목록 영역에 **받을 수 있는 퀘스트** 행 추가 — `[TENT_QUEST]` 중 active/completed에 없는 것 + `[받기]` 버튼.
+- App에 `onTakeQuest(questId)` 핸들러 — `quests.active`에 push.
+
+#### B. 가방 1칸 확장 보상
+
+- `makePackInventory(bonusSlots)` 헬퍼 — bonusSlots 만큼 disabled 줄임. 0=기본 4칸 막힘, 1=좌측 위 (0,0) 풀림.
+- `campState.tentBuilt: false` 기본. 텐트 완수 시 `true`.
+- `handleDepart`에서 새 빈 pack을 `makePackInventory(prev.tentBuilt ? 1 : 0)`로 생성.
+- `deserializeCampState`도 동일 — 저장본의 tentBuilt 복원.
+- `handleCompleteQuest` 텐트 분기에서 `setCampState({ ...prev, tentBuilt: true })` + 메시지 "가방 한 칸이 더 생겼다 (좌측 위)".
+
+### 효과
+
+- 첫 캠프 복귀: 자동 알림 없음. 사용자가 퀘스트 목록에서 [받기] 클릭으로 명시 수령.
+- 텐트 완수 후 다음 탐험부터 가방 좌측 위 (0,0) 1칸 활성 — 상단 3x2 + 1칸 = 7칸 + 하단 5x3 = 22칸.
+
+---
+
 ## D-147. 보관함 12x6 + 보관함 모드 floating 합성 popover (2026-04-27, `index.html`)
 
 요한 원문: "보관함을 6x12로 하자 세로에서도 그게 더 깔끔하겠어. 보관함에서만 선택시 제작 가능한 레시피를 건택한 슬롯의 바로 아래 30px정도 위치에 띄워주자. 리스트가 너무길어서 스크롤을 아래로 내려갔다 올라오기 힘들어".
