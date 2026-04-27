@@ -5,6 +5,31 @@
 
 ---
 
+## D-127. CraftPanel — 헤더·카테고리 탭 sticky 고정 (2026-04-27, `index.html`)
+
+요한 원문: "세로화면에서 카테고리 탭이 스크롤안에 포함되어있어 근데 그럼 안돼 스크롤을 내려도 탭은 보여야 하거든".
+
+### 문제
+
+`CraftPanel` 루트 div가 `overflowY: auto + maxHeight: 55dvh`. 내부 헤더("🔨 만들 수 있는 조합" + 닫기)와 카테고리 탭(전체/음식/무기/방어구/재료)이 카드 리스트와 같은 스크롤 컨텍스트에 있어 스크롤하면 같이 사라짐. 카테고리를 바꾸려면 매번 위로 다시 올려야 함.
+
+### 결정
+
+헤더 + 카테고리 탭을 하나의 wrapper로 묶고 `position: sticky, top: -10px` 적용. 음수 top과 `margin: -10px -10px 0`로 패널 padding 영역까지 덮어 카드가 스크롤되어 들어와도 wrapper 배경(`#0f1a2e`)에 가려짐. zIndex:2로 카드보다 위.
+
+### 왜 sticky / 왜 flex column 분리가 아닌가
+
+flex column + 내부 카드 영역만 overflow:auto 방식도 가능하지만:
+- D-105 `.inventory-craft-side > div { overflow-y: auto !important, height: 100% !important }`가 landscape에서 루트에 강제 적용 → flex 자식 overflow와 충돌해 이중 스크롤 발생 위험.
+- sticky는 루트 overflow:auto 구조를 그대로 유지하면서 자식만 고정하므로 portrait/landscape 양쪽 호환.
+
+### 부수 변경
+
+- 헤더 div의 `marginBottom: '8px'` → `showCategoryTabs ? '8px' : 0` (탭 없을 때 헤더 단독 시 불필요한 여백 제거).
+- 탭 div의 `marginBottom: '8px'` 제거 — sticky wrapper의 `paddingBottom: 8px`가 카드 리스트와의 spacing 담당.
+
+---
+
 ## D-126. 가방 모달 — 그리드 중앙 정렬 + 모달 dvh 고정 (2026-04-27, `index.html` / `gameStyles.css`)
 
 요한 원문: "가방에서 상단부를 이루는 슬롯부분이 중앙 정렬 아닌게 거슬리고, 하단에 창이 잘려서 싫어" (모바일 iOS Safari 5G 환경 스크린샷 첨부).

@@ -2012,47 +2012,58 @@
                     overflowY: 'auto',
                     WebkitOverflowScrolling: 'touch'
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4b84a' }}>
-                            🔨 만들 수 있는 조합
+                    {/* D-127: 헤더 + 카테고리 탭은 sticky wrapper로 묶어 카드 리스트 스크롤
+                       시에도 상단 고정. top:-10px와 negative margin으로 패널 padding 영역까지
+                       배경 덮어 카드가 스크롤되어 들어와도 가려지게 함. */}
+                    <div style={{
+                        position: 'sticky',
+                        top: '-10px',
+                        background: '#0f1a2e',
+                        margin: '-10px -10px 0 -10px',
+                        padding: '10px 10px 8px 10px',
+                        zIndex: 2,
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showCategoryTabs ? '8px' : 0 }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4b84a' }}>
+                                🔨 만들 수 있는 조합
+                            </div>
+                            {onClose && (
+                                <button
+                                    onClick={onClose}
+                                    style={{ padding: '3px 8px', fontSize: '11px' }}
+                                >
+                                    닫기
+                                </button>
+                            )}
                         </div>
-                        {onClose && (
-                            <button
-                                onClick={onClose}
-                                style={{ padding: '3px 8px', fontSize: '11px' }}
-                            >
-                                닫기
-                            </button>
+                        {showCategoryTabs && (
+                            <div style={{
+                                display: 'flex',
+                                gap: '4px',
+                                flexWrap: 'wrap'
+                            }}>
+                                {CATEGORY_TABS.map(tab => {
+                                    const active = category === tab.id;
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => onCategoryChange && onCategoryChange(tab.id)}
+                                            style={{
+                                                padding: '4px 10px',
+                                                fontSize: '11px',
+                                                background: active ? '#d4b84a' : '#1a2f3e',
+                                                color: active ? '#1a1a2e' : '#aaa',
+                                                border: `1px solid ${active ? '#d4b84a' : '#2e5a6e'}`,
+                                                fontWeight: active ? 700 : 500,
+                                            }}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
-                    {showCategoryTabs && (
-                        <div style={{
-                            display: 'flex',
-                            gap: '4px',
-                            marginBottom: '8px',
-                            flexWrap: 'wrap'
-                        }}>
-                            {CATEGORY_TABS.map(tab => {
-                                const active = category === tab.id;
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => onCategoryChange && onCategoryChange(tab.id)}
-                                        style={{
-                                            padding: '4px 10px',
-                                            fontSize: '11px',
-                                            background: active ? '#d4b84a' : '#1a2f3e',
-                                            color: active ? '#1a1a2e' : '#aaa',
-                                            border: `1px solid ${active ? '#d4b84a' : '#2e5a6e'}`,
-                                            fontWeight: active ? 700 : 500,
-                                        }}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
                     {(!recipes || recipes.length === 0) && (
                         <div style={{ fontSize: '11px', color: '#666', padding: '12px 4px', textAlign: 'center' }}>
                             이 카테고리에 만들 수 있는 조합이 없다.
