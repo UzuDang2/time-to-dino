@@ -4687,6 +4687,37 @@
                 });
             }, [slots, inventory]);
 
+            // D-153: 방어구 내구도. 카드 cardDefense > 0이면 모든 잔여 방어구 1씩 차감.
+            //   armorInstancesInitial: 사냥 시작 시 인벤 보유 방어구 인스턴스별 잔여/이름.
+            //   slotArmorBefore[i]: i번째 슬롯 사용 직전 인스턴스별 잔여 배열.
+            const armorInstancesInitial = React.useMemo(() => {
+                const items = (inventory && inventory.items) || [];
+                return items
+                    .map(it => {
+                        const d = InventorySystem.resolveDef(it.type) || {};
+                        if (d.category !== 'shield' && d.category !== 'armor') return null;
+                        const max = Number(d.durability) || 0;
+                        const left = (typeof it.durabilityLeft === 'number')
+                            ? it.durabilityLeft : max;
+                        if (max <= 0) return null;
+                        return { id: it.id, name: d.name || it.type, max, left };
+                    })
+                    .filter(Boolean);
+            }, [inventory]);
+
+            const slotArmorBefore = React.useMemo(() => {
+                const states = [];
+                let cur = armorInstancesInitial.map(a => ({ ...a }));
+                for (const card of slots) {
+                    states.push(cur.map(a => ({ ...a }))); // before = 사용 직전
+                    const def = Number(card && card.defense) || 0;
+                    if (def > 0) {
+                        cur = cur.map(a => ({ ...a, left: Math.max(0, a.left - 1) }));
+                    }
+                }
+                return states;
+            }, [slots, armorInstancesInitial]);
+
             // D-46/D-47: 카드 재사용 규칙.
             //   - infinite 카드(주먹/회피/도망): 손패 1장, 슬롯 무제한 배치.
             //   - slotLimit 카드(돌 던지기/창 등): 손패 1장, 슬롯 배치는 가방 내 아이템 개수만큼.
@@ -4883,6 +4914,14 @@
                                                 {slotWeaponDur[i] && (
                                                     <div style={{ fontSize: '10px', color: '#aaa', marginTop: '2px' }}>
                                                         내구 {slotWeaponDur[i].before}/{slotWeaponDur[i].after}
+                                                    </div>
+                                                )}
+                                                {/* D-153: 방어 카드(defense>0)면 인벤 방어구별 사용 후 내구 표시. */}
+                                                {Number(card.defense) > 0 && slotArmorBefore[i] && slotArmorBefore[i].length > 0 && (
+                                                    <div style={{ fontSize: '10px', color: '#88aaff', marginTop: '2px' }}>
+                                                        {slotArmorBefore[i].map(a => (
+                                                            <div key={a.id}>🛡️ {a.name} {Math.max(0, a.left - 1)}/{a.max}</div>
+                                                        ))}
                                                     </div>
                                                 )}
                                                 {/* D-97: 분실 확률 안내 — 슬롯에 배치된 카드도 동일 표기. */}
@@ -5178,6 +5217,14 @@
                                                     {durBadge && (
                                                         <div style={{ fontSize: '10px', color: '#d4b84a' }}>
                                                             {durBadge}
+                                                        </div>
+                                                    )}
+                                                    {/* D-153: 방어 카드면 손패에서도 인벤 보유 방어구별 현재 잔여 표시. */}
+                                                    {Number(card.defense) > 0 && armorInstancesInitial.length > 0 && (
+                                                        <div style={{ fontSize: '10px', color: '#88aaff' }}>
+                                                            {armorInstancesInitial.map(a => (
+                                                                <div key={a.id}>🛡️ {a.name} {a.left}/{a.max}</div>
+                                                            ))}
                                                         </div>
                                                     )}
                                                     {/* D-97: 분실 확률 안내 (창던지기 등). full_loss=Y면 "분실", 확률이면 "N% 분실". */}

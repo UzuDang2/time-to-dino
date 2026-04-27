@@ -5,6 +5,31 @@
 
 ---
 
+## D-153. 방어 카드 — 인벤 방어구 잔여 내구도 표시 (2026-04-27, `index.html`)
+
+요한 원문: "여기에 방어구 내구도 표시 해줘, 방어스킬을 쓰면 내구도가 닳을텐데 유저는 얼마나 남았는지 모르잖아".
+
+### 결정
+
+D-150에서 방어 카드 사용 시 인벤 모든 방어구 1씩 차감 — 사용자 노출 없으면 잔여 파악 불가. HuntCombatModal 카드 UI에 잔여 내구 표기.
+
+#### 데이터
+
+- `armorInstancesInitial` useMemo: 인벤 shield/armor 인스턴스 목록 `[{id, name, max, left}]`.
+- `slotArmorBefore` useMemo: 슬롯별 사용 직전 인스턴스 잔여(슬롯 순회하며 cardDefense > 0이면 각 left -= 1, before = 사용 전 시점).
+
+#### 표시
+
+- **슬롯 카드**: cardDefense > 0이면 인스턴스별 한 줄씩 `🛡️ {name} {after}/{max}` (after = before - 1, 즉 사용 후 잔여).
+- **손패 카드**: cardDefense > 0이면 시작 시점(armorInstancesInitial) 잔여 `🛡️ {name} {left}/{max}`.
+- 색상 `#88aaff` (방어 stat 색 계열).
+
+### 효과
+
+웅크리기·방패 막기 같은 방어 카드를 보면 보유 방어구별 현재 잔여·사용 후 잔여 즉시 확인 — 깨질 때까지 몇 번 남았는지 노출.
+
+---
+
 ## D-152. 보관함 popover — 그림자/패널 격차 제거 (2026-04-27, `index.html`)
 
 요한 원문: "패널 사이즈와 그림자간의 격차가 있네 보관함 레시피 창에" + 스크린샷.
