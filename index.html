@@ -2651,6 +2651,208 @@
             );
         }
 
+        // D-114 (2026-04-24): 뒤져보기 다중 드롭 시 챙길 항목 선택 모달.
+        //   props:
+        //     drops      — itemType 문자열 배열 (예: ['branch','stone','meat']).
+        //     region     — 지역 표시용 라벨.
+        //     inventory  — 현 런 InventorySystem (가용 칸 미리보기 + 실제 인입).
+        //     onConfirm(selectedIndices) — 인덱스 배열을 받아 부모가 inventory.addItem 처리.
+        //                                  (선택 항목이 빈칸보다 많으면 부분 인입.)
+        //     onDiscardAll() — 선택 무시 + 모달 닫기.
+        //   레이아웃: 좌(드롭 후보 그리드 — 셀 탭 토글) + 우(가방 5x5 미리보기).
+        //   모바일 대응: 작은 화면에서는 위/아래로 쌓이는 flexWrap.
+        function LootPickupModal({ drops, region, inventory, onConfirm, onDiscardAll }) {
+            const list = Array.isArray(drops) ? drops : [];
+            const [selected, setSelected] = React.useState(() => {
+                // 디폴트 — 모두 선택. 가방 빈칸이 부족하면 들어갈 만큼만 들어가니 친절한 디폴트.
+                const s = new Set();
+                for (let i = 0; i < list.length; i++) s.add(i);
+                return s;
+            });
+
+            const toggle = (i) => {
+                setSelected(prev => {
+                    const next = new Set(prev);
+                    if (next.has(i)) next.delete(i);
+                    else next.add(i);
+                    return next;
+                });
+            };
+
+            const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+            const renderDropCell = (type, idx) => {
+                const def = (InventorySystem.resolveDef && InventorySystem.resolveDef(type))
+                    || InventorySystem.ITEMS[type] || {};
+                const name = def.name || type;
+                const notionItem = notionItems.find(it => it && it['이름'] === name);
+                const grade = notionItem && notionItem['아이템 등급'];
+                const emoji = itemEmoji(type);
+                const isSel = selected.has(idx);
+                return (
+                    <div
+                        key={idx}
+                        onClick={() => toggle(idx)}
+                        style={{
+                            width: '64px',
+                            height: '64px',
+                            borderRadius: '8px',
+                            background: isSel ? '#16213e' : '#0e1422',
+                            border: isSel ? '2px solid #4dd0e1' : '1px solid #2a3a5e',
+                            boxShadow: isSel ? '0 0 8px rgba(77,208,225,0.55)' : 'none',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            opacity: isSel ? 1 : 0.55,
+                            position: 'relative'
+                        }}
+                        title={name}
+                    >
+                        <div style={{ fontSize: '24px', lineHeight: 1 }}>
+                            {emoji || (name.length > 4 ? name.slice(0, 3) + '…' : name)}
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#ccc', marginTop: '2px', textAlign: 'center', lineHeight: 1.1 }}>
+                            {name}
+                        </div>
+                        {grade && (
+                            <span style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                fontSize: '8px',
+                                color: '#d4b84a',
+                                border: '1px solid #d4b84a',
+                                borderRadius: '3px',
+                                padding: '0 3px',
+                                background: 'rgba(0,0,0,0.5)'
+                            }}>
+                                {grade}
+                            </span>
+                        )}
+                    </div>
+                );
+            };
+
+            const emptyCount = inventory ? (() => {
+                // 1x1 단위로 가용 칸 개수 추정 — 빈칸이 N개 있으면 1x1 아이템 N개까지는 확실히 들어감.
+                // (모양 큰 아이템은 들어가는 만큼만 들어가는 부분 인입은 부모 onConfirm 측에서 처리.)
+                let n = 0;
+                for (let y = 0; y < inventory.rows; y++) {
+                    for (let x = 0; x < inventory.cols; x++) {
+                        if (inventory.isDisabled && inventory.isDisabled(x, y)) continue;
+                        if (inventory.grid[y][x] === null) n += 1;
+                    }
+                }
+                return n;
+            })() : 0;
+
+            return (
+                <div className="modal" style={{ zIndex: 1700 }}>
+                    <div className="modal-content" style={{
+                        background: '#1a1a2e',
+                        color: '#eee',
+                        border: '1px solid #2a3a5e',
+                        borderRadius: '10px',
+                        padding: '18px',
+                        maxWidth: '560px',
+                        width: '94vw',
+                        boxSizing: 'border-box'
+                    }}>
+                        <div style={{
+                            fontSize: '15px',
+                            fontWeight: 700,
+                            color: '#d4b84a',
+                            marginBottom: '12px',
+                            textAlign: 'center'
+                        }}>
+                            {region ? `[${region}] ` : ''}무엇을 챙길까
+                        </div>
+
+                        <div style={{
+                            display: 'flex',
+                            gap: '14px',
+                            justifyContent: 'center',
+                            flexWrap: 'wrap',
+                            marginBottom: '12px'
+                        }}>
+                            {/* 좌: 드롭 후보 */}
+                            <div>
+                                <div style={{ fontSize: '11px', color: '#bbb', marginBottom: '6px', textAlign: 'center' }}>
+                                    발견 ({list.length})
+                                </div>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: `repeat(${Math.min(list.length, 3)}, 64px)`,
+                                    gap: '6px',
+                                    background: '#0f3460',
+                                    padding: '8px',
+                                    borderRadius: '8px'
+                                }}>
+                                    {list.map((t, i) => renderDropCell(t, i))}
+                                </div>
+                            </div>
+
+                            {/* 우: 가방 미리보기 */}
+                            <div>
+                                <div style={{ fontSize: '11px', color: '#bbb', marginBottom: '6px', textAlign: 'center' }}>
+                                    가방 (빈칸 {emptyCount})
+                                </div>
+                                {inventory && (
+                                    <CampInventoryGrid inventory={inventory} cellSize={28} />
+                                )}
+                            </div>
+                        </div>
+
+                        <div style={{
+                            fontSize: '11px',
+                            color: '#aaa',
+                            textAlign: 'center',
+                            marginBottom: '12px',
+                            lineHeight: 1.5
+                        }}>
+                            챙길 항목을 탭. 가방 빈칸이 부족하면 그만큼만 들어간다.
+                            <br />선택 {selected.size} / {list.length}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                onClick={() => onConfirm && onConfirm(Array.from(selected))}
+                                disabled={selected.size === 0}
+                                style={{
+                                    background: selected.size === 0 ? '#2a2a3e' : '#d4b84a',
+                                    color: selected.size === 0 ? '#666' : '#1a1a2e',
+                                    border: 'none',
+                                    padding: '10px 20px',
+                                    borderRadius: '6px',
+                                    cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+                                    fontSize: '13px',
+                                    fontWeight: 700
+                                }}
+                            >
+                                챙기기 ({selected.size})
+                            </button>
+                            <button
+                                onClick={() => onDiscardAll && onDiscardAll()}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#bbb',
+                                    border: '1px solid #4a4a6e',
+                                    padding: '10px 20px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px'
+                                }}
+                            >
+                                모두 버리기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // ============================================
         // D-110 (2026-04-24): 런 점수 계산 — 순수 함수.
         //   입력: 런 종료 시점 스냅샷 + runStats(누적 추적) + selectedItems(LootResult 선택).
@@ -4799,6 +5001,9 @@
             // D-28 획득 토스트 — 현재 노출 중인 토스트 1개만 유지.
             // 구조: { id: number, entries: [{ name, count, grade? }] } | null
             const [lootToast, setLootToast] = useState(null);
+            // D-114: 뒤져보기 다중 드롭 시 챙길 항목 선택 모달 데이터.
+            // 구조: { id, drops: [itemType, ...], region } | null
+            const [lootPickup, setLootPickup] = useState(null);
             // D-52: 풍족한 땅(구 좋은 곳) 등 타일 이벤트는 토스트로 안내.
             const [tileEventToast, setTileEventToast] = useState(null);
             // D-42 (2026-04-23 요한 지시): 보스 위치 가시성은 "지형 revealed"와 분리.
@@ -5626,6 +5831,10 @@
                     // D-35: 같은 타일 반복·복귀 뒤져보기에는 페널티 곱수가 붙는다
                     //       (hasBeenLeft 0.5 * 0.5^searchedCount). rollSearchLoot가
                     //       tile 객체를 받아 안에서 처리한다.
+                    //
+                    // D-114: 결과 길이 ≥ 2면 자동 인입 안 하고 LootPickupModal로.
+                    //   유저가 챙길 항목을 직접 선택. 카드 자체는 이미 소모된 상태(시간/발각 정상).
+                    //   결과 1개면 기존대로 자동 인입 + LootToast.
                     const tile = tiles[currentTile];
                     const currentRegion = tile?.region;
                     // D-78: 사체 타일 첫 뒤져보기 → 일반 region 드롭풀 + 생고기 +1 보너스.
@@ -5634,63 +5843,80 @@
                     const carcassBonus = onCarcass && !carcassMeatTaken.has(currentTile);
                     if (currentRegion) {
                         const drops = rollSearchLoot(currentRegion, tile);
-                        // 같은 아이템 개수 누적 (토스트/메시지 가독성)
-                        const counter = new Map(); // item -> count
-                        let overflow = 0; // 가방 포화로 못 담은 수
-                        drops.forEach(({ item }) => {
-                            const added = inventory.addItem(item);
-                            if (added) {
-                                counter.set(item, (counter.get(item) || 0) + 1);
-                            } else {
-                                overflow += 1;
-                            }
-                        });
+                        // 모든 드롭 후보를 단일 배열로 합치기 (search + carcass 보너스).
+                        const allDrops = drops.map(d => d.item);
+                        if (carcassBonus) allDrops.push('meat');
 
-                        // D-78: 사체 첫 뒤져보기 보너스 — 생고기 +1. 한 번만.
-                        if (carcassBonus) {
-                            const addedMeat = inventory.addItem('meat');
-                            if (addedMeat) {
-                                counter.set('meat', (counter.get('meat') || 0) + 1);
-                            } else {
-                                overflow += 1;
+                        // D-114: 다중 드롭이면 모달로. carcass 보너스 소진은 모달 마운트 시점에
+                        // 미리 처리(드롭이 카드 결과로 확정된 뒤이므로 사체 보상은 1회 소진된 것으로 간주).
+                        if (allDrops.length >= 2) {
+                            if (carcassBonus) {
+                                setCarcassMeatTaken(prev => {
+                                    const next = new Set(prev);
+                                    next.add(currentTile);
+                                    return next;
+                                });
                             }
-                            setCarcassMeatTaken(prev => {
-                                const next = new Set(prev);
-                                next.add(currentTile);
-                                return next;
+                            // 타일 카운터는 자동 인입 분기와 동일하게 갱신.
+                            setTiles(prev => prev.map(t =>
+                                t.id === currentTile
+                                    ? { ...t, searchedCount: (t.searchedCount || 0) + 1 }
+                                    : t
+                            ));
+                            setLootPickup({
+                                id: Date.now() + Math.random(),
+                                drops: allDrops,
+                                region: currentRegion
                             });
-                            // 사체 trace 마커는 이 타일에 남아있더라도 visited 이후엔 사체 🦴가
-                            // 이미 가운데 아이콘으로 노출되므로 trace는 그대로 둬도 혼선 없음.
-                        }
-
-                        if (counter.size > 0) {
-                            const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
-                            const entries = [];
-                            const nameParts = [];
-                            counter.forEach((count, item) => {
-                                const def = InventorySystem.ITEMS[item] || {};
-                                const displayName = def.name || item;
-                                const notionItem = notionItems.find(it => it && it['이름'] === displayName);
-                                const grade = notionItem && notionItem['아이템 등급'];
-                                entries.push({ name: displayName, count, grade });
-                                nameParts.push(count > 1 ? `${displayName} ×${count}` : displayName);
-                            });
-                            msg += `[${currentRegion}] ${nameParts.join(', ')}을(를) 발견했다.`;
-                            if (overflow > 0) msg += ` (가방이 가득 차 ${overflow}개는 두고 왔다.)`;
-                            showLootToast(entries);
-                        } else if (overflow > 0) {
-                            msg += `[${currentRegion}] 쓸 만한 걸 찾았지만 가방이 가득 차 들고 오지 못했다.`;
+                            msg += `[${currentRegion}] 무언가를 발견했다. 챙길 것을 골라라.`;
                         } else {
-                            msg += `[${currentRegion}] 이 근처에는 쓸만한 게 없다.`;
-                        }
+                            // 단일 드롭(또는 0개) — 기존 자동 인입 흐름.
+                            const counter = new Map();
+                            let overflow = 0;
+                            allDrops.forEach(item => {
+                                const added = inventory.addItem(item);
+                                if (added) {
+                                    counter.set(item, (counter.get(item) || 0) + 1);
+                                } else {
+                                    overflow += 1;
+                                }
+                            });
 
-                        // D-35: 이 타일의 뒤져보기 카운터 증가.
-                        // 추첨이 끝난 뒤에 올려야 "첫 사용은 mult=1" 규약이 지켜진다.
-                        setTiles(prev => prev.map(t =>
-                            t.id === currentTile
-                                ? { ...t, searchedCount: (t.searchedCount || 0) + 1 }
-                                : t
-                        ));
+                            if (carcassBonus) {
+                                setCarcassMeatTaken(prev => {
+                                    const next = new Set(prev);
+                                    next.add(currentTile);
+                                    return next;
+                                });
+                            }
+
+                            if (counter.size > 0) {
+                                const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+                                const entries = [];
+                                const nameParts = [];
+                                counter.forEach((count, item) => {
+                                    const def = InventorySystem.ITEMS[item] || {};
+                                    const displayName = def.name || item;
+                                    const notionItem = notionItems.find(it => it && it['이름'] === displayName);
+                                    const grade = notionItem && notionItem['아이템 등급'];
+                                    entries.push({ name: displayName, count, grade });
+                                    nameParts.push(count > 1 ? `${displayName} ×${count}` : displayName);
+                                });
+                                msg += `[${currentRegion}] ${nameParts.join(', ')}을(를) 발견했다.`;
+                                if (overflow > 0) msg += ` (가방이 가득 차 ${overflow}개는 두고 왔다.)`;
+                                showLootToast(entries);
+                            } else if (overflow > 0) {
+                                msg += `[${currentRegion}] 쓸 만한 걸 찾았지만 가방이 가득 차 들고 오지 못했다.`;
+                            } else {
+                                msg += `[${currentRegion}] 이 근처에는 쓸만한 게 없다.`;
+                            }
+
+                            setTiles(prev => prev.map(t =>
+                                t.id === currentTile
+                                    ? { ...t, searchedCount: (t.searchedCount || 0) + 1 }
+                                    : t
+                            ));
+                        }
                     } else {
                         // 안전망: region 없는 타일(구버전 세이브 등)은 레거시 동작
                         inventory.addItem('material_low');
@@ -6367,6 +6593,47 @@
                             inventory={inventory}
                             onCook={handleCookRecipe}
                             onClose={() => setCookingOpen(false)}
+                        />
+                    )}
+
+                    {/* D-114: 뒤져보기 다중 드롭 시 챙길 항목 선택 모달.
+                        search 분기에서 setLootPickup({drops, region})로 노출.
+                        - 챙기기: 선택된 인덱스만 inventory.addItem. 부분 인입은 토스트 노출.
+                        - 모두 버리기: 인입 없이 모달만 닫음. */}
+                    {lootPickup && inventory && (
+                        <LootPickupModal
+                            drops={lootPickup.drops}
+                            region={lootPickup.region}
+                            inventory={inventory}
+                            onConfirm={(selectedIndices) => {
+                                const drops = lootPickup.drops || [];
+                                const counter = new Map();
+                                let overflow = 0;
+                                for (const idx of selectedIndices) {
+                                    const t = drops[idx];
+                                    if (!t) continue;
+                                    const ok = inventory.addItem(t);
+                                    if (ok) counter.set(t, (counter.get(t) || 0) + 1);
+                                    else overflow += 1;
+                                }
+                                if (counter.size > 0) {
+                                    const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
+                                    const entries = [];
+                                    counter.forEach((count, item) => {
+                                        const def = InventorySystem.ITEMS[item] || {};
+                                        const displayName = def.name || item;
+                                        const notionItem = notionItems.find(it => it && it['이름'] === displayName);
+                                        const grade = notionItem && notionItem['아이템 등급'];
+                                        entries.push({ name: displayName, count, grade });
+                                    });
+                                    showLootToast(entries);
+                                }
+                                if (overflow > 0) {
+                                    setMessage(`가방이 가득 차 ${overflow}개는 두고 왔다.`);
+                                }
+                                setLootPickup(null);
+                            }}
+                            onDiscardAll={() => setLootPickup(null)}
                         />
                     )}
 
