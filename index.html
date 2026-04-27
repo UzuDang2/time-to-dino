@@ -842,9 +842,12 @@
                         bottom: '10px',
                         left: '10px',
                         right: '10px',
-                        zIndex: 1300,
+                        // D-122: z-index 제거 — modal(.modal z-index:100, fixed) 아래로 자연 스택.
+                        //   .map-area 내부 absolute라 같은 컨텍스트의 형제만 위에 있음.
+                        zIndex: 1,
                         pointerEvents: 'none',
-                        background: 'rgba(0, 0, 0, 0.95)',
+                        // D-122: 배경색 #262626 투명도 90%.
+                        background: 'rgba(38, 38, 38, 0.9)',
                         border: '1px solid #2a2f4a',
                         borderRadius: '8px',
                         padding: '10px 16px',
