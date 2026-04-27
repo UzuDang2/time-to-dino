@@ -5,6 +5,71 @@
 
 ---
 
+## D-110. 런 점수 시스템 + 전리품 결과창 + 이동거리 점수 (2026-04-24, `index.html` / `gameStyles.css`)
+
+요한 원문(요지): 런 종료 시 점수를 산출해 보여주고, 전리품을 직접 골라 캠프로 가져갈 수 있어야 한다. 시간 잔여 점수는 모호하니 **이동거리(직접 밟은 고유 타일 수)** 기반으로 바꿔라. 캠프에서 누적 점수도 보이게.
+
+### 결정
+
+#### A. `calculateRunScore` (순수 함수)
+
+`{ victory, uniqueTilesVisited, detection, items, runStats, selectedItems }` → score.
+
+- victory=false → 0 (사망은 점수 무효).
+- 생존 100 + `uniqueTilesVisited × 3` + (detection<80 ? 30 : 0).
+- runStats: L1 prey ×5, L2 prey ×20, 보스 위협권(거리≤2 진입) ×15.
+- 자원: 무기 5, shield/armor 8, grade 1/2/3 → 1/3/6.
+- selectedItems가 배열이면 그것만, null이면 items 전체로 자원 점수 산출.
+
+근거: 시간 잔여는 "남으면 좋은데 굳이 일찍 갈 필요?"라는 모호함을 만든다. 이동거리는 탐험의 본질(맵을 더 본다 = 더 본다)을 직접 보상.
+
+#### B. `runStats` 추적 (Game 컴포넌트)
+
+`{ l1PreyKills, l2PreyKills, bossDangerEntered }`.
+
+- 사냥 victory 분기에서 prey.level 보고 +1.
+- moveTo 직후 `boss.calculateDistance(target, boss.position) ≤ 2` 시 +1. `bossDangerFlag` ref로 동일 진입 중복 카운트 방지.
+
+#### C. `LootResultScreen` (신규)
+
+- 8x12 인벤 그리드 시각, items.x/y/shape 그대로 배치. 셀 탭 = 선택/해제.
+- 초기값: 모든 items 선택. selectedIds 변동 시 점수 실시간 재계산(자원 점수만 변동).
+- 헤더 우측 ScoreBadge — 점수 + 산출 항목 미니 리스트.
+- [전부 챙기기] / [선택만 챙기기] / [취소].
+
+근거(옵션 B 채택): 전리품 결과창의 본질은 "선택 = 점수 변동" 시각화. 정적 점수만 보면 의미 반감.
+
+#### D. `GameEndModal` 확장
+
+- 승리 시 ScoreBadge(전체 인입 기준) + [📦 전리품 확인] 버튼 노출.
+- 사망 시 점수·전리품 버튼 모두 미노출.
+- showPathView OR showLoot면 모달 자체 숨김.
+- 기존 [🏕️ 베이스캠프로 귀환]은 전체 자동 인입(LootResult 안 거치고 바로 나가도 손해 없음).
+
+#### E. `campState.runs` 확장 + CampScreen 통계
+
+- runs에 `bestScore`, `totalScore`, `lastScore` 추가. serializer/deserializer 마이그레이션 — 기존 키 없으면 0.
+- handleRunEnd에서 인입할 itemsToTransfer 기준으로 점수 산출 → bestScore=Math.max, totalScore+=, lastScore=score.
+- CampScreen: runs.total>0이면 score-badge 통계(최고/누적/평균/마지막 런).
+
+### 변경 파일
+
+- `index.html`: calculateRunScore, ScoreBadge, buildScoreBreakdown, LootResultScreen 신규. GameEndModal/Game/App/CampScreen 확장.
+- `gameStyles.css`: `.score-badge`, `.score-badge .score-value/.score-row/.lbl`, `.loot-item.selected`.
+
+### 검증
+
+- babel transform PASS.
+- 단위 검산: 승리 / uniqueTiles=20 / detection=70 / L2 ×1 / 자원 1단계×3 + 2단계×2 → 100 + 60 + 30 + 20 + 3 + 6 = **219** PASS.
+- 브라우저 E2E: 후속(요한 QA — pending).
+
+### 후속 / 알려진 한계
+
+- 점수 균형은 첫 이터레이션. L1/L2/보스 가중치 비율은 플레이 후 튜닝 필요.
+- 전리품 결과창은 인벤 그리드만 보여줌 — 항목별 이름/점수 기여를 cell hover 등으로 노출하면 더 직관적(추후).
+
+---
+
 ## D-108. 사냥감 행동 풀 SSOT 분리 + 종별 특수공격 도입 + HuntModal 회피 표시 정리 (2026-04-24, `사냥감행동` 시트 / `combatDeck.js` / `index.html`)
 
 요한 지시: 사냥감 turn 토큰을 4가지(attack/defend/evade/peek)에 가두지 말고, 시트의 행동 풀에서 골라 쓰는 구조로. 종별 특수공격 도입. HuntModal 슬롯에 행동명·수치 배지 + 회피 1 이상일 때만 회피 노출.

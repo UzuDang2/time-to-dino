@@ -1,5 +1,17 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**D-110, 런 점수 시스템 + 전리품 결과창 + 이동거리 점수**).
+D-110 점수·전리품:
+- `calculateRunScore` 순수 함수 (index.html:2603) — victory=false→0. 생존 100 + uniqueTilesVisited×3 + (detection<80 ? 30 : 0) + L1×5/L2×20/보스위협권×15 + 자원(무기 5, shield/armor 8, grade 1/2/3 → 1/3/6).
+  - 시간 잔여 → 이동거리(고유 타일) 점수로 교체(요한 지시: 모호함 제거).
+- `runStats` 추적 (Game state): l1PreyKills/l2PreyKills (사냥 victory 시), bossDangerEntered (boss 거리≤2 진입, ref로 중복 가드).
+- `LootResultScreen` 신규: 8x12 그리드 시각, 셀 탭 = 선택/해제(초기 전체 선택). selectedIds 변동 시 점수 실시간 재계산. [전부 챙기기]/[선택만 챙기기]/[취소].
+- `GameEndModal` 확장: 승리 시 ScoreBadge(전체 인입 기준) + [📦 전리품 확인] 버튼. 사망 시 둘 다 미노출.
+- `campState.runs` 확장: bestScore/totalScore/lastScore. handleRunEnd에서 인입할 itemsToTransfer 기준 점수 산출 → 갱신. 직렬화/역직렬화 마이그레이션(기존 키 없으면 0).
+- CampScreen: runs.total>0이면 score-badge 통계(최고/누적/평균/마지막 런).
+- gameStyles.css: `.score-badge` (+ `.score-value`/`.score-row`/`.lbl`), `.loot-item.selected`.
+- 검증: babel transform PASS. 단위 검산 219 PASS. 브라우저 E2E 후속.
+
 마지막 검증: 2026-04-24 (**D-109, 베이스캠프 1단계 — 시나리오·캠프 화면·퀘스트·localStorage 영속화**).
 D-109 베이스캠프 1단계:
 - 게임 흐름 전면 리팩토링: 단일 Game 컴포넌트 → App(view) + Game/CampScreen 분기.
