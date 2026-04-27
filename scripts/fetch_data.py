@@ -102,6 +102,10 @@ SHEET_TABS = {
     "사냥감": "prey.json",
     "빌딩": "buildings.json",
     "특수카드": "special_cards.json",
+    # D-108 (2026-04-24): 사냥감 행동 풀 SSOT 분리.
+    #   prey.actions_per_turn의 토큰 id가 여기 정의된 행동(attack/defend/evade/peek + 종별 특수)을
+    #   참조한다. 헤더: id, name, type, damage, accuracy, defense, description.
+    "사냥감행동": "prey_actions.json",
 }
 
 # 드롭테이블 전용 탭 이름
@@ -1290,6 +1294,7 @@ BROWSER_BUNDLE_KEYS = {
     "combat_cards.json": "COMBAT_CARDS",
     "monsters.json": "MONSTERS",
     "prey.json": "PREY",
+    "prey_actions.json": "PREY_ACTIONS",  # D-108: 사냥감 행동 풀 SSOT
     "special_cards.json": "SPECIAL_CARDS",
     "buildings.json": "BUILDINGS",
     "items.json": "ITEMS",

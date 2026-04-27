@@ -1,0 +1,182 @@
+[
+  {
+    "id": "attack",
+    "name": "일반 공격",
+    "type": "attack",
+    "damage": 2,
+    "accuracy": 0,
+    "defense": 0,
+    "description": "기본 공격 — L2 prey 평타"
+  },
+  {
+    "id": "defend",
+    "name": "방어",
+    "type": "defend",
+    "damage": 0,
+    "accuracy": 0,
+    "defense": 1,
+    "description": "그 턴 받는 대미지 -1"
+  },
+  {
+    "id": "evade",
+    "name": "회피",
+    "type": "evade",
+    "damage": 0,
+    "accuracy": 0,
+    "defense": 0,
+    "description": "그 턴 회피 시도 (prey.evade%)"
+  },
+  {
+    "id": "peek",
+    "name": "눈치보기",
+    "type": "peek",
+    "damage": 0,
+    "accuracy": 0,
+    "defense": 0,
+    "description": "가만히 있음"
+  },
+  {
+    "id": "kick",
+    "name": "발차기",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 1,
+    "defense": 0,
+    "description": "토끼 특수 — 약한 공격"
+  },
+  {
+    "id": "nibble",
+    "name": "갉기",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 0,
+    "defense": 0,
+    "description": "쥐 특수"
+  },
+  {
+    "id": "acorn_throw",
+    "name": "도토리 던지기",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 1,
+    "defense": 0,
+    "description": "다람쥐 특수"
+  },
+  {
+    "id": "peck",
+    "name": "쪼기",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 1,
+    "defense": 0,
+    "description": "메추라기새 특수"
+  },
+  {
+    "id": "slime_lash",
+    "name": "점액 채찍",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 0,
+    "defense": 0,
+    "description": "도롱뇽 특수"
+  },
+  {
+    "id": "venom_bite",
+    "name": "독니",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 2,
+    "defense": 0,
+    "description": "작은 뱀 특수 — 명중 높음"
+  },
+  {
+    "id": "tongue_lash",
+    "name": "혀 채찍",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 1,
+    "defense": 0,
+    "description": "개구리 특수"
+  },
+  {
+    "id": "pinch",
+    "name": "집게",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 0,
+    "defense": 0,
+    "description": "게 특수"
+  },
+  {
+    "id": "kick_jump",
+    "name": "점프 차기",
+    "type": "attack",
+    "damage": 1,
+    "accuracy": 1,
+    "defense": 0,
+    "description": "메뚜기 특수"
+  },
+  {
+    "id": "tusk_charge",
+    "name": "어금니 돌진",
+    "type": "attack",
+    "damage": 3,
+    "accuracy": 1,
+    "defense": 0,
+    "description": "멧돼지 특수"
+  },
+  {
+    "id": "pounce_bite",
+    "name": "뛰어들어 깨물기",
+    "type": "attack",
+    "damage": 2,
+    "accuracy": 1,
+    "defense": 0,
+    "description": "작은 공룡 특수"
+  },
+  {
+    "id": "gore",
+    "name": "뿔로 들이박기",
+    "type": "attack",
+    "damage": 3,
+    "accuracy": 1,
+    "defense": 0,
+    "description": "사슴 특수"
+  },
+  {
+    "id": "frenzy_claw",
+    "name": "광폭 발톱",
+    "type": "attack",
+    "damage": 2,
+    "accuracy": 0,
+    "defense": 0,
+    "description": "오소리 특수"
+  },
+  {
+    "id": "feint_strike",
+    "name": "기만 일격",
+    "type": "attack",
+    "damage": 2,
+    "accuracy": 2,
+    "defense": 0,
+    "description": "여우 특수 — 회피·명중 모두"
+  },
+  {
+    "id": "wing_slap",
+    "name": "날개 후려치기",
+    "type": "attack",
+    "damage": 2,
+    "accuracy": 0,
+    "defense": 0,
+    "description": "큰 새 특수"
+  },
+  {
+    "id": "iron_curl",
+    "name": "강철 말기",
+    "type": "defend",
+    "damage": 0,
+    "accuracy": 0,
+    "defense": 3,
+    "description": "아르마딜로 특수 — 높은 방어"
+  }
+]

@@ -259,8 +259,8 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "actions_per_turn": "peek,defend,evade",
-      "defense": 1
+      "actions_per_turn": "peek,defend,kick",
+      "defense": 0
     },
     {
       "id": "mouse",
@@ -274,23 +274,23 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "actions_per_turn": "peek,peek,evade",
-      "defense": 1
+      "actions_per_turn": "peek,peek,nibble",
+      "defense": 0
     },
     {
       "id": "squirrel",
       "name": "다람쥐",
       "level": 1,
       "hp": 3,
-      "attack": 0,
+      "attack": 1,
       "evade_rate": 1,
       "type": "회피형",
       "meat": 1,
       "habitat": "숲",
       "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "actions_per_turn": "peek,evade,peek",
-      "defense": 1
+      "actions_per_turn": "peek,evade,acorn_throw",
+      "defense": 0
     },
     {
       "id": "bird",
@@ -304,8 +304,8 @@ window.TTD_DATA = {
       "habitat": "평원",
       "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "actions_per_turn": "peek,peek,evade",
-      "defense": 1
+      "actions_per_turn": "peek,peek,peck",
+      "defense": 0
     },
     {
       "id": "salamander",
@@ -319,8 +319,8 @@ window.TTD_DATA = {
       "habitat": "숲",
       "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "actions_per_turn": "peek,evade,defend",
-      "defense": 1
+      "actions_per_turn": "peek,slime_lash,evade",
+      "defense": 0
     },
     {
       "id": "snake",
@@ -334,8 +334,8 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "actions_per_turn": "peek,defend,evade",
-      "defense": 1
+      "actions_per_turn": "peek,venom_bite,evade",
+      "defense": 0
     },
     {
       "id": "frog",
@@ -349,8 +349,8 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "actions_per_turn": "peek,evade,peek",
-      "defense": 1
+      "actions_per_turn": "peek,evade,tongue_lash",
+      "defense": 0
     },
     {
       "id": "crab",
@@ -364,7 +364,7 @@ window.TTD_DATA = {
       "habitat": "시냇물",
       "evade_per_turn": "1,1,1",
       "drop_item": "crab_whole",
-      "actions_per_turn": "peek,defend,evade",
+      "actions_per_turn": "peek,pinch,evade",
       "defense": 1
     },
     {
@@ -379,8 +379,8 @@ window.TTD_DATA = {
       "habitat": "평원",
       "evade_per_turn": "1,1,1",
       "drop_item": "grasshopper_whole",
-      "actions_per_turn": "peek,peek,evade",
-      "defense": 1
+      "actions_per_turn": "peek,peek,kick_jump",
+      "defense": 0
     },
     {
       "id": "boar",
@@ -390,11 +390,11 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 1,
       "type": "반격형",
-      "meat": 1,
+      "meat": 2,
       "habitat": "덤불,숲",
       "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "actions_per_turn": "attack,attack,defend,evade",
+      "actions_per_turn": "tusk_charge,attack,defend,evade",
       "defense": 1
     },
     {
@@ -402,14 +402,14 @@ window.TTD_DATA = {
       "name": "작은 공룡",
       "level": 2,
       "hp": 4,
-      "attack": 2,
-      "evade_rate": 1,
+      "attack": 1,
+      "evade_rate": 2,
       "type": "반격형",
       "meat": 1,
       "habitat": "동굴",
-      "evade_per_turn": "1,1,1,1",
+      "evade_per_turn": "2,2,2,2",
       "drop_item": "big_meat",
-      "actions_per_turn": "attack,evade,attack,peek",
+      "actions_per_turn": "pounce_bite,evade,attack,peek",
       "defense": 1
     },
     {
@@ -424,7 +424,7 @@ window.TTD_DATA = {
       "habitat": "평원,숲",
       "evade_per_turn": "3,3,3,3",
       "drop_item": "big_meat",
-      "actions_per_turn": "evade,evade,attack,peek",
+      "actions_per_turn": "evade,gore,attack,peek",
       "defense": 1
     },
     {
@@ -439,7 +439,7 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "actions_per_turn": "defend,attack,evade,attack",
+      "actions_per_turn": "defend,frenzy_claw,evade,attack",
       "defense": 1
     },
     {
@@ -454,7 +454,7 @@ window.TTD_DATA = {
       "habitat": "숲",
       "evade_per_turn": "3,3,3,3",
       "drop_item": "big_meat",
-      "actions_per_turn": "evade,attack,evade,peek",
+      "actions_per_turn": "feint_strike,evade,evade,peek",
       "defense": 1
     },
     {
@@ -465,11 +465,11 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 1,
       "type": "반격형",
-      "meat": 1,
+      "meat": 2,
       "habitat": "평원",
       "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "actions_per_turn": "attack,evade,defend,peek",
+      "actions_per_turn": "wing_slap,evade,defend,peek",
       "defense": 1
     },
     {
@@ -480,12 +480,194 @@ window.TTD_DATA = {
       "attack": 2,
       "evade_rate": 1,
       "type": "방어형",
-      "meat": 1,
+      "meat": 2,
       "habitat": "동굴",
       "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "actions_per_turn": "defend,defend,evade,peek",
+      "actions_per_turn": "iron_curl,defend,evade,peek",
       "defense": 1
+    }
+  ],
+  "PREY_ACTIONS": [
+    {
+      "id": "attack",
+      "name": "일반 공격",
+      "type": "attack",
+      "damage": 2,
+      "accuracy": 0,
+      "defense": 0,
+      "description": "기본 공격 — L2 prey 평타"
+    },
+    {
+      "id": "defend",
+      "name": "방어",
+      "type": "defend",
+      "damage": 0,
+      "accuracy": 0,
+      "defense": 1,
+      "description": "그 턴 받는 대미지 -1"
+    },
+    {
+      "id": "evade",
+      "name": "회피",
+      "type": "evade",
+      "damage": 0,
+      "accuracy": 0,
+      "defense": 0,
+      "description": "그 턴 회피 시도 (prey.evade%)"
+    },
+    {
+      "id": "peek",
+      "name": "눈치보기",
+      "type": "peek",
+      "damage": 0,
+      "accuracy": 0,
+      "defense": 0,
+      "description": "가만히 있음"
+    },
+    {
+      "id": "kick",
+      "name": "발차기",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 1,
+      "defense": 0,
+      "description": "토끼 특수 — 약한 공격"
+    },
+    {
+      "id": "nibble",
+      "name": "갉기",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 0,
+      "defense": 0,
+      "description": "쥐 특수"
+    },
+    {
+      "id": "acorn_throw",
+      "name": "도토리 던지기",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 1,
+      "defense": 0,
+      "description": "다람쥐 특수"
+    },
+    {
+      "id": "peck",
+      "name": "쪼기",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 1,
+      "defense": 0,
+      "description": "메추라기새 특수"
+    },
+    {
+      "id": "slime_lash",
+      "name": "점액 채찍",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 0,
+      "defense": 0,
+      "description": "도롱뇽 특수"
+    },
+    {
+      "id": "venom_bite",
+      "name": "독니",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 2,
+      "defense": 0,
+      "description": "작은 뱀 특수 — 명중 높음"
+    },
+    {
+      "id": "tongue_lash",
+      "name": "혀 채찍",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 1,
+      "defense": 0,
+      "description": "개구리 특수"
+    },
+    {
+      "id": "pinch",
+      "name": "집게",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 0,
+      "defense": 0,
+      "description": "게 특수"
+    },
+    {
+      "id": "kick_jump",
+      "name": "점프 차기",
+      "type": "attack",
+      "damage": 1,
+      "accuracy": 1,
+      "defense": 0,
+      "description": "메뚜기 특수"
+    },
+    {
+      "id": "tusk_charge",
+      "name": "어금니 돌진",
+      "type": "attack",
+      "damage": 3,
+      "accuracy": 1,
+      "defense": 0,
+      "description": "멧돼지 특수"
+    },
+    {
+      "id": "pounce_bite",
+      "name": "뛰어들어 깨물기",
+      "type": "attack",
+      "damage": 2,
+      "accuracy": 1,
+      "defense": 0,
+      "description": "작은 공룡 특수"
+    },
+    {
+      "id": "gore",
+      "name": "뿔로 들이박기",
+      "type": "attack",
+      "damage": 3,
+      "accuracy": 1,
+      "defense": 0,
+      "description": "사슴 특수"
+    },
+    {
+      "id": "frenzy_claw",
+      "name": "광폭 발톱",
+      "type": "attack",
+      "damage": 2,
+      "accuracy": 0,
+      "defense": 0,
+      "description": "오소리 특수"
+    },
+    {
+      "id": "feint_strike",
+      "name": "기만 일격",
+      "type": "attack",
+      "damage": 2,
+      "accuracy": 2,
+      "defense": 0,
+      "description": "여우 특수 — 회피·명중 모두"
+    },
+    {
+      "id": "wing_slap",
+      "name": "날개 후려치기",
+      "type": "attack",
+      "damage": 2,
+      "accuracy": 0,
+      "defense": 0,
+      "description": "큰 새 특수"
+    },
+    {
+      "id": "iron_curl",
+      "name": "강철 말기",
+      "type": "defend",
+      "damage": 0,
+      "accuracy": 0,
+      "defense": 3,
+      "description": "아르마딜로 특수 — 높은 방어"
     }
   ],
   "SPECIAL_CARDS": [
