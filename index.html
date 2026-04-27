@@ -3930,7 +3930,11 @@
                                                 {type === 'defend' && def > 0 && (
                                                     <span style={{ color: '#4db8ff' }}>🛡️+{def}</span>
                                                 )}
-                                                {type === 'evade' && ev.final > 0 && (
+                                                {/* D-111 (요한 지시): evade 행동 슬롯엔 회피 수치 항상 노출.
+                                                    이전 가드 ev.final > 0은 player 카드 acc≥base로 final=0 된 경우
+                                                    회피 0이 숨어 "회피 기술인데 수치가 안 보인다" 문제 발생.
+                                                    회피 행동 = 회피 수치 항상 보이게. attack/defend/peek은 그대로 미노출. */}
+                                                {type === 'evade' && (
                                                     <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />
                                                 )}
                                             </div>
