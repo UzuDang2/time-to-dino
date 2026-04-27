@@ -1,5 +1,14 @@
 # project-state.md
 
+마지막 검증: 2026-04-24 (**D-108, 사냥감행동 시트 신설 + 종별 특수공격 + HuntModal 정리**).
+D-108 사냥감 행동 풀 SSOT 분리:
+- 새 시트 탭 `사냥감행동` (id, name, type, damage, accuracy, defense, description) — 20행. 기본 4 + 종별 특수 16.
+- prey.json actions_per_turn 종별 특수 id 패치 (L1 마지막 턴 / L2 분산). 예: rabbit "peek,defend,kick", boar "tusk_charge,attack,defend,evade", armadillo "iron_curl,defend,evade,peek".
+- combatDeck.js::resolveHunt: findPreyAction(id) lookup으로 일반화. actionDef.damage/accuracy/defense 우선, 0이면 prey.* 폴백. preyActionType 필드 turns[] 추가.
+- index.html HuntCombatModal: slotActions[i] = actionDef. type별 배지(🗡️+N / 🏹+N / 🛡️+N / EvadeBadge). finalEvade > 0일 때만 회피 배지 (요한: "회피 1 이상일 때만"). 로그 분기는 preyActionType 기반.
+- Node 스모크 PASS: tusk_charge dmg=3, iron_curl defense=3, feint_strike(acc 2) dodge 관통, wing_slap(acc 0) dodge 차단.
+- 브라우저 검증은 후속.
+
 마지막 검증: 2026-04-26 (**14th session — 웹 세션, D-102**).
 D-102 L1 evade 수치 1로 통일 + dodge 카드 evade 신설:
 - prey.json L1 9종 모두 evade_per_turn="1,1,1", evade_rate=1.

@@ -5,6 +5,63 @@
 
 ---
 
+## D-108. 사냥감 행동 풀 SSOT 분리 + 종별 특수공격 도입 + HuntModal 회피 표시 정리 (2026-04-24, `사냥감행동` 시트 / `combatDeck.js` / `index.html`)
+
+요한 지시: 사냥감 turn 토큰을 4가지(attack/defend/evade/peek)에 가두지 말고, 시트의 행동 풀에서 골라 쓰는 구조로. 종별 특수공격 도입. HuntModal 슬롯에 행동명·수치 배지 + 회피 1 이상일 때만 회피 노출.
+
+### 배경
+
+- 기존(D-95~D-102): prey.actions_per_turn은 4가지 타입 토큰만 허용. resolveHunt가 toggle 식 분기로 동작.
+- 한계: prey 종마다 동일한 'attack' 데미지(prey.attack 필드 단일치). 시각적·기획적 다양성 부족 — 토끼 발차기 vs 멧돼지 어금니 돌진이 같은 '공격'으로 취급.
+- HuntModal 회피 슬롯에 `peek/attack/defend`도 "회피 0%" 표시되는 게 어색.
+
+### 변경
+
+#### A. 새 시트 탭 `사냥감행동` (행동 풀 SSOT)
+
+헤더: `id, name, type, damage, accuracy, defense, description`. 20행 — 기본 4(attack/defend/evade/peek) + 종별 특수 16.
+
+- 산출: `data/prey_actions.json` + `TTD_DATA.PREY_ACTIONS`.
+- 종별 특수 일례:
+  - L1: kick(토끼), nibble(쥐), acorn_throw(다람쥐), peck(메추라기새), slime_lash(도롱뇽), venom_bite(뱀, acc 2), tongue_lash(개구리), pinch(게), kick_jump(메뚜기).
+  - L2: tusk_charge(멧돼지, dmg 3), pounce_bite(공룡, dmg 2 acc 1), gore(사슴, dmg 3 acc 1), frenzy_claw(오소리, dmg 2), feint_strike(여우, dmg 2 acc 2), wing_slap(큰 새, dmg 2), iron_curl(아르마딜로, defense 3).
+
+#### B. 사냥감 시트 turn 셀 종별 특수 패치
+
+L1은 마지막 턴이 종별 특수공격, L2는 1~여러 턴에 분산.
+
+#### C. `combatDeck.js`
+
+- `findPreyAction(id)`: TTD_DATA.PREY_ACTIONS에서 id 매칭. 못 찾으면 id 자체를 type으로 보고 기본값(damage/accuracy/defense=0).
+- `resolveHunt`: 턴별 `actionDef = findPreyAction(token)`. 다음 일반화 적용:
+  - 공격 데미지: `actionDef.damage > 0 ? actionDef.damage : prey.attack` (폴백).
+  - 방어 감쇄: `actionDef.defense > 0 ? actionDef.defense : prey.defense` (폴백).
+  - prey 명중: `actionDef.accuracy > 0 ? actionDef.accuracy : prey.attack_accuracy` — `cardEvade > preyAttackAccuracy`이면 회피 성공. (feint_strike acc 2는 dodge evade 1 무력화.)
+  - turns[] 라벨: `preyAction = actionDef.name`(예: "어금니 돌진"), 분기용으로 `preyActionType` 함께 반환.
+- `parsePreyActions`: 토큰 화이트리스트 제거 — lowercase 그대로 통과(특수 id 허용).
+
+#### D. `HuntCombatModal` (index.html)
+
+- `slotActions[i] = findPreyAction(...)` — 슬롯 렌더에서 actionDef.name 직접 표시.
+- type별 배지: attack에 🗡️+dmg / 🏹+acc, defend에 🛡️+def, evade에 EvadeBadge.
+- **회피 1 이상일 때만** 회피 배지 노출 — `type === 'evade' && finalEvade > 0`.
+- peek/attack/defend 슬롯에서 "회피 0%" 표시 제거.
+- 턴 로그 분기: 한글 라벨 매칭(`log.preyAction === '공격'`) → `log.preyActionType === 'attack'`. 액션명은 `log.preyAction`을 그대로 표시.
+
+### 의도
+
+- 행동을 시트의 1차 데이터로 격상해 디자인 변동 비용 최소화 — 기획자가 셀만 수정.
+- 종별 특수공격으로 사냥 단조로움 해소: 멧돼지 첫 턴 어금니 돌진(dmg 3), 여우 첫 턴 기만 일격(dmg 2 acc 2 — dodge 무력화).
+- HuntModal UX: 어색한 "회피 0%" 제거, 행동명을 슬롯에 직접 보여 대응 결정 직관화.
+
+### 검증
+
+- `make data` → `data/prey_actions.json` 20행, prey.json `actions_per_turn`이 종별 특수 id 포함.
+- Node 스모크: tusk_charge dmg=3, iron_curl defense=3, feint_strike(acc 2) dodge(evade 1) 관통, wing_slap(acc 0) dodge 차단 — 모두 PASS.
+- 브라우저 검증은 후속(요한): HuntModal에서 어금니 돌진 슬롯 🗡️+3 / 🏹+1, peek 슬롯 라벨만, evade 슬롯에서 회피 배지.
+
+---
+
 ## D-102. L1 사냥감 evade 수치 1로 통일 (2026-04-26, 14th 세션, `data/prey.json`)
 
 요한 원문: "이미지에 제시된 사냥감 모두 회피, 회피, 회피야. 거기다가 수치도 너무높아. 규칙대로해야지"
