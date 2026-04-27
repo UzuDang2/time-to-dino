@@ -833,14 +833,15 @@
 
             return (
                 <div className="map-area">
-                    {/* D-120: 메시지 카드 — 맵 컨테이너 위에 absolute 띄움.
-                        한 뎁스 위에 떠 있는 느낌, 좌우 중앙·상단 고정.
-                        rgba(0,0,0,0.95) + 작은따옴표 인용 + 살짝 글로우. */}
+                    {/* D-120 → D-121 (요한 지시): 메시지 카드 위치 변경.
+                        하단 ui-panel 바로 위로 띄움 (bottom 10px), 좌우 10px 마진 풀스트레치.
+                        한 뎁스 위에 떠 있는 느낌 + 카드 영역과 가까이.
+                        rgba(0,0,0,0.95) + 작은따옴표 인용 + 그림자. */}
                     <div style={{
                         position: 'absolute',
-                        top: '8px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
+                        bottom: '10px',
+                        left: '10px',
+                        right: '10px',
                         zIndex: 1300,
                         pointerEvents: 'none',
                         background: 'rgba(0, 0, 0, 0.95)',
@@ -848,7 +849,6 @@
                         borderRadius: '8px',
                         padding: '10px 16px',
                         minHeight: '48px',
-                        maxWidth: 'calc(100% - 24px)',
                         boxShadow: '0 6px 18px rgba(0,0,0,0.55)',
                         display: 'flex',
                         alignItems: 'center',
