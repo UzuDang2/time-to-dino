@@ -5,6 +5,28 @@
 
 ---
 
+## D-132. CraftPanel — 하단 마진 16px + maxHeight 40dvh (2026-04-27, `index.html`)
+
+요한 원문: "여전히 하단부가 잘리지만 전보다는 나아진듯, 근데 스크롤을 담아내는 패널과 그 부모인 가방 ui 전체의 패널간의 바텀 마진값이 없이 딱붙었네 마진 값 16px 정도 넣어줘".
+
+### 결정
+
+- CraftPanel 인라인 스타일 `marginBottom: '16px'` 추가 — panel과 inventory-modal 외곽 사이 시각 여유.
+- `maxHeight: '45dvh'` → `'40dvh'` — marginBottom 16px가 자식 자연 크기 합에 추가되면 D-131에서 확보한 stage 여유(13px)를 잠식해 다시 압축 클리핑 발생. 미리 panel을 더 줄여 회귀 차단.
+
+### 계산 (iPhone 14 Pro, dvh ≈ 850px)
+
+- stage max-height: 850 − 72 − 34(safe-area) = 744px.
+- inventory-modal 자식 자연 크기: 헤더 40 + grid 233 + 안내 20 + panel(40dvh = 340) + marginBottom 16 + modal-content padding 40 = **689px**.
+- 744 − 689 = 55px 여유 → 압축·클리핑 없음.
+
+### 검증 + 후속
+
+- iPhone Pro급 화면에서 마지막 카드 완전 노출 + panel ~ inventory-modal 16px 마진 확인.
+- iPhone SE(667dvh) 등 작은 화면은 40dvh도 부족할 가능성. SE 보고 들어오면 35dvh 또는 동적 flex 전환.
+
+---
+
 ## D-131. CraftPanel maxHeight 55dvh → 45dvh — 부모 압축 클리핑 해소 (2026-04-27, `index.html`)
 
 요한 원문: "큰고기꼬치구이 아래쪽이 안보이지? 스크롤이 맨아래로 내려와있음에도".
