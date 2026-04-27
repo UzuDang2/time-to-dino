@@ -5,6 +5,30 @@
 
 ---
 
+## D-149. 보관함 합성 popover — viewport 가로 중앙 fixed (2026-04-27, `index.html`)
+
+요한 원문: "보관함에서 선택모드시 보이는 제작 가능 레시피 목록이 화면의 중앙에 오게끔 해줘 우측 스크롤 따로 안해도 버튼까지 다 잘보이게".
+
+### D-147 SUPERSEDED (위치 부분)
+
+D-147은 그리드 wrapper 내 absolute로 선택 슬롯 바로 아래 30px 배치 → 슬롯이 우측에 있으면 popover가 모달 폭을 넘어 가로 스크롤 발생. 우측 스크롤 부담.
+
+### 결정
+
+- `position: absolute` (그리드 wrapper 기준) → `position: fixed` (viewport 기준).
+- `left: 50%, transform: translateX(-50%)` — 가로 중앙.
+- `bottom: calc(24px + env(safe-area-inset-bottom, 0px))` — 화면 하단에 안정적으로 고정. 인벤 그리드는 popover 위에 그대로 노출.
+- `width: min(340px, calc(100vw - 32px))` — 좁은 화면에서도 좌우 여백.
+- `maxHeight: 55dvh` — 세로 viewport 절반 약간 넘게 + 자체 overflow.
+- z-index 50 → 1500 — fixed 위치라 모달 위에도 명확히 떠야 함.
+
+### 효과
+
+- 화면 어느 슬롯을 선택하든 popover는 항상 가로 중앙 + 화면 하단.
+- 우측 스크롤 불필요, [만들기] 버튼까지 viewport 안에서 한 번에 노출.
+
+---
+
 ## D-148. 텐트 퀘스트 명시 수령 + 가방 1칸 확장 보상 (2026-04-27, `index.html`)
 
 요한 원문: "이제 텐트 퀘스트 바로 부여하지말고 베이스 캠프로 돌아오면 퀘스트 목록에서 직접 퀘스트를 받을 수 있게 해줘. 텐트를 지으면 보상으로 가방칸 1칸 확장되게 해줘, 가방의 상단 부분이 3x2 인데 이부분에 1칸 늘어나는 것으로".

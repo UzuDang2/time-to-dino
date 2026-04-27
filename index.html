@@ -1613,16 +1613,18 @@
                                 </div>
                             )}
 
-                            {/* D-147: 보관함 모드 — 선택 슬롯 바로 아래 30px에 floating 합성 popover.
-                               레시피 리스트가 길어 스크롤 왕복 부담 컸다는 요한 지시 반영.
-                               selectedItem.shape의 height만큼 내려간 다음 +30px gap. */}
-                            {mode === 'storage' && pendingCraft && selectedItem && pendingPos && (
+                            {/* D-147/D-149: 보관함 모드 — 선택 시 화면 중앙에 floating 합성 popover.
+                               D-149 (요한 지시): 슬롯 아래 absolute → viewport 가로 중앙 fixed.
+                               레시피 리스트가 가로/세로 모두 viewport 안에 들어오게 — 우측 스크롤 불필요. */}
+                            {mode === 'storage' && pendingCraft && selectedItem && (
                                 <div style={{
-                                    position: 'absolute',
-                                    top: `${(pendingPos.y + selectedItem.shape.length) * CELL + PAD + 30}px`,
-                                    left: `${pendingPos.x * CELL + PAD}px`,
-                                    width: 'min(280px, calc(100vw - 80px))',
-                                    zIndex: 50,
+                                    position: 'fixed',
+                                    left: '50%',
+                                    bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+                                    transform: 'translateX(-50%)',
+                                    width: 'min(340px, calc(100vw - 32px))',
+                                    maxHeight: '55dvh',
+                                    zIndex: 1500,
                                     boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
                                 }}>
                                     <CraftPanel
