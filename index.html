@@ -5599,6 +5599,15 @@
                     return;
                 }
 
+                // D-114: 뒤져보기·음식찾기는 가방 빈칸이 0이면 사용 불가(카드 미소모).
+                //   findEmptySpace([[1]]) null = 1x1 들어갈 자리도 없음 → 가득.
+                //   1칸이라도 있으면 통과. 결과가 다중일 때는 LootPickupModal로 분기(다음 단계).
+                if ((card.id === 'search' || card.id === 'find_food')
+                    && inventory && !inventory.findEmptySpace([[1]])) {
+                    setMessage('가방이 꽉 차서 사용할 수 없다.');
+                    return;
+                }
+
                 setHand(hand.filter(c => c.uid !== card.uid));
                 setGraveyard([...graveyard, card]);
                 setTime(time + card.time);
@@ -6197,9 +6206,23 @@
                               같은 카드 자원이므로 시선이 분리되지 않도록 묶음.
                             - 손패는 하단에 항상 표시되므로 숫자만 간결히. */}
                         <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'center' }}>
-                            <button onClick={() => setShowInventory(!showInventory)}>
-                                {showInventory ? '가방 닫기' : '가방 열기'}
-                            </button>
+                            {/* D-114: 가방 빈칸 0개면 빨간색 강조 — 1x1 들어갈 자리 없음 = 가득. */}
+                            {(() => {
+                                const bagFull = !!(inventory && !inventory.findEmptySpace([[1]]));
+                                return (
+                                    <button
+                                        className={bagFull ? 'bag-button-full' : undefined}
+                                        onClick={() => setShowInventory(!showInventory)}
+                                        style={bagFull ? {
+                                            background: '#e94560',
+                                            color: '#fff',
+                                            borderColor: '#ff5566'
+                                        } : undefined}
+                                    >
+                                        {showInventory ? '가방 닫기' : '가방 열기'}
+                                    </button>
+                                );
+                            })()}
                             {/* D-53: 가운데 정렬은 양쪽 marginLeft/Right auto. 좌(가방)와 우(덱/무덤) 사이 등분. */}
                             <button
                                 onClick={() => setShowHelp(true)}
