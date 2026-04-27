@@ -494,7 +494,7 @@ window.TTD_DATA = {
       "name": "일반 공격",
       "type": "attack",
       "damage": 2,
-      "accuracy": 0,
+      "accuracy": 1,
       "defense": 0,
       "description": "기본 공격 — L2 prey 평타"
     },
@@ -638,7 +638,7 @@ window.TTD_DATA = {
       "name": "광폭 발톱",
       "type": "attack",
       "damage": 2,
-      "accuracy": 0,
+      "accuracy": 1,
       "defense": 0,
       "description": "오소리 특수"
     },
@@ -656,7 +656,7 @@ window.TTD_DATA = {
       "name": "날개 후려치기",
       "type": "attack",
       "damage": 2,
-      "accuracy": 0,
+      "accuracy": 1,
       "defense": 0,
       "description": "큰 새 특수"
     },
