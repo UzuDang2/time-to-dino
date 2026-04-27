@@ -253,8 +253,11 @@
 
             // D-48: 타일 이동마다 hand이 전부 교체되므로 각 카드 uid가 새 값.
             //   새로 마운트된 카드에 card-draw 클래스 + stagger delay로 순차 페이드인.
+            // D-116 (요한 지시): 손패 개수에 맞춰 grid 컬럼 수 동적 — 4장이면 4열, 5장이면 5열.
+            //   기존 5열 고정은 4장일 때 우측 빈 셀 때문에 카드들이 좌측 치우침.
+            const cols = Math.max(1, hand.length);
             return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '6px' }}>
                     {hand.map((card, i) => (
                         <div
                             key={card.uid}
@@ -2598,10 +2601,40 @@
         //     캠프 [완수] 버튼은 별도로 캠프 보관함을 본다(handleCompleteQuest).
         //   - active 비어있으면 null 반환 → 패널 자체 미마운트.
         function ActiveQuestHUDPanel({ activeQuests, inventoryItems }) {
-            if (!Array.isArray(activeQuests) || activeQuests.length === 0) return null;
-            const quest = activeQuests[0];
-            const def = quest && quest.id === TENT_QUEST.id ? TENT_QUEST : null;
-            if (!def) return null;
+            // D-116 (요한 지시): 빈 상태도 placeholder 박스 유지 — 자리 고정.
+            //   기존엔 active 비면 null → 패널 자체 미마운트. 이미지 시안은 빈 박스 "퀘스트 내용" 노출.
+            const baseStyle = {
+                position: 'fixed',
+                top: '12px',
+                right: '12px',
+                zIndex: 1400,
+                background: 'rgba(22, 33, 62, 0.78)',
+                border: '1px solid rgba(212, 184, 74, 0.45)',
+                borderRadius: '8px',
+                padding: '8px 10px',
+                minWidth: '150px',
+                minHeight: '92px',
+                color: '#eee',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                pointerEvents: 'none',
+                fontSize: '11px',
+                lineHeight: 1.5
+            };
+
+            const quest = (Array.isArray(activeQuests) && activeQuests.length > 0) ? activeQuests[0] : null;
+            const def = (quest && quest.id === TENT_QUEST.id) ? TENT_QUEST : null;
+
+            if (!def) {
+                // 빈 placeholder
+                return (
+                    <div style={baseStyle}>
+                        <div style={{ fontSize: '11px', color: '#888' }}>
+                            퀘스트 내용
+                        </div>
+                    </div>
+                );
+            }
+
             const reqs = def.requirements || {};
             const items = Array.isArray(inventoryItems) ? inventoryItems : [];
             const countOfType = (type) => items.filter(it => it && it.type === type).length;
@@ -2618,22 +2651,7 @@
                 };
             });
             return (
-                <div style={{
-                    position: 'fixed',
-                    top: '12px',
-                    right: '12px',
-                    zIndex: 1400,
-                    background: 'rgba(22, 33, 62, 0.78)',
-                    border: '1px solid rgba(212, 184, 74, 0.45)',
-                    borderRadius: '8px',
-                    padding: '8px 10px',
-                    minWidth: '150px',
-                    color: '#eee',
-                    boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-                    pointerEvents: 'none',
-                    fontSize: '11px',
-                    lineHeight: 1.5
-                }}>
+                <div style={baseStyle}>
                     <div style={{
                         fontSize: '12px',
                         fontWeight: 700,
