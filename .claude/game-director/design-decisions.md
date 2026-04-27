@@ -5,6 +5,54 @@
 
 ---
 
+## D-136. 단일 재료 변환 레시피가 합성 추천에서 누락되던 버그 수정 (2026-04-27, `inventory.js`)
+
+요한 원문: "돌맹이 3개로 조합할 수 있는 뗀석기가 돌을 터치해도 조합법이 안보이는데 버그같아 보이게수정해줘".
+
+### 원인
+
+`InventorySystem.findRecipesContainingAny`가 ingredients의 unique type 수가 1이면 무조건 "머지형"으로 간주해 제외. stone×3 → chipped_stone(뗀석기)은 단일 재료지만 stone의 정의는 `mergeable: false`라 머지 시스템과 무관한 변환 레시피임. 잘못된 일반화로 누락.
+
+### 결정
+
+`uniq.size === 1`일 때 추가 가드:
+- ingredient의 `def.mergeable === true` AND `def.merge_result === recipe.result`이면 진짜 머지형 — 제외 유지.
+- 그 외(돌맹이 mergeable=false 또는 result가 merge_result와 다름)는 변환형 — 포함.
+
+### 영향 범위
+
+- 포함되는 레시피: stone×3 → chipped_stone 등 mergeable:false 단일 재료 레시피.
+- 제외 유지: branch×2 → wood, stem×N → plant_fiber 등 자동 머지 시스템과 결과 일치하는 머지형(이미 자동 즉시 실행 경로에서 처리되므로 추천 패널 중복 노출 방지).
+
+---
+
+## D-135. 이동 시 부드러운 카메라 추적 (2026-04-27, `index.html`)
+
+요한 원문: "유저가 이동하면 현재 속한 타일이 화면의 중앙으로 오도록 스크롤을 부드럽게 움직여주면 좋겠어, 1초 정도의 속도로. 기존의 화면을 움직이는 기능엔 영향없게 잘해줘".
+
+### 결정
+
+GameMap에 `currentTile` 변경 감지 useEffect 추가:
+- 1초 동안 `easeInOutCubic`으로 `containerRef.scrollLeft/Top`을 타일 중앙으로 이동 (rAF 기반).
+- 첫 mount는 D-47 `useLayoutEffect`가 instant 처리하므로 `isFirstCenterRef`로 skip.
+- `prevTileIdRef`로 currentTile 실제 변경만 반응 — tiles 객체만 바뀐 상태 변경(휴식·사냥 등)에서는 trigger 안 함.
+- 사용자 드래그/줌 시작 시 `centerAnimRef.cancel()` 호출 — `beginPan`/`onWheel`/`onTouchStart` 모두에 추가. 자유 조작 우선.
+- zoom 좌표 보정: `cur.position.x * zoomRef.current - clientWidth/2` (SVG가 zoom 배수로 렌더링되므로).
+
+### 왜 rAF + ease vs `scroll-behavior: smooth`
+
+- CSS `scroll-behavior: smooth`는 모든 scroll에 적용 → 사용자 드래그/팬 손맛 손상.
+- `scrollTo({ behavior: 'smooth' })`는 호출별 적용이지만 브라우저별 속도 다르고 1초 보장 안 됨.
+- rAF + easeInOutCubic으로 정확히 1000ms 보장 + cancel 가능.
+
+### 검증
+
+- 이동 시 1초 동안 부드럽게 화면 중앙 추적.
+- 추적 중 드래그/핀치/휠 시 즉시 멈추고 사용자 조작에 양보.
+- 휴식·사냥 등 currentTile 안 바뀌는 상태 변경에서는 카메라 가만히 있음.
+
+---
+
 ## D-134. 가방 모달 자체 스크롤 허용 + stage 추가 stretch (2026-04-27, `gameStyles.css` / `index.html`)
 
 요한 원문: "편의를 위해 가방 ui창 전체의 스크롤도 좀 가능하게 해줘, 지금보다 가방 ui의 최대 길이가 좀 더 길어도 될것같아. 가로모드는 특히 아주 좀더 길어도 좋아".

@@ -662,7 +662,7 @@
             // 뷰포트 중앙에 오도록 1회 정렬. 이전엔 항상 (0,0)에서 시작해 매번
             // 시작 위치를 찾아야 했음.
             // useLayoutEffect로 paint 전에 스크롤을 잡아 깜빡임 없음.
-            // 마운트 시 1회만 — 이후 이동 자유, 자동 추적은 안 함.
+            // 마운트 시 1회만 — 이후 이동 자유, 자동 추적은 D-135로 별도.
             React.useLayoutEffect(() => {
                 const el = containerRef.current;
                 if (!el) return;
@@ -671,6 +671,67 @@
                 el.scrollLeft = cur.position.x - el.clientWidth / 2;
                 el.scrollTop = cur.position.y - el.clientHeight / 2;
             }, []);
+
+            // D-135: currentTile 변경 시 1초 동안 ease로 viewport 중앙 추적.
+            //   - 첫 mount는 D-47 useLayoutEffect가 instant 처리 → skip.
+            //   - tiles만 바뀌고 currentTile 동일하면 skip(휴식·사냥 등 상태 변경 케이스).
+            //   - 사용자 드래그/줌 시작 시 즉시 cancel — 자유 조작 우선.
+            //   - zoom은 zoomRef.current로 동기 참조(현재 화면 좌표계).
+            const centerAnimRef = React.useRef({ cancel: () => {} });
+            const isFirstCenterRef = React.useRef(true);
+            const prevTileIdRef = React.useRef(null);
+            React.useEffect(() => {
+                if (isFirstCenterRef.current) {
+                    isFirstCenterRef.current = false;
+                    prevTileIdRef.current = currentTile;
+                    return;
+                }
+                if (prevTileIdRef.current === currentTile) return;
+                prevTileIdRef.current = currentTile;
+
+                const el = containerRef.current;
+                if (!el) return;
+                const cur = tiles[currentTile];
+                if (!cur || !cur.position) return;
+
+                centerAnimRef.current.cancel();
+
+                const z = zoomRef.current;
+                const targetLeft = cur.position.x * z - el.clientWidth / 2;
+                const targetTop = cur.position.y * z - el.clientHeight / 2;
+                const startLeft = el.scrollLeft;
+                const startTop = el.scrollTop;
+                if (Math.abs(targetLeft - startLeft) < 1 && Math.abs(targetTop - startTop) < 1) return;
+
+                const duration = 1000;
+                const startTime = performance.now();
+                let cancelled = false;
+                let rafId = 0;
+                const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+                const step = (now) => {
+                    if (cancelled) return;
+                    const elapsed = now - startTime;
+                    const t = Math.min(1, elapsed / duration);
+                    const eased = ease(t);
+                    el.scrollLeft = startLeft + (targetLeft - startLeft) * eased;
+                    el.scrollTop = startTop + (targetTop - startTop) * eased;
+                    if (t < 1) rafId = requestAnimationFrame(step);
+                };
+                rafId = requestAnimationFrame(step);
+
+                centerAnimRef.current = {
+                    cancel: () => {
+                        cancelled = true;
+                        cancelAnimationFrame(rafId);
+                    },
+                };
+
+                return () => {
+                    cancelled = true;
+                    cancelAnimationFrame(rafId);
+                };
+            }, [currentTile, tiles]);
 
             // D-82: 드래그/줌 이벤트 바인딩. 네이티브 리스너로 붙여 wheel에서 preventDefault 가능.
             React.useEffect(() => {
@@ -695,6 +756,8 @@
                 const getDist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
 
                 const beginPan = (x, y) => {
+                    // D-135: 사용자 직접 조작 우선 — 진행 중인 카메라 추적 취소.
+                    centerAnimRef.current.cancel();
                     syncScrollFromDOM();
                     drag.active = true;
                     drag.startX = x;
@@ -752,12 +815,14 @@
                 const onMouseUp = () => { endPan(); };
                 const onWheel = (e) => {
                     e.preventDefault();
+                    centerAnimRef.current.cancel();
                     const ratio = e.deltaY > 0 ? 0.9 : 1.1;
                     applyZoomAt(ratio, e.clientX, e.clientY);
                 };
 
                 // ── Touch ──────────────────────────────────────────────
                 const onTouchStart = (e) => {
+                    centerAnimRef.current.cancel();
                     if (e.touches.length === 2) {
                         // 핀치 시작 — pan 중단.
                         if (drag.active) { drag.active = false; el.classList.remove('dragging'); }

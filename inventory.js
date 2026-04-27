@@ -218,15 +218,19 @@ class InventorySystem {
 
     // D-47 합성 패널용: typeA 또는 typeB 중 하나라도 ingredients에 포함된 모든 레시피.
     // - 2종/3종 모두 지원.
-    // - 머지형(같은 재료 중복 ingredients, 예: [branch, branch])은 제외 — 다른 재료 드롭
-    //   맥락에서는 추천 대상 아님. 머지는 별도 즉시 실행 경로.
+    // - D-136: 진짜 머지형(ingredient.mergeable + result === merge_result)만 제외.
+    //   stone×3 → chipped_stone(돌맹이 mergeable:false)처럼 단일 재료라도 변환 레시피는 포함.
     static findRecipesContainingAny(typeA, typeB) {
         const bundle = InventorySystem._combosBundle();
         const hits = [];
         for (const recipe of bundle) {
             if (!recipe || !Array.isArray(recipe.ingredients)) continue;
             const uniq = new Set(recipe.ingredients);
-            if (uniq.size <= 1) continue; // 머지형 제외
+            if (uniq.size === 1) {
+                const only = recipe.ingredients[0];
+                const def = InventorySystem.ITEMS[only] || {};
+                if (def.mergeable && def.merge_result === recipe.result) continue;
+            }
             if (uniq.has(typeA) || uniq.has(typeB)) {
                 hits.push(recipe);
             }
