@@ -60,6 +60,39 @@
         // - 라벨 제거, 아이콘만 표시. 숫자 폰트 크기 축소.
         // - 게이지 높이 12 → 10, 발각 바 20 → 14.
         // - 기존 stat-box padding 축소 필요 시 인라인으로만 오버라이드(전역 .stat-box는 다른 곳에서 재사용).
+        // D-124 (요한 지시): 메시지 인-라인 색상 강조.
+        //   - 대괄호 안 지역명 [숲] → 노랑 #d4b84a
+        //   - TTD_DATA.ITEMS 한글 이름(돌맹이/생고기/...) → 청록 #8bd17c (득템 강조)
+        //   매칭 외 부분은 그대로 본문 색.
+        function MessageText({ text }) {
+            if (!text) return '\u00A0';
+            const TTD = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : {};
+            const items = Array.isArray(TTD.ITEMS) ? TTD.ITEMS : [];
+            const itemNames = items
+                .map(it => it && (it['이름'] || it.name))
+                .filter(Boolean);
+            const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const tokens = ['\\[[^\\]]+\\]'];
+            if (itemNames.length > 0) tokens.push(itemNames.map(escape).join('|'));
+            const re = new RegExp(`(${tokens.join('|')})`, 'g');
+            const parts = text.split(re);
+            const itemSet = new Set(itemNames);
+            return (
+                <>
+                    {parts.map((p, i) => {
+                        if (!p) return null;
+                        if (/^\[[^\]]+\]$/.test(p)) {
+                            return <span key={i} style={{ color: '#d4b84a' }}>{p}</span>;
+                        }
+                        if (itemSet.has(p)) {
+                            return <span key={i} style={{ color: '#8bd17c' }}>{p}</span>;
+                        }
+                        return p;
+                    })}
+                </>
+            );
+        }
+
         function StatPanel({ health, hunger, time, maxTime, boss, detection, message }) {
             const detectionColor = detection < 30 ? '#4CAF50' :
                                   detection < 60 ? '#FFC107' : '#e94560';
@@ -863,7 +896,9 @@
                         letterSpacing: '0.2px',
                         whiteSpace: 'pre-wrap'
                     }}>
-                        {message ? `‘${message}’` : '\u00A0'}
+                        {message ? (
+                            <span>‘<MessageText text={message} />’</span>
+                        ) : '\u00A0'}
                     </div>
                     <div className="map-container" ref={containerRef}>
                         <svg
@@ -5222,8 +5257,9 @@
                         }
                     }
                 }
-                const withConsumed = (msg) =>
-                    consumedSummary.length > 0 ? `${msg} (소모: ${consumedSummary.join(', ')})` : msg;
+                // D-124 (요한 지시): 시스템스러운 (소모: ...) 부가 텍스트 제거 — 메시지엔
+                //   1인칭 자연어만. 잃어버린 자원은 인벤·내구도 표시로 인지 가능.
+                const withConsumed = (msg) => msg;
 
                 // D-74: 플레이어 HP 차감 — prey.attack과 유저 카드 defense 대결 결과 누적 대미지.
                 //   HP 0이면 게임오버('health'). 기존 체력 사망 경로 재사용.
@@ -5633,7 +5669,7 @@
                 const baseDetection = detection + (Number(card.detection) || 0);
                 const newDetection = Math.min(100, Math.max(0, baseDetection));
                 setDetection(newDetection);
-                const prefix = `${card.name}을(를) 사용했다. (시간 +${card.time}) `;
+                const prefix = `${card.name}을(를) 사용했다.`;
                 setMessage(prefix + (extraMsg || ''));
             };
 
@@ -5852,7 +5888,7 @@
                 const newDetection = Math.min(100, Math.max(0, detection + card.detection));
                 setDetection(newDetection);
 
-                let msg = `${card.name}을(를) 사용했다. (시간 +${card.time}) `;
+                let msg = `${card.name}을(를) 사용했다.`;
 
                 if (card.id === 'search') {
                     // D-28(2026-04-22, 요한 지시): 뒤져보기는 3슬롯 독립 추첨(100/20/20).
