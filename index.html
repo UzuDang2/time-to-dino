@@ -4362,7 +4362,9 @@
             count: 1
         };
 
-        function Game({ onRunEnd } = {}) {
+        // D-113: initialInventory — 탐험 시작 시 가방(pack)에서 넘겨받은 InventorySystem 인스턴스.
+        //   undefined면 빈 5x5 기본 가방으로 시작(이전 동작).
+        function Game({ onRunEnd, initialInventory } = {}) {
             // 상태 관리
             const [tiles, setTiles] = useState([]);
             const [currentTile, setCurrentTile] = useState(0);
@@ -4782,7 +4784,9 @@
                 setHand(newDeck.slice(0, HAND_SIZE));
                 
                 // D-47: 기본 가방 모양(5x5, 위 2행 구석 4칸 disabled) — InventorySystem 기본값 사용.
-                const inv = new InventorySystem();
+                // D-113: initialInventory가 있으면 그것을 시작 인벤으로 사용(캠프 가방 인계).
+                //   App에서 탐험 시작 시점에 pack을 비우고 인스턴스를 그대로 넘긴다.
+                const inv = initialInventory || new InventorySystem();
                 setInventory(inv);
                 
                 const newBoss = new BossMonster(newTiles, playerStart);
@@ -6273,9 +6277,24 @@
 
                 setCampState(prev => {
                     // 캠프 인벤 인스턴스 직접 변형(같은 참조 유지). React 재렌더는 ...prev 객체 새로 만들어서 트리거.
+                    // D-113: 인스턴스 직접 placement — durabilityLeft / rotation 보존.
+                    //   캠프 인벤은 disabled 셀 없음 → 빈 자리 찾아 새 좌표로 재배치.
+                    const camp = prev.inventory;
                     for (const it of itemsToTransfer) {
                         if (!it || !it.type) continue;
-                        prev.inventory.addItem(it.type);
+                        const def = InventorySystem.resolveDef(it.type) || InventorySystem.ITEMS[it.type] || {};
+                        const shape = it.shape || (def.shape ? def.shape : null);
+                        if (!shape) { camp.addItem(it.type); continue; }
+                        const pos = camp.findEmptySpace(shape);
+                        if (!pos) continue; // 캠프 인벤 가득 — 무시(추후: 안내).
+                        const placed = {
+                            ...it,
+                            id: Date.now() + Math.random(), // 캠프 측 새 id로(전 런과 충돌 방지).
+                            x: pos.x,
+                            y: pos.y
+                        };
+                        camp.placeItem(placed);
+                        camp.items.push(placed);
                     }
                     const next = {
                         ...prev,
@@ -6304,7 +6323,18 @@
             };
 
             // [탐험 떠나기]
-            const handleDepart = () => setView('play');
+            // D-113: 캠프 pack(가방) → 탐험 인벤 인계.
+            //   pack의 InventorySystem 인스턴스를 그대로 Game에 넘긴다(아이템 객체 전체 보존 = durabilityLeft/rotation 유지).
+            //   campState.pack은 새 빈 인벤으로 교체 — 들고 갔으니 캠프엔 비움.
+            //   탐험 중 인벤이 곧 가방의 후속(탐험에서 획득한 아이템들이 추가됨).
+            //   handleRunEnd가 승리 시 그 인벤을 보관함으로 인입. 사망 시 폐기.
+            const [departInv, setDepartInv] = useState(null);
+            const handleDepart = () => {
+                const carried = campState.pack;
+                setDepartInv(carried || null);
+                setCampState(prev => ({ ...prev, pack: new InventorySystem(5, 5) }));
+                setView('play');
+            };
 
             // 텐트 퀘스트 완료 알림 메시지 — App 레벨 토스트 대신 가벼운 모달.
             const [questCompleteMsg, setQuestCompleteMsg] = useState(null);
@@ -6358,6 +6388,7 @@
                 setCampState(makeInitialCampState());
                 setPendingTentModal(null);
                 setQuestCompleteMsg(null);
+                setDepartInv(null);
                 setView('intro');
             };
 
@@ -6365,7 +6396,7 @@
                 return <IntroScenarioScreen onDismiss={handleIntroDismiss} />;
             }
             if (view === 'play') {
-                return <Game onRunEnd={handleRunEnd} />;
+                return <Game onRunEnd={handleRunEnd} initialInventory={departInv} />;
             }
             // camp
             return (
