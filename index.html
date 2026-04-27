@@ -3726,6 +3726,9 @@
             const [storageSelectedItem, setStorageSelectedItem] = React.useState(null);
             // D-151: 퀘스트 [받기] 클릭 시 스토리·정보 모달 → [수락]에서 active push.
             const [offerQuestId, setOfferQuestId] = React.useState(null);
+            // D-154: 퀘스트 목록 모달 + 진행 중 상세 모달 토글.
+            const [questListOpen, setQuestListOpen] = React.useState(false);
+            const [activeDetailQuestId, setActiveDetailQuestId] = React.useState(null);
             const inv = campState && campState.inventory;
             const pack = campState && campState.pack;
             const runs = (campState && campState.runs) || { total: 0, victories: 0, deaths: 0 };
@@ -3875,96 +3878,48 @@
                             </button>
                         </div>
 
-                        {/* D-113/D-148: 퀘스트 목록 — 받기 가능 / 진행 중 / 완수 한눈에. */}
-                        <div style={{
-                            background: '#1a1a2e',
-                            border: '1px solid #2a3a5e',
-                            borderRadius: '10px',
-                            padding: '14px',
-                            marginBottom: '16px'
-                        }}>
-                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '10px' }}>
-                                퀘스트 목록
-                            </div>
-                            {(() => {
-                                // D-148: 받을 수 있는 퀘스트 — active/completed 어디에도 없는 정의.
-                                const taken = new Set([
-                                    ...activeQuests.map(q => q.id),
-                                    ...completedQuests.map(q => q.id)
-                                ]);
-                                const available = [TENT_QUEST].filter(q => !taken.has(q.id));
-                                if (available.length === 0 && activeQuests.length === 0 && completedQuests.length === 0) {
-                                    return (
-                                        <div style={{ fontSize: '12px', color: '#777' }}>
-                                            받을 수 있는 퀘스트가 없다.
-                                        </div>
-                                    );
-                                }
-                                return available.map(def => (
-                                    <div key={`avail:${def.id}`} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        padding: '6px 0',
-                                        borderBottom: '1px dashed #2a3a5e'
-                                    }}>
-                                        <span style={{ fontSize: '12px', color: '#d4b84a' }}>
-                                            ✨ {def.icon} {def.name} <span style={{ color: '#888' }}>(받기 가능)</span>
+                        {/* D-154: 퀘스트 목록 — 패널 자체를 버튼화. 클릭 시 모달.
+                           모달 행 클릭 → 상세 모달 (받기 가능: TentQuestModal, 진행 중: 진행 카드).
+                           스크롤로 향후 항목 다수 대비. */}
+                        {(() => {
+                            const taken = new Set([
+                                ...activeQuests.map(q => q.id),
+                                ...completedQuests.map(q => q.id)
+                            ]);
+                            const available = [TENT_QUEST].filter(q => !taken.has(q.id));
+                            const totalCount = available.length + activeQuests.length + completedQuests.length;
+                            return (
+                                <button
+                                    onClick={() => setQuestListOpen(true)}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        background: '#1a1a2e',
+                                        border: '1px solid #2a3a5e',
+                                        borderRadius: '10px',
+                                        padding: '14px',
+                                        marginBottom: '16px',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                        color: '#eee'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#bbb' }}>
+                                            📜 퀘스트 목록 {totalCount > 0 && <span style={{ color: '#d4b84a' }}>({totalCount})</span>}
                                         </span>
-                                        <button
-                                            onClick={() => setOfferQuestId(def.id)}
-                                            style={{
-                                                background: '#d4b84a',
-                                                color: '#1a1a2e',
-                                                border: 'none',
-                                                padding: '4px 10px',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '11px',
-                                                fontWeight: 700
-                                            }}
-                                        >
-                                            받기
-                                        </button>
+                                        <span style={{ fontSize: '11px', color: '#888' }}>
+                                            {available.length > 0 && <span style={{ color: '#d4b84a' }}>받기 가능 {available.length}</span>}
+                                            {available.length > 0 && activeQuests.length > 0 && <span> · </span>}
+                                            {activeQuests.length > 0 && <span>진행 중 {activeQuests.length}</span>}
+                                            {(available.length > 0 || activeQuests.length > 0) && completedQuests.length > 0 && <span> · </span>}
+                                            {completedQuests.length > 0 && <span style={{ color: '#8bd17c' }}>완수 {completedQuests.length}</span>}
+                                            {totalCount === 0 && <span>비어있음</span>}
+                                        </span>
                                     </div>
-                                ));
-                            })()}
-                            {activeQuests.map(quest => {
-                                const def = quest.id === TENT_QUEST.id ? TENT_QUEST : null;
-                                if (!def) return null;
-                                return (
-                                    <div key={quest.id} style={{ fontSize: '12px', color: '#ddd', lineHeight: 1.7 }}>
-                                        {def.icon} {def.name} <span style={{ color: '#888' }}>(진행 중)</span>
-                                    </div>
-                                );
-                            })}
-                            {completedQuests.map(q => {
-                                const def = q.id === TENT_QUEST.id ? TENT_QUEST : null;
-                                if (!def) return null;
-                                return (
-                                    <div key={q.id} style={{ fontSize: '12px', color: '#8bd17c', lineHeight: 1.7 }}>
-                                        ✅ {def.name} <span style={{ color: '#666' }}>(완수)</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* 현재 진행 중 퀘스트 — 카드 형태로 재료 진행 + [완수] 버튼 */}
-                        {activeQuests.length > 0 && (
-                            <div style={{
-                                background: '#1a1a2e',
-                                border: '1px solid #2a3a5e',
-                                borderRadius: '10px',
-                                padding: '14px',
-                                marginBottom: '16px'
-                            }}>
-                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '10px' }}>
-                                    진행 중인 퀘스트
-                                </div>
-                                {activeQuests.map(renderQuestCard)}
-                            </div>
-                        )}
+                                </button>
+                            );
+                        })()}
 
                         {/* 건설 placeholder */}
                         <div style={{
@@ -4091,6 +4046,157 @@
                             }}
                         />
                     )}
+
+                    {/* D-154: 퀘스트 목록 모달 — 받기/진행/완수 행 스크롤. 행 클릭 → 상세. */}
+                    {questListOpen && (() => {
+                        const taken = new Set([
+                            ...activeQuests.map(q => q.id),
+                            ...completedQuests.map(q => q.id)
+                        ]);
+                        const available = [TENT_QUEST].filter(q => !taken.has(q.id));
+                        const rowStyle = {
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '12px 14px',
+                            marginBottom: '8px',
+                            background: '#16213e',
+                            border: '1px solid #2a3a5e',
+                            borderRadius: '8px',
+                            cursor: 'pointer'
+                        };
+                        return (
+                            <div className="modal" style={{ zIndex: 3400 }}>
+                                <div style={{
+                                    background: '#0f1a2e',
+                                    color: '#eee',
+                                    padding: '20px',
+                                    borderRadius: '10px',
+                                    border: '1px solid #4a4a6e',
+                                    width: 'min(480px, 92vw)',
+                                    maxHeight: '80dvh',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}>
+                                    <div style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        marginBottom: '12px'
+                                    }}>
+                                        <span style={{ fontSize: '15px', fontWeight: 700, color: '#d4b84a' }}>
+                                            📜 퀘스트 목록
+                                        </span>
+                                        <button
+                                            onClick={() => setQuestListOpen(false)}
+                                            style={{
+                                                background: '#2a3a5e',
+                                                color: '#ddd',
+                                                border: 'none',
+                                                padding: '6px 14px',
+                                                borderRadius: '5px',
+                                                cursor: 'pointer',
+                                                fontSize: '12px'
+                                            }}
+                                        >
+                                            닫기
+                                        </button>
+                                    </div>
+                                    <div style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: 1 }}>
+                                        {available.length === 0 && activeQuests.length === 0 && completedQuests.length === 0 && (
+                                            <div style={{ fontSize: '12px', color: '#777', textAlign: 'center', padding: '24px 0' }}>
+                                                받을 수 있는 퀘스트가 없다.
+                                            </div>
+                                        )}
+                                        {available.map(def => (
+                                            <div
+                                                key={`avail:${def.id}`}
+                                                onClick={() => {
+                                                    setQuestListOpen(false);
+                                                    setOfferQuestId(def.id);
+                                                }}
+                                                style={rowStyle}
+                                            >
+                                                <span style={{ fontSize: '13px', color: '#d4b84a' }}>
+                                                    ✨ {def.icon} {def.name}
+                                                </span>
+                                                <span style={{ fontSize: '11px', color: '#888' }}>받기 가능 ›</span>
+                                            </div>
+                                        ))}
+                                        {activeQuests.map(quest => {
+                                            const def = quest.id === TENT_QUEST.id ? TENT_QUEST : null;
+                                            if (!def) return null;
+                                            return (
+                                                <div
+                                                    key={quest.id}
+                                                    onClick={() => {
+                                                        setQuestListOpen(false);
+                                                        setActiveDetailQuestId(quest.id);
+                                                    }}
+                                                    style={rowStyle}
+                                                >
+                                                    <span style={{ fontSize: '13px', color: '#ddd' }}>
+                                                        {def.icon} {def.name}
+                                                    </span>
+                                                    <span style={{ fontSize: '11px', color: '#888' }}>진행 중 ›</span>
+                                                </div>
+                                            );
+                                        })}
+                                        {completedQuests.map(q => {
+                                            const def = q.id === TENT_QUEST.id ? TENT_QUEST : null;
+                                            if (!def) return null;
+                                            return (
+                                                <div
+                                                    key={q.id}
+                                                    style={{ ...rowStyle, cursor: 'default', opacity: 0.7 }}
+                                                >
+                                                    <span style={{ fontSize: '13px', color: '#8bd17c' }}>
+                                                        ✅ {def.name}
+                                                    </span>
+                                                    <span style={{ fontSize: '11px', color: '#666' }}>완수</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* D-154: 진행 중 퀘스트 상세 — 행 클릭 시. 재료 진행 + [완수] 버튼. */}
+                    {activeDetailQuestId && (() => {
+                        const quest = activeQuests.find(q => q.id === activeDetailQuestId);
+                        if (!quest) return null;
+                        return (
+                            <div className="modal" style={{ zIndex: 3450 }}>
+                                <div style={{
+                                    background: '#1a1a2e',
+                                    color: '#eee',
+                                    padding: '24px 22px',
+                                    borderRadius: '10px',
+                                    border: '1px solid #4a4a6e',
+                                    width: 'min(440px, 92vw)',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.55)'
+                                }}>
+                                    {renderQuestCard(quest)}
+                                    <div style={{ textAlign: 'right', marginTop: '8px' }}>
+                                        <button
+                                            onClick={() => setActiveDetailQuestId(null)}
+                                            style={{
+                                                background: '#2a3a5e',
+                                                color: '#ddd',
+                                                border: 'none',
+                                                padding: '8px 18px',
+                                                borderRadius: '5px',
+                                                cursor: 'pointer',
+                                                fontSize: '12px'
+                                            }}
+                                        >
+                                            닫기
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             );
         }
