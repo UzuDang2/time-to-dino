@@ -5698,8 +5698,36 @@
             // [탐험 떠나기]
             const handleDepart = () => setView('play');
 
-            // [완수] — 1단계는 마킹만. 다음 커밋(4/5)에서 재료 차감 구현.
+            // 텐트 퀘스트 완료 알림 메시지 — App 레벨 토스트 대신 가벼운 모달.
+            const [questCompleteMsg, setQuestCompleteMsg] = useState(null);
+
+            // [완수] — 재료 차감 + completed 이동 + 알림.
+            //   재료 보유량 재확인(레이스 가드). 부족하면 무시(버튼은 disabled여야 함).
             const handleCompleteQuest = (questId) => {
+                const def = questId === TENT_QUEST.id ? TENT_QUEST : null;
+                if (!def) return;
+                const inv = campState.inventory;
+                if (!inv) return;
+                // 재확인.
+                const reqs = def.requirements || {};
+                for (const [type, need] of Object.entries(reqs)) {
+                    const have = inv.items.filter(it => it.type === type).length;
+                    if (have < need) return; // disabled여야 했지만 가드.
+                }
+                // 차감 — 각 type 앞에서부터 need개 removeItem + items 배열 갱신.
+                for (const [type, need] of Object.entries(reqs)) {
+                    let remaining = need;
+                    const keep = [];
+                    for (const it of inv.items) {
+                        if (remaining > 0 && it.type === type) {
+                            inv.removeItem(it);
+                            remaining -= 1;
+                            continue;
+                        }
+                        keep.push(it);
+                    }
+                    inv.items = keep;
+                }
                 setCampState(prev => {
                     const active = prev.quests.active.filter(q => q.id !== questId);
                     const moved = prev.quests.active.find(q => q.id === questId);
@@ -5711,6 +5739,9 @@
                         }
                     };
                 });
+                if (questId === TENT_QUEST.id) {
+                    setQuestCompleteMsg('텐트 자리를 잡았다. 이제 밤이 조금은 견딜 만하다.');
+                }
             };
 
             // [데이터 초기화] — localStorage 삭제 + 초기 상태 + 시나리오부터.
@@ -5718,6 +5749,7 @@
                 try { localStorage.removeItem(CAMP_STATE_KEY); } catch {}
                 setCampState(makeInitialCampState());
                 setPendingTentModal(null);
+                setQuestCompleteMsg(null);
                 setView('intro');
             };
 
@@ -5741,6 +5773,40 @@
                             outcome={pendingTentModal}
                             onDismiss={() => setPendingTentModal(null)}
                         />
+                    )}
+                    {questCompleteMsg && (
+                        <div className="modal" style={{ zIndex: 3400 }}>
+                            <div style={{
+                                background: '#1a1a2e',
+                                color: '#eee',
+                                padding: '24px 22px',
+                                borderRadius: '10px',
+                                border: '1px solid #d4b84a',
+                                maxWidth: '360px',
+                                width: '90vw',
+                                textAlign: 'center'
+                            }}>
+                                <div style={{ fontSize: '24px', marginBottom: '10px' }}>🏕️</div>
+                                <div style={{ fontSize: '14px', lineHeight: 1.6, marginBottom: '18px' }}>
+                                    {questCompleteMsg}
+                                </div>
+                                <button
+                                    onClick={() => setQuestCompleteMsg(null)}
+                                    style={{
+                                        background: '#d4b84a',
+                                        color: '#1a1a2e',
+                                        border: 'none',
+                                        padding: '8px 22px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '13px',
+                                        fontWeight: 700
+                                    }}
+                                >
+                                    확인
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </>
             );
