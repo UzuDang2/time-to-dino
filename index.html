@@ -2590,6 +2590,67 @@
             requirements: { branch: 6, stone: 4, stem: 4 }
         };
 
+        // D-114 (2026-04-24): 게임 화면 우상단에 떠 있는 진행 중 퀘스트 HUD.
+        //   - activeQuests: campState.quests.active (App→Game 전달).
+        //   - inventoryItems: 현재 런 가방의 inventory.items.
+        //   - 현 시점에 정의된 퀘스트는 TENT_QUEST 한 종이라 첫 번째만 표시.
+        //   - 진행도는 캠프 인벤이 아니라 "탐험 중 가방"(현 런 인벤)으로 실시간 카운트.
+        //     캠프 [완수] 버튼은 별도로 캠프 보관함을 본다(handleCompleteQuest).
+        //   - active 비어있으면 null 반환 → 패널 자체 미마운트.
+        function ActiveQuestHUDPanel({ activeQuests, inventoryItems }) {
+            if (!Array.isArray(activeQuests) || activeQuests.length === 0) return null;
+            const quest = activeQuests[0];
+            const def = quest && quest.id === TENT_QUEST.id ? TENT_QUEST : null;
+            if (!def) return null;
+            const reqs = def.requirements || {};
+            const items = Array.isArray(inventoryItems) ? inventoryItems : [];
+            const countOfType = (type) => items.filter(it => it && it.type === type).length;
+            const rows = Object.entries(reqs).map(([type, need]) => {
+                const have = Math.min(need, countOfType(type));
+                const dispDef = (typeof InventorySystem !== 'undefined' && InventorySystem.resolveDef)
+                    ? (InventorySystem.resolveDef(type) || {}) : {};
+                return {
+                    type,
+                    name: dispDef.name || type,
+                    have,
+                    need,
+                    ok: have >= need
+                };
+            });
+            return (
+                <div style={{
+                    position: 'fixed',
+                    top: '12px',
+                    right: '12px',
+                    zIndex: 1400,
+                    background: 'rgba(22, 33, 62, 0.78)',
+                    border: '1px solid rgba(212, 184, 74, 0.45)',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    minWidth: '150px',
+                    color: '#eee',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                    pointerEvents: 'none',
+                    fontSize: '11px',
+                    lineHeight: 1.5
+                }}>
+                    <div style={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: '#d4b84a',
+                        marginBottom: '4px'
+                    }}>
+                        {def.icon} {def.name}
+                    </div>
+                    {rows.map(r => (
+                        <div key={r.type} style={{ color: r.ok ? '#8bd17c' : '#ddd' }}>
+                            · {r.name} {r.have}/{r.need}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
         // ============================================
         // D-110 (2026-04-24): 런 점수 계산 — 순수 함수.
         //   입력: 런 종료 시점 스냅샷 + runStats(누적 추적) + selectedItems(LootResult 선택).
@@ -4695,7 +4756,7 @@
 
         // D-113: initialInventory — 탐험 시작 시 가방(pack)에서 넘겨받은 InventorySystem 인스턴스.
         //   undefined면 빈 5x5 기본 가방으로 시작(이전 동작).
-        function Game({ onRunEnd, initialInventory } = {}) {
+        function Game({ onRunEnd, initialInventory, activeQuests } = {}) {
             // 상태 관리
             const [tiles, setTiles] = useState([]);
             const [currentTile, setCurrentTile] = useState(0);
@@ -6113,8 +6174,13 @@
 
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+                    {/* D-114: 게임 화면 우상단 진행 퀘스트 HUD. activeQuests 비어있으면 자체 미렌더. */}
+                    <ActiveQuestHUDPanel
+                        activeQuests={activeQuests}
+                        inventoryItems={(inventory && inventory.items) || []}
+                    />
                     <div className="ui-panel">
-                        <StatPanel 
+                        <StatPanel
                             health={health}
                             hunger={hunger}
                             time={time}
@@ -6727,7 +6793,13 @@
                 return <IntroScenarioScreen onDismiss={handleIntroDismiss} />;
             }
             if (view === 'play') {
-                return <Game onRunEnd={handleRunEnd} initialInventory={departInv} />;
+                return (
+                    <Game
+                        onRunEnd={handleRunEnd}
+                        initialInventory={departInv}
+                        activeQuests={(campState && campState.quests && campState.quests.active) || []}
+                    />
+                );
             }
             // camp
             return (
