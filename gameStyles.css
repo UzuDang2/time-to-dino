@@ -367,9 +367,10 @@ button:disabled {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-    /* D-128: padding-top 12px + padding-bottom 12px(modal) 합쳐 24px 여유.
-       iOS safe-area-inset-bottom 있으면 추가 차감 — home indicator 위로 안 잘리게. */
-    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
+    /* D-129: D-128 calc(100dvh - 24px)로는 iOS Safari 하단 도구바/마지막 카드
+       잘림 문제 미해결 + 패널 최하단이 viewport에 딱 붙어 거슬린다는 요한 지시.
+       하단 여유를 60px로 키우고 home indicator도 추가 차감. */
+    max-height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
 }
 
 .inventory-modal {
@@ -390,9 +391,9 @@ button:disabled {
 .modal:has(.inventory-stage) {
     align-items: flex-start;
     padding-top: 12px;
-    /* D-128: 하단도 패딩 + safe-area로 home indicator 위 여유 확보.
-       inventory-stage max-height와 합쳐 viewport 안 잘림 보장. */
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    /* D-129: 하단 padding 60px — 패널 최하단과 viewport 끝 사이 시각 마진 확보 +
+       iOS Safari 도구바/주소창 변동에 대한 안전 여유. safe-area로 home indicator 추가 보정. */
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
 }
 
 /* landscape 전용 우측 카드 — 기본은 숨김(portrait에서는 인라인 CraftPanel만 보인다). */

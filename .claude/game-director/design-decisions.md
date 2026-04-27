@@ -5,6 +5,32 @@
 
 ---
 
+## D-129. 가방 모달 — 하단 여유 60px + 마지막 카드 잘림 해소 (2026-04-27, `gameStyles.css`)
+
+요한 원문: "여전히 조합법 스크롤 최 하단 마지막 패널 1개 정도 사이즈는 완전히 잘려서 보여 그리고 전체 UI 사이즈 만큼 패널 스크롤이 최 하단부가 딱 맞아서 거슬려 최 하단부 와 가방 UI 전체 패널 간에 마진을 좀 줘 최 하단부 쪽에".
+
+### 문제
+
+D-128에서 `100dvh - 24px - safe-area`로 줄였지만:
+- iOS Safari 하단 도구바(앞으로/뒤로/공유/탭/메뉴)는 dvh 계산에 정확히 반영 안 되는 케이스가 있음 — 마지막 카드 1개 정도 여전히 잘림.
+- 모달 패널 최하단이 viewport 끝에 딱 맞아 시각적으로 거슬림 — 마진 필요.
+
+### 결정
+
+- `.modal:has(.inventory-stage) padding-bottom`: `calc(12px + safe-area)` → `calc(60px + safe-area)`. 하단 60px 마진 + home indicator.
+- `.inventory-stage max-height`: `calc(100dvh - 24px - safe-area)` → `calc(100dvh - 72px - safe-area)`. 12px(top) + 60px(bottom) = 72px 차감.
+
+### 왜 60px
+
+- iOS Safari 도구바 자체 ≈ 44px. 그 위에 시각 마진 16px 추가 → 60px이 도구바도 가리고 마진도 확보.
+- 더 줄이면(예: 36px) 마지막 카드 잘림이 다시 살아날 위험. 더 늘리면(예: 80px) 패널 자체가 너무 작아져 가시 카드 수 감소.
+
+### 검증
+
+- iOS Safari 시크릿 탭 가방 모달 → 합성 패널 끝까지 스크롤 시 마지막 카드 완전 노출 + 패널 하단과 viewport 끝 사이 60px 마진 확보 확인.
+
+---
+
 ## D-128. 가방 모달 — viewport 잘림 + iOS safe-area 보정 (2026-04-27, `gameStyles.css`)
 
 요한 원문: "스크롤의 최하단 패널이 잘려 최대로 내렸거든?" (D-127 sticky 고정 후에도 craft panel 마지막 카드가 viewport 밖으로 잘림 — iOS Safari 시크릿 탭 스크린샷).
