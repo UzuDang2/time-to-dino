@@ -367,7 +367,7 @@ button:disabled {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-    max-height: 92vh;
+    max-height: 92dvh;
 }
 
 .inventory-modal {
@@ -387,7 +387,7 @@ button:disabled {
    세로로 흔들림(특히 portrait). 가방 모달만 상단 정렬 + 일정 padding으로 고정. */
 .modal:has(.inventory-stage) {
     align-items: flex-start;
-    padding-top: 24px;
+    padding-top: 12px;
 }
 
 /* landscape 전용 우측 카드 — 기본은 숨김(portrait에서는 인라인 CraftPanel만 보인다). */

@@ -5,6 +5,35 @@
 
 ---
 
+## D-126. 가방 모달 — 그리드 중앙 정렬 + 모달 dvh 고정 (2026-04-27, `index.html` / `gameStyles.css`)
+
+요한 원문: "가방에서 상단부를 이루는 슬롯부분이 중앙 정렬 아닌게 거슬리고, 하단에 창이 잘려서 싫어" (모바일 iOS Safari 5G 환경 스크린샷 첨부).
+
+### 문제
+
+1. **그리드 좌측 치우침**: `.inventory-grid`는 5×45px 고정폭(약 240px). 부모 `<div style="position:relative">`에는 폭 지정이 없어 모달(`max-width: min(92vw, 760px)`)의 좌측 정렬을 그대로 받음 → 우측에 큰 빈 공간.
+2. **하단 잘림**: portrait 모달은 `.inventory-stage { max-height: 92vh }` + `CraftPanel { maxHeight: 55vh }`. iOS Safari `vh`는 주소창이 차지한 영역까지 포함한 "이상화 viewport" 기준이라 실제 보이는 영역을 초과 → 합성 패널 마지막 1~2 항목이 화면 밖으로 잘림. D-118에서 메인 레이아웃은 이미 `100dvh`로 옮겼지만 가방 모달은 `vh`로 남아 있었음.
+
+### 결정
+
+- `index.html` `InventoryModal` — `<div style={{ position: 'relative', width: 'fit-content', margin: '0 auto' }}>`로 wrapper에 fit-content + auto 마진 추가. 절대 위치 자식(`.inventory-item`, `.inventory-preview`, floating)들은 wrapper 기준으로 좌표 잡으므로 같이 중앙으로 따라옴.
+- `gameStyles.css` `.inventory-stage { max-height: 92dvh }` — 92vh → 92dvh.
+- `index.html` `CraftPanel` 인라인 스타일 `maxHeight: '55dvh'` — 55vh → 55dvh.
+- `gameStyles.css` `.modal:has(.inventory-stage) { padding-top: 12px }` — 24px → 12px (상단 여백 절반 줄여 합성 패널에 12px 추가 확보).
+
+### 왜
+
+- **fit-content 중앙 정렬**: grid에 `margin:auto` 직접 주려면 grid 자체에 폭이 정의돼야 하는데(이미 column 합산으로 정의됨) absolute 자식들이 grid 외부에 있어 기준이 어긋남. wrapper에 fit-content 주는 게 가장 침습 없는 방법 — 좌표계 그대로 유지.
+- **vh → dvh**: D-118과 일관성. dynamic viewport는 모바일 크롬·사파리에서 주소창 펼침/접힘 둘 다 정확.
+- **padding-top 24→12**: 전체 모달 가용 높이를 12px 늘림. 12px는 손가락 탭 안전 영역 확보하면서 합성 패널 마지막 행을 화면에 들어오게 함.
+
+### 검증
+
+- iOS Safari 5G 환경(요한 스크린샷 기기)에서 강제 새로고침 후 가방 그리드 좌우 균등 + 합성 패널 마지막 행("물고기꼬치 → 생선꼬치구이" 이하)까지 자연 스크롤로 도달.
+- landscape는 변경 없음 — `inventory-stage`가 `flex-direction: row`로 다른 룰 적용, max-height만 dvh로 바뀜(영향 없음).
+
+---
+
 ## D-110. 런 점수 시스템 + 전리품 결과창 + 이동거리 점수 (2026-04-24, `index.html` / `gameStyles.css`)
 
 요한 원문(요지): 런 종료 시 점수를 산출해 보여주고, 전리품을 직접 골라 캠프로 가져갈 수 있어야 한다. 시간 잔여 점수는 모호하니 **이동거리(직접 밟은 고유 타일 수)** 기반으로 바꿔라. 캠프에서 누적 점수도 보이게.

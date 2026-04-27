@@ -1454,7 +1454,7 @@
                             <h3>가방</h3>
                             <button onClick={handleClose}>닫기</button>
                         </div>
-                                <div style={{ position: 'relative' }}>
+                                <div style={{ position: 'relative', width: 'fit-content', margin: '0 auto' }}>
                             <div className="inventory-grid">
                                 {Array(ROWS).fill(null).map((_, row) =>
                                     Array(COLS).fill(null).map((_, col) => {
@@ -2008,7 +2008,7 @@
                     borderRadius: '8px',
                     padding: '10px',
                     marginTop: '8px',
-                    maxHeight: '55vh',
+                    maxHeight: '55dvh',
                     overflowY: 'auto',
                     WebkitOverflowScrolling: 'touch'
                 }}>
