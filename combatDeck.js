@@ -348,7 +348,7 @@
             if (!card) {
                 const dmgTaken = takeDamageThisTurn();
                 turns.push({
-                    turn: t + 1, preyAction: preyActionLabel, userCard: null,
+                    turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: null,
                     hit: false, preyHpAfter: hp,
                     ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
                 });
@@ -361,7 +361,7 @@
                 if (!ws || ws.durabilityLeft <= 0) {
                     const dmgTaken = takeDamageThisTurn();
                     turns.push({
-                        turn: t + 1, preyAction: preyActionLabel, userCard: card,
+                        turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
                         hit: false, autoFail: true, reason: 'weapon_missing', preyHpAfter: hp,
                         ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
                     });
@@ -374,7 +374,7 @@
             // 도망치기 성공 분기.
             if (card.id === 'run_away' && cardHit) {
                 turns.push({
-                    turn: t + 1, preyAction: preyActionLabel, userCard: card,
+                    turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
                     outcome: 'player_flee', preyHpAfter: hp
                 });
                 terminatedOutcome = 'player_fled';
@@ -410,7 +410,7 @@
                     hp -= appliedDamage;
                     const dmgTaken = takeDamageThisTurn();
                     turns.push({
-                        turn: t + 1, preyAction: preyActionLabel, userCard: card,
+                        turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
                         hit: true, preyEvaded: false, damage: appliedDamage,
                         effectiveEvade, preyHpAfter: hp,
                         ...(defenseReduction > 0 ? { preyDefended: defenseReduction } : {}),
@@ -423,7 +423,7 @@
                 } else {
                     const dmgTaken = takeDamageThisTurn();
                     turns.push({
-                        turn: t + 1, preyAction: preyActionLabel, userCard: card,
+                        turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
                         hit: true, preyEvaded: true,
                         effectiveEvade, preyHpAfter: hp,
                         ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
@@ -433,7 +433,7 @@
                 // 카드 자체 실패(success_rate 미달) 또는 damage=0 카드.
                 const dmgTaken = takeDamageThisTurn();
                 turns.push({
-                    turn: t + 1, preyAction: preyActionLabel, userCard: card,
+                    turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
                     hit: false, preyHpAfter: hp,
                     ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
                 });
