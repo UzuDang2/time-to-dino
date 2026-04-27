@@ -1088,6 +1088,28 @@
             // 정보창으로 띄울 아이템 (null이면 정보창 닫힘)
             const [infoItem, setInfoItem] = React.useState(null);
 
+            // D-104 (2026-04-27 요한 지시): 합성 패널 항상 렌더 + 카테고리 탭.
+            //   비선택 상태에서도 모든 레시피를 카테고리별로 필터링해 노출.
+            //   유저가 마지막으로 고른 카테고리는 localStorage에 보존.
+            const [recipeCategory, setRecipeCategory] = React.useState(() => {
+                try {
+                    const v = localStorage.getItem('ttd:invRecipeCategory');
+                    return v && ['all', 'food', 'weapon', 'armor', 'material'].includes(v) ? v : 'all';
+                } catch { return 'all'; }
+            });
+            const updateRecipeCategory = (cat) => {
+                setRecipeCategory(cat);
+                try { localStorage.setItem('ttd:invRecipeCategory', cat); } catch {}
+            };
+
+            // 가방 닫기 — 선택 모드도 함께 취소(D-104 요한 지시: 닫고 다시 열어도 선택모드 유지되면 안 됨).
+            const handleClose = () => {
+                inventory.cancelSelection();
+                setSelectedItem(null);
+                setPendingPos(null);
+                closeInventory();
+            };
+
             // D-47: 가방 크기는 inventory 인스턴스 기준. disabled 셀은 inventory.isDisabled로.
             const ROWS = inventory.rows, COLS = inventory.cols, CELL = 47, PAD = 4;
             const LONG_PRESS_MS = 400;
@@ -1320,13 +1342,43 @@
                 };
             })();
 
+            // D-104: 합성 패널 항상 렌더 — 표시할 레시피 결정.
+            //   선택 상태: 해당 아이템 포함 레시피만 (기존 동작 유지).
+            //   비선택 상태: 전체 COMBOS 중 카테고리 필터 통과분.
+            //   카테고리 분류는 결과물(result)의 category 필드 기반.
+            const allRecipes = (window.TTD_DATA && Array.isArray(window.TTD_DATA.COMBOS))
+                ? window.TTD_DATA.COMBOS
+                : [];
+            const recipeCategoryOf = (recipe) => {
+                if (!recipe || !recipe.result) return 'material';
+                const def = InventorySystem.resolveDef(recipe.result) || {};
+                const cat = def.category;
+                if (cat === '음식') return 'food';
+                if (cat === '무기') return 'weapon';
+                if (cat === 'shield' || cat === 'armor' || cat === '방어구') return 'armor';
+                return 'material'; // 재료·소모품 등 나머지 전부
+            };
+            const filteredAllRecipes = recipeCategory === 'all'
+                ? allRecipes
+                : allRecipes.filter(r => recipeCategoryOf(r) === recipeCategory);
+            const displayedRecipes = pendingCraft ? pendingCraft.candidates : filteredAllRecipes;
+            const showCategoryTabs = !pendingCraft;
+            const panelOnClose = pendingCraft
+                ? () => {
+                    inventory.cancelSelection();
+                    setSelectedItem(null);
+                    setPendingPos(null);
+                    bump();
+                }
+                : null; // 비선택 시 패널 닫기 버튼 숨김 (가방 자체를 닫아야 함)
+
             return (
                 <div className="modal">
                     <div className="inventory-stage">
                     <div className="modal-content inventory-modal">
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                             <h3>가방</h3>
-                            <button onClick={() => { inventory.cancelSelection(); closeInventory(); }}>닫기</button>
+                            <button onClick={handleClose}>닫기</button>
                         </div>
                                 <div style={{ position: 'relative' }}>
                             <div className="inventory-grid">
@@ -1448,7 +1500,7 @@
                             </div>
                         ) : (
                             <div style={{ marginTop: '10px', fontSize: '11px', color: '#aaa' }}>
-                                짧게 탭 = 선택/이동 · 길게 누르면 정보 · 조합은 오른쪽 패널의 [만들기]
+                                짧게 탭 = 선택모드 · 길게 누르면 = 아이템정보
                             </div>
                         )}
                         {/* D-48 합성 패널 — 선택된 아이템 기준으로 관련 레시피 자동 노출.
@@ -1456,37 +1508,29 @@
                             D-84b (2026-04-24 요한 지시): portrait에서는 이 인라인 인스턴스가,
                             landscape에서는 아래 .inventory-craft-side 인스턴스가 노출된다 (CSS로 택일).
                             두 인스턴스는 동일 props이며 CraftPanel은 내부 state가 없어 중복 렌더 안전. */}
-                        {pendingCraft && (
-                            <div className="inventory-craft-inline">
-                                <CraftPanel
-                                    recipes={pendingCraft.candidates}
-                                    inventory={inventory}
-                                    onCraft={handleCraft}
-                                    onClose={() => {
-                                        inventory.cancelSelection();
-                                        setSelectedItem(null);
-                                        setPendingPos(null);
-                                        bump();
-                                    }}
-                                />
-                            </div>
-                        )}
-                    </div>
-                    {pendingCraft && (
-                        <div className="inventory-craft-side">
+                        <div className="inventory-craft-inline">
                             <CraftPanel
-                                recipes={pendingCraft.candidates}
+                                recipes={displayedRecipes}
                                 inventory={inventory}
                                 onCraft={handleCraft}
-                                onClose={() => {
-                                    inventory.cancelSelection();
-                                    setSelectedItem(null);
-                                    setPendingPos(null);
-                                    bump();
-                                }}
+                                onClose={panelOnClose}
+                                showCategoryTabs={showCategoryTabs}
+                                category={recipeCategory}
+                                onCategoryChange={updateRecipeCategory}
                             />
                         </div>
-                    )}
+                    </div>
+                    <div className="inventory-craft-side">
+                        <CraftPanel
+                            recipes={displayedRecipes}
+                            inventory={inventory}
+                            onCraft={handleCraft}
+                            onClose={panelOnClose}
+                            showCategoryTabs={showCategoryTabs}
+                            category={recipeCategory}
+                            onCategoryChange={updateRecipeCategory}
+                        />
+                    </div>
                     </div>
 
                     {infoItem && (
@@ -1849,8 +1893,10 @@
         //   - 각 카드: 재료(필요 수량) + 결과, 보유량으로 완성 가능 여부·부족 재료 표기.
         //   - [만들기] 버튼: 재료 충분 + 결과물 놓을 빈 슬롯 있을 때만 활성.
         //   - 같은 재료 머지는 이 패널에 안 뜸 (즉시 실행 경로).
-        function CraftPanel({ recipes, inventory, onCraft, onClose }) {
-            if (!recipes || recipes.length === 0) return null;
+        //   D-104 (2026-04-27 요한 지시): 항상 렌더. 비선택 시 카테고리 탭 5종 노출.
+        //     showCategoryTabs=true면 [전체][음식][무기][방어구][재료] 탭, onCategoryChange로 변경.
+        //     onClose가 null이면 헤더 닫기 버튼 숨김(비선택 상태 = 가방 닫기로만 종료).
+        function CraftPanel({ recipes, inventory, onCraft, onClose, showCategoryTabs, category, onCategoryChange }) {
             const items = (inventory && inventory.items) || [];
             const defOf = (type) => InventorySystem.ITEMS[type] || {};
             const nameOf = (type) => defOf(type).name || type;
@@ -1871,6 +1917,14 @@
                 return (rank[a.disabledReason] ?? 0) - (rank[b.disabledReason] ?? 0);
             });
 
+            const CATEGORY_TABS = [
+                { id: 'all', label: '전체' },
+                { id: 'food', label: '음식' },
+                { id: 'weapon', label: '무기' },
+                { id: 'armor', label: '방어구' },
+                { id: 'material', label: '재료' },
+            ];
+
             return (
                 <div style={{
                     position: 'sticky',
@@ -1888,13 +1942,48 @@
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4b84a' }}>
                             🔨 만들 수 있는 조합
                         </div>
-                        <button
-                            onClick={onClose}
-                            style={{ padding: '3px 8px', fontSize: '11px' }}
-                        >
-                            닫기
-                        </button>
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                style={{ padding: '3px 8px', fontSize: '11px' }}
+                            >
+                                닫기
+                            </button>
+                        )}
                     </div>
+                    {showCategoryTabs && (
+                        <div style={{
+                            display: 'flex',
+                            gap: '4px',
+                            marginBottom: '8px',
+                            flexWrap: 'wrap'
+                        }}>
+                            {CATEGORY_TABS.map(tab => {
+                                const active = category === tab.id;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => onCategoryChange && onCategoryChange(tab.id)}
+                                        style={{
+                                            padding: '4px 10px',
+                                            fontSize: '11px',
+                                            background: active ? '#d4b84a' : '#1a2f3e',
+                                            color: active ? '#1a1a2e' : '#aaa',
+                                            border: `1px solid ${active ? '#d4b84a' : '#2e5a6e'}`,
+                                            fontWeight: active ? 700 : 500,
+                                        }}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                    {(!recipes || recipes.length === 0) && (
+                        <div style={{ fontSize: '11px', color: '#666', padding: '12px 4px', textAlign: 'center' }}>
+                            이 카테고리에 만들 수 있는 조합이 없다.
+                        </div>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {cards.map(({ recipe, evalR, disabledReason }, idx) => {
                             const need = evalR.need;
