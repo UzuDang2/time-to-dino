@@ -5847,9 +5847,20 @@
                         const allDrops = drops.map(d => d.item);
                         if (carcassBonus) allDrops.push('meat');
 
-                        // D-114: 다중 드롭이면 모달로. carcass 보너스 소진은 모달 마운트 시점에
-                        // 미리 처리(드롭이 카드 결과로 확정된 뒤이므로 사체 보상은 1회 소진된 것으로 간주).
-                        if (allDrops.length >= 2) {
+                        // D-114 (D-115 정정): 다중 드롭이면 모달 — 단 가방 빈칸이 부족할 때만.
+                        //   요한 정정: "1개만 드롭이면 자동, 2개 이상이라도 가방 공간 충분이면 자동.
+                        //   빈칸 < 드롭 수일 때 어떤 걸 챙길지 선택 모달."
+                        //   carcass 보너스 소진은 모달 마운트 시점 미리 처리(결과 확정 후라 1회 소진 간주).
+                        let occupiedCells = 0;
+                        for (const it of (inventory.items || [])) {
+                            const idef = InventorySystem.resolveDef(it.type) || {};
+                            const shape = idef.shape || [[1]];
+                            for (const row of shape) for (const v of row) if (v) occupiedCells += 1;
+                        }
+                        const totalCells = inventory.rows * inventory.cols - (inventory.disabled ? inventory.disabled.size : 0);
+                        const emptyCells = Math.max(0, totalCells - occupiedCells);
+                        const needsPickup = allDrops.length >= 2 && allDrops.length > emptyCells;
+                        if (needsPickup) {
                             if (carcassBonus) {
                                 setCarcassMeatTaken(prev => {
                                     const next = new Set(prev);

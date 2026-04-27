@@ -375,6 +375,14 @@ button:disabled {
     overflow: hidden;
 }
 
+/* D-115 (요한 지시): 가방 모달 상단 고정 정렬.
+   기본 .modal은 align-items:center라 합성 패널 길이에 따라 모달 위치가
+   세로로 흔들림(특히 portrait). 가방 모달만 상단 정렬 + 일정 padding으로 고정. */
+.modal:has(.inventory-stage) {
+    align-items: flex-start;
+    padding-top: 24px;
+}
+
 /* landscape 전용 우측 카드 — 기본은 숨김(portrait에서는 인라인 CraftPanel만 보인다). */
 .inventory-craft-side {
     display: none;
