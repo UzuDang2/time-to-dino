@@ -3155,12 +3155,10 @@
             );
         }
 
-        // 첫 캠프 복귀 시 텐트 퀘스트 부여 모달.
-        //   outcome: 'victory' | 'death' — 첫 줄 분기.
-        function TentQuestModal({ outcome, onDismiss }) {
-            const firstLine = outcome === 'death'
-                ? '…정신을 차려 보니 다시 흙냄새 나는 자리였다.'
-                : '…살아 돌아왔다.';
+        // D-148/D-151: 텐트 퀘스트 제안 모달. 캠프 [받기] 클릭 시 노출 — 스토리 + 재료
+        //   정보 + [수락]/[나중에] 버튼. [수락]만 active에 push. D-148 자동 부여 → 명시 수령
+        //   흐름과 일관 + D-151로 스토리 단계 복원.
+        function TentQuestModal({ onAccept, onCancel }) {
             return (
                 <div className="modal" style={{ zIndex: 3500 }}>
                     <div style={{
@@ -3180,7 +3178,7 @@
                             color: '#ddd',
                             whiteSpace: 'pre-line'
                         }}>
-                            {`숨이 차오를 즈음 익숙한 흙냄새가 났다.\n${firstLine}\n\n이 빈터에 다시 서니 비로소 알겠다.\n밤이 되면 짐승은 이곳도 찾아온다.\n무방비한 풀숲 가운데서 잠을 청할 수는 없다.\n텐트가 필요하다.`}
+                            {`이 빈터에 다시 서니 비로소 알겠다.\n밤이 되면 짐승은 이곳도 찾아온다.\n무방비한 풀숲 가운데서 잠을 청할 수는 없다.\n텐트가 필요하다.`}
                         </div>
                         <div style={{
                             background: 'rgba(0,0,0,0.25)',
@@ -3190,14 +3188,29 @@
                             fontSize: '13px',
                             lineHeight: 1.6
                         }}>
-                            <div style={{ color: '#d4b84a', fontWeight: 700, marginBottom: '4px' }}>가져와야 할 것</div>
+                            <div style={{ color: '#d4b84a', fontWeight: 700, marginBottom: '4px' }}>🔧 텐트 재료 구하기</div>
                             <div>· 나뭇가지 6</div>
                             <div>· 돌맹이 4</div>
                             <div>· 줄기 4</div>
+                            <div style={{ color: '#8bd17c', marginTop: '8px', fontSize: '12px' }}>보상: 가방 1칸 확장</div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                             <button
-                                onClick={onDismiss}
+                                onClick={onCancel}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#bbb',
+                                    border: '1px solid #4a4a6e',
+                                    padding: '10px 18px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px'
+                                }}
+                            >
+                                나중에
+                            </button>
+                            <button
+                                onClick={onAccept}
                                 style={{
                                     background: '#d4b84a',
                                     color: '#1a1a2e',
@@ -3209,7 +3222,7 @@
                                     fontWeight: 700
                                 }}
                             >
-                                알겠다
+                                수락
                             </button>
                         </div>
                     </div>
@@ -3710,6 +3723,8 @@
             const [packOpen, setPackOpen] = React.useState(false);
             // D-145: 보관함을 InventoryModal로 재사용 — 선택모드/머지/조합/레시피 패널 동작.
             const [storageSelectedItem, setStorageSelectedItem] = React.useState(null);
+            // D-151: 퀘스트 [받기] 클릭 시 스토리·정보 모달 → [수락]에서 active push.
+            const [offerQuestId, setOfferQuestId] = React.useState(null);
             const inv = campState && campState.inventory;
             const pack = campState && campState.pack;
             const runs = (campState && campState.runs) || { total: 0, victories: 0, deaths: 0 };
@@ -3897,7 +3912,7 @@
                                             ✨ {def.icon} {def.name} <span style={{ color: '#888' }}>(받기 가능)</span>
                                         </span>
                                         <button
-                                            onClick={() => onTakeQuest && onTakeQuest(def.id)}
+                                            onClick={() => setOfferQuestId(def.id)}
                                             style={{
                                                 background: '#d4b84a',
                                                 color: '#1a1a2e',
@@ -4061,6 +4076,17 @@
                             onConfirm={() => {
                                 setResetOpen(false);
                                 onResetData && onResetData();
+                            }}
+                        />
+                    )}
+
+                    {/* D-151: 퀘스트 [받기] → 스토리/정보 모달 → [수락]에서 active push. */}
+                    {offerQuestId === TENT_QUEST.id && (
+                        <TentQuestModal
+                            onCancel={() => setOfferQuestId(null)}
+                            onAccept={() => {
+                                if (typeof onTakeQuest === 'function') onTakeQuest(offerQuestId);
+                                setOfferQuestId(null);
                             }}
                         />
                     )}

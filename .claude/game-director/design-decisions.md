@@ -5,6 +5,36 @@
 
 ---
 
+## D-151. 퀘스트 [받기] — 스토리·정보 모달 → [수락] 후 active push (2026-04-27, `index.html`)
+
+요한 원문: "퀘스트 목록에서 퀘스트를 선택하면 이전처럼 퀘스트 스토리 보여준후 퀘스트 정보와 함께 퀘스트 수락 해야 받아지게 해줘야지".
+
+### 결정
+
+D-148에서 [받기] 버튼이 직접 `onTakeQuest`를 호출하던 것을 한 단계 끼움 — 스토리·정보 모달 → 명시적 [수락]만 active push.
+
+#### TentQuestModal 변경
+
+- `outcome` prop 제거 (자동 부여용 첫 줄 분기 불필요).
+- 스토리: "이 빈터에 다시 서니 비로소 알겠다… 텐트가 필요하다."
+- 정보: "🔧 텐트 재료 구하기" + 재료 3종 + 보상(가방 1칸 확장).
+- 버튼: [나중에] / [수락] — 두 개.
+
+#### CampScreen 통합
+
+- `offerQuestId` state 추가.
+- [받기] 버튼 onClick → `setOfferQuestId(def.id)` (직접 onTakeQuest 호출 안 함).
+- `offerQuestId === TENT_QUEST.id` 시 TentQuestModal 렌더.
+- 모달 [수락] → onTakeQuest(questId) + 모달 닫기.
+- 모달 [나중에] → 모달만 닫음(active 변경 없음).
+
+### 효과
+
+- 퀘스트 받기 흐름: 받기 가능 행 [받기] 클릭 → 스토리·정보 모달 → 사용자 결정 → [수락] 시만 진행 중에 추가.
+- 자동 부여 흐름(D-148 잔여 `pendingTentModal`/`setPendingTentModal`)은 트리거 코드 없어 무해.
+
+---
+
 ## D-150. 방어구 내구도 — 방어 카드 사용 시 1씩 차감 (2026-04-27, `data/armors.json` / `data/data.js` / `inventory.js` / `combatDeck.js` / `index.html`)
 
 요한 원문: "방어구는 방어를 사용하는 카드를 사용할때마다 내구도가 깎이게끔 설정해줘 결국 파손되게끔".
