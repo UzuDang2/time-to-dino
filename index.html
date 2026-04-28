@@ -24,6 +24,8 @@
     <script src="boss.js"></script>
     <script src="dropTable.js"></script>
     <script src="effectParser.js"></script>
+    <script src="statusEffects.js"></script>
+    <script src="cameraCinematic.js"></script>
     <script src="combatDeck.js"></script>
 </head>
 <body>
@@ -100,7 +102,45 @@
             );
         }
 
-        function StatPanel({ health, hunger, time, maxTime, boss, detection, message }) {
+        // D-126: 상태이상 칩 그룹. StatBadges 우측에 가로 배치 (☆3 결정 디자인).
+        //   props.statuses: [{id, remainingTurns}] (window.StatusEffects 연동)
+        //   각 칩은 작은 알약 형태. 환각/독/poison_bite는 인스턴스 단위라 패스(인벤에서만 노출).
+        function StatusBadges({ statuses }) {
+            if (!Array.isArray(statuses) || statuses.length === 0) return null;
+            const badges = statuses
+                .filter(s => s && s.id !== 'poison_bite')
+                .map(s => window.StatusEffects ? window.StatusEffects.describeBadge(s) : null)
+                .filter(Boolean);
+            if (badges.length === 0) return null;
+            const colorOf = (id) => ({
+                hallucination: '#a674c8',
+                poison: '#7fa055'
+            }[id] || '#9a9a9a');
+            return (
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                    {badges.map(b => (
+                        <div
+                            key={b.id}
+                            title={b.summary}
+                            style={{
+                                background: colorOf(b.id),
+                                color: '#fff',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                padding: '3px 7px',
+                                borderRadius: '8px',
+                                lineHeight: 1.2,
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {b.name} {b.remaining}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        function StatPanel({ health, hunger, time, maxTime, boss, detection, message, statuses }) {
             const detectionColor = detection < 30 ? '#4CAF50' :
                                   detection < 60 ? '#FFC107' : '#e94560';
 
@@ -233,6 +273,8 @@
                                 </div>
                             </div>
                         </div>
+                        {/* D-126: 상태이상 칩 — 발각률 바 우측 */}
+                        <StatusBadges statuses={statuses} />
                     </div>
 
                     {/* D-120 (요한 지시): 메시지 카드는 ui-panel에서 분리.
@@ -351,6 +393,10 @@
             } else {
                 if (tile.type === 'good') list.push({ kind: 'good', emoji: '🌾' });
                 else if (tile.type === 'trap') list.push({ kind: 'trap', emoji: '⚠️' });
+                // D-157: 유저가 설치한 덫(snare_trap)은 항상 노출(visited 무관, 본인이 설치했으니).
+                if (tile.placedTrap && tile.placedTrap.type === 'snare') {
+                    list.push({ kind: 'snare', emoji: '🪤' });
+                }
                 if (tile.visited && ctx.hasCarcass) list.push({ kind: 'carcass', emoji: '🦴' });
                 if (ctx.showPrey) list.push({ kind: 'prey', emoji: ctx.preyEmoji });
                 // D-94: 유저가 놓아둔 거대한 먹이 — visited와 무관(카드 효과로 자기 타일에 놓아도
@@ -1041,6 +1087,55 @@
         // 타일 이벤트 모달 컴포넌트 — 함정만 사용.
         // D-52 (2026-04-23 요한 지시): '풍족한 땅(구 좋은 곳)'은 모달 → 토스트로 이관.
         // 함정은 피해 정보가 있어 명시적 확인이 필요하므로 모달 유지.
+        // D-126 (2026-04-28): 이벤트 타일 도착 시 모달.
+        //   props:
+        //     event       — { id, title, intro_text, choices: [{id, label, effect_dsl}] }
+        //     onChoose(c) — 선택지 클릭 핸들러. 부모가 effect 적용 + 모달 닫기.
+        //   디자인 톤은 D-122~125 메시지 카드와 일치 (#222134 95%, 어두운 카드, 흰 글씨).
+        function EventChoiceModal({ event, onChoose }) {
+            if (!event) return null;
+            return (
+                <div className="modal" style={{ zIndex: 1500 }}>
+                    <div style={{
+                        background: 'rgba(34, 33, 52, 0.97)',
+                        color: '#eee',
+                        padding: '24px',
+                        borderRadius: '10px',
+                        maxWidth: '480px',
+                        width: 'calc(100% - 40px)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                    }}>
+                        <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px', color: '#f4d28a' }}>
+                            {event.title}
+                        </div>
+                        <div style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '20px', color: '#dcd6c8', whiteSpace: 'pre-wrap' }}>
+                            {event.intro_text}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {(event.choices || []).map(c => (
+                                <button
+                                    key={c.id}
+                                    onClick={() => onChoose(c)}
+                                    style={{
+                                        background: 'rgba(60, 58, 80, 0.85)',
+                                        color: '#eee',
+                                        border: '1px solid rgba(244, 210, 138, 0.3)',
+                                        padding: '12px 14px',
+                                        fontSize: '14px',
+                                        textAlign: 'left',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {c.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function TileEventModal({ tile, onClose }) {
             if (!tile) return null;
 
@@ -1113,7 +1208,14 @@
             const weaponsBundle = (window.TTD_DATA && Array.isArray(window.TTD_DATA.WEAPONS)) ? window.TTD_DATA.WEAPONS : [];
             const weaponDef = weaponsBundle.find(w => w && w.id === item.type);
 
-            const effect = (notionItem && notionItem.effect) || null;
+            // D-156: 빌드 캐시(notionItem.effect)는 신규 DSL 토큰(hint:/place_snare/shield_trap)을
+            //   인식하지 못한 채로 굳어있을 수 있다. 런타임에서 raw 문자열을 EffectParser로 다시
+            //   파싱해 신규 토큰까지 반영. raw가 없으면 캐시된 effect로 폴백.
+            const cachedEffect = (notionItem && notionItem.effect) || null;
+            const rawEffect = (notionItem && (notionItem['사용 효과'] || (cachedEffect && cachedEffect.raw))) || '';
+            const effect = (window.EffectParser && rawEffect)
+                ? window.EffectParser.parseItemEffect(rawEffect)
+                : cachedEffect;
             const usable = !!(effect && effect.usable);
             const effectLabel = window.EffectParser
                 ? window.EffectParser.describeEffect(effect)
@@ -5399,7 +5501,11 @@
             grasshopper_whole: '🦗',
             // D-94: 거대한 먹이 — 1단계 아니지만 보스 유인 시각 일관성을 위해 매핑.
             giant_bait: '🍖',
-            grilled_giant_bait: '🍗'
+            grilled_giant_bait: '🍗',
+            // D-126: 이벤트 신규 아이템 3종.
+            wood_shard: '🪶',
+            torn_map: '🗺️',
+            snare_trap: '🪤'
         };
         // 1단계 재료면 emoji 반환, 아니면 null.
         const itemEmoji = (typeOrId) => ITEM_EMOJI[typeOrId] || null;
@@ -5458,6 +5564,17 @@
             // D-53: 인게임 [플레이방법] 모달.
             const [showHelp, setShowHelp] = useState(false);
             const [eventTile, setEventTile] = useState(null);
+            // D-126: 이벤트 시스템.
+            //   eventChoice: { tileId, eventId } — 모달 활성. null이면 미표시.
+            //   eventTileAssignments: { [tileId]: eventId } — 비복원 풀 추첨 결과.
+            //     맵 생성 시 event 타일 슬롯들에게 events.events에서 비복원으로 1:1 매칭.
+            //     풀 < 슬롯 → 남는 슬롯은 eventTileAssignments에 키가 없음 → 도착 시 normal 폴백.
+            //   playerStatuses: [{id, remainingTurns}] — 환각/독 등 플레이어 상태이상.
+            //   fadeActive: bool — force_random_move 1초 페이드 연출 (☆4).
+            const [eventChoice, setEventChoice] = useState(null);
+            const [eventTileAssignments, setEventTileAssignments] = useState({});
+            const [playerStatuses, setPlayerStatuses] = useState([]);
+            const [fadeActive, setFadeActive] = useState(false);
             // 전투 임시 카드(아이템 사용으로 생성) — 전투 진입 시 combat 덱에 병합, 사용 후 소멸.
             // 구조: [{ id:'throw', count:N }, ...]
             const [combatExtraCards, setCombatExtraCards] = useState([]);
@@ -5488,6 +5605,11 @@
             // 플레이어 이동 경로 기록. 맵 보기 모드에서 방문 순서를 숫자로 표시.
             // 초기값은 게임 시작 시 setTiles 직후 [startTileId]로 채운다.
             const [moveHistory, setMoveHistory] = useState([]);
+
+            // D-156 (2026-04-28): 탈출구 타일 id 보존 — hint:exit_direction 등 방향 계산용.
+            //   initializeGame에서 mapGen.generate()가 반환하는 exitPos를 그대로 저장.
+            //   tile.type === 'exit'로도 찾을 수 있지만 매번 순회를 피하기 위해 캐시.
+            const [exitTileId, setExitTileId] = useState(-1);
 
             // D-110: 런 점수 산출용 누적 통계. 사냥 승리·보스 근접 진입 시 갱신.
             //   - l1PreyKills/l2PreyKills: 사냥 victory 분기에서 prey.level 기반 +1.
@@ -5836,8 +5958,38 @@
                 
                 setTiles(newTiles);
                 setCurrentTile(playerStart);
+                setExitTileId(typeof exitPos === 'number' ? exitPos : -1);
                 // 경로 기록 초기화 — 시작 타일이 첫 방문지.
                 setMoveHistory([playerStart]);
+
+                // D-126: 이벤트 슬롯 ← 풀 비복원 추첨.
+                //   events.events 배열을 셔플해서 event 타일 인덱스에 1:1로 배정.
+                //   풀 < 슬롯이면 남는 슬롯은 미배정 → 도착 시 normal 분기로 폴백.
+                {
+                    const eventBundle = (window.TTD_DATA && window.TTD_DATA.EVENTS) || { events: [], pool: {} };
+                    const eventSlots = newTiles.filter(t => t.type === 'event').map(t => t.id);
+                    const eventDefs = Array.isArray(eventBundle.events) ? eventBundle.events.slice() : [];
+                    // 셔플 (Fisher-Yates).
+                    for (let i = eventDefs.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [eventDefs[i], eventDefs[j]] = [eventDefs[j], eventDefs[i]];
+                    }
+                    const assignments = {};
+                    const max = Math.min(eventSlots.length, eventDefs.length);
+                    for (let i = 0; i < max; i++) {
+                        assignments[eventSlots[i]] = eventDefs[i].id;
+                    }
+                    // 남는 슬롯이 있으면 normal로 강등 (도착 시 평범한 숲길 텍스트).
+                    if (eventSlots.length > eventDefs.length) {
+                        for (let i = eventDefs.length; i < eventSlots.length; i++) {
+                            const tid = eventSlots[i];
+                            newTiles[tid] = { ...newTiles[tid], type: 'normal' };
+                        }
+                        // setTiles는 이미 위에서 호출됐지만, 폴백 반영을 위해 한 번 더 같은 배열로 갱신.
+                        setTiles(newTiles.slice());
+                    }
+                    setEventTileAssignments(assignments);
+                }
 
                 // 카드 데이터는 구글 시트 '베이스탐험카드' 탭이 SSOT.
                 // data/data.js의 TTD_DATA.BASE_CARDS를 읽어 런타임 필드(time 기본값 1)만 덧붙인다.
@@ -5899,7 +6051,9 @@
                 };
                 // D-90: 콜백 3번째 인자 preyType 추가 — 사체 도착 메시지에 사냥감 이름 사용.
                 // D-94: preyType='__bait__'이면 사체 메시지가 다른 톤으로 분기.
-                newBoss.onPredationComplete = (tileId, _targetPreyId, preyType) => {
+                // D-157: targetId가 null이면 (snare_trap 발동에 의한 단순 정지) 사체 생성 skip.
+                newBoss.onPredationComplete = (tileId, targetPreyId, preyType) => {
+                    if (!targetPreyId) return; // snare_trap 정지 등 prey 없는 케이스.
                     setCarcassTiles(prev => {
                         const next = new Map(prev);
                         next.set(tileId, { preyType: preyType || null });
@@ -6024,7 +6178,12 @@
                 const notionItems = (window.TTD_DATA && window.TTD_DATA.ITEMS) || [];
                 const def = InventorySystem.ITEMS[item.type] || {};
                 const notionItem = notionItems.find(it => it && it['이름'] === (def.name || item.name));
-                const parsed = (notionItem && notionItem.effect) || null;
+                // D-156: ItemInfoModal과 동일하게 raw → 런타임 재파싱 (신규 토큰 hint:/place_snare 등 인식).
+                const cachedEffect = (notionItem && notionItem.effect) || null;
+                const rawEffect = (notionItem && (notionItem['사용 효과'] || (cachedEffect && cachedEffect.raw))) || '';
+                const parsed = (window.EffectParser && rawEffect)
+                    ? window.EffectParser.parseItemEffect(rawEffect)
+                    : cachedEffect;
                 if (!parsed || !parsed.usable || !window.EffectParser) {
                     setMessage('이 아이템은 아직 사용할 수 없다.');
                     return { ok: false };
@@ -6046,12 +6205,65 @@
                             return next;
                         });
                     },
+                    // D-156: 아이템에서 발동된 힌트 — 실제 방향 계산은 단계 1에서 이미 구현된 헬퍼.
+                    showHint: (kind) => {
+                        const fromHere = (toId) => {
+                            if (typeof toId !== 'number' || toId < 0) return null;
+                            if (typeof window.getHexDirection !== 'function') return null;
+                            return window.getHexDirection(tiles, currentTile, toId);
+                        };
+                        if (kind === 'exit_direction') {
+                            const info = fromHere(exitTileId);
+                            if (info && info.dir !== 'unknown' && info.dir !== 'here') {
+                                setMessage(`찢어진 종이 위 화살표가 떨린다. 길의 끝은 ${info.label}이다. ${info.arrow}`);
+                            } else if (info && info.dir === 'here') {
+                                setMessage('지도가 가리키는 곳, 바로 이곳이 길의 끝이다.');
+                            } else {
+                                setMessage('지도의 잉크가 너무 번져 방향을 읽을 수 없다.');
+                            }
+                        } else if (kind === 'boss_direction') {
+                            const bossPos = boss ? boss.getPosition() : -1;
+                            const info = fromHere(bossPos);
+                            if (info && info.dir !== 'unknown') {
+                                setMessage(`종이 한 귀퉁이에서 짐승의 발자국이 보인다. ${info.label} ${info.arrow}`);
+                            }
+                        } else {
+                            setMessage('무언가의 단서가 머릿속에 남는다.');
+                        }
+                    },
+                    // D-157: snare_trap 능동 사용 — 현재 타일에 placedTrap=true.
+                    placeSnare: () => {
+                        setTiles(prev => prev.map(t => t.id === currentTile ? { ...t, placedTrap: { type: 'snare', placedAt: Date.now() } } : t));
+                        showTileEventToast({
+                            emoji: '🪤',
+                            title: '덫을 설치했다',
+                            message: '풀잎 사이에 톱니를 숨기고 줄을 팽팽히 매어두었다.',
+                            color: '#7a5a1f'
+                        });
+                    },
                     setMessage
                 });
 
                 if (result.ok) {
                     const label = window.EffectParser.describeEffect(parsed);
                     setMessage(`${def.name || item.name}을(를) 사용했다. (${label})`);
+
+                    // D-156 (2026-04-28): 아이템 인스턴스 statusTags 처리.
+                    //   poison_bite처럼 "아이템 1개에 일회성 페널티"가 붙어 있으면 사용 시점에 1회 트리거.
+                    //   StatusEffects.onItemConsumed가 ctx.applyStat/addLogLine을 호출해 추가 효과 적용.
+                    if (window.StatusEffects && typeof window.StatusEffects.onItemConsumed === 'function') {
+                        const tagCtx = {
+                            applyStat: (stat, delta) => {
+                                if (stat === 'hunger') setHunger(p => Math.max(0, Math.min(12, p + delta)));
+                                else if (stat === 'health') setHealth(p => Math.max(0, Math.min(8, p + delta)));
+                            },
+                            addLogLine: (txt) => {
+                                if (txt) setMessage(prev => (prev ? prev + ' ' + txt : txt));
+                            }
+                        };
+                        try { window.StatusEffects.onItemConsumed(item, tagCtx); }
+                        catch (e) { console.warn('[onItemConsumed] error:', e); }
+                    }
                 }
                 return result;
             };
@@ -6593,6 +6805,284 @@
                 setMessage(msg);
             };
 
+            // D-126 (2026-04-28): 이벤트 선택지 클릭 핸들러.
+            //   1) 효과 DSL 파싱 → applyEventEffect로 적용.
+            //   2) 효과 후 발생 라인은 setMessage로 합쳐 노출.
+            //   3) 모달 닫고, 해당 타일은 normal로 강등(같은 타일 재방문 시 미발동).
+            //   4) eventTileAssignments에서 제거.
+            const handleEventChoice = (assign, choice) => {
+                if (!choice || !assign) return;
+                const dsl = choice.effect_dsl || '';
+                const bundle = (window.TTD_DATA && window.TTD_DATA.EVENTS) || { pool: {} };
+
+                const lines = [];
+                let pendingForceMove = false;
+
+                const ctx = {
+                    grantItem: (itemId, count) => {
+                        if (!inventory) return false;
+                        let ok = true;
+                        for (let i = 0; i < (count || 1); i++) {
+                            const r = inventory.addItem(itemId);
+                            if (!r) { ok = false; break; }
+                        }
+                        // setInventory(inventory) — 같은 인스턴스라 React가 리렌더 안 할 수 있음. 새 reference로.
+                        setInventory(Object.create(Object.getPrototypeOf(inventory), Object.getOwnPropertyDescriptors(inventory)));
+                        return ok;
+                    },
+                    itemNameOf: (itemId) => {
+                        const def = InventorySystem.resolveDef ? InventorySystem.resolveDef(itemId) : null;
+                        return (def && (def.name || def['이름'])) || itemId;
+                    },
+                    poolPick: (poolId, count) => {
+                        // D-156: weight 가중 비복원 추첨. weight 미지정 시 기본 1.
+                        //   풀 부족 시 가능한 만큼만 반환. 같은 항목 중복 방지(비복원).
+                        const pool = (bundle.pool && bundle.pool[poolId]) || [];
+                        const copy = pool.map(p => ({ ...p, _w: Number.isFinite(p.weight) ? p.weight : 1 }));
+                        const picks = [];
+                        const n = Math.min(count || 1, copy.length);
+                        for (let i = 0; i < n; i++) {
+                            const totalW = copy.reduce((s, x) => s + (x._w > 0 ? x._w : 0), 0);
+                            if (totalW <= 0) break;
+                            let r = Math.random() * totalW;
+                            let idx = 0;
+                            for (let j = 0; j < copy.length; j++) {
+                                r -= (copy[j]._w > 0 ? copy[j]._w : 0);
+                                if (r <= 0) { idx = j; break; }
+                            }
+                            const pick = copy.splice(idx, 1)[0];
+                            delete pick._w;
+                            picks.push(pick);
+                        }
+                        return picks;
+                    },
+                    consumeItemByFilter: (filter, count) => {
+                        if (!inventory) return false;
+                        // filter는 카테고리 한글값(예: '음식'). resolveDef로 카테고리 비교.
+                        const want = String(filter || '').trim();
+                        const targets = [];
+                        for (let i = inventory.items.length - 1; i >= 0 && targets.length < (count || 1); i--) {
+                            const it = inventory.items[i];
+                            const def = InventorySystem.resolveDef ? InventorySystem.resolveDef(it.type) : null;
+                            const cat = (def && (def['카테고리'] || def.category)) || '';
+                            if (cat === want) targets.push(it);
+                        }
+                        for (const it of targets) {
+                            inventory.removeItem(it);
+                            inventory.items = inventory.items.filter(x => x.id !== it.id);
+                        }
+                        if (targets.length > 0) {
+                            setInventory(Object.create(Object.getPrototypeOf(inventory), Object.getOwnPropertyDescriptors(inventory)));
+                            lines.push(`${want} ${targets.length}개를 던져주었다.`);
+                        } else {
+                            lines.push(`줄 만한 ${want}이(가) 가방에 없다.`);
+                        }
+                        return targets.length > 0;
+                    },
+                    applyStat: (stat, delta) => {
+                        if (stat === 'hunger') setHunger(prev => Math.max(0, Math.min(12, prev + delta)));
+                        else if (stat === 'health') setHealth(prev => Math.max(0, Math.min(8, prev + delta)));
+                    },
+                    applyDetection: (delta) => {
+                        setDetection(prev => Math.max(0, Math.min(100, prev + delta)));
+                        // D-156: 발각 변화 토스트 — 1인칭 감각 텍스트 + 수치.
+                        if (delta > 0) {
+                            showTileEventToast({
+                                emoji: '👁️',
+                                title: '심장이 빨라진다',
+                                message: `들킬 위험이 커졌다. 발각 +${delta}%`,
+                                color: '#a83232'
+                            });
+                        } else if (delta < 0) {
+                            showTileEventToast({
+                                emoji: '🌫️',
+                                title: '숨이 가라앉는다',
+                                message: `짐승의 시야에서 멀어진 듯하다. 발각 ${delta}%`,
+                                color: '#3d7a4f'
+                            });
+                        }
+                    },
+                    applyStatus: (statusId, duration) => {
+                        if (statusId === 'poison_bite') {
+                            // 인스턴스 단위 — apply()는 무시. 호출자(이벤트)는 grantItemTagged 경로 사용.
+                            return;
+                        }
+                        setPlayerStatuses(prev => window.StatusEffects.apply(prev, statusId, duration));
+                        const cat = window.StatusEffects.getCatalog(statusId);
+                        if (cat) lines.push(`${cat.name} 상태에 빠졌다.`);
+                    },
+                    showHint: (kind) => {
+                        // D-156 (2026-04-28): 실제 방향/위치 계산. window.getHexDirection은
+                        //   mapGenerator.js가 제공. 결과 라벨을 1인칭 텍스트에 끼워 넣는다.
+                        const dirOf = (toId) => {
+                            if (typeof toId !== 'number' || toId < 0) return null;
+                            if (typeof window.getHexDirection !== 'function') return null;
+                            return window.getHexDirection(tiles, assign.tileId, toId);
+                        };
+                        const fromHere = (toId) => dirOf(toId);
+
+                        if (kind === 'exit_direction') {
+                            const info = fromHere(exitTileId);
+                            if (info && info.dir !== 'unknown' && info.dir !== 'here') {
+                                lines.push(`바람이 ${info.label}으로 흘러간다. 길의 끝이 그쪽에 있다. ${info.arrow}`);
+                            } else if (info && info.dir === 'here') {
+                                lines.push('지금 발 디딘 자리, 그곳이 길의 끝이다.');
+                            } else {
+                                lines.push('저 멀리, 어딘가에 길의 끝이 있다는 감각만 든다.');
+                            }
+                            return;
+                        }
+                        if (kind === 'wrong_exit_direction') {
+                            // 의도적으로 잘못된 방향 — 실제 탈출구의 반대편 6방향 중 하나를 골라 알림.
+                            const real = fromHere(exitTileId);
+                            const OPPOSITE = { N: 'S', S: 'N', NE: 'SW', SW: 'NE', NW: 'SE', SE: 'NW' };
+                            const LABEL = { N: '북쪽', NE: '북동쪽', SE: '남동쪽', S: '남쪽', SW: '남서쪽', NW: '북서쪽' };
+                            const ARROW = { N: '↑', NE: '↗', SE: '↘', S: '↓', SW: '↙', NW: '↖' };
+                            const wrongDir = (real && real.dir && OPPOSITE[real.dir]) || 'N';
+                            lines.push(`바람이 ${LABEL[wrongDir]}으로 흐른다고 일러주는데… 어쩐지 미덥지 않다. ${ARROW[wrongDir]}`);
+                            return;
+                        }
+                        if (kind === 'boss_direction') {
+                            const bossPos = boss ? boss.getPosition() : -1;
+                            const info = fromHere(bossPos);
+                            if (info && info.dir !== 'unknown' && info.dir !== 'here') {
+                                lines.push(`거대한 발소리가 ${info.label}에서 울려온다. ${info.arrow}`);
+                            } else if (info && info.dir === 'here') {
+                                lines.push('숨이 멎을 만큼 가까운 곳에서 울음이 들린다. 바로 곁이다.');
+                            } else {
+                                lines.push('어딘가에서 거대한 짐승의 발소리가 울려온다.');
+                            }
+                            return;
+                        }
+                        if (kind === 'boss_position' || kind === 'exit_direction_or_boss') {
+                            // boss_position: 보스 위치 1회 가시화.
+                            // exit_direction_or_boss: 가까운 쪽(거리 작은 쪽) 우선 노출.
+                            const bossPos = boss ? boss.getPosition() : -1;
+                            const bInfo = fromHere(bossPos);
+                            if (kind === 'boss_position') {
+                                if (bInfo && bInfo.dir !== 'unknown') {
+                                    lines.push(`잠시 보스의 위치가 머릿속을 스친다. ${bInfo.label} ${bInfo.arrow}`);
+                                    setBossVisible(true);
+                                } else {
+                                    lines.push('보스의 위치가 머릿속을 스쳤지만 흐릿하다.');
+                                }
+                                return;
+                            }
+                            // exit_direction_or_boss
+                            const eInfo = fromHere(exitTileId);
+                            const useBoss = bInfo && eInfo && bInfo.dist < eInfo.dist;
+                            const pick = useBoss ? bInfo : eInfo;
+                            if (pick && pick.dir !== 'unknown' && pick.dir !== 'here') {
+                                lines.push(useBoss
+                                    ? `짐승의 숨소리가 ${pick.label}에서 들린다. ${pick.arrow}`
+                                    : `길의 끝이 ${pick.label}에 있다. ${pick.arrow}`);
+                            } else {
+                                lines.push('머릿속에 무언가의 방향 감각이 흘러갔다.');
+                            }
+                            return;
+                        }
+                        if (kind === 'tile_reveal') {
+                            // 가장 가까운 미공개 normal/event/good/exit 타일을 1개 revealed=true로.
+                            let target = -1;
+                            let bestDist = Infinity;
+                            for (let i = 0; i < tiles.length; i++) {
+                                const t = tiles[i];
+                                if (!t || t.isEmpty) continue;
+                                if (t.revealed || t.discovered) continue;
+                                const d = window.getHexDirection
+                                    ? window.getHexDirection(tiles, assign.tileId, i).dist
+                                    : Infinity;
+                                if (d < bestDist) { bestDist = d; target = i; }
+                            }
+                            if (target >= 0) {
+                                setTiles(prev => prev.map(t => t.id === target ? { ...t, revealed: true, discovered: true } : t));
+                                const info = fromHere(target);
+                                lines.push(info && info.label
+                                    ? `어둠 속 한 자리가 환해졌다. ${info.label} ${info.arrow}`
+                                    : '어둠 속 한 자리가 환해졌다.');
+                            } else {
+                                lines.push('머릿속에 한 줄기 빛이 스쳤지만 새 풍경은 없다.');
+                            }
+                            return;
+                        }
+                        if (kind === 'nearby_tile_reveal') {
+                            // 현재 타일과 인접한 타일 중 미공개 한 곳을 reveal.
+                            const cur = tiles[assign.tileId];
+                            const conns = (cur && cur.connections) || [];
+                            const candidates = conns.filter(id => {
+                                const t = tiles[id];
+                                return t && !t.revealed && !t.isEmpty;
+                            });
+                            if (candidates.length > 0) {
+                                const pick = candidates[Math.floor(Math.random() * candidates.length)];
+                                setTiles(prev => prev.map(t => t.id === pick ? { ...t, revealed: true, discovered: true } : t));
+                                const info = fromHere(pick);
+                                lines.push(info && info.label
+                                    ? `발치의 안개가 가시며 ${info.label} 너머가 드러났다. ${info.arrow}`
+                                    : '발치의 안개가 한 줄기 가셨다.');
+                            } else {
+                                lines.push('주변 안개는 이미 가셨다.');
+                            }
+                            return;
+                        }
+                        // 알 수 없는 kind — 안전망.
+                        console.warn('[showHint] 미지의 kind:', kind);
+                        lines.push('무언가의 흔적이 머릿속에 남는다.');
+                    },
+                    forceRandomMove: () => {
+                        pendingForceMove = true;
+                    },
+                    tagLastGrantedItem: (itemId, statusId) => {
+                        // 직전 grant 결과 1개에 statusTag 부여. 가장 최근에 추가된 같은 type 1개를 찾는다.
+                        if (!inventory) return;
+                        for (let i = inventory.items.length - 1; i >= 0; i--) {
+                            if (inventory.items[i].type === itemId) {
+                                const it = inventory.items[i];
+                                it.statusTags = Array.isArray(it.statusTags) ? it.statusTags.slice() : [];
+                                if (!it.statusTags.includes(statusId)) it.statusTags.push(statusId);
+                                break;
+                            }
+                        }
+                        setInventory(Object.create(Object.getPrototypeOf(inventory), Object.getOwnPropertyDescriptors(inventory)));
+                        const cat = window.StatusEffects && window.StatusEffects.getCatalog(statusId);
+                        if (cat) lines.push(`그중 하나는 ${cat.name}.`);
+                    },
+                    addLogLine: (txt) => { if (txt) lines.push(txt); }
+                };
+
+                const parsed = window.EffectParser.parseEventEffect(dsl);
+                window.EffectParser.applyEventEffect(parsed, ctx).forEach(l => lines.push(l));
+
+                // 효과 메시지 합치기.
+                if (lines.length > 0) setMessage(lines.join(' '));
+                else setMessage('잠시 멈춰서 숨을 골랐다.');
+
+                // 타일은 normal로 강등 — 같은 칸 재방문해도 같은 이벤트 재발생 X.
+                setTiles(prev => prev.map(t => t.id === assign.tileId ? { ...t, type: 'normal' } : t));
+                setEventTileAssignments(prev => {
+                    const next = { ...prev };
+                    delete next[assign.tileId];
+                    return next;
+                });
+                setEventChoice(null);
+
+                // ☆4: force_random_move = 1초 페이드 연출. 페이드 동안 입력 차단 후 랜덤 인접으로 이동.
+                if (pendingForceMove) {
+                    setFadeActive(true);
+                    setTimeout(() => {
+                        const cur = tiles[assign.tileId];
+                        const conns = (cur && cur.connections) || [];
+                        if (conns.length > 0) {
+                            const dest = conns[Math.floor(Math.random() * conns.length)];
+                            setCurrentTile(dest);
+                            setMoveHistory(prev => [...prev, dest]);
+                            setTiles(prev => prev.map(t => t.id === dest ? { ...t, visited: true, discovered: true, revealed: true } : t));
+                        }
+                        setFadeActive(false);
+                    }, 1000);
+                }
+            };
+
             // 타일 이동 (D-90: targetId === currentTile이면 "제자리에서 시간 보내기" — 다른
             //   타일로 이동한 것과 동일한 규칙 적용. 모든 부수 효과(시간/배고픔/발각률/보스
             //   이동/손패 사이클 등)가 그대로 흐른다. HexTile onClick에서 isCurrent면 별도
@@ -6770,6 +7260,56 @@
                 boss.onPlayerMove(targetId, movedDetection, allTargets);
                 newBossPos = boss.position;
 
+                // D-157: 설치된 덫 발동 체크. 보스가 placedTrap이 있는 타일에 들어오면
+                //   1턴 정지(predationStay 재활용) + 덫 마커 제거 + 시네마틱 패닝 + 보스 가시화.
+                //   포식 중(predationStay>0)은 이미 정지 상태이므로 덧대지 않는다.
+                {
+                    const bossTile = newTiles[newBossPos];
+                    const tileMoved = newBossPos !== bossStartPos;
+                    if (bossTile && bossTile.placedTrap && bossTile.placedTrap.type === 'snare' && tileMoved && boss.predationStay <= 0) {
+                        // 1) 덫 발동 — 보스 1턴 정지(predationStay=1로 다음 onPlayerMove에서 -=1 후 0이 되어 자동 해제).
+                        //    predationStay는 본래 포식용이지만 predationTarget이 null이면 단순 정지로 동작한다(onPlayerMove 분기 참조).
+                        //    포식 콜백을 임시로 떼두지 않으면 onPredationComplete가 호출되어 사체 타일이 잘못 만들어지므로,
+                        //    predationStay 1턴 + predationTarget=null 상태이면 onPlayerMove의 if(predationStay>0) 블록 안에서
+                        //    completedAt callback은 호출되지만 콜백 본문은 prey가 없을 때 안전. 그래도 사이드 이펙 방지를 위해
+                        //    onPredationComplete 가드에서 targetId가 null이면 사체 생성 skip하도록 따로 분기.
+                        boss.predationStay = 1;
+                        boss.predationTarget = null;
+                        boss.predationPreyType = null;
+
+                        // 2) 덫 마커 제거.
+                        const trapTileId = newBossPos;
+                        setTiles(prev => prev.map(t => t.id === trapTileId ? { ...t, placedTrap: null } : t));
+
+                        // 3) 토스트 — 1인칭 감각 텍스트.
+                        showTileEventToast({
+                            emoji: '🪤',
+                            title: '덫이 걸렸다',
+                            message: '저 멀리서 덫에 걸린 짐승의 울부짖음이 들려온다.',
+                            color: '#7a5a1f'
+                        });
+
+                        // 4) 시네마틱 — 보스 위치로 패닝 → 1.2초 정지 → 원위치 복귀.
+                        //    중간에 보스 가시화. 시네마틱 모듈 미로드 시 fallback(즉시 가시화).
+                        const trapTile = newTiles[trapTileId];
+                        const tilePixel = trapTile && trapTile.position ? { x: trapTile.position.x, y: trapTile.position.y } : null;
+                        const scrollEl = document.querySelector('.map-container');
+                        if (window.CameraCinematic && tilePixel && scrollEl) {
+                            window.CameraCinematic.panToTile({
+                                scrollEl,
+                                tilePixelXY: tilePixel,
+                                panMs: 800,
+                                holdMs: 1200,
+                                returnMs: 600,
+                                onMidway: () => { setBossVisible(true); },
+                                onDone: () => { /* 시네마틱 종료 — 보스 가시화는 다음 이동까지 유지. */ }
+                            });
+                        } else {
+                            setBossVisible(true);
+                        }
+                    }
+                }
+
                 // D-110: 보스 근접(거리 ≤2) 진입 카운트. 같은 플레이어 타일에서 재진입은 dedup.
                 //   bossDangerSeenTilesRef는 useRef Set — 첫 진입 시 add + score+1.
                 //   조우 자체(거리 0)는 게임오버라 별도 처리 안 해도 됨(dist≤2 카운트엔 포함).
@@ -6863,11 +7403,41 @@
                         color: '#FFC107'
                     });
                 } else if (tile.type === 'trap') {
-                    const damage = Math.floor(Math.random() * 2) + 1;
-                    setHealth(health - damage);
-                    msg = `함정! 생명력 -${damage}`;
-                    // 이벤트 모달 표시 (데미지 정보 포함)
-                    setEventTile({ ...tile, damage });
+                    // D-156: wood_shard 자동 차단 가드. 인벤에 wood_shard가 있으면 1개 소모하고
+                    //   함정 데미지·이벤트 모달을 무시. 1인칭 토스트로 알림.
+                    let shardItem = null;
+                    if (inventory && Array.isArray(inventory.items)) {
+                        shardItem = inventory.items.find(it => it && it.type === 'wood_shard');
+                    }
+                    if (shardItem) {
+                        inventory.removeItem(shardItem);
+                        inventory.items = inventory.items.filter(i => i.id !== shardItem.id);
+                        setInventory(Object.create(Object.getPrototypeOf(inventory), Object.getOwnPropertyDescriptors(inventory)));
+                        showTileEventToast({
+                            emoji: '🪵',
+                            title: '덫이 빗나갔다',
+                            message: '나무 조각이 부러지며 발 밑의 쇠덫이 튕겨 올라갔다.',
+                            color: '#7a5a1f'
+                        });
+                        msg = '나무 조각이 부러지며 발 밑의 쇠덫이 튕겨 올라갔다.';
+                        // 함정 타일은 normal로 강등(같은 타일 재방문 시 재발동 X — 이미 한 번 해제됨).
+                        setTiles(prev => prev.map(t => t.id === targetId ? { ...t, type: 'normal' } : t));
+                    } else {
+                        const damage = Math.floor(Math.random() * 2) + 1;
+                        setHealth(health - damage);
+                        msg = `함정! 생명력 -${damage}`;
+                        // 이벤트 모달 표시 (데미지 정보 포함)
+                        setEventTile({ ...tile, damage });
+                    }
+                } else if (tile.type === 'event') {
+                    // D-126: 이벤트 타일 — 모달 트리거. 이미 발동한 타일은 normal로 강등됐으므로 1회성.
+                    const eventId = eventTileAssignments[tile.id];
+                    if (eventId) {
+                        msg = '낯선 풍경이 발걸음을 붙잡는다.';
+                        setEventChoice({ tileId: tile.id, eventId });
+                    } else {
+                        msg = '평범한 숲길이다.';
+                    }
                 } else if (tile.type === 'exit') {
                     msg = '탈출구다!';
                 }
@@ -6875,7 +7445,21 @@
                 if (boss.chaseMode && !encounter) {
                     msg += ` [⚠️ 보스 추격중!]`;
                 }
-                
+
+                // D-126: 상태이상 tick — 매 이동 후 1회. tick_effect 적용 + remainingTurns 감소.
+                if (window.StatusEffects && playerStatuses.length > 0) {
+                    const tickCtx = {
+                        applyStat: (stat, delta) => {
+                            if (stat === 'hunger') setHunger(p => Math.max(0, Math.min(12, p + delta)));
+                            else if (stat === 'health') setHealth(p => Math.max(0, Math.min(8, p + delta)));
+                        },
+                        addLogLine: (l) => { if (l) msg += '\n' + l; }
+                    };
+                    const { list, lines } = window.StatusEffects.tick(playerStatuses, tickCtx);
+                    setPlayerStatuses(list);
+                    if (lines.length > 0) msg += '\n' + lines.join(' ');
+                }
+
                 setMessage(msg);
             };
 
@@ -6943,6 +7527,7 @@
                             boss={boss}
                             detection={detection}
                             message={message}
+                            statuses={playerStatuses}
                         />
                     </div>
 
@@ -7032,10 +7617,43 @@
                     </div>
 
                     {eventTile && (
-                        <TileEventModal 
-                            tile={eventTile} 
-                            onClose={() => setEventTile(null)} 
+                        <TileEventModal
+                            tile={eventTile}
+                            onClose={() => setEventTile(null)}
                         />
+                    )}
+
+                    {eventChoice && (() => {
+                        const bundle = (window.TTD_DATA && window.TTD_DATA.EVENTS) || { events: [] };
+                        const ev = (bundle.events || []).find(e => e.id === eventChoice.eventId);
+                        if (!ev) return null;
+                        return (
+                            <EventChoiceModal
+                                event={ev}
+                                onChoose={(choice) => handleEventChoice(eventChoice, choice)}
+                            />
+                        );
+                    })()}
+
+                    {fadeActive && (
+                        <div style={{
+                            position: 'fixed', inset: 0,
+                            background: '#000',
+                            opacity: 0.85,
+                            zIndex: 2000,
+                            pointerEvents: 'none',
+                            transition: 'opacity 0.5s ease'
+                        }}>
+                            <div style={{
+                                position: 'absolute', top: '50%', left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                color: '#aaa',
+                                fontSize: '14px',
+                                letterSpacing: '0.1em'
+                            }}>
+                                정신을 차렸을 땐, 다른 곳에 와 있었다.
+                            </div>
+                        </div>
                     )}
 
                     {showInventory && inventory && (

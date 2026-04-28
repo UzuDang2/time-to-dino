@@ -1,0 +1,26 @@
+[
+  {
+    "id": "hallucination",
+    "name": "환각",
+    "duration": 3,
+    "tick_effect": "",
+    "summary": "주변 정보가 뒤섞여 보인다 (3턴).",
+    "description": "버섯 향이 감각을 흔든다. 타일과 발자국이 한 박자씩 어긋나 보인다."
+  },
+  {
+    "id": "poison",
+    "name": "독",
+    "duration": 3,
+    "tick_effect": "chance_stat:30,health-1",
+    "summary": "이동 시 30% 확률로 체력 -1 (3턴).",
+    "description": "혀끝에 쇠 맛이 남는다. 발걸음마다 속이 뒤집히는 듯하다."
+  },
+  {
+    "id": "poison_bite",
+    "name": "독이 든 한 입",
+    "duration": 0,
+    "tick_effect": "",
+    "summary": "이 아이템을 먹으면 체력 -1.",
+    "description": "겉으론 멀쩡하지만, 한 입 무는 순간 알게 될 것이다."
+  }
+]

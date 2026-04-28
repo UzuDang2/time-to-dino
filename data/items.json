@@ -278,6 +278,28 @@
     }
   },
   {
+    "id": "snare_trap",
+    "name": "덫",
+    "이름": "덫",
+    "카테고리": "소모품",
+    "재료 타입": null,
+    "아이템 등급": "1단계",
+    "가방칸수": "1x1",
+    "나오는 지역": [],
+    "머지 가능": false,
+    "일회용": true,
+    "설명 텍스트": "녹슨 금속 고리와 팽팽한 줄. 누군가 한참 전에 손봐 둔 솜씨다.",
+    "효과 요약": "현재 타일에 설치. 보스가 밟으면 1턴 정지.",
+    "사용 효과": "place_snare",
+    "merge_result": null,
+    "merge_enabled": false,
+    "effect": {
+      "usable": false,
+      "actions": [],
+      "raw": "place_snare"
+    }
+  },
+  {
     "id": "stem",
     "name": "줄기",
     "이름": "줄기",
@@ -333,6 +355,28 @@
     }
   },
   {
+    "id": "torn_map",
+    "name": "찢어진 지도 조각",
+    "이름": "찢어진 지도 조각",
+    "카테고리": "소모품",
+    "재료 타입": null,
+    "아이템 등급": "1단계",
+    "가방칸수": "1x1",
+    "나오는 지역": [],
+    "머지 가능": false,
+    "일회용": true,
+    "설명 텍스트": "물에 번진 잉크와 흙 자국. 한 귀퉁이만 남았지만, 화살표가 분명하다.",
+    "효과 요약": "탈출구 방향을 한 번 알려준다.",
+    "사용 효과": "hint:exit_direction",
+    "merge_result": null,
+    "merge_enabled": false,
+    "effect": {
+      "usable": false,
+      "actions": [],
+      "raw": "hint:exit_direction"
+    }
+  },
+  {
     "id": "water",
     "name": "맑은물",
     "이름": "맑은물",
@@ -360,6 +404,28 @@
         }
       ],
       "raw": "hunger+1"
+    }
+  },
+  {
+    "id": "wood_shard",
+    "name": "나무 조각",
+    "이름": "나무 조각",
+    "카테고리": "소모품",
+    "재료 타입": null,
+    "아이템 등급": "1단계",
+    "가방칸수": "1x1",
+    "나오는 지역": [],
+    "머지 가능": false,
+    "일회용": true,
+    "설명 텍스트": "거칠게 부러진 나뭇조각. 손바닥에 거칠게 닿는 결이 묘하게 든든하다.",
+    "효과 요약": "함정 1회 자동 차단 (소지 시 패시브).",
+    "사용 효과": "shield_trap",
+    "merge_result": null,
+    "merge_enabled": false,
+    "effect": {
+      "usable": false,
+      "actions": [],
+      "raw": "shield_trap"
     }
   },
   {

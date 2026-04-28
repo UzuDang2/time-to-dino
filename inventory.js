@@ -136,7 +136,15 @@ class InventorySystem {
 
         tool_pickaxe: { name: '곡괭이', shape: [[1, 0], [1, 1]], grade: 2, mergeable: false },
 
-        armor: { name: '가죽 갑옷', shape: [[1, 1], [1, 1]], grade: 2, mergeable: false }
+        armor: { name: '가죽 갑옷', shape: [[1, 1], [1, 1]], grade: 2, mergeable: false },
+
+        // === D-126 (2026-04-28) 이벤트 신규 아이템 3종 (☆1/☆3 폴백) ===
+        //   wood_shard:  소지 시 함정 1회 자동 차단 (단계 2/3에서 트리거 구현). 폴백 단계는 보유만.
+        //   torn_map:    사용 시 탈출구 방향 1회 표시. ItemInfoModal [사용]에서 hint:exit_direction 발동 예정.
+        //   snare_trap:  현재 타일에 설치, 보스가 밟으면 1턴 정지. 단계 3.
+        wood_shard: { name: '나무 조각',         shape: [[1]], grade: 1, mergeable: false, category: '소모품', merge_result: null },
+        torn_map:   { name: '찢어진 지도 조각',   shape: [[1]], grade: 1, mergeable: false, category: '소모품', merge_result: null },
+        snare_trap: { name: '덫',               shape: [[1]], grade: 1, mergeable: false, category: '소모품', merge_result: null }
     };
 
     // 런타임에 TTD_DATA.ITEMS(Notion 기반)이 덮어쓰는 값 조회.

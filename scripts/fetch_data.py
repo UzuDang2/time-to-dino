@@ -112,6 +112,16 @@ SHEET_TABS = {
 DROP_TABLE_SHEET = "드롭테이블"
 REGION_POOL_SHEET = "드롭풀"
 
+# D-126 (2026-04-28): MVP+ 이벤트/상태이상 SSOT.
+# - '이벤트' 탭: id, title, intro_text, region
+# - '이벤트선택지' 탭: event_id, choice_id, label, effect_dsl
+# - '이벤트풀' 탭: pool_id, item_id, count
+# - '상태이상' 탭: id, name, duration, tick_effect, summary, description
+EVENT_SHEET = "이벤트"
+EVENT_CHOICE_SHEET = "이벤트선택지"
+EVENT_POOL_SHEET = "이벤트풀"
+STATUS_SHEET = "상태이상"
+
 # 아이템마스터 탭 (D-30): 아이템 SSOT 시트 이관
 # Notion DB는 레거시(서사 참조용)로 남기고, 런타임은 여기서만 읽는다.
 ITEM_MASTER_SHEET = "아이템마스터"
@@ -1077,6 +1087,187 @@ def rows_to_armors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+# ─── 이벤트 / 상태이상 (D-126 MVP+) ────────────────────────────────────
+
+
+def export_events_via_api(sh) -> None:
+    """이벤트 + 이벤트선택지 + 이벤트풀 탭을 합쳐 events.json 산출.
+
+    출력 구조 (런타임이 보기 좋게):
+      [
+        {
+          "id": "wounded_animal",
+          "title": "...",
+          "intro_text": "...",
+          "region": "",
+          "choices": [
+            {"id":"help","label":"도와준다","effect_dsl":"item_grant:berry*1;hint:exit_direction"}, ...
+          ]
+        }, ...
+      ]
+
+    이벤트풀(pool_id → [{id,count}])은 별도 events_pool 키로 같이 묶어
+    한 파일에서 런타임이 lookup 가능하게 한다 (☆2 결정: pool 항목은 객체 배열).
+    """
+    names = {w.title for w in sh.worksheets()}
+
+    events: list[dict[str, Any]] = []
+    if EVENT_SHEET not in names:
+        print(f"[warn] 탭 '{EVENT_SHEET}' 없음 — events 생성 스킵")
+        return
+
+    # 1) 이벤트 본문
+    for r in _ws_rows(sh.worksheet(EVENT_SHEET)):
+        eid = str(r.get("id") or "").strip()
+        if not eid:
+            continue
+        events.append({
+            "id": eid,
+            "title": str(r.get("title") or "").strip(),
+            "intro_text": str(r.get("intro_text") or "").strip(),
+            "region": str(r.get("region") or "").strip(),
+            "choices": [],
+        })
+    by_id = {e["id"]: e for e in events}
+
+    # 2) 선택지
+    if EVENT_CHOICE_SHEET in names:
+        for r in _ws_rows(sh.worksheet(EVENT_CHOICE_SHEET)):
+            eid = str(r.get("event_id") or "").strip()
+            cid = str(r.get("choice_id") or "").strip()
+            if not eid or not cid or eid not in by_id:
+                continue
+            by_id[eid]["choices"].append({
+                "id": cid,
+                "label": str(r.get("label") or "").strip(),
+                "effect_dsl": str(r.get("effect_dsl") or "").strip(),
+            })
+
+    # 3) 풀 (☆2: 객체 배열)
+    pool: dict[str, list[dict[str, Any]]] = {}
+    if EVENT_POOL_SHEET in names:
+        for r in _ws_rows(sh.worksheet(EVENT_POOL_SHEET)):
+            pid = str(r.get("pool_id") or "").strip()
+            iid = str(r.get("item_id") or "").strip()
+            if not pid or not iid:
+                continue
+            try:
+                count = int(r.get("count") or 1)
+            except (TypeError, ValueError):
+                count = 1
+            pool.setdefault(pid, []).append({"id": iid, "count": count})
+
+    payload = {"events": events, "pool": pool}
+    out_path = DATA_DIR / "events.json"
+    write_json(out_path, payload)
+    print(f"[api] events       → {out_path.name}  ({len(events)} events, {len(pool)} pools)")
+
+
+def export_status_effects_via_api(sh) -> None:
+    """상태이상 탭 → status_effects.json. ☆3: 3종 fix(hallucination/poison/poison_bite)."""
+    names = {w.title for w in sh.worksheets()}
+    if STATUS_SHEET not in names:
+        print(f"[warn] 탭 '{STATUS_SHEET}' 없음 — status_effects 생성 스킵")
+        return
+    rows = _ws_rows(sh.worksheet(STATUS_SHEET))
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        sid = str(r.get("id") or "").strip()
+        if not sid:
+            continue
+        try:
+            duration = int(r.get("duration") or 0)
+        except (TypeError, ValueError):
+            duration = 0
+        out.append({
+            "id": sid,
+            "name": str(r.get("name") or "").strip(),
+            "duration": duration,
+            "tick_effect": str(r.get("tick_effect") or "").strip(),
+            "summary": str(r.get("summary") or "").strip(),
+            "description": str(r.get("description") or "").strip(),
+        })
+    out_path = DATA_DIR / "status_effects.json"
+    write_json(out_path, out)
+    print(f"[api] status       → {out_path.name}  ({len(out)} statuses)")
+
+
+def export_events_from_xlsx(xlsx_path: Path) -> None:
+    """xlsx 폴백 — 같은 4개 탭을 읽어 events.json 생성."""
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    if EVENT_SHEET not in wb.sheetnames:
+        print(f"[warn] xlsx에 '{EVENT_SHEET}' 탭 없음 — events 생성 스킵")
+        return
+    events: list[dict[str, Any]] = []
+    for r in sheet_to_rows(wb[EVENT_SHEET]):
+        eid = str(r.get("id") or "").strip()
+        if not eid:
+            continue
+        events.append({
+            "id": eid,
+            "title": str(r.get("title") or "").strip(),
+            "intro_text": str(r.get("intro_text") or "").strip(),
+            "region": str(r.get("region") or "").strip(),
+            "choices": [],
+        })
+    by_id = {e["id"]: e for e in events}
+    if EVENT_CHOICE_SHEET in wb.sheetnames:
+        for r in sheet_to_rows(wb[EVENT_CHOICE_SHEET]):
+            eid = str(r.get("event_id") or "").strip()
+            cid = str(r.get("choice_id") or "").strip()
+            if not eid or not cid or eid not in by_id:
+                continue
+            by_id[eid]["choices"].append({
+                "id": cid,
+                "label": str(r.get("label") or "").strip(),
+                "effect_dsl": str(r.get("effect_dsl") or "").strip(),
+            })
+    pool: dict[str, list[dict[str, Any]]] = {}
+    if EVENT_POOL_SHEET in wb.sheetnames:
+        for r in sheet_to_rows(wb[EVENT_POOL_SHEET]):
+            pid = str(r.get("pool_id") or "").strip()
+            iid = str(r.get("item_id") or "").strip()
+            if not pid or not iid:
+                continue
+            try:
+                count = int(r.get("count") or 1)
+            except (TypeError, ValueError):
+                count = 1
+            pool.setdefault(pid, []).append({"id": iid, "count": count})
+    payload = {"events": events, "pool": pool}
+    out_path = DATA_DIR / "events.json"
+    write_json(out_path, payload)
+    print(f"[export] events      → {out_path.name}  ({len(events)} events, {len(pool)} pools)")
+
+
+def export_status_effects_from_xlsx(xlsx_path: Path) -> None:
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    if STATUS_SHEET not in wb.sheetnames:
+        print(f"[warn] xlsx에 '{STATUS_SHEET}' 탭 없음 — status_effects 스킵")
+        return
+    rows = sheet_to_rows(wb[STATUS_SHEET])
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        sid = str(r.get("id") or "").strip()
+        if not sid:
+            continue
+        try:
+            duration = int(r.get("duration") or 0)
+        except (TypeError, ValueError):
+            duration = 0
+        out.append({
+            "id": sid,
+            "name": str(r.get("name") or "").strip(),
+            "duration": duration,
+            "tick_effect": str(r.get("tick_effect") or "").strip(),
+            "summary": str(r.get("summary") or "").strip(),
+            "description": str(r.get("description") or "").strip(),
+        })
+    out_path = DATA_DIR / "status_effects.json"
+    write_json(out_path, out)
+    print(f"[export] status      → {out_path.name}  ({len(out)} statuses)")
+
+
 def export_items_from_sheet(sh) -> bool:
     """API로 아이템마스터 + 무기 + 방어구 + 조합레시피 탭을 읽어 items/weapons/armors/combos 생성."""
     names = {w.title for w in sh.worksheets()}
@@ -1254,6 +1445,9 @@ def main() -> int:
                 export_drop_table_via_api(sh)
                 if not args.no_items:
                     export_items_from_sheet(sh)
+                # D-126: 이벤트 / 상태이상
+                export_events_via_api(sh)
+                export_status_effects_via_api(sh)
                 used_api = True
                 print("[api] 시트 읽기 완료 (Sheets API)")
             except Exception as e:  # noqa: BLE001
@@ -1277,6 +1471,9 @@ def main() -> int:
         export_drop_table(xlsx_cache)
         if not args.no_items:
             export_items_from_xlsx(xlsx_cache)
+        # D-126: 이벤트 / 상태이상 (xlsx 폴백)
+        export_events_from_xlsx(xlsx_cache)
+        export_status_effects_from_xlsx(xlsx_cache)
 
     # 브라우저 로더용 data.js 생성 (file:// 환경에서 fetch 없이 사용)
     export_data_js()
@@ -1302,6 +1499,8 @@ BROWSER_BUNDLE_KEYS = {
     "armors.json": "ARMORS",   # D-72: 방어구 테이블 (별도 탭 '방어구')
     "drop_table.json": "DROP_TABLE",
     "combos.json": "COMBOS",  # D-24: 머지·조합 통합 시스템
+    "events.json": "EVENTS",  # D-126: 이벤트 9종 + 풀
+    "status_effects.json": "STATUS_EFFECTS",  # D-126: 상태이상 3종 (☆3 fix)
 }
 
 

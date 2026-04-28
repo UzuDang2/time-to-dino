@@ -1,6 +1,6 @@
 ---
 name: ttd-brief
-description: Load time-to-dino game-director session context — 4 memory files + git status + recent commits. Use at the start of any time-to-dino work to restore context before deciding or implementing. Triggered by phrases like "TTD 컨텍스트 로드", "프로젝트 상태 파악", "이어서 작업", or when game-director is invoked without prior context.
+description: Load time-to-dino game-director session context — 5 memory files + git status + recent commits. Use at the start of any time-to-dino work to restore context before deciding or implementing. Triggered by phrases like "TTD 컨텍스트 로드", "프로젝트 상태 파악", "이어서 작업", or when game-director is invoked without prior context.
 ---
 
 # ttd-brief — game-director 세션 시작 루틴
@@ -9,11 +9,12 @@ time-to-dino 프로젝트 작업 전 컨텍스트 복원.
 
 ## 실행 절차
 
-1. **메모리 4파일 병렬 로드** (Read tool):
+1. **메모리 5파일 병렬 로드** (Read tool):
    - `/Users/yohanoh/Library/Mobile Documents/com~apple~CloudDocs/time-to-dino/.claude/game-director/README.md`
    - `/Users/yohanoh/Library/Mobile Documents/com~apple~CloudDocs/time-to-dino/.claude/game-director/project-state.md`
    - `/Users/yohanoh/Library/Mobile Documents/com~apple~CloudDocs/time-to-dino/.claude/game-director/design-decisions.md`
    - `/Users/yohanoh/Library/Mobile Documents/com~apple~CloudDocs/time-to-dino/.claude/game-director/pending.md`
+   - `/Users/yohanoh/Library/Mobile Documents/com~apple~CloudDocs/time-to-dino/.claude/game-director/notion-index.md`
 
 2. **git 상태** (Bash, 한 번에):
    ```

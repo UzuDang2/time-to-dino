@@ -346,9 +346,14 @@ class MapGenerator {
             .filter(i => tiles[i].type === 'normal' && i !== bossPos && !tiles[i].isEmpty);
 
         const scale = totalTiles / 49; // 7x7 기준 비율
+        // D-126: event 타일 5% 스폰. 7x7 → 2~3개. 11x11 → 6개.
+        //   비복원 풀 추첨은 도착 시점에 결정되므로 여기선 슬롯만 잡아둔다.
+        //   풀이 슬롯보다 적으면 도착 시 normal 폴백 → 모달 안 뜸 (mapDispatch 참고).
+        const eventCount = Math.max(2, Math.round(totalTiles * 0.05));
         const specialTiles = {
             good: Math.max(4, Math.round(4 * scale)),
-            trap: Math.max(2, Math.round(2 * scale))
+            trap: Math.max(2, Math.round(2 * scale)),
+            event: eventCount
         };
         for (const [type, count] of Object.entries(specialTiles)) {
             for (let i = 0; i < count && availableIndices.length > 0; i++) {
@@ -478,10 +483,87 @@ function spawnPrey(tiles, preyData, counts = { level1: 5, level2: 5 }, reserved 
     return spawned;
 }
 
+// ─── D-156 (2026-04-28) hex 방향 계산 헬퍼 ──────────────────────────
+//
+// 두 타일 사이의 6방향 라벨/화살표를 산출.
+// 게임 그리드는 'flat-side hex (옆이 평평한 정육각)' + odd-r 오프셋으로,
+// 6방향은 W/E/NW/NE/SW/SE (정북/정남 이웃 없음).
+//
+// 사용처: index.html showHint, 단계 2 발각 토스트, 단계 3 시네마틱.
+//
+// 입력:
+//   tiles       — generate()가 반환한 tiles 배열
+//   fromId/toId — tile id
+// 반환:
+//   {
+//     dir:    'W' | 'E' | 'NW' | 'NE' | 'SW' | 'SE' | 'here' | 'unknown',
+//     arrow:  '←' | '→' | '↖' | '↗' | '↙' | '↘' | '·' | '?',
+//     label:  한국어 방향 라벨,
+//     dist:   hex 거리 (cube 거리)
+//   }
+function getHexDirection(tiles, fromId, toId) {
+    if (!Array.isArray(tiles)) return { dir: 'unknown', arrow: '?', label: '알 수 없는 방향', dist: 0 };
+    if (fromId === toId) return { dir: 'here', arrow: '·', label: '바로 이곳', dist: 0 };
+    const a = tiles[fromId] && tiles[fromId].position;
+    const b = tiles[toId] && tiles[toId].position;
+    if (!a || !b || typeof a.row !== 'number' || typeof b.row !== 'number') {
+        return { dir: 'unknown', arrow: '?', label: '알 수 없는 방향', dist: 0 };
+    }
+
+    // odd-r offset → axial 변환 (cube 거리 계산용).
+    const toAxial = (p) => {
+        const q = p.col - ((p.row - (p.row & 1)) >> 1);
+        const r = p.row;
+        return { q, r };
+    };
+    const A = toAxial(a);
+    const B = toAxial(b);
+    const dq = B.q - A.q;
+    const dr = B.r - A.r;
+    const dz = dr;
+    const dx = dq;
+    const dy = -dx - dz;
+    const dist = (Math.abs(dx) + Math.abs(dy) + Math.abs(dz)) / 2;
+
+    // 화면 픽셀 차이로 6방향 분기 (flat-side hex):
+    //   col_step=110, row_step=95 — pixel dx/dy로 각도 계산이 가장 직관적.
+    //   tan(30°)≈0.577. dy/|dx| < tan(30°) 영역은 좌/우(E/W).
+    const px = b.x - a.x;
+    const py = b.y - a.y;
+    const absPx = Math.abs(px);
+    const absPy = Math.abs(py);
+
+    let dir;
+    if (absPx === 0 && absPy === 0) {
+        return { dir: 'here', arrow: '·', label: '바로 이곳', dist };
+    }
+    // 좌/우 영역: |py|/|px|이 충분히 작은 영역.
+    //   row_step/col_step ≈ 0.86 → ±1행 1열 차이도 상하 대각으로 본다.
+    //   그러나 정확히 같은 행(py===0)이고 px≠0이면 무조건 E/W.
+    if (py === 0) {
+        dir = (px > 0) ? 'E' : 'W';
+    } else if (py < 0) {
+        // 위쪽 절반
+        dir = (px >= 0) ? 'NE' : 'NW';
+    } else {
+        // 아래쪽 절반
+        dir = (px >= 0) ? 'SE' : 'SW';
+    }
+
+    const ARROW = { W: '←', E: '→', NW: '↖', NE: '↗', SW: '↙', SE: '↘' };
+    const LABEL = {
+        W: '서쪽', E: '동쪽',
+        NW: '북서쪽', NE: '북동쪽',
+        SW: '남서쪽', SE: '남동쪽'
+    };
+    return { dir, arrow: ARROW[dir] || '?', label: LABEL[dir] || '알 수 없는 방향', dist };
+}
+
 // Export
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { MapGenerator, REGIONS, REGION_WEIGHTS, pickWeightedRegion, spawnPrey };
+    module.exports = { MapGenerator, REGIONS, REGION_WEIGHTS, pickWeightedRegion, spawnPrey, getHexDirection };
     module.exports.default = MapGenerator;
 } else if (typeof window !== 'undefined') {
     window.spawnPrey = spawnPrey;
+    window.getHexDirection = getHexDirection;
 }
