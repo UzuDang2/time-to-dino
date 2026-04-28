@@ -528,6 +528,104 @@
         }
     }
 
+    // ─── D-158 (2026-04-28) 이벤트 선택지 요약 ─────────────────────────
+    //
+    // 이벤트 모달의 선택지 버튼 아래에 노출할 "정보형 라벨"을 만든다.
+    // 디자인 원칙:
+    //   - 확정 비용/효과는 명확히 노출 (예: '음식 -1', '발각 +15%', '체력 -1').
+    //   - 불확정 결과(branches/chance_*)는 수치 노출 X, '결과는 모름' 모호 마커만.
+    //     게임 긴장감 유지(보스/이벤트의 의외성).
+    //   - 상태이상 한글명은 window.StatusEffects.getCatalog 의존. 미주입 시 id 그대로.
+    //
+    // 반환:
+    //   {
+    //     labels: string[],            // 확정 라벨 (한 줄씩)
+    //     uncertain: boolean,          // 불확정 액션이 하나라도 있으면 true
+    //     itemConsume: [{filter, count}],  // 자원 부족 체크용
+    //   }
+    function summarizeEventEffects(parsed) {
+        const out = { labels: [], uncertain: false, itemConsume: [] };
+        if (!parsed || !Array.isArray(parsed.actions) || parsed.actions.length === 0) return out;
+
+        const STAT_LABEL = { hunger: '배고픔', health: '체력' };
+        const HINT_LABEL = {
+            exit_direction: '탈출구 방향',
+            wrong_exit_direction: '탈출구 방향(불확실)',
+            boss_direction: '보스 방향',
+            boss_position: '보스 위치',
+            tile_reveal: '한 칸 공개',
+            nearby_tile_reveal: '인접 칸 공개',
+            exit_direction_or_boss: '단서'
+        };
+        const statusName = (id) => {
+            const cat = (root && root.StatusEffects && typeof root.StatusEffects.getCatalog === 'function')
+                ? root.StatusEffects.getCatalog(id) : null;
+            return (cat && cat.name) || id;
+        };
+
+        for (const a of parsed.actions) {
+            switch (a.type) {
+                case 'nothing':
+                    break;
+                case 'item_grant': {
+                    // InventorySystem은 브라우저에서 글로벌 클래스로만 노출됨(window 프로퍼티 X).
+                    // root.InventorySystem 우선, 실패 시 노션 ITEMS에서 이름 조회로 폴백.
+                    let name = a.itemId;
+                    const invSys = (root && root.InventorySystem) || (typeof InventorySystem !== 'undefined' ? InventorySystem : null);
+                    if (invSys && typeof invSys.resolveDef === 'function') {
+                        const def = invSys.resolveDef(a.itemId);
+                        if (def && def.name) name = def.name;
+                    }
+                    out.labels.push(`${name} +${a.count}`);
+                    break;
+                }
+                case 'item_grant_pool':
+                    // 풀에서 어떤 게 나올지 모르므로 모호 라벨.
+                    out.labels.push(`아이템 ${a.count}개 획득`);
+                    out.uncertain = true;
+                    break;
+                case 'item_consume_filter':
+                    out.labels.push(`${a.filter} -${a.count}`);
+                    out.itemConsume.push({ filter: a.filter, count: a.count });
+                    break;
+                case 'stat_delta': {
+                    const sign = a.delta >= 0 ? '+' : '';
+                    out.labels.push(`${STAT_LABEL[a.stat] || a.stat} ${sign}${a.delta}`);
+                    break;
+                }
+                case 'detection_delta': {
+                    const sign = a.delta >= 0 ? '+' : '';
+                    out.labels.push(`발각 ${sign}${a.delta}%`);
+                    break;
+                }
+                case 'status_apply': {
+                    const dur = a.duration ? `${a.duration}턴` : '';
+                    out.labels.push(`${statusName(a.statusId)}${dur ? ' ' + dur : ''}`);
+                    break;
+                }
+                case 'hint':
+                    out.labels.push(`${HINT_LABEL[a.kind] || '단서'} 1회`);
+                    break;
+                case 'force_random_move':
+                    out.labels.push('의식이 흐려짐 (강제 이동)');
+                    break;
+                case 'chance_grant':
+                case 'chance_grant_status_on_item':
+                case 'chance_stat':
+                case 'chance_status':
+                case 'chance_hint':
+                case 'branches':
+                    out.uncertain = true;
+                    break;
+                default:
+                    // 미지의 토큰 — 안전 무시.
+                    break;
+            }
+        }
+        if (out.uncertain) out.labels.push('결과는 모름');
+        return out;
+    }
+
     const api = {
         parseItemEffect,
         applyItemEffect,
@@ -539,7 +637,9 @@
         matchesConsumeFilter,
         // D-126 이벤트 효과 DSL
         parseEventEffect,
-        applyEventEffect
+        applyEventEffect,
+        // D-158 이벤트 모달 의사결정 컨텍스트
+        summarizeEventEffects
     };
 
     if (typeof module !== 'undefined' && module.exports) {

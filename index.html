@@ -1088,12 +1088,41 @@
         // D-52 (2026-04-23 요한 지시): '풍족한 땅(구 좋은 곳)'은 모달 → 토스트로 이관.
         // 함정은 피해 정보가 있어 명시적 확인이 필요하므로 모달 유지.
         // D-126 (2026-04-28): 이벤트 타일 도착 시 모달.
+        // D-158 (2026-04-28): 의사결정 컨텍스트 노출.
+        //   - 모달 상단: 체력/배고픔/발각 + 활성 상태이상 미니 바.
+        //   - 선택지 버튼: 확정 비용/효과 라벨 + 자원 부족 시 비활성.
+        //   - 불확정(branches/chance_*) 결과는 수치 노출 X — 게임 긴장감 유지.
         //   props:
         //     event       — { id, title, intro_text, choices: [{id, label, effect_dsl}] }
         //     onChoose(c) — 선택지 클릭 핸들러. 부모가 effect 적용 + 모달 닫기.
+        //     stats       — { health, hunger, detection } 현재값
+        //     statuses    — [{id, remainingTurns}] 활성 상태이상
+        //     inventory   — InventorySystem 인스턴스 (자원 부족 체크용)
+        //     onFlash     — (text) => void 자원 부족 토스트용
         //   디자인 톤은 D-122~125 메시지 카드와 일치 (#222134 95%, 어두운 카드, 흰 글씨).
-        function EventChoiceModal({ event, onChoose }) {
+        function EventChoiceModal({ event, onChoose, stats, statuses, inventory, onFlash }) {
             if (!event) return null;
+            const health = stats ? stats.health : 0;
+            const hunger = stats ? stats.hunger : 0;
+            const detection = stats ? stats.detection : 0;
+
+            // 인벤토리 카테고리 보유 카운트 — '음식' 등 한글 카테고리.
+            // InventorySystem은 글로벌 식별자(class). resolveDef로 노션 메타까지 합쳐 카테고리 조회.
+            const countByCategory = (cat) => {
+                if (!inventory || !Array.isArray(inventory.items)) return 0;
+                const want = String(cat || '').trim();
+                let n = 0;
+                for (const it of inventory.items) {
+                    const def = (typeof InventorySystem !== 'undefined' && typeof InventorySystem.resolveDef === 'function')
+                        ? InventorySystem.resolveDef(it.type) : null;
+                    const got = (def && (def['카테고리'] || def.category)) || '';
+                    if (got === want) n++;
+                }
+                return n;
+            };
+
+            const detectionColor = detection < 30 ? '#4CAF50' : detection < 60 ? '#FFC107' : '#e94560';
+
             return (
                 <div className="modal" style={{ zIndex: 1500 }}>
                     <div style={{
@@ -1105,6 +1134,25 @@
                         width: 'calc(100% - 40px)',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
                     }}>
+                        {/* D-158: 미니 스탯 헤더 — 의사결정에 필요한 현재값 노출. */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '8px 10px',
+                            marginBottom: '14px',
+                            background: 'rgba(15, 14, 30, 0.55)',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            flexWrap: 'wrap'
+                        }}>
+                            <span title="체력">❤️ <span style={{ color: health <= 2 ? '#e07a86' : '#eee', fontWeight: 600 }}>{health}/8</span></span>
+                            <span title="배고픔">🍖 <span style={{ color: hunger <= 3 ? '#d4b84a' : '#eee', fontWeight: 600 }}>{hunger}/12</span></span>
+                            <span title="발각률">🚨 <span style={{ color: detectionColor, fontWeight: 600 }}>{detection}%</span></span>
+                            <StatusBadges statuses={statuses} />
+                        </div>
+
                         <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px', color: '#f4d28a' }}>
                             {event.title}
                         </div>
@@ -1112,24 +1160,65 @@
                             {event.intro_text}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {(event.choices || []).map(c => (
-                                <button
-                                    key={c.id}
-                                    onClick={() => onChoose(c)}
-                                    style={{
-                                        background: 'rgba(60, 58, 80, 0.85)',
-                                        color: '#eee',
-                                        border: '1px solid rgba(244, 210, 138, 0.3)',
-                                        padding: '12px 14px',
-                                        fontSize: '14px',
-                                        textAlign: 'left',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    {c.label}
-                                </button>
-                            ))}
+                            {(event.choices || []).map(c => {
+                                // D-158: 효과 DSL 분석 → 라벨 + 자원 부족 체크.
+                                const parsed = (window.EffectParser && window.EffectParser.parseEventEffect)
+                                    ? window.EffectParser.parseEventEffect(c.effect_dsl || '')
+                                    : { actions: [] };
+                                const summary = (window.EffectParser && window.EffectParser.summarizeEventEffects)
+                                    ? window.EffectParser.summarizeEventEffects(parsed)
+                                    : { labels: [], uncertain: false, itemConsume: [] };
+
+                                // 자원 부족 — 첫 번째 부족 항목 라벨 1개만.
+                                let lackLabel = null;
+                                for (const req of (summary.itemConsume || [])) {
+                                    if (countByCategory(req.filter) < req.count) {
+                                        lackLabel = `${req.filter} 없음`;
+                                        break;
+                                    }
+                                }
+                                const disabled = !!lackLabel;
+
+                                return (
+                                    <button
+                                        key={c.id}
+                                        onClick={() => {
+                                            if (disabled) {
+                                                if (onFlash) onFlash(`${lackLabel.replace('없음', '이(가) 없다.')}`);
+                                                return;
+                                            }
+                                            onChoose(c);
+                                        }}
+                                        style={{
+                                            background: disabled ? 'rgba(60, 58, 80, 0.4)' : 'rgba(60, 58, 80, 0.85)',
+                                            color: disabled ? '#888' : '#eee',
+                                            border: disabled
+                                                ? '1px solid rgba(255, 255, 255, 0.06)'
+                                                : '1px solid rgba(244, 210, 138, 0.3)',
+                                            padding: '10px 14px',
+                                            fontSize: '14px',
+                                            textAlign: 'left',
+                                            borderRadius: '6px',
+                                            cursor: disabled ? 'not-allowed' : 'pointer',
+                                            opacity: disabled ? 0.65 : 1
+                                        }}
+                                    >
+                                        <div>{c.label}</div>
+                                        {(summary.labels.length > 0 || lackLabel) && (
+                                            <div style={{
+                                                marginTop: '4px',
+                                                fontSize: '11px',
+                                                color: disabled ? '#a85a5a' : '#a3a59a',
+                                                lineHeight: 1.4
+                                            }}>
+                                                {lackLabel
+                                                    ? lackLabel
+                                                    : summary.labels.join(' · ')}
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -7631,6 +7720,10 @@
                             <EventChoiceModal
                                 event={ev}
                                 onChoose={(choice) => handleEventChoice(eventChoice, choice)}
+                                stats={{ health, hunger, detection }}
+                                statuses={playerStatuses}
+                                inventory={inventory}
+                                onFlash={(text) => setMessage(text)}
                             />
                         );
                     })()}
