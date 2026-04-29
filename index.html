@@ -7,26 +7,42 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>🦖 타임투다이노</title>
     
-    <!-- 스타일 -->
-    <link rel="stylesheet" href="gameStyles.css">
-    
-    <!-- 외부 라이브러리 -->
+    <!-- 외부 라이브러리 (CDN — 버전 고정 URL이라 별도 캐시 무효화 불필요) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- 데이터 번들 (시트 + Notion 아이템 SSOT 스냅샷, scripts/fetch_data.py로 재생성) -->
-    <script src="data/data.js"></script>
 
-    <!-- 게임 모듈 -->
-    <script src="mapGenerator.js"></script>
-    <script src="inventory.js"></script>
-    <script src="boss.js"></script>
-    <script src="dropTable.js"></script>
-    <script src="effectParser.js"></script>
-    <script src="statusEffects.js"></script>
-    <script src="cameraCinematic.js"></script>
-    <script src="combatDeck.js"></script>
+    <!-- D-173 (요한): 로컬 자산 캐시 무효화 로더.
+         "🔄 최신버전 업데이트" 버튼이 HTML URL에 ?v=Date.now()만 붙이면
+         <link>/<script src> 의 정적 URL은 캐시된 채로 남아 새 빌드가 적용되지
+         않았다. 이 인라인 로더가 HTML URL의 ?v= 값을 꺼내 모든 로컬 자산 URL에
+         같은 ?v=를 전파한다 → ?v= 가 바뀌면 브라우저가 새 자산으로 인식해 fetch.
+         첫 방문(?v= 없음)은 그냥 정적 URL로 로드(캐시 OK).
+         document.write는 head 내부 인라인이므로 안전하고 로드 순서를 보장한다. -->
+    <script>
+        (function () {
+            var v = '';
+            try {
+                v = new URL(location.href).searchParams.get('v') || '';
+            } catch (e) {}
+            var tag = v ? ('?v=' + encodeURIComponent(v)) : '';
+            document.write('<link rel="stylesheet" href="gameStyles.css' + tag + '">');
+            var scripts = [
+                'data/data.js',
+                'mapGenerator.js',
+                'inventory.js',
+                'boss.js',
+                'dropTable.js',
+                'effectParser.js',
+                'statusEffects.js',
+                'cameraCinematic.js',
+                'combatDeck.js'
+            ];
+            for (var i = 0; i < scripts.length; i++) {
+                document.write('<script src="' + scripts[i] + tag + '"><\/script>');
+            }
+        })();
+    </script>
 </head>
 <body>
     <div id="root"></div>

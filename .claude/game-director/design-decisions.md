@@ -5,6 +5,39 @@
 
 ---
 
+## D-173. 🔄 최신버전 업데이트 — 자산 URL에 ?v= 전파 (2026-04-29, `index.html`)
+
+요한 원문: "최신버전 업데이트를 눌러도 제대로 반영이 안되는거 같아 어떻게해야 업데이트가 제대로 반영되지?".
+
+### 원인
+
+D-166 의 [🔄 최신버전 업데이트] 버튼은 HTML URL에 `?v=Date.now()`를 붙여 `location.replace`로 새 HTML을 받지만, HTML 안의 정적 자산 참조(`<link href="gameStyles.css">`, `<script src="effectParser.js">` 등)에는 query가 없어 브라우저 HTTP 캐시가 옛 자산을 그대로 서빙. 결과: HTML만 새로워지고 CSS/JS는 묵은 채로 — 변경이 화면에 반영되지 않음.
+
+### 수정
+
+`<head>`의 정적 `<link>` / `<script>` 태그를 인라인 로더로 교체. 로더는:
+1. `location.href`에서 `?v=` 값 추출.
+2. 있으면 모든 로컬 자산 URL에 같은 `?v=`를 `document.write`로 주입.
+3. 첫 방문(?v= 없음)은 그냥 정적 URL — 캐시 OK.
+
+이후 [🔄 최신버전 업데이트]가 새 `?v=`로 reload → HTML 새로 받음 → 로더가 새 `?v=`를 모든 자산에 전파 → 브라우저가 새 URL로 인식해 강제 fetch.
+
+### 적용 범위
+
+- 로컬: `gameStyles.css`, `data/data.js`, `mapGenerator.js`, `inventory.js`, `boss.js`, `dropTable.js`, `effectParser.js`, `statusEffects.js`, `cameraCinematic.js`, `combatDeck.js`.
+- CDN(React/Babel): 버전 고정 URL이라 손대지 않음.
+
+### 한계
+
+- 첫 배포 시점에 이미 로드된 옛 HTML은 옛 버튼을 가짐. 그 옛 버튼을 눌러도 새 HTML은 받지만, 새 HTML이 로더를 가지므로 자산은 새 `?v=`로 fetch됨 → 한 번 누르면 다음부터는 정상.
+- 매우 공격적인 CDN 캐시(예: GitHub Pages 10분 max-age)가 옛 HTML을 보낸다면 첫 클릭이 안 먹을 수 있음. 그 경우 강력 새로고침(Cmd+Shift+R / 모바일 탭 닫고 재오픈) 1회 필요.
+
+### 파일
+
+- `index.html` head: 정적 자산 태그 → 인라인 로더 스크립트.
+
+---
+
 ## D-171. 캠프 하단 버튼 인라인화 + 가방 마커 정리 + 모달 z-index (2026-04-29, `index.html` / `gameStyles.css`)
 
 요한 원문:
