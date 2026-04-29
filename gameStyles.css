@@ -261,16 +261,17 @@ button:active {
 }
 
 /* D-47 머지 가능 체크 배지 — 같은 재료 2개 이상 보유 시 아이템 좌상단에 표시.
-   D-171 (요한): 기존 우상단 ✓ 텍스트 배지가 시각적으로 너무 강함 → 좌상단 작은 초록 점. */
+   D-171 (요한): 기존 우상단 ✓ 텍스트 배지가 시각적으로 너무 강함 → 좌상단 작은 초록 점.
+   D-172 (요한): 70% 더 축소(7px → 2px). 보더·외곽선 같이 줄여 시각 비중 최소. */
 .inventory-merge-check {
     position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 7px;
-    height: 7px;
+    top: 2px;
+    left: 2px;
+    width: 2px;
+    height: 2px;
     border-radius: 50%;
     background: #3dd68c;
-    box-shadow: 0 0 0 1.5px #0f3460;
+    box-shadow: 0 0 0 1px #0f3460;
     pointer-events: none;
     font-size: 0;
 }
