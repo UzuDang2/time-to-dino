@@ -14,7 +14,18 @@ time-to-dino 변경사항을 한국어 커밋 메시지로 기록하고 origin/m
    cd "/Users/yohanoh/Library/Mobile Documents/com~apple~CloudDocs/time-to-dino" && git status --short
    ```
 
+1.5. **🚧 디렉터 메모리 동기화 — 블로킹 체크포인트** (코드 변경이 있다면):
+   - `tail -3 .claude/game-director/design-decisions.md` 로 마지막 D-XX 확인.
+   - 이번 세션에서 새 D 결정이 생겼는데 메모리에 없으면 **여기서 멈추고** append.
+     - `design-decisions.md` 끝에 새 D-XX 한 단락(결정/구현/검증/파일).
+     - `pending.md` 완료 항목 이동, 신규 대기 추가.
+     - `project-state.md` 마지막 검증 날짜 갱신.
+   - 메모리 갱신 안 한 채로 push까지 가면 다음 세션의 `ttd-brief`가 **stale 상태로 출발**한다 — 회피 필수.
+   - 메모리 파일은 `.gitignore`라 git stage엔 안 올라감 — 커밋과 무관하게 갱신만 하면 됨.
+
 2. **분할 판단**:
+   - **D-XX 단위가 1차 분할 기준** — 1 D = 1 commit이 가장 깔끔 (D-162~D-168 사례).
+   - 작은 데이터 튜닝(예: D-164 밸런스)은 단독 `chore(data):` 커밋 OK.
    - 논리적으로 한 덩어리면 단일 커밋
    - 이질적이면 2~3개로 분할 (예: "데이터 파이프라인 변경" / "게임 로직 변경" / "UI 변경")
    - 애매하면 단일 커밋 + 본문에 소제목으로 정리
@@ -56,15 +67,9 @@ time-to-dino 변경사항을 한국어 커밋 메시지로 기록하고 origin/m
 
 7. **결과 한 줄 보고**: 메인이면 `abc..def  main -> main`, 서브면 "커밋 `abc1234` 로컬에 있음, push는 메인이 후속".
 
-## 메모리 갱신 (커밋 전에 먼저 할 것)
+## 메모리 갱신
 
-변경과 함께 `.claude/game-director/` 메모리도 동기화:
-
-- **`project-state.md`**: 변경점 반영 + 마지막 검증 날짜 갱신
-- **`design-decisions.md`**: 새 결정이 있으면 **D-XX append** (기존 번호 중복 금지, 최근 번호 확인 후 +1)
-- **`pending.md`**: 완료 항목 이동, 신규 대기 추가
-
-이 메모리 파일들은 `.gitignore`에 의해 git 제외됨 — 커밋 stage에 자동으로 안 들어감 (확인만 하면 됨).
+→ 절차 **1.5단계**(블로킹 체크포인트)에서 처리. 그 단계를 건너뛰면 안 된다.
 
 ## 제약
 

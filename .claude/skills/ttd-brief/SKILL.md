@@ -26,6 +26,7 @@ time-to-dino 프로젝트 작업 전 컨텍스트 복원.
    - 마지막 커밋 해시 + 제목
    - 요한 측 대기 작업 개수
    - 최근 결정(design-decisions 마지막 D-XX)
+   - **데이터 SSOT 한 줄** — Google Sheet (`scripts/fetch_data.py:9` 명시, ID `1iS4Lmjx32w0Mu527foFtc8pQn3pw6APcQYnvcKdVM9o`). 노션의 🎒 아이템 DB / 전투 카드 DB는 **D-30부터 레거시 참조용**. 시트 쓰기는 `.secrets/sheets-sa.json`(서비스 계정 키) 필요. 노션 SSOT처럼 동작하지 말 것.
 
 4. 이후 요한 지시에 따라 작업 진입. 이 스킬은 **컨텍스트 로드만** 담당. 실제 구현은 호출한 쪽에서 진행.
 
