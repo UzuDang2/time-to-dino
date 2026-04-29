@@ -231,19 +231,16 @@ class InventorySystem {
         return null;
     }
 
-    // D-174 v2 (2026-04-30): 캠프 보관함 텐트 슬롯 풀기.
-    //   캠프 보관함 12x16 — row 0-5(BASE 활성 72칸) + row 6-15(텐트 슬롯, 좌측 10칸 변동
-    //   disabled · 우측 2칸 영구 disabled). 텐트 단계당 +10칸 — 풀 텐트(Lv.10) 시 +100.
-    //   slotsToOpen은 풀 칸 수. 좌상단(y=6,x=0)부터 행→열 순으로 풀기. x=10,11은 영구 스킵.
+    // D-174 v3 (2026-04-30): 캠프 보관함 텐트 슬롯 풀기 — 폭 7 그리드 row 단위 확장.
+    //   캠프 보관함 7x20 — row 0-9(BASE 활성 70칸) + row 10-19(텐트 슬롯, 단계마다 row 1줄 풀림 = +7칸).
+    //   slotsToOpen은 풀 칸 수. 좌상단부터 행(y) 오름차순 → 열(x) 오름차순으로 풀기.
     //   안전: 음수/0이면 no-op. disabled에 없으면 건너뜀(idempotent).
     expandStorage(slotsToOpen) {
         const n = Math.max(0, Number(slotsToOpen) || 0);
         if (n <= 0) return;
-        const TENT_ROW_START = 6;     // BASE 활성 row 0-5 다음부터 텐트 슬롯
-        const TENT_MAX_COLS = 10;     // 우측 2칸(x=10,11)은 영구 disabled
         let opened = 0;
-        for (let y = TENT_ROW_START; y < this.rows && opened < n; y++) {
-            for (let x = 0; x < Math.min(TENT_MAX_COLS, this.cols) && opened < n; x++) {
+        for (let y = 0; y < this.rows && opened < n; y++) {
+            for (let x = 0; x < this.cols && opened < n; x++) {
                 const key = `${x},${y}`;
                 if (this.disabled.has(key)) {
                     this.disabled.delete(key);
