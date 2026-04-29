@@ -6732,8 +6732,10 @@
                 const result = window.EffectParser.applyItemEffect(parsed, {
                     getStat: (name) => (name === 'hunger' ? hunger : name === 'health' ? health : null),
                     setStat: (name, val) => {
-                        if (name === 'hunger') setHunger(val);
-                        else if (name === 'health') setHealth(val);
+                        // D-170: 파서의 STAT_BOUNDS는 정적 상한(12/8)이라 텐트 레벨별 동적 MAX와 어긋난다.
+                        //   세터 측에서 런타임 MAX로 재-clamp해 회복이 최대치를 넘지 않게 한다.
+                        if (name === 'hunger') setHunger(Math.max(0, Math.min(MAX_HUNGER, val)));
+                        else if (name === 'health') setHealth(Math.max(0, Math.min(MAX_HEALTH, val)));
                     },
                     addThrowCard: (cardId) => {
                         // 같은 cardId를 여러 번 써서 여러 장을 쌓을 수도 있음.
@@ -6939,8 +6941,9 @@
                     Parser.applyItemEffect(scaled, {
                         getStat: (name) => (name === 'hunger' ? hunger : name === 'health' ? health : null),
                         setStat: (name, val) => {
-                            if (name === 'hunger') setHunger(val);
-                            else if (name === 'health') setHealth(val);
+                            // D-170: 동적 MAX 재-clamp (전투 카드 소모 경로).
+                            if (name === 'hunger') setHunger(Math.max(0, Math.min(MAX_HUNGER, val)));
+                            else if (name === 'health') setHealth(Math.max(0, Math.min(MAX_HEALTH, val)));
                         },
                         addThrowCard: (cardId) => {
                             setCombatExtraCards(prev => {

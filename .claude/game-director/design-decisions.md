@@ -5,6 +5,29 @@
 
 ---
 
+## D-170. 생명력·배고픔 회복 — 동적 MAX 재-clamp (2026-04-29, `index.html`)
+
+요한 원문: "근데 생명력과 배고픔이 최대수치보다 많이 회복되는 경우들이 있어 수정해줘".
+
+### 원인
+
+`effectParser.js::STAT_BOUNDS`는 `hunger:12 / health:8` 정적 상한. 그러나 D-168 이후 실제 게임 MAX는 `BASE_MAX_HUNGER(10) + tentBonuses.hunger` / `BASE_MAX_HEALTH(6) + tentBonuses.health` 로 텐트 레벨에 따라 동적. 텐트 0레벨이면 실제 MAX는 10/6인데 파서가 12/8까지 허용해 회복이 게이지 한도를 넘었다.
+
+### 수정
+
+`index.html` 두 군데 `setStat` 콜백에서 받은 `val`을 런타임 `MAX_HUNGER`/`MAX_HEALTH`로 다시 clamp:
+
+- `index.html:6734` — 일반 아이템 사용 경로(`useItem` flow).
+- `index.html:6941` — 전투 카드 소모 경로(`resolveConsumeChoice`).
+
+이미 함수형 setter(`p => Math.max(0, Math.min(MAX_*, p+delta))`)로 clamp하던 다른 3곳(6792, 7395, 7964)은 정상이라 손대지 않음. STAT_BOUNDS 자체는 안전 가드(0 미만/지나친 큰 양수 차단)로 유지.
+
+### 대안 검토
+
+STAT_BOUNDS를 ctx 통해 주입하는 방식도 가능했지만, 파서가 자기 책임을 줄이고 호출자가 최종 clamp하는 현 패턴이 단순. UI 책임 영역 안이라 호출자에서 처리.
+
+---
+
 ## D-155. 진행 중 퀘스트 HUD 위치 — top 110 → 80 (2026-04-27, `index.html`)
 
 요한 원문: "인게임에서 퀘스트 hud 위치가 애매하드 위로 30px 올려줘".
