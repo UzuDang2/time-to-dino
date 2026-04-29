@@ -4255,6 +4255,68 @@
                         </button>
                     </div>
 
+                    {/* D-166 (2026-04-29 요한): 최신버전 업데이트 — 좌하단.
+                          캐시된 구버전 플레이 중인지 확신이 안 설 때 강제 새로고침.
+                          서비스워커 unregister + Cache Storage 비움 + cache-busted URL로 replace.
+                          캠프에서만 노출(이 버튼은 CampScreen 내부) — 캠프 상태는 이미 localStorage에 영속,
+                          진행 중 런은 새로고침이 폐기하는 일반 룰과 동일하므로 안전.
+                          빌드 시각은 document.lastModified — 정적 호스팅이면 실제 파일 mtime이 표시됨.
+                          (캐시된 버전이라면 캐시 mtime이 보이는 것이 정상 — 그게 곧 "현재 보고 있는 버전" 신호) */}
+                    <div style={{
+                        position: 'fixed',
+                        left: '12px',
+                        bottom: '12px',
+                        zIndex: 100,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '3px',
+                        alignItems: 'flex-start'
+                    }}>
+                        <button
+                            onClick={async () => {
+                                try {
+                                    if ('serviceWorker' in navigator) {
+                                        const regs = await navigator.serviceWorker.getRegistrations();
+                                        for (const r of regs) { try { await r.unregister(); } catch {} }
+                                    }
+                                    if (typeof caches !== 'undefined' && caches.keys) {
+                                        const keys = await caches.keys();
+                                        for (const k of keys) { try { await caches.delete(k); } catch {} }
+                                    }
+                                } catch {}
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('v', String(Date.now()));
+                                window.location.replace(url.toString());
+                            }}
+                            style={{
+                                background: 'transparent',
+                                color: '#7da3c8',
+                                border: '1px solid #3a4d63',
+                                padding: '6px 12px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '11px'
+                            }}
+                        >
+                            🔄 최신버전 업데이트
+                        </button>
+                        <span style={{
+                            color: '#555',
+                            fontSize: '10px',
+                            fontFamily: 'monospace',
+                            paddingLeft: '2px'
+                        }}>
+                            빌드: {(() => {
+                                try {
+                                    const d = new Date(document.lastModified);
+                                    if (isNaN(d.getTime())) return '?';
+                                    const pad = (n) => String(n).padStart(2, '0');
+                                    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                                } catch { return '?'; }
+                            })()}
+                        </span>
+                    </div>
+
                     {resetOpen && (
                         <ResetConfirmModal
                             onCancel={() => setResetOpen(false)}
