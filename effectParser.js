@@ -584,10 +584,14 @@
                     out.labels.push(`아이템 ${a.count}개 획득`);
                     out.uncertain = true;
                     break;
-                case 'item_consume_filter':
-                    out.labels.push(`${a.filter} -${a.count}`);
+                case 'item_consume_filter': {
+                    // D-159: filter는 카테고리 영문 식별자(예: 'food'). UI 라벨은 한국어로.
+                    const FILTER_LABEL = { food: '음식', material: '재료', consumable: '소모품' };
+                    const label = FILTER_LABEL[a.filter] || a.filter;
+                    out.labels.push(`${label} -${a.count}`);
                     out.itemConsume.push({ filter: a.filter, count: a.count });
                     break;
+                }
                 case 'stat_delta': {
                     const sign = a.delta >= 0 ? '+' : '';
                     out.labels.push(`${STAT_LABEL[a.stat] || a.stat} ${sign}${a.delta}`);

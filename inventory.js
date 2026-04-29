@@ -76,24 +76,24 @@ class InventorySystem {
         // === 사냥감 전투 1단계 생고기 (D-46 신규) ===
         //   승리 시 prey.meat 수만큼 지급. Notion 아이템 DB 승격 전까지 런타임 폴백.
         //   REST_FALLBACK 패턴(D-23) 준용 — items.raw.json 동기화 + make data 후 자연 스왑.
-        meat:         { name: '생고기',       shape: [[1]], grade: 1, mergeable: false, category: '음식',  merge_result: null },
+        meat:         { name: '생고기',       shape: [[1]], grade: 1, mergeable: false, category: 'food',  merge_result: null },
 
         // === D-57 요리 시스템: 꼬치(2재료 조합) + 구이(1재료 요리) ===
         //   꼬치(2단계): meat/fish + branch. 효과 hunger+1, health-1 — 생고기 부담 유지.
         //   구이(3단계): 꼬치 1재료 "요리". 효과 hunger+2, health+1 — 불에 익혀 안전·든든.
         //   모두 일회용, 머지·합성 경로 없음. 구이는 휴식 카드 요리 모달 경유로만 생성.
-        meat_skewer:          { name: '생고기꼬치',   shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
-        fish_skewer:          { name: '물고기꼬치',   shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
-        grilled_meat_skewer:  { name: '고기꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
-        grilled_fish_skewer:  { name: '생선꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
+        meat_skewer:          { name: '생고기꼬치',   shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
+        fish_skewer:          { name: '물고기꼬치',   shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
+        grilled_meat_skewer:  { name: '고기꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: 'food', merge_result: null },
+        grilled_fish_skewer:  { name: '생선꼬치구이', shape: [[1]], grade: 3, mergeable: false, category: 'food', merge_result: null },
 
         // D-90 (2026-04-25): L2 사냥감 큰생고기 드롭 체인. 효과 = 생고기 ×2(영양·페널티 모두).
-        big_meat:                  { name: '큰생고기',         shape: [[1]], grade: 1, mergeable: false, category: '음식', merge_result: null },
-        big_meat_skewer:           { name: '큰고기꼬치',       shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
-        grilled_big_meat_skewer:   { name: '큰고기꼬치구이',   shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
+        big_meat:                  { name: '큰생고기',         shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
+        big_meat_skewer:           { name: '큰고기꼬치',       shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
+        grilled_big_meat_skewer:   { name: '큰고기꼬치구이',   shape: [[1]], grade: 3, mergeable: false, category: 'food', merge_result: null },
         // D-94 (2026-04-25): 거대한 먹이 — 보스 유인용 2x2 음식. is_bait 플래그 = ItemInfoModal에서 [먹이로 유인하기] 버튼 노출 트리거.
-        giant_bait:                { name: '거대한 먹이',      shape: [[1,1],[1,1]], grade: 2, mergeable: false, category: '음식', merge_result: null, is_bait: true },
-        grilled_giant_bait:        { name: '거대한 먹이 구이', shape: [[1,1],[1,1]], grade: 3, mergeable: false, category: '음식', merge_result: null, is_bait: true },
+        giant_bait:                { name: '거대한 먹이',      shape: [[1,1],[1,1]], grade: 2, mergeable: false, category: 'food', merge_result: null, is_bait: true },
+        grilled_giant_bait:        { name: '거대한 먹이 구이', shape: [[1,1],[1,1]], grade: 3, mergeable: false, category: 'food', merge_result: null, is_bait: true },
 
         // === D-71 사냥감 확장 1단계 — 게·메뚜기 보상 체인 ===
         //   crab_whole(재료): 단독 섭취 불가. 돌+게 조합으로 게살 2개.
@@ -102,10 +102,10 @@ class InventorySystem {
         //   grilled_crab_skewer(음식 3단계): hunger+2, health+1.
         //   grasshopper_whole(음식 1단계): 메뚜기 단독 섭취 hunger+1.
         crab_whole:           { name: '게',             shape: [[1]], grade: 1, mergeable: false, category: '재료', merge_result: null },
-        crab_meat:            { name: '발라낸 게살',    shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
-        crab_skewer:          { name: '게살꼬치',       shape: [[1]], grade: 2, mergeable: false, category: '음식', merge_result: null },
-        grilled_crab_skewer:  { name: '구운게살꼬치',   shape: [[1]], grade: 3, mergeable: false, category: '음식', merge_result: null },
-        grasshopper_whole:    { name: '메뚜기',         shape: [[1]], grade: 1, mergeable: false, category: '음식', merge_result: null },
+        crab_meat:            { name: '발라낸 게살',    shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
+        crab_skewer:          { name: '게살꼬치',       shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
+        grilled_crab_skewer:  { name: '구운게살꼬치',   shape: [[1]], grade: 3, mergeable: false, category: 'food', merge_result: null },
+        grasshopper_whole:    { name: '메뚜기',         shape: [[1]], grade: 1, mergeable: false, category: 'food', merge_result: null },
 
         // === 레거시 (기존 카드 시스템 참조) — 후속 작업에서 1단계 체계로 흡수 예정 ===
         material_low:  { name: '낡은 재료', shape: [[1]], grade: 1, mergeable: false, merge_result: null },

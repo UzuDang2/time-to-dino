@@ -1170,10 +1170,13 @@
                                     : { labels: [], uncertain: false, itemConsume: [] };
 
                                 // 자원 부족 — 첫 번째 부족 항목 라벨 1개만.
+                                // D-159: filter는 영문 식별자(food/material/consumable). UI 라벨은 한국어.
+                                const FILTER_LABEL_KR = { food: '음식', material: '재료', consumable: '소모품' };
                                 let lackLabel = null;
                                 for (const req of (summary.itemConsume || [])) {
                                     if (countByCategory(req.filter) < req.count) {
-                                        lackLabel = `${req.filter} 없음`;
+                                        const krLabel = FILTER_LABEL_KR[req.filter] || req.filter;
+                                        lackLabel = `${krLabel} 없음`;
                                         break;
                                     }
                                 }
@@ -1219,6 +1222,72 @@
                                     </button>
                                 );
                             })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // D-159 (2026-04-28) 이벤트 선택 결과 팝업.
+        //
+        // 디자인 의도:
+        //   - 선택지 클릭 → 효과 즉시 적용 → 모달 닫힘의 기존 흐름은 사용자가
+        //     적용된 결과를 인지할 시간이 부족했다(특히 분기·풀 추첨 결과).
+        //   - 효과 결과(line 텍스트 누적)를 모아 별도 팝업으로 노출. 확인 누르기
+        //     전까지 후속 처리(이동/페이드)를 보류해 결과를 충분히 읽도록.
+        //   - 디자인 톤: D-122~126 메시지 카드와 일관 (#222134 95%, 1px rgba 보더).
+        //   - EventChoiceModal과 같은 zIndex(1500)로 자리 교체.
+        function EventResultModal({ lines, onConfirm }) {
+            if (!Array.isArray(lines) || lines.length === 0) return null;
+            return (
+                <div className="modal" style={{ zIndex: 1500 }}>
+                    <div style={{
+                        background: 'rgba(34, 33, 52, 0.95)',
+                        color: '#eee',
+                        padding: '22px',
+                        borderRadius: '10px',
+                        maxWidth: '460px',
+                        width: 'calc(100% - 40px)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)'
+                    }}>
+                        <div style={{
+                            fontSize: '13px',
+                            color: '#a3a59a',
+                            letterSpacing: '0.04em',
+                            marginBottom: '10px'
+                        }}>
+                            결과
+                        </div>
+                        <div style={{
+                            fontSize: '14px',
+                            lineHeight: '1.7',
+                            color: '#dcd6c8',
+                            whiteSpace: 'pre-wrap',
+                            marginBottom: '18px'
+                        }}>
+                            {lines.map((ln, i) => (
+                                <div key={i} style={{ marginBottom: i < lines.length - 1 ? '6px' : 0 }}>
+                                    {ln}
+                                </div>
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={onConfirm}
+                                style={{
+                                    background: 'rgba(244, 210, 138, 0.18)',
+                                    color: '#f4d28a',
+                                    border: '1px solid rgba(244, 210, 138, 0.45)',
+                                    padding: '8px 22px',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    borderRadius: '6px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                확인
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1683,7 +1752,8 @@
                 if (!recipe || !recipe.result) return 'material';
                 const def = InventorySystem.resolveDef(recipe.result) || {};
                 const cat = def.category;
-                if (cat === '음식') return 'food';
+                // D-159: 시트 SSOT 카테고리 영문 통일(food). 구버전 '음식' 폴백 호환.
+                if (cat === 'food' || cat === '음식') return 'food';
                 if (cat === '무기') return 'weapon';
                 if (cat === 'shield' || cat === 'armor' || cat === '방어구') return 'armor';
                 return 'material'; // 재료·소모품 등 나머지 전부
@@ -5664,6 +5734,11 @@
             const [eventTileAssignments, setEventTileAssignments] = useState({});
             const [playerStatuses, setPlayerStatuses] = useState([]);
             const [fadeActive, setFadeActive] = useState(false);
+            // D-159: 이벤트 결과 팝업.
+            //   eventResult: { lines: string[], onConfirm: () => void } | null
+            //   선택지 클릭 → 효과 적용 → 결과 팝업 → 사용자 [확인] → 후속(이동/페이드 등).
+            //   nothing 결과·라인 0건이면 모달 안 뜨고 즉시 onConfirm 실행.
+            const [eventResult, setEventResult] = useState(null);
             // 전투 임시 카드(아이템 사용으로 생성) — 전투 진입 시 combat 덱에 병합, 사용 후 소멸.
             // 구조: [{ id:'throw', count:N }, ...]
             const [combatExtraCards, setCombatExtraCards] = useState([]);
@@ -6106,7 +6181,7 @@
                           { id: 'find_food', name: '음식 찾기', count: 1, effect: '음식 획득', detection: 5, time: 1 },
                           { id: 'hide', name: '숨기', count: 1, effect: '은신', detection: -15, time: 1 },
                           { id: 'rest', name: '휴식', count: 1, effect: '체력/배고픔 소폭 회복, 소음 최소', detection: -13, time: 1,
-                            consume: 'category:음식;scale:recover=2', extra_effect: '' }
+                            consume: 'category:food;scale:recover=2', extra_effect: '' }
                       ]
                 );
 
@@ -6947,8 +7022,11 @@
                     },
                     consumeItemByFilter: (filter, count) => {
                         if (!inventory) return false;
-                        // filter는 카테고리 한글값(예: '음식'). resolveDef로 카테고리 비교.
+                        // D-159: filter는 카테고리 영문 식별자(예: 'food'). resolveDef로 카테고리 비교.
+                        // 라벨은 한국어로 변환 (UI 노출 톤 유지).
                         const want = String(filter || '').trim();
+                        const FILTER_KR = { food: '음식', material: '재료', consumable: '소모품' };
+                        const krLabel = FILTER_KR[want] || want;
                         const targets = [];
                         for (let i = inventory.items.length - 1; i >= 0 && targets.length < (count || 1); i--) {
                             const it = inventory.items[i];
@@ -6962,15 +7040,19 @@
                         }
                         if (targets.length > 0) {
                             setInventory(Object.create(Object.getPrototypeOf(inventory), Object.getOwnPropertyDescriptors(inventory)));
-                            lines.push(`${want} ${targets.length}개를 던져주었다.`);
+                            lines.push(`${krLabel} ${targets.length}개를 던져주었다.`);
                         } else {
-                            lines.push(`줄 만한 ${want}이(가) 가방에 없다.`);
+                            lines.push(`줄 만한 ${krLabel}이(가) 가방에 없다.`);
                         }
                         return targets.length > 0;
                     },
                     applyStat: (stat, delta) => {
                         if (stat === 'hunger') setHunger(prev => Math.max(0, Math.min(12, prev + delta)));
                         else if (stat === 'health') setHealth(prev => Math.max(0, Math.min(8, prev + delta)));
+                        // D-159: 결과 팝업 라벨 (D-158 사전 라벨 톤과 일치 — "체력 -1" 형식).
+                        const STAT_LABEL = { hunger: '배고픔', health: '체력' };
+                        const sign = delta >= 0 ? '+' : '';
+                        lines.push(`${STAT_LABEL[stat] || stat} ${sign}${delta}`);
                     },
                     applyDetection: (delta) => {
                         setDetection(prev => Math.max(0, Math.min(100, prev + delta)));
@@ -6990,6 +7072,9 @@
                                 color: '#3d7a4f'
                             });
                         }
+                        // D-159: 결과 팝업 라벨.
+                        const sign = delta >= 0 ? '+' : '';
+                        lines.push(`발각 ${sign}${delta}%`);
                     },
                     applyStatus: (statusId, duration) => {
                         if (statusId === 'poison_bite') {
@@ -7120,6 +7205,8 @@
                     },
                     forceRandomMove: () => {
                         pendingForceMove = true;
+                        // D-159: 결과 팝업 라벨 — 사용자가 [확인] 누르면 페이드 → 이동 발동.
+                        lines.push('의식이 흐려지며 발이 멋대로 움직인다.');
                     },
                     tagLastGrantedItem: (itemId, statusId) => {
                         // 직전 grant 결과 1개에 statusTag 부여. 가장 최근에 추가된 같은 type 1개를 찾는다.
@@ -7142,33 +7229,50 @@
                 const parsed = window.EffectParser.parseEventEffect(dsl);
                 window.EffectParser.applyEventEffect(parsed, ctx).forEach(l => lines.push(l));
 
-                // 효과 메시지 합치기.
-                if (lines.length > 0) setMessage(lines.join(' '));
-                else setMessage('잠시 멈춰서 숨을 골랐다.');
+                // 후속(타일 강등 + 강제 이동)을 결과 팝업 [확인] 이후로 미룬다.
+                // D-159 시퀀스: 선택지 → 효과 적용 → 결과 팝업 → 확인 → 페이드/이동.
+                const finalize = () => {
+                    setEventResult(null);
+                    // 효과 메시지 합치기 (메시지 카드).
+                    if (lines.length > 0) setMessage(lines.join(' '));
+                    else setMessage('잠시 멈춰서 숨을 골랐다.');
 
-                // 타일은 normal로 강등 — 같은 칸 재방문해도 같은 이벤트 재발생 X.
-                setTiles(prev => prev.map(t => t.id === assign.tileId ? { ...t, type: 'normal' } : t));
-                setEventTileAssignments(prev => {
-                    const next = { ...prev };
-                    delete next[assign.tileId];
-                    return next;
-                });
+                    // 타일은 normal로 강등 — 같은 칸 재방문해도 같은 이벤트 재발생 X.
+                    setTiles(prev => prev.map(t => t.id === assign.tileId ? { ...t, type: 'normal' } : t));
+                    setEventTileAssignments(prev => {
+                        const next = { ...prev };
+                        delete next[assign.tileId];
+                        return next;
+                    });
+
+                    // ☆4: force_random_move = 1초 페이드 연출. 결과 팝업 [확인] 이후 발동.
+                    if (pendingForceMove) {
+                        setFadeActive(true);
+                        setTimeout(() => {
+                            const cur = tiles[assign.tileId];
+                            const conns = (cur && cur.connections) || [];
+                            if (conns.length > 0) {
+                                const dest = conns[Math.floor(Math.random() * conns.length)];
+                                setCurrentTile(dest);
+                                setMoveHistory(prev => [...prev, dest]);
+                                setTiles(prev => prev.map(t => t.id === dest ? { ...t, visited: true, discovered: true, revealed: true } : t));
+                            }
+                            setFadeActive(false);
+                        }, 1000);
+                    }
+                };
+
+                // 선택지 모달은 즉시 닫는다 — 결과 팝업이 그 자리에 뜨도록.
                 setEventChoice(null);
 
-                // ☆4: force_random_move = 1초 페이드 연출. 페이드 동안 입력 차단 후 랜덤 인접으로 이동.
-                if (pendingForceMove) {
-                    setFadeActive(true);
-                    setTimeout(() => {
-                        const cur = tiles[assign.tileId];
-                        const conns = (cur && cur.connections) || [];
-                        if (conns.length > 0) {
-                            const dest = conns[Math.floor(Math.random() * conns.length)];
-                            setCurrentTile(dest);
-                            setMoveHistory(prev => [...prev, dest]);
-                            setTiles(prev => prev.map(t => t.id === dest ? { ...t, visited: true, discovered: true, revealed: true } : t));
-                        }
-                        setFadeActive(false);
-                    }, 1000);
+                // D-159: 결과 팝업.
+                //   - 라인이 1개 이상이면 EventResultModal 노출, 사용자가 확인하기 전엔 후속 보류.
+                //   - 라인 0건(아무 일도 없었다)은 모달 띄우지 않고 즉시 finalize — 정보가 없는데
+                //     모달 띄우는 건 과함. 짧은 메시지(잠시 멈춰서…)만 setMessage로 흘림.
+                if (lines.length > 0) {
+                    setEventResult({ lines, onConfirm: finalize });
+                } else {
+                    finalize();
                 }
             };
 
@@ -7727,6 +7831,17 @@
                             />
                         );
                     })()}
+
+                    {/* D-159: 이벤트 선택 결과 팝업. eventChoice가 닫히고 나면 그 자리에 뜬다. */}
+                    {eventResult && (
+                        <EventResultModal
+                            lines={eventResult.lines}
+                            onConfirm={() => {
+                                if (eventResult.onConfirm) eventResult.onConfirm();
+                                else setEventResult(null);
+                            }}
+                        />
+                    )}
 
                     {fadeActive && (
                         <div style={{

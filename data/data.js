@@ -44,7 +44,7 @@ window.TTD_DATA = {
       "count": 1,
       "effect": "체력/배고픔 소폭 회복, 소음 최소",
       "detection": -5,
-      "consume": "category:음식;bonus:recover=1",
+      "consume": "category:food;bonus:recover=1",
       "extra_effect": ""
     }
   ],
@@ -494,7 +494,7 @@ window.TTD_DATA = {
       "name": "일반 공격",
       "type": "attack",
       "damage": 2,
-      "accuracy": 1,
+      "accuracy": 0,
       "defense": 0,
       "description": "기본 공격 — L2 prey 평타"
     },
@@ -638,7 +638,7 @@ window.TTD_DATA = {
       "name": "광폭 발톱",
       "type": "attack",
       "damage": 2,
-      "accuracy": 1,
+      "accuracy": 0,
       "defense": 0,
       "description": "오소리 특수"
     },
@@ -656,7 +656,7 @@ window.TTD_DATA = {
       "name": "날개 후려치기",
       "type": "attack",
       "damage": 2,
-      "accuracy": 1,
+      "accuracy": 0,
       "defense": 0,
       "description": "큰 새 특수"
     },
@@ -1037,7 +1037,7 @@ window.TTD_DATA = {
       "id": "berry",
       "name": "산딸기",
       "이름": "산딸기",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "1단계",
       "가방칸수": "1x1",
@@ -1068,7 +1068,7 @@ window.TTD_DATA = {
       "id": "big_meat",
       "name": "큰생고기",
       "이름": "큰생고기",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "1단계",
       "가방칸수": "1x1",
@@ -1170,7 +1170,7 @@ window.TTD_DATA = {
       "id": "fish",
       "name": "물고기",
       "이름": "물고기",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "1단계",
       "가방칸수": "1x1",
@@ -1200,7 +1200,7 @@ window.TTD_DATA = {
       "id": "grasshopper_whole",
       "name": "메뚜기",
       "이름": "메뚜기",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "1단계",
       "가방칸수": "1x1",
@@ -1228,7 +1228,7 @@ window.TTD_DATA = {
       "id": "meat",
       "name": "생고기",
       "이름": "생고기",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "1단계",
       "가방칸수": "1x1",
@@ -1261,7 +1261,7 @@ window.TTD_DATA = {
       "id": "mushroom",
       "name": "버섯",
       "이름": "버섯",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "1단계",
       "가방칸수": "1x1",
@@ -1414,7 +1414,7 @@ window.TTD_DATA = {
       "id": "water",
       "name": "맑은물",
       "이름": "맑은물",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "1단계",
       "가방칸수": "1x1",
@@ -1495,7 +1495,7 @@ window.TTD_DATA = {
       "id": "berry_mix",
       "name": "딸기모둠",
       "이름": "딸기모둠",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": null,
       "아이템 등급": "2단계",
       "가방칸수": "1x1",
@@ -1523,7 +1523,7 @@ window.TTD_DATA = {
       "id": "big_meat_skewer",
       "name": "큰고기꼬치",
       "이름": "큰고기꼬치",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "2단계",
       "가방칸수": "1x2",
@@ -1578,7 +1578,7 @@ window.TTD_DATA = {
       "id": "crab_meat",
       "name": "발라낸 게살",
       "이름": "발라낸 게살",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "2단계",
       "가방칸수": "1x1",
@@ -1606,7 +1606,7 @@ window.TTD_DATA = {
       "id": "crab_skewer",
       "name": "게살꼬치",
       "이름": "게살꼬치",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "2단계",
       "가방칸수": "1x1",
@@ -1634,7 +1634,7 @@ window.TTD_DATA = {
       "id": "fish_skewer",
       "name": "물고기꼬치",
       "이름": "물고기꼬치",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "2단계",
       "가방칸수": "1x2",
@@ -1667,7 +1667,7 @@ window.TTD_DATA = {
       "id": "giant_bait",
       "name": "거대한 먹이",
       "이름": "거대한 먹이",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "2단계",
       "가방칸수": "2x2",
@@ -1700,7 +1700,7 @@ window.TTD_DATA = {
       "id": "meat_skewer",
       "name": "생고기꼬치",
       "이름": "생고기꼬치",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "2단계",
       "가방칸수": "1x2",
@@ -1733,7 +1733,7 @@ window.TTD_DATA = {
       "id": "mushroom_mix",
       "name": "버섯모둠",
       "이름": "버섯모둠",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": null,
       "아이템 등급": "2단계",
       "가방칸수": "1x1",
@@ -1805,7 +1805,7 @@ window.TTD_DATA = {
       "id": "clean_berry",
       "name": "깨끗한 딸기",
       "이름": "깨끗한 딸기",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "3단계",
       "가방칸수": "1x1",
@@ -1833,7 +1833,7 @@ window.TTD_DATA = {
       "id": "grilled_big_meat_skewer",
       "name": "큰고기꼬치구이",
       "이름": "큰고기꼬치구이",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "3단계",
       "가방칸수": "1x2",
@@ -1866,7 +1866,7 @@ window.TTD_DATA = {
       "id": "grilled_crab_skewer",
       "name": "구운게살꼬치",
       "이름": "구운게살꼬치",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "3단계",
       "가방칸수": "1x1",
@@ -1899,7 +1899,7 @@ window.TTD_DATA = {
       "id": "grilled_fish_skewer",
       "name": "생선꼬치구이",
       "이름": "생선꼬치구이",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "3단계",
       "가방칸수": "1x2",
@@ -1932,7 +1932,7 @@ window.TTD_DATA = {
       "id": "grilled_giant_bait",
       "name": "거대한 먹이 구이",
       "이름": "거대한 먹이 구이",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "3단계",
       "가방칸수": "2x2",
@@ -1965,7 +1965,7 @@ window.TTD_DATA = {
       "id": "grilled_meat_skewer",
       "name": "고기꼬치구이",
       "이름": "고기꼬치구이",
-      "카테고리": "음식",
+      "카테고리": "food",
       "재료 타입": "음식재료",
       "아이템 등급": "3단계",
       "가방칸수": "1x2",
@@ -2041,7 +2041,6 @@ window.TTD_DATA = {
       "가방칸수": "1x1",
       "defense": 1,
       "방어력": 1,
-      "내구도": 3,
       "설명 텍스트": "임시방편 잎사귀 조끼",
       "효과 요약": ""
     },
@@ -2055,7 +2054,6 @@ window.TTD_DATA = {
       "가방칸수": "1x1",
       "defense": 2,
       "방어력": 2,
-      "내구도": 4,
       "설명 텍스트": "투박한 나무 방패",
       "효과 요약": ""
     },
@@ -2069,7 +2067,6 @@ window.TTD_DATA = {
       "가방칸수": "1x2",
       "defense": 2,
       "방어력": 2,
-      "내구도": 4,
       "설명 텍스트": "천 조각을 꿰맨 갑옷",
       "효과 요약": ""
     },
@@ -2083,7 +2080,6 @@ window.TTD_DATA = {
       "가방칸수": "1x2",
       "defense": 3,
       "방어력": 3,
-      "내구도": 6,
       "설명 텍스트": "돌로 보강한 나무 방패",
       "효과 요약": ""
     },
@@ -2097,7 +2093,6 @@ window.TTD_DATA = {
       "가방칸수": "2x2",
       "defense": 3,
       "방어력": 3,
-      "내구도": 6,
       "설명 텍스트": "비늘처럼 돌을 덧댄 갑옷",
       "효과 요약": ""
     }
@@ -2405,22 +2400,22 @@ window.TTD_DATA = {
       {
         "id": "wounded_animal",
         "title": "부상당한 작은 동물",
-        "intro_text": "덤불 사이에서 가느다란 울음소리가 새어 나온다. 다가가 보니 작은 짐승이 덫에 발을 물린 채 떨고 있었다. 검은 눈이 나를 올려다본다.",
+        "intro_text": "덤불 사이에서 희미한 울음소리가 들린다. 다가가보니 덫에 걸린 작은 동물이 있다.",
         "region": "",
         "choices": [
           {
             "id": "help",
-            "label": "조심스럽게 풀어준다",
+            "label": "도와준다",
             "effect_dsl": "item_grant:berry*1;hint:exit_direction"
           },
           {
             "id": "hunt",
-            "label": "단번에 끝낸다",
+            "label": "사냥한다",
             "effect_dsl": "item_grant:meat*1;detection_delta:+10"
           },
           {
             "id": "ignore",
-            "label": "못 본 척 지나간다",
+            "label": "무시한다",
             "effect_dsl": "nothing"
           }
         ]
@@ -2428,22 +2423,22 @@ window.TTD_DATA = {
       {
         "id": "bloody_pack",
         "title": "피 묻은 배낭",
-        "intro_text": "나무뿌리 옆에 낡은 배낭이 버려져 있다. 천에는 검게 굳은 피가 묻어 있고, 안쪽에서 무언가 금속이 부딪히는 소리가 울린다. 누군가 이걸 두고 떠난 게 아니라, 두고 갈 수밖에 없었던 거다.",
+        "intro_text": "나무 밑에 낡은 배낭이 버려져 있다. 천에는 마른 피가 묻어 있고, 안쪽에서 희미한 금속 소리가 난다.",
         "region": "",
         "choices": [
           {
             "id": "search_carefully",
-            "label": "숨을 죽이며 뒤진다",
+            "label": "조심스럽게 뒤진다",
             "effect_dsl": "item_grant_pool:bloody_pack_common*1;chance_stat:30,health-1"
           },
           {
             "id": "grab_quickly",
-            "label": "닥치는 대로 챙긴다",
+            "label": "급히 챙긴다",
             "effect_dsl": "item_grant_pool:bloody_pack_common*2;detection_delta:+15;chance_grant:30,torn_map*1"
           },
           {
             "id": "pass",
-            "label": "건드리지 않고 지나친다",
+            "label": "그냥 지나간다",
             "effect_dsl": "nothing"
           }
         ]
@@ -2451,27 +2446,27 @@ window.TTD_DATA = {
       {
         "id": "fairy_ring",
         "title": "요정의 고리",
-        "intro_text": "색색의 버섯들이 완벽한 원을 그리며 자라고 있다. 그 원 안쪽만 바람이 멎어 있다. 발을 들이는 순간 시간이 멈출 것 같은 기분이 든다.",
+        "intro_text": "색색의 버섯들이 완벽한 원을 이루며 자라고 있다. 이상하게도 그 안쪽만 바람이 멈춘 듯 조용하다.",
         "region": "",
         "choices": [
           {
             "id": "eat_mushroom",
-            "label": "한 점 떼어 입에 넣어본다",
+            "label": "버섯을 먹는다",
             "effect_dsl": "branches:50|stat_delta:hunger+4||50|status_apply:hallucination*3"
           },
           {
             "id": "harvest",
-            "label": "갓을 살펴 두 송이만 따낸다",
+            "label": "버섯을 채집한다",
             "effect_dsl": "item_grant:mushroom*2;chance_grant_status_on_item:20,poison_bite,mushroom"
           },
           {
             "id": "enter_ring",
-            "label": "원 안으로 발을 들인다",
+            "label": "고리 안으로 들어간다",
             "effect_dsl": "hint:exit_direction;detection_delta:+20"
           },
           {
             "id": "avoid",
-            "label": "원을 피해 돌아간다",
+            "label": "피해서 간다",
             "effect_dsl": "nothing"
           }
         ]
@@ -2479,27 +2474,27 @@ window.TTD_DATA = {
       {
         "id": "weird_cry",
         "title": "기묘한 울음소리",
-        "intro_text": "어디선가 사람이 우는 듯한 소리가 들린다. 너무 일정하고, 너무 가까워지고 있다. 사람이 낼 수 있는 소리가 아니다.",
+        "intro_text": "숲 깊은 곳에서 사람의 울음 같은 소리가 들린다. 하지만 그 소리는 너무 일정하고, 너무 가까워지고 있다.",
         "region": "",
         "choices": [
           {
             "id": "follow_sound",
-            "label": "소리를 따라 발을 옮긴다",
+            "label": "소리를 따라간다",
             "effect_dsl": "branches:60|item_grant_pool:weird_cry_rare*1||40|stat_delta:health-1;detection_delta:+15"
           },
           {
             "id": "watch_hidden",
-            "label": "숨을 죽이고 지켜본다",
+            "label": "숨어서 지켜본다",
             "effect_dsl": "hint:boss_direction;stat_delta:hunger-1"
           },
           {
             "id": "flee_opposite",
-            "label": "반대 방향으로 달린다",
+            "label": "반대 방향으로 도망친다",
             "effect_dsl": "detection_delta:-10;force_random_move"
           },
           {
             "id": "ignore",
-            "label": "못 들은 척 지나간다",
+            "label": "무시하고 이동한다",
             "effect_dsl": "detection_delta:+5"
           }
         ]
@@ -2507,27 +2502,27 @@ window.TTD_DATA = {
       {
         "id": "abandoned_campfire",
         "title": "버려진 모닥불",
-        "intro_text": "꺼진 지 얼마 되지 않은 모닥불 자리. 재 속에 아직 붉은 열기가 남아 있다. 누군가 방금 전까지 여기 앉아 있었다.",
+        "intro_text": "꺼진 지 얼마 되지 않은 모닥불이 있다. 재 속에는 아직 붉은 열기가 남아 있다. 누군가 방금 전까지 여기 있었다.",
         "region": "",
         "choices": [
           {
             "id": "find_food",
-            "label": "남은 음식을 뒤진다",
+            "label": "남은 음식을 찾는다",
             "effect_dsl": "item_grant_pool:campfire_food*1;detection_delta:+10"
           },
           {
             "id": "scrape_ash",
-            "label": "재를 파헤쳐 흔적을 더듬는다",
+            "label": "재를 뒤져 흔적을 찾는다",
             "effect_dsl": "branches:50|hint:exit_direction||50|hint:boss_direction;chance_stat:30,health-1"
           },
           {
             "id": "stamp_out",
-            "label": "남은 불씨를 짓밟아 끈다",
+            "label": "불씨를 밟아 끈다",
             "effect_dsl": "detection_delta:-10"
           },
           {
             "id": "pass",
-            "label": "건드리지 않고 지나친다",
+            "label": "그냥 지나간다",
             "effect_dsl": "nothing"
           }
         ]
@@ -2535,27 +2530,27 @@ window.TTD_DATA = {
       {
         "id": "shaking_bush",
         "title": "흔들리는 덤불",
-        "intro_text": "앞쪽 덤불이 거칠게 흔들린다. 바람의 결이 아니다. 무엇인가가 그 안에서 나를 보고 있다.",
+        "intro_text": "앞쪽 덤불이 심하게 흔들린다. 바람 때문은 아니다. 무언가 숨어 있다.",
         "region": "",
         "choices": [
           {
             "id": "attack_first",
-            "label": "선수를 친다",
+            "label": "먼저 공격한다",
             "effect_dsl": "branches:50|item_grant:meat*1||50|stat_delta:health-1"
           },
           {
             "id": "throw_food",
-            "label": "가지고 있던 음식을 던진다",
-            "effect_dsl": "item_consume_filter:음식*1;detection_delta:-15;chance_hint:30,exit_direction"
+            "label": "먹이를 던진다",
+            "effect_dsl": "item_consume_filter:food*1;detection_delta:-15;chance_hint:30,exit_direction"
           },
           {
             "id": "go_around",
-            "label": "발소리를 죽이고 우회한다",
+            "label": "조용히 우회한다",
             "effect_dsl": "stat_delta:hunger-1"
           },
           {
             "id": "approach",
-            "label": "한 걸음씩 다가가 확인한다",
+            "label": "다가가 확인한다",
             "effect_dsl": "branches:25|item_grant:meat*1||25|stat_delta:health-1||25|nothing||25|hint:boss_direction"
           }
         ]
@@ -2563,17 +2558,17 @@ window.TTD_DATA = {
       {
         "id": "broken_signpost",
         "title": "부서진 이정표",
-        "intro_text": "낡은 나무 이정표가 길가에 쓰러져 있다. 화살표는 반쯤 부러졌고, 누군가 일부러 방향을 돌려놓은 자국이 남아 있다.",
+        "intro_text": "낡은 나무 이정표가 땅에 쓰러져 있다. 방향 표시는 반쯤 부러져 있지만, 누군가 일부러 돌려놓은 흔적이 있다.",
         "region": "",
         "choices": [
           {
             "id": "align",
-            "label": "본래 방향을 가늠해 맞춘다",
+            "label": "이정표를 맞춰본다",
             "effect_dsl": "branches:70|hint:exit_direction||30|hint:wrong_exit_direction"
           },
           {
             "id": "follow_traces",
-            "label": "남은 발자국을 따라간다",
+            "label": "흔적을 따라간다",
             "effect_dsl": "item_grant_pool:signpost_loot*1;detection_delta:+10"
           },
           {
@@ -2583,7 +2578,7 @@ window.TTD_DATA = {
           },
           {
             "id": "ignore",
-            "label": "그대로 두고 떠난다",
+            "label": "무시한다",
             "effect_dsl": "nothing"
           }
         ]
@@ -2591,27 +2586,27 @@ window.TTD_DATA = {
       {
         "id": "suspicious_berry_tree",
         "title": "수상한 열매나무",
-        "intro_text": "낮은 가지에 붉은 열매가 무리지어 달려 있다. 그런데 주변에 벌레도, 새도, 그 흔한 거미줄 한 가닥도 보이지 않는다.",
+        "intro_text": "낮은 가지에 붉은 열매가 가득 열려 있다. 이상하게도 주변에는 벌레도, 새도 보이지 않는다.",
         "region": "",
         "choices": [
           {
             "id": "eat",
-            "label": "한 움큼 입에 털어 넣는다",
+            "label": "열매를 먹는다",
             "effect_dsl": "stat_delta:hunger+5;chance_status:40,poison*3"
           },
           {
             "id": "harvest_some",
-            "label": "한 송이만 조심히 딴다",
+            "label": "조금만 채집한다",
             "effect_dsl": "item_grant:berry*1;chance_grant_status_on_item:20,poison_bite,berry"
           },
           {
             "id": "shake_tree",
-            "label": "나무를 거칠게 흔든다",
+            "label": "나무를 흔든다",
             "effect_dsl": "item_grant:berry*2;detection_delta:+20"
           },
           {
             "id": "avoid",
-            "label": "건드리지 않고 지나친다",
+            "label": "피한다",
             "effect_dsl": "nothing"
           }
         ]
@@ -2619,22 +2614,22 @@ window.TTD_DATA = {
       {
         "id": "old_hunter_trap",
         "title": "낡은 사냥꾼의 덫",
-        "intro_text": "나뭇잎 사이로 금속이 번쩍인다. 오래된 사냥꾼의 덫이다. 녹슬었지만 톱니는 아직 살아 있다.",
+        "intro_text": "나뭇잎 아래에 금속성 빛이 비친다. 오래된 사냥꾼의 덫이다. 아직 작동하는 것 같다.",
         "region": "",
         "choices": [
           {
             "id": "disarm",
-            "label": "톱니를 풀어 해체한다",
+            "label": "해체한다",
             "effect_dsl": "branches:70|item_grant:snare_trap*1||30|stat_delta:health-1"
           },
           {
             "id": "pass",
-            "label": "발 끝으로 둘러간다",
+            "label": "피해서 지나간다",
             "effect_dsl": "nothing"
           },
           {
             "id": "trigger",
-            "label": "막대로 일부러 작동시킨다",
+            "label": "일부러 작동시킨다",
             "effect_dsl": "detection_delta:+20;hint:tile_reveal"
           }
         ]
@@ -2644,84 +2639,69 @@ window.TTD_DATA = {
       "bloody_pack_common": [
         {
           "id": "bandage",
-          "count": 1,
-          "weight": 30
+          "count": 1
         },
         {
           "id": "plant_fiber",
-          "count": 1,
-          "weight": 35
+          "count": 1
         },
         {
           "id": "clean_cloth",
-          "count": 1,
-          "weight": 20
+          "count": 1
         },
         {
           "id": "wood",
-          "count": 1,
-          "weight": 15
+          "count": 1
         }
       ],
       "weird_cry_rare": [
         {
           "id": "grilled_crab_skewer",
-          "count": 1,
-          "weight": 15
+          "count": 1
         },
         {
           "id": "grilled_fish_skewer",
-          "count": 1,
-          "weight": 20
+          "count": 1
         },
         {
           "id": "grilled_meat_skewer",
-          "count": 1,
-          "weight": 25
+          "count": 1
         },
         {
           "id": "bandage",
-          "count": 1,
-          "weight": 40
+          "count": 1
         }
       ],
       "campfire_food": [
         {
           "id": "meat_skewer",
-          "count": 1,
-          "weight": 25
+          "count": 1
         },
         {
           "id": "fish_skewer",
-          "count": 1,
-          "weight": 25
+          "count": 1
         },
         {
           "id": "crab_skewer",
-          "count": 1,
-          "weight": 15
+          "count": 1
         },
         {
           "id": "berry",
-          "count": 2,
-          "weight": 35
+          "count": 2
         }
       ],
       "signpost_loot": [
         {
           "id": "wood",
-          "count": 1,
-          "weight": 50
+          "count": 1
         },
         {
           "id": "plant_fiber",
-          "count": 1,
-          "weight": 35
+          "count": 1
         },
         {
           "id": "bandage",
-          "count": 1,
-          "weight": 15
+          "count": 1
         }
       ]
     }
