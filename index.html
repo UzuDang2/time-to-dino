@@ -3049,38 +3049,38 @@
 
         // D-168 (2026-04-29 요한): 텐트 레벨 시스템 (Lv.1~10).
         // D-174 (2026-04-30): 텐트는 "보관함 슬롯 확장" 단일 역할로 환원.
-        //   모든 단계 rewardType='camp_storage' (보관함 +1칸). health/hunger/pack 보너스는 빌딩 6종으로 이관.
+        //   모든 단계 rewardType='camp_storage' (보관함 +10칸). health/hunger/pack 보너스는 빌딩 6종으로 이관.
         //   questId 'tent_N' → 빌딩 어댑터에서 id='tent', stage=N으로 매핑. (`bld_tent_<N>`도 호환 — 신규 표기.)
         const TENT_LEVEL_DEFS = [
             null,
-            { level: 1,  name: '텐트 세우기',              icon: '🏕️', rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 6,  stone: 4, stem: 4 } },
-            { level: 2,  name: '텐트 보강 — 깔개 깔기',     icon: '🛌',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 8,  stone: 6, stem: 5 } },
-            { level: 3,  name: '텐트 보강 — 식료 칸 잇기',  icon: '🍱',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 6,  stem: 4,  stone_block: 1 } },
-            { level: 4,  name: '텐트 확장 — 짐칸 증축',     icon: '🎒',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { stem: 6,    branch: 4, stone_block: 2 } },
-            { level: 5,  name: '텐트 보강 — 골조 보수',     icon: '🔧',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 8,  stem: 6,   stone_block: 2 } },
-            { level: 6,  name: '텐트 보강 — 저장창 만들기', icon: '📦',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { stem: 8,    stone_block: 3 } },
-            { level: 7,  name: '텐트 확장 — 외벽 두르기',   icon: '🧱',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 10, stone_block: 4 } },
-            { level: 8,  name: '텐트 보강 — 침소 정비',     icon: '🛏️', rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { stem: 8,    stone_block: 5 } },
-            { level: 9,  name: '텐트 보강 — 식량창 확장',   icon: '🥘',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 12, stone_block: 6 } },
-            { level: 10, name: '텐트 완성 — 영구 거점',     icon: '🏠',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { stem: 10,   stone_block: 8 } }
+            { level: 1,  name: '텐트 세우기',              icon: '🏕️', rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { branch: 6,  stone: 4, stem: 4 } },
+            { level: 2,  name: '텐트 보강 — 깔개 깔기',     icon: '🛌',  rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { branch: 8,  stone: 6, stem: 5 } },
+            { level: 3,  name: '텐트 보강 — 식료 칸 잇기',  icon: '🍱',  rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { branch: 6,  stem: 4,  stone_block: 1 } },
+            { level: 4,  name: '텐트 확장 — 짐칸 증축',     icon: '🎒',  rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { stem: 6,    branch: 4, stone_block: 2 } },
+            { level: 5,  name: '텐트 보강 — 골조 보수',     icon: '🔧',  rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { branch: 8,  stem: 6,   stone_block: 2 } },
+            { level: 6,  name: '텐트 보강 — 저장창 만들기', icon: '📦',  rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { stem: 8,    stone_block: 3 } },
+            { level: 7,  name: '텐트 확장 — 외벽 두르기',   icon: '🧱',  rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { branch: 10, stone_block: 4 } },
+            { level: 8,  name: '텐트 보강 — 침소 정비',     icon: '🛏️', rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { stem: 8,    stone_block: 5 } },
+            { level: 9,  name: '텐트 보강 — 식량창 확장',   icon: '🥘',  rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { branch: 12, stone_block: 6 } },
+            { level: 10, name: '텐트 완성 — 영구 거점',     icon: '🏠',  rewardType: 'camp_storage', rewardLabel: '보관함 +10칸', requirements: { stem: 10,   stone_block: 8 } }
         ];
         const TENT_MAX_LEVEL = 10;
         const BASE_MAX_HEALTH = 6;
         const BASE_MAX_HUNGER = 10;
-        // D-174: 캠프 보관함 BASE — 12x7 그리드 중 마지막 row(인덱스 6) 12칸이 텐트 슬롯.
-        //   tentLevel=0이면 12칸 모두 disabled → 활성 72칸(현행 BASE와 동일).
-        //   텐트 단계마다 마지막 row 좌측부터 1칸씩 풀림. tentLevel=10이면 활성 82, 우측 2칸 disabled.
+        // D-174 v2 (2026-04-30): 캠프 보관함 BASE — 12x16 그리드.
+        //   row 0-5(BASE 활성 72칸) + row 6-15(텐트 슬롯, 좌측 10칸 변동 disabled · 우측 2칸 영구 disabled).
+        //   텐트 단계마다 좌측 위부터 +10칸 풀림. tentLevel=10이면 활성 172, 우측 2칸×10row=20 영구 disabled.
         const BASE_CAMP_STORAGE_SLOTS = 72;
 
         // D-174: 단일 빌딩 단계 reward_passive를 키별 합산. 단계간 누적 X.
-        //   id==='tent'면 TENT_LEVEL_DEFS[stage] 1단계당 camp_storage+1.
+        //   id==='tent'면 단계당 camp_storage+10 (D-174 v2 — 보상 강화).
         //   그 외는 시트 BUILDINGS reward_passive DSL 파싱.
         function buildingBonuses(id, stage) {
             const lv = Number(stage) || 0;
             if (lv <= 0) return {};
             if (id === 'tent') {
-                // 텐트는 단계마다 camp_storage+1 — TENT_LEVEL_DEFS 누적 = lv칸.
-                return { camp_storage: 1 };
+                // 텐트는 단계마다 camp_storage+10 — TENT_LEVEL_DEFS 누적 = lv*10칸.
+                return { camp_storage: 10 };
             }
             const def = getBuildingDef(id, lv);
             if (!def) return {};
@@ -3100,9 +3100,9 @@
                 evade: 0, accuracy: 0, detection: 0, armor: 0, camp_storage: 0
             };
             if (!campState) return out;
-            // 텐트: 1~tentLevel 누적 (단계마다 camp_storage+1).
+            // 텐트: 1~tentLevel 누적 (단계마다 camp_storage+10 — D-174 v2).
             const tentLv = Math.max(0, Math.min(TENT_MAX_LEVEL, Number(campState.tentLevel) || 0));
-            out.camp_storage += tentLv;
+            out.camp_storage += tentLv * 10;
             // 빌딩 6종: 현재 stage 한 줄만 산출 (단계간 누적 X — 시트 정의가 누적값).
             const levels = (campState.buildingLevels && typeof campState.buildingLevels === 'object')
                 ? campState.buildingLevels : {};
@@ -3257,7 +3257,7 @@
                     cost_raw: '',
                     effect_raw: '',
                     reward_items: '',
-                    reward_passive: 'camp_storage+1',
+                    reward_passive: 'camp_storage+10',
                     reward_run_start: '',
                     reward_one_shot: '',
                     icon: base.icon || BUILDING_ICON.tent,
@@ -8838,7 +8838,7 @@
         // D-113: 보관함은 12x8(rows=12, cols=8 — 세로로 김). 탐험용 가방(pack)은 5x5(D-47 모양).
         // D-147 (2026-04-27 요한): 보관함 12x6로 좁힘 — 세로 모바일에서 더 깔끔.
         // D-148 (2026-04-27 요한): tentBuilt 플래그 — true면 가방 좌측 위 1칸 추가 활성(텐트 보상).
-        // D-174 (2026-04-30): 보관함 12x7 — 마지막 row(인덱스 6) 12칸이 텐트 슬롯(BASE_CAMP_STORAGE_SLOTS=72 + 텐트 단계당 1칸).
+        // D-174 v2 (2026-04-30): 보관함 12x16 — row 0-5 BASE 활성(72칸) + row 6-15 텐트 슬롯(좌측 10칸×10row=100 변동, 우측 2칸×10row=20 영구 disabled). 텐트 단계당 +10칸.
         //   buildingLevels — { [id]: stage } 빌딩 6종 + tent 진행도. 텐트는 tentLevel과 동기.
         //   oneShotInventory — { [key]: count } heal_on_return 등 누적 일회성 효과(D-176+ 사용).
         function makeInitialCampState() {
@@ -8849,24 +8849,28 @@
                 tentLevel: 0,
                 buildingLevels: {},        // D-174
                 oneShotInventory: {},      // D-174
-                inventory: makeCampStorageInventory(0),  // D-174: 12x7 + 마지막 row 12칸 disabled.
+                inventory: makeCampStorageInventory(0),  // D-174 v2: 12x16 + row 6-15 disabled.
                 pack: makePackInventory(0),
                 quests: { active: [], completed: [] },
                 runs: { total: 0, victories: 0, deaths: 0, bestScore: 0, totalScore: 0, lastScore: 0 }
             };
         }
 
-        // D-174: 캠프 보관함 InventorySystem 생성 — 12x7 그리드, 마지막 row 12칸을 시작 시 disabled.
-        //   tentLevel만큼 좌측부터 expandStorage로 풀린 인스턴스 반환.
+        // D-174 v2 (2026-04-30): 캠프 보관함 12x16 그리드. row 6-15(텐트 슬롯) 전체 disabled로 시작.
+        //   tentLevel * 10칸을 좌측 위(y=6,x=0)부터 row→col 순으로 풀어 활성화 (우측 2칸은 영구).
+        //   풀 텐트(Lv.10): 활성 72(BASE) + 100(텐트) = 172. 영구 disabled 20(우측 2칸×10row).
         function makeCampStorageInventory(tentLevel) {
-            const lastRowDisabled = [];
-            const ROWS = 7, COLS = 12;
-            for (let x = 0; x < COLS; x++) {
-                lastRowDisabled.push({ x, y: ROWS - 1 });
+            const ROWS = 16, COLS = 12;
+            const TENT_ROW_START = 6;
+            const tentDisabled = [];
+            for (let y = TENT_ROW_START; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    tentDisabled.push({ x, y });
+                }
             }
-            const inv = new InventorySystem(ROWS, COLS, { disabled: lastRowDisabled });
+            const inv = new InventorySystem(ROWS, COLS, { disabled: tentDisabled });
             const lv = Math.max(0, Math.min(TENT_MAX_LEVEL, Number(tentLevel) || 0));
-            if (lv > 0) inv.expandStorage(lv);
+            if (lv > 0) inv.expandStorage(lv * 10);
             return inv;
         }
 
@@ -9316,8 +9320,8 @@
                     }
                     inv.items = keep;
                 }
-                // D-174: 텐트 단계 → 보관함 슬롯 좌측부터 1칸 풀기.
-                inv.expandStorage(1);
+                // D-174 v2: 텐트 단계 → 보관함 슬롯 좌측 위부터 +10칸 풀기.
+                inv.expandStorage(10);
                 setCampState(prev => {
                     const active = prev.quests.active.filter(q => q.id !== questId);
                     const moved = prev.quests.active.find(q => q.id === questId);
@@ -9334,9 +9338,9 @@
                     next.buildingLevels = { ...(prev.buildingLevels || {}), tent: next.tentLevel };
                     return next;
                 });
-                // D-174: 텐트 보상은 보관함 +1칸으로 단일화.
+                // D-174 v2: 텐트 보상은 보관함 +10칸으로 단일화.
                 let msg = `텐트 Lv.${def.level} 완성. ${def.rewardLabel}.`;
-                if (def.level === 1) msg = '텐트 자리를 잡았다. 보관함 한 칸이 더 생겼다.';
+                if (def.level === 1) msg = '텐트 자리를 잡았다. 보관함 열 칸이 더 생겼다.';
                 setQuestCompleteMsg(msg);
             };
 
