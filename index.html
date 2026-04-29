@@ -1592,7 +1592,23 @@
         //   - 긴 누름 (≥ 400ms 유지) → 기존 동작(선택/이동/머지/회전)
         // 임계값 400ms 채택 근거: Android 표준 long-press(500ms)보다 살짝 빠르게, iOS 기본(≈300ms)보다는 여유롭게.
         // 게임은 연타/드래그가 잦아 짧은 의도를 놓치면 답답하고, 반대로 너무 짧으면 스와이프가 잘못 인식된다.
-        function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory, onUseItem, onLureBait, onFlashMessage, title, mode }) {
+        function InventoryModal({ inventory, selectedItem, setSelectedItem, closeInventory, onUseItem, onLureBait, onFlashMessage, title, mode, activeQuests }) {
+            // D-171 (요한): 진행 중 퀘스트가 요구하는 type 집합 → 아이템 우상단 노란 ✓ 마커.
+            //   퀘스트 정의는 getTentQuestDef 사용. 이미 충족된 type은 마커 생략(소지가 의미 없을 때 시각 잡음 방지).
+            const questRequiredTypes = React.useMemo(() => {
+                const set = new Set();
+                if (!Array.isArray(activeQuests) || activeQuests.length === 0) return set;
+                for (const q of activeQuests) {
+                    const def = (typeof getTentQuestDef === 'function') ? getTentQuestDef(q.id) : null;
+                    if (!def || !def.requirements) continue;
+                    const items = (inventory && Array.isArray(inventory.items)) ? inventory.items : [];
+                    for (const [type, need] of Object.entries(def.requirements)) {
+                        const have = items.filter(it => it.type === type).length;
+                        if (have < Number(need)) set.add(type);
+                    }
+                }
+                return set;
+            }, [activeQuests, inventory && inventory.items && inventory.items.length]);
             const [, setTick] = React.useState(0);
             const bump = () => setTick(t => t + 1);
             // 확정 대기 위치 (그리드 셀을 눌러 지정)
@@ -1886,7 +1902,9 @@
                 : null; // 비선택 시 패널 닫기 버튼 숨김 (가방 자체를 닫아야 함)
 
             return (
-                <div className="modal">
+                // D-171 (요한): ActiveQuestHUDPanel(z=1400)이 인벤토리 모달 위로 떠
+                //   가방 일부를 가렸음. 모달을 z=1500으로 띄워 HUD 위에 둔다.
+                <div className="modal" style={{ zIndex: 1500 }}>
                     <div className="inventory-stage">
                     <div className="modal-content inventory-modal">
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -1933,11 +1951,13 @@
                             )}
 
                             {/* 그리드에 배치된 아이템들.
-                                D-47: 머지 가능(같은 type 2개 이상 + mergeable) 시 우상단 체크 아이콘. */}
+                                D-47: 머지 가능(같은 type 2개 이상 + mergeable) 시 좌상단 작은 점.
+                                D-171: 진행 중 퀘스트가 요구하는 type이면 우상단 노란 ✓. */}
                             {inventory.items.filter(i => !selectedItem || i.id !== selectedItem.id).map(item => {
                                 const def = InventorySystem.resolveDef(item.type) || {};
                                 const sameTypeCount = inventory.items.filter(i => i.type === item.type).length;
                                 const canAutoMerge = !!def.mergeable && !!def.merge_result && sameTypeCount >= 2;
+                                const isQuestItem = questRequiredTypes.has(item.type);
                                 return (
                                     <div
                                         key={item.id}
@@ -1963,7 +1983,10 @@
                                             return item.name;
                                         })()}
                                         {canAutoMerge && (
-                                            <span className="inventory-merge-check" title="같은 재료가 있어 머지 가능">
+                                            <span className="inventory-merge-check" title="같은 재료가 있어 머지 가능" />
+                                        )}
+                                        {isQuestItem && (
+                                            <span className="inventory-quest-check" title="진행 중 퀘스트 요구 아이템">
                                                 ✓
                                             </span>
                                         )}
@@ -4507,6 +4530,80 @@
                                 🌲 탐험 떠나기
                             </button>
                         </div>
+
+                        {/* D-171: 데이터 초기화 / 최신버전 업데이트 — 인라인 하단 행.
+                              기존 position:fixed (D-166)는 스크롤과 무관해 캠프 콘텐츠와 겹쳤다(요한 보고).
+                              스크롤 흐름 안으로 흡수해 자연스럽게 맨 아래에서만 노출되게 한다. */}
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginTop: '40px',
+                            paddingTop: '20px',
+                            borderTop: '1px solid #1a1a2e',
+                            gap: '12px',
+                            flexWrap: 'wrap'
+                        }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '3px' }}>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            if ('serviceWorker' in navigator) {
+                                                const regs = await navigator.serviceWorker.getRegistrations();
+                                                for (const r of regs) { try { await r.unregister(); } catch {} }
+                                            }
+                                            if (typeof caches !== 'undefined' && caches.keys) {
+                                                const keys = await caches.keys();
+                                                for (const k of keys) { try { await caches.delete(k); } catch {} }
+                                            }
+                                        } catch {}
+                                        const url = new URL(window.location.href);
+                                        url.searchParams.set('v', String(Date.now()));
+                                        window.location.replace(url.toString());
+                                    }}
+                                    style={{
+                                        background: 'transparent',
+                                        color: '#7da3c8',
+                                        border: '1px solid #3a4d63',
+                                        padding: '6px 12px',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px'
+                                    }}
+                                >
+                                    🔄 최신버전 업데이트
+                                </button>
+                                <span style={{
+                                    color: '#555',
+                                    fontSize: '10px',
+                                    fontFamily: 'monospace',
+                                    paddingLeft: '2px'
+                                }}>
+                                    빌드: {(() => {
+                                        try {
+                                            const d = new Date(document.lastModified);
+                                            if (isNaN(d.getTime())) return '?';
+                                            const pad = (n) => String(n).padStart(2, '0');
+                                            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                                        } catch { return '?'; }
+                                    })()}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setResetOpen(true)}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#666',
+                                    border: '1px solid #333',
+                                    padding: '6px 12px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '11px'
+                                }}
+                            >
+                                데이터 초기화
+                            </button>
+                        </div>
                     </div>
 
                     {storageOpen && inv && (
@@ -4521,6 +4618,7 @@
                             }}
                             title="📦 보관함"
                             mode="storage"
+                            activeQuests={activeQuests}
                         />
                     )}
                     {packOpen && inv && pack && (
@@ -4531,91 +4629,6 @@
                             onClose={() => setPackOpen(false)}
                         />
                     )}
-
-                    {/* 데이터 초기화 — 우하단 */}
-                    <div style={{
-                        position: 'fixed',
-                        right: '12px',
-                        bottom: '12px',
-                        zIndex: 100
-                    }}>
-                        <button
-                            onClick={() => setResetOpen(true)}
-                            style={{
-                                background: 'transparent',
-                                color: '#666',
-                                border: '1px solid #333',
-                                padding: '6px 12px',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '11px'
-                            }}
-                        >
-                            데이터 초기화
-                        </button>
-                    </div>
-
-                    {/* D-166 (2026-04-29 요한): 최신버전 업데이트 — 좌하단.
-                          캐시된 구버전 플레이 중인지 확신이 안 설 때 강제 새로고침.
-                          서비스워커 unregister + Cache Storage 비움 + cache-busted URL로 replace.
-                          캠프에서만 노출(이 버튼은 CampScreen 내부) — 캠프 상태는 이미 localStorage에 영속,
-                          진행 중 런은 새로고침이 폐기하는 일반 룰과 동일하므로 안전.
-                          빌드 시각은 document.lastModified — 정적 호스팅이면 실제 파일 mtime이 표시됨.
-                          (캐시된 버전이라면 캐시 mtime이 보이는 것이 정상 — 그게 곧 "현재 보고 있는 버전" 신호) */}
-                    <div style={{
-                        position: 'fixed',
-                        left: '12px',
-                        bottom: '12px',
-                        zIndex: 100,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '3px',
-                        alignItems: 'flex-start'
-                    }}>
-                        <button
-                            onClick={async () => {
-                                try {
-                                    if ('serviceWorker' in navigator) {
-                                        const regs = await navigator.serviceWorker.getRegistrations();
-                                        for (const r of regs) { try { await r.unregister(); } catch {} }
-                                    }
-                                    if (typeof caches !== 'undefined' && caches.keys) {
-                                        const keys = await caches.keys();
-                                        for (const k of keys) { try { await caches.delete(k); } catch {} }
-                                    }
-                                } catch {}
-                                const url = new URL(window.location.href);
-                                url.searchParams.set('v', String(Date.now()));
-                                window.location.replace(url.toString());
-                            }}
-                            style={{
-                                background: 'transparent',
-                                color: '#7da3c8',
-                                border: '1px solid #3a4d63',
-                                padding: '6px 12px',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '11px'
-                            }}
-                        >
-                            🔄 최신버전 업데이트
-                        </button>
-                        <span style={{
-                            color: '#555',
-                            fontSize: '10px',
-                            fontFamily: 'monospace',
-                            paddingLeft: '2px'
-                        }}>
-                            빌드: {(() => {
-                                try {
-                                    const d = new Date(document.lastModified);
-                                    if (isNaN(d.getTime())) return '?';
-                                    const pad = (n) => String(n).padStart(2, '0');
-                                    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-                                } catch { return '?'; }
-                            })()}
-                        </span>
-                    </div>
 
                     {resetOpen && (
                         <ResetConfirmModal
@@ -8226,6 +8239,7 @@
                             onUseItem={handleUseItem}
                             onLureBait={handleLureBait}
                             onFlashMessage={setMessage}
+                            activeQuests={activeQuests}
                         />
                     )}
 

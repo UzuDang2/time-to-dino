@@ -5,6 +5,37 @@
 
 ---
 
+## D-171. 캠프 하단 버튼 인라인화 + 가방 마커 정리 + 모달 z-index (2026-04-29, `index.html` / `gameStyles.css`)
+
+요한 원문:
+- "데이터 초기화와 새로고침이 스크롤에 영향을 받지않아 ui 겹침 문제가 있어"
+- "조합가능 재료들의 v체크 아이콘이 너무 과해 초록점을 좌측 상단에 작게 표시해줘"
+- "퀘스트 아이템인경우 우측상단에 작게 노란색 v체크 표시해줘"
+- "가방에서도 퀘스트 hud가 표시되어 가방을 가리니까 레이어 순서 정리해줘"
+
+### 1) 캠프 하단 [데이터 초기화] / [🔄 최신버전 업데이트]
+
+D-166 의 `position: fixed` 좌·우하단 고정 → CampScreen 내부 스크롤 콘텐츠 안쪽 최하단 인라인 행으로 이동. 좌측 그룹(업데이트 버튼 + 빌드 시각), 우측(데이터 초기화), 사이에 `border-top` 분리선. `flex space-between`. 스크롤과 함께 자연스럽게 노출 — 더 이상 모달·HUD와 겹치지 않음.
+
+### 2) 머지 가능 마커 — 우상단 ✓ → 좌상단 작은 초록 점
+
+`.inventory-merge-check`: 14x14 ✓ 텍스트 배지 → 7x7 점, top-left. `font-size:0`으로 텍스트 숨김. 시각 잡음 감소.
+
+### 3) 퀘스트 아이템 마커 — 우상단 작은 노란 ✓
+
+신규 `.inventory-quest-check` (11x11, 노란 `#d4b84a`, 우상단). `InventoryModal`이 `activeQuests` prop 수신 → `getTentQuestDef`로 요구 type 집합 계산 → 아직 충족 안 된 type만 마커. 캠프 보관함·인게임 가방 양쪽 호출부에 `activeQuests` 전달.
+
+### 4) 가방 모달 z-index 우선
+
+`ActiveQuestHUDPanel`은 `zIndex: 1400`, `.modal` 기본 `z-index: 100`. 가방 열어도 HUD가 위로 떠 우상단을 가렸음. `InventoryModal` 루트에 `style={{ zIndex: 1500 }}` 인라인. 다른 더 위 zIndex(1700, EventModal 등)는 그대로 — InventoryModal 위에 띄울 모달은 변함없이 동작.
+
+### 파일
+
+- `index.html`: CampScreen 인라인 행, 기존 fixed 두 블록 삭제. `InventoryModal`에 `activeQuests` prop + `questRequiredTypes` useMemo + 두 호출부 prop 전달. 머지 마커 ✓ 텍스트 제거(셀프 클로징). 모달 루트 zIndex 1500.
+- `gameStyles.css`: `.inventory-merge-check` 좌상단 점 + `.inventory-quest-check` 우상단 ✓ 신규.
+
+---
+
 ## D-170. 생명력·배고픔 회복 — 동적 MAX 재-clamp (2026-04-29, `index.html`)
 
 요한 원문: "근데 생명력과 배고픔이 최대수치보다 많이 회복되는 경우들이 있어 수정해줘".
