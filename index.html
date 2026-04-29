@@ -4960,18 +4960,20 @@
         // D-58: 적 슬롯 최종 회피율 배지.
         //   - damage>0 카드 배치 + finalEvade < baseEvade → 초록 + bold.
         //   - 그 외(빈 슬롯 / damage=0 카드 / 감소 없음) → 기본색.
+        // D-167 (2026-04-29 요한): 회피 메타포 일관 — 카드 StatBadges와 동일한 '💨+N' 표기.
+        //   "회피 N" 텍스트 → 💨+N. 회피하기 카드(evade) 수치도 이 패턴이라 적/나 양쪽 메타포 통일.
         function EvadeBadge({ baseEvade, finalEvade, consumed }) {
             const reduced = finalEvade < baseEvade;
             return (
                 <span
                     className={reduced ? 'evade-changed' : undefined}
                     style={{
-                        color: reduced ? '#8bd17c' : '#ddd',
+                        color: reduced ? '#8bd17c' : '#d4b84a',
                         fontWeight: reduced ? 700 : 400,
                         opacity: consumed ? 0.5 : 1,
                         transition: 'color 0.2s, opacity 0.2s'
                     }}>
-                    회피 {finalEvade}
+                    💨+{finalEvade}
                 </span>
             );
         }
@@ -5463,7 +5465,7 @@
                                             playerText = `${card.name} → 빗나감 ✗`;
                                         } else if (log.preyEvaded) {
                                             playerColor = '#d4b84a';
-                                            const evNote = (typeof log.effectiveEvade === 'number') ? ` (회피 ${log.effectiveEvade})` : '';
+                                            const evNote = (typeof log.effectiveEvade === 'number') ? ` (💨+${log.effectiveEvade})` : '';
                                             playerText = `${card.name} → 회피당함 〰️${evNote}`;
                                         } else if (Number(log.preyDefended) > 0) {
                                             playerColor = '#9bd6ff';
