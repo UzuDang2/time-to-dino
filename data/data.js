@@ -96,10 +96,10 @@ window.TTD_DATA = {
       "id": "throw_stone",
       "name": "돌 던지기",
       "damage": 2,
-      "success_rate": 100,
+      "success_rate": 90,
       "requirement": "돌맹이",
       "count": 1,
-      "accuracy": 1,
+      "accuracy": 0,
       "full_loss": "N",
       "defense": "",
       "evade": "",
@@ -160,7 +160,7 @@ window.TTD_DATA = {
     {
       "id": "slingshot_shot",
       "name": "새총 쏘기",
-      "damage": 3,
+      "damage": 2,
       "success_rate": 100,
       "requirement": "새총 + 돌맹이",
       "count": 1,
@@ -494,7 +494,7 @@ window.TTD_DATA = {
       "name": "일반 공격",
       "type": "attack",
       "damage": 2,
-      "accuracy": 1,
+      "accuracy": 0,
       "defense": 0,
       "description": "기본 공격 — L2 prey 평타"
     },
@@ -638,7 +638,7 @@ window.TTD_DATA = {
       "name": "광폭 발톱",
       "type": "attack",
       "damage": 2,
-      "accuracy": 1,
+      "accuracy": 0,
       "defense": 0,
       "description": "오소리 특수"
     },
@@ -656,7 +656,7 @@ window.TTD_DATA = {
       "name": "날개 후려치기",
       "type": "attack",
       "damage": 2,
-      "accuracy": 1,
+      "accuracy": 0,
       "defense": 0,
       "description": "큰 새 특수"
     },
@@ -683,7 +683,7 @@ window.TTD_DATA = {
   "BUILDINGS": [
     {
       "id": "clinic",
-      "name": "치료소",
+      "name": "응급치료소",
       "stage": 1,
       "cost": [
         {
@@ -695,16 +695,20 @@ window.TTD_DATA = {
           "count": 5
         },
         {
-          "material": "천",
+          "material": "깨끗한 천",
           "count": 3
         }
       ],
-      "effect": "붕대 x1 시작 소지",
-      "cost_raw": "목재 x10, 끈 x5, 천 x3"
+      "effect_raw": "\"손에 익숙한 천 조각, 어디든 감을 수 있을 것 같다.\"",
+      "reward_items": "붕대 x1",
+      "reward_passive": "health_max+1",
+      "reward_run_start": "붕대 x1",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x10, 끈 x5, 깨끗한 천 x3"
     },
     {
       "id": "clinic",
-      "name": "치료소",
+      "name": "응급치료소",
       "stage": 2,
       "cost": [
         {
@@ -720,12 +724,16 @@ window.TTD_DATA = {
           "count": 10
         }
       ],
-      "effect": "붕대 x2 + 귀환시 생명력 +1",
+      "effect_raw": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
+      "reward_items": "붕대 x2, 약초 x1",
+      "reward_passive": "health_max+2",
+      "reward_run_start": "붕대 x2, 약초 x1",
+      "reward_one_shot": "",
       "cost_raw": "목재 x20, 석재 x10, 약초 x10"
     },
     {
       "id": "clinic",
-      "name": "치료소",
+      "name": "응급치료소",
       "stage": 3,
       "cost": [
         {
@@ -741,12 +749,16 @@ window.TTD_DATA = {
           "count": 20
         }
       ],
-      "effect": "붕대 x3 + 약초묶음 x2 + 귀환시 생명력 +2",
+      "effect_raw": "\"잘 마른 약초가 천장에 매달려 있다. 여기서는 죽지 않을 것 같다.\"",
+      "reward_items": "붕대 x3, 약초 x2",
+      "reward_passive": "health_max+3",
+      "reward_run_start": "붕대 x3, 약초 x2",
+      "reward_one_shot": "heal_on_return+2",
       "cost_raw": "목재 x30, 석재 x20, 약초 x20"
     },
     {
       "id": "kitchen",
-      "name": "식당",
+      "name": "화덕",
       "stage": 1,
       "cost": [
         {
@@ -754,20 +766,20 @@ window.TTD_DATA = {
           "count": 8
         },
         {
-          "material": "돌멩이",
+          "material": "돌맹이",
           "count": 10
-        },
-        {
-          "material": "불씩",
-          "count": 1
         }
       ],
-      "effect": "도시락 x1 (배고픔 +4)",
-      "cost_raw": "목재 x8, 돌멩이 x10, 불씩 x1"
+      "effect_raw": "\"마른 가지 위로 작은 불꽃이 흔들린다. 따뜻한 한 끼.\"",
+      "reward_items": "맑은물 x1",
+      "reward_passive": "hunger_max+1",
+      "reward_run_start": "맑은물 x1",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x8, 돌맹이 x10"
     },
     {
       "id": "kitchen",
-      "name": "식당",
+      "name": "화덕",
       "stage": 2,
       "cost": [
         {
@@ -779,37 +791,45 @@ window.TTD_DATA = {
           "count": 10
         },
         {
-          "material": "조리도구",
-          "count": 1
+          "material": "약초",
+          "count": 5
         }
       ],
-      "effect": "도시락 x2 (배고픔 +5)",
-      "cost_raw": "목재 x15, 석재 x10, 조리도구 x1"
+      "effect_raw": "\"국솥에서 김이 오른다. 위장이 먼저 안다.\"",
+      "reward_items": "맑은물 x2, 산딸기 x1",
+      "reward_passive": "hunger_max+2",
+      "reward_run_start": "맑은물 x2, 산딸기 x1",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x15, 석재 x10, 약초 x5"
     },
     {
       "id": "kitchen",
-      "name": "식당",
+      "name": "화덕",
       "stage": 3,
       "cost": [
         {
-          "material": "목재",
-          "count": 25
-        },
-        {
           "material": "석재",
-          "count": 15
+          "count": 20
         },
         {
           "material": "금속",
           "count": 5
+        },
+        {
+          "material": "약초",
+          "count": 10
         }
       ],
-      "effect": "도시락 x3 + 비상식량 x1",
-      "cost_raw": "목재 x25, 석재 x15, 금속 x5"
+      "effect_raw": "\"무쇠 솥은 밤새 식지 않는다. 무엇이든 익혀 먹을 수 있다.\"",
+      "reward_items": "맑은물 x3, 딸기모둠 x1",
+      "reward_passive": "hunger_max+3",
+      "reward_run_start": "맑은물 x3, 딸기모둠 x1",
+      "reward_one_shot": "feed_on_return+2",
+      "cost_raw": "석재 x20, 금속 x5, 약초 x10"
     },
     {
       "id": "workshop",
-      "name": "정비소",
+      "name": "공방",
       "stage": 1,
       "cost": [
         {
@@ -817,20 +837,20 @@ window.TTD_DATA = {
           "count": 12
         },
         {
-          "material": "돌멩이",
-          "count": 15
-        },
-        {
           "material": "끈",
-          "count": 5
+          "count": 6
         }
       ],
-      "effect": "간이 의상 (회피율 +5%)",
-      "cost_raw": "목재 x12, 돌멩이 x15, 끈 x5"
+      "effect_raw": "\"투박한 작업대 위에 칼날을 갈 수 있는 자리가 생겼다.\"",
+      "reward_items": "나뭇가지 x2",
+      "reward_passive": "accuracy+1",
+      "reward_run_start": "나뭇가지 x2",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x12, 끈 x6"
     },
     {
       "id": "workshop",
-      "name": "정비소",
+      "name": "공방",
       "stage": 2,
       "cost": [
         {
@@ -839,40 +859,190 @@ window.TTD_DATA = {
         },
         {
           "material": "석재",
-          "count": 15
+          "count": 10
+        },
+        {
+          "material": "가죽",
+          "count": 5
+        }
+      ],
+      "effect_raw": "\"가죽 끈으로 손잡이를 단단히 묶었다. 손에 더 잘 잡힌다.\"",
+      "reward_items": "나뭇가지 x3, 끈 x2",
+      "reward_passive": "accuracy+2, armor+1",
+      "reward_run_start": "나뭇가지 x3, 끈 x2",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x20, 석재 x10, 가죽 x5"
+    },
+    {
+      "id": "workshop",
+      "name": "공방",
+      "stage": 3,
+      "cost": [
+        {
+          "material": "석재",
+          "count": 20
+        },
+        {
+          "material": "금속",
+          "count": 10
         },
         {
           "material": "가죽",
           "count": 10
         }
       ],
-      "effect": "가죽 갑옷 + 무기 수리",
-      "cost_raw": "목재 x20, 석재 x15, 가죽 x10"
+      "effect_raw": "\"숯불 화덕과 모루까지 들였다. 무기는 더 이상 부서지지 않을 것 같다.\"",
+      "reward_items": "나뭇가지 x4, 끈 x3, 금속 x1",
+      "reward_passive": "accuracy+3, armor+2",
+      "reward_run_start": "나뭇가지 x4, 끈 x3, 금속 x1",
+      "reward_one_shot": "repair_kit+1",
+      "cost_raw": "석재 x20, 금속 x10, 가죽 x10"
     },
     {
-      "id": "workshop",
-      "name": "정비소",
-      "stage": 3,
+      "id": "storage",
+      "name": "저장고",
+      "stage": 1,
       "cost": [
         {
           "material": "목재",
-          "count": 30
+          "count": 10
         },
+        {
+          "material": "돌맹이",
+          "count": 10
+        }
+      ],
+      "effect_raw": "\"선반 위에 가지런히 놓인 자루들. 어제의 수확이 보인다.\"",
+      "reward_items": "",
+      "reward_passive": "pack+1, deck_size+1",
+      "reward_run_start": "",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x10, 돌맹이 x10"
+    },
+    {
+      "id": "storage",
+      "name": "저장고",
+      "stage": 2,
+      "cost": [
+        {
+          "material": "목재",
+          "count": 18
+        },
+        {
+          "material": "석재",
+          "count": 10
+        },
+        {
+          "material": "끈",
+          "count": 6
+        }
+      ],
+      "effect_raw": "\"천장까지 닿는 선반. 한 번 더 깊이 들어갈 수 있다.\"",
+      "reward_items": "",
+      "reward_passive": "pack+2, deck_size+1",
+      "reward_run_start": "",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x18, 석재 x10, 끈 x6"
+    },
+    {
+      "id": "storage",
+      "name": "저장고",
+      "stage": 3,
+      "cost": [
         {
           "material": "석재",
           "count": 25
         },
         {
-          "material": "가죽",
-          "count": 20
+          "material": "금속",
+          "count": 8
+        },
+        {
+          "material": "끈",
+          "count": 10
         }
       ],
-      "effect": "강화 갑옷 + 강화 무기",
-      "cost_raw": "목재 x30, 석재 x25, 가죽 x20"
+      "effect_raw": "\"잘 정리된 창고. 무엇이 어디에 있는지 손이 먼저 안다.\"",
+      "reward_items": "",
+      "reward_passive": "pack+3, deck_size+2",
+      "reward_run_start": "",
+      "reward_one_shot": "",
+      "cost_raw": "석재 x25, 금속 x8, 끈 x10"
     },
     {
-      "id": "storage",
-      "name": "창고",
+      "id": "training",
+      "name": "사냥꾼 막사",
+      "stage": 1,
+      "cost": [
+        {
+          "material": "목재",
+          "count": 12
+        },
+        {
+          "material": "가죽",
+          "count": 5
+        }
+      ],
+      "effect_raw": "\"낡은 활 한 자루가 벽에 걸려 있다. 첫 사냥의 흔적.\"",
+      "reward_items": "나뭇가지 x3",
+      "reward_passive": "evade+1",
+      "reward_run_start": "나뭇가지 x3",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x12, 가죽 x5"
+    },
+    {
+      "id": "training",
+      "name": "사냥꾼 막사",
+      "stage": 2,
+      "cost": [
+        {
+          "material": "목재",
+          "count": 20
+        },
+        {
+          "material": "석재",
+          "count": 10
+        },
+        {
+          "material": "가죽",
+          "count": 10
+        }
+      ],
+      "effect_raw": "\"발자국 도감과 추적 매듭. 짐승의 길이 눈에 들어온다.\"",
+      "reward_items": "나뭇가지 x4, 가죽 x1",
+      "reward_passive": "evade+2",
+      "reward_run_start": "나뭇가지 x4, 가죽 x1",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x20, 석재 x10, 가죽 x10"
+    },
+    {
+      "id": "training",
+      "name": "사냥꾼 막사",
+      "stage": 3,
+      "cost": [
+        {
+          "material": "석재",
+          "count": 20
+        },
+        {
+          "material": "금속",
+          "count": 5
+        },
+        {
+          "material": "가죽",
+          "count": 15
+        }
+      ],
+      "effect_raw": "\"사냥꾼 셋이 모이면 보스의 그림자도 피할 수 있다고들 한다.\"",
+      "reward_items": "나뭇가지 x5, 가죽 x2",
+      "reward_passive": "evade+3",
+      "reward_run_start": "나뭇가지 x5, 가죽 x2",
+      "reward_one_shot": "",
+      "cost_raw": "석재 x20, 금속 x5, 가죽 x15"
+    },
+    {
+      "id": "watchtower",
+      "name": "감시탑",
       "stage": 1,
       "cost": [
         {
@@ -880,16 +1050,20 @@ window.TTD_DATA = {
           "count": 15
         },
         {
-          "material": "끈",
-          "count": 10
+          "material": "돌맹이",
+          "count": 15
         }
       ],
-      "effect": "가방 용량 +2",
-      "cost_raw": "목재 x15, 끈 x10"
+      "effect_raw": "\"높은 발판에서 멀리 본다. 숲의 들썩임이 먼저 들린다.\"",
+      "reward_items": "",
+      "reward_passive": "detection-1",
+      "reward_run_start": "",
+      "reward_one_shot": "",
+      "cost_raw": "목재 x15, 돌맹이 x15"
     },
     {
-      "id": "storage",
-      "name": "창고",
+      "id": "watchtower",
+      "name": "감시탑",
       "stage": 2,
       "cost": [
         {
@@ -901,22 +1075,22 @@ window.TTD_DATA = {
           "count": 15
         },
         {
-          "material": "끈",
-          "count": 15
+          "material": "금속",
+          "count": 3
         }
       ],
-      "effect": "가방 용량 +4 + 재료 보관",
-      "cost_raw": "목재 x25, 석재 x15, 끈 x15"
+      "effect_raw": "\"바람의 방향이 보인다. 내일의 하늘을 미리 짚을 수 있다.\"",
+      "reward_items": "",
+      "reward_passive": "detection-1",
+      "reward_run_start": "",
+      "reward_one_shot": "weather_forecast+1",
+      "cost_raw": "목재 x25, 석재 x15, 금속 x3"
     },
     {
-      "id": "storage",
-      "name": "창고",
+      "id": "watchtower",
+      "name": "감시탑",
       "stage": 3,
       "cost": [
-        {
-          "material": "목재",
-          "count": 40
-        },
         {
           "material": "석재",
           "count": 30
@@ -924,112 +1098,18 @@ window.TTD_DATA = {
         {
           "material": "금속",
           "count": 10
-        }
-      ],
-      "effect": "가방 용량 +6 + 모든 재료 보관",
-      "cost_raw": "목재 x40, 석재 x30, 금속 x10"
-    },
-    {
-      "id": "training",
-      "name": "훈련장",
-      "stage": 1,
-      "cost": [
-        {
-          "material": "목재",
-          "count": 10
         },
         {
-          "material": "돌멩이",
+          "material": "가죽",
           "count": 10
         }
       ],
-      "effect": "덱 용량 +2",
-      "cost_raw": "목재 x10, 돌멩이 x10"
-    },
-    {
-      "id": "training",
-      "name": "훈련장",
-      "stage": 2,
-      "cost": [
-        {
-          "material": "목재",
-          "count": 20
-        },
-        {
-          "material": "석재",
-          "count": 15
-        }
-      ],
-      "effect": "덱 용량 +3 + 확장 카드 1종",
-      "cost_raw": "목재 x20, 석재 x15"
-    },
-    {
-      "id": "training",
-      "name": "훈련장",
-      "stage": 3,
-      "cost": [
-        {
-          "material": "목재",
-          "count": 30
-        },
-        {
-          "material": "석재",
-          "count": 25
-        }
-      ],
-      "effect": "덱 용량 +5 + 확장 카드 3종",
-      "cost_raw": "목재 x30, 석재 x25"
-    },
-    {
-      "id": "watchtower",
-      "name": "감시탑",
-      "stage": 1,
-      "cost": [
-        {
-          "material": "목재",
-          "count": 20
-        },
-        {
-          "material": "끈",
-          "count": 10
-        }
-      ],
-      "effect": "몬스터 위치 1회 확인, 발각 -5%",
-      "cost_raw": "목재 x20, 끈 x10"
-    },
-    {
-      "id": "watchtower",
-      "name": "감시탑",
-      "stage": 2,
-      "cost": [
-        {
-          "material": "목재",
-          "count": 30
-        },
-        {
-          "material": "석재",
-          "count": 20
-        }
-      ],
-      "effect": "몬스터 위치 2회 + 패턴 힌트, 발각 -10%",
-      "cost_raw": "목재 x30, 석재 x20"
-    },
-    {
-      "id": "watchtower",
-      "name": "감시탑",
-      "stage": 3,
-      "cost": [
-        {
-          "material": "목재",
-          "count": 40
-        },
-        {
-          "material": "석재",
-          "count": 30
-        }
-      ],
-      "effect": "실시간 위치 + 행동 예측, 발각 -15%",
-      "cost_raw": "목재 x40, 석재 x30"
+      "effect_raw": "\"탑 꼭대기에서 보면 그놈의 자리가 보인다. 한 발만 비껴서면 된다.\"",
+      "reward_items": "",
+      "reward_passive": "detection-2",
+      "reward_run_start": "",
+      "reward_one_shot": "safe_move+1",
+      "cost_raw": "석재 x30, 금속 x10, 가죽 x10"
     }
   ],
   "ITEMS": [
@@ -1137,11 +1217,41 @@ window.TTD_DATA = {
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
-      "내구도": 6,
+      "내구도": 3,
       "effect": {
         "usable": false,
         "actions": [],
         "raw": ""
+      }
+    },
+    {
+      "id": "clear_water",
+      "name": "맑은물",
+      "이름": "맑은물",
+      "카테고리": "food",
+      "재료 타입": "음식재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [
+        "시냇물"
+      ],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "입에 머금으면 차고 비린 맛이 사라진다. 한 모금이면 충분하다.",
+      "효과 요약": "배고픔 +1.",
+      "사용 효과": "hunger+1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "hunger",
+            "delta": 1
+          }
+        ],
+        "raw": "hunger+1"
       }
     },
     {
@@ -1225,6 +1335,53 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "herb",
+      "name": "약초",
+      "이름": "약초",
+      "카테고리": "재료",
+      "재료 타입": "식물재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [
+        "덤불",
+        "평원"
+      ],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "쌉싸름한 향이 코끝에 남는다. 상처에 짓이겨 바를 수 있다.",
+      "효과 요약": "치료 재료.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
+      "id": "leather",
+      "name": "가죽",
+      "이름": "가죽",
+      "카테고리": "재료",
+      "재료 타입": "동물재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "짐승의 거친 가죽 조각. 손에 들면 누린내가 난다.",
+      "효과 요약": "방어구·끈 재료.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
       "id": "meat",
       "name": "생고기",
       "이름": "생고기",
@@ -1304,33 +1461,11 @@ window.TTD_DATA = {
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
-      "내구도": 5,
+      "내구도": 3,
       "effect": {
         "usable": false,
         "actions": [],
         "raw": ""
-      }
-    },
-    {
-      "id": "snare_trap",
-      "name": "덫",
-      "이름": "덫",
-      "카테고리": "소모품",
-      "재료 타입": null,
-      "아이템 등급": "1단계",
-      "가방칸수": "1x1",
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "녹슨 금속 고리와 팽팽한 줄. 누군가 한참 전에 손봐 둔 솜씨다.",
-      "효과 요약": "현재 타일에 설치. 보스가 밟으면 1턴 정지.",
-      "사용 효과": "place_snare",
-      "merge_result": null,
-      "merge_enabled": false,
-      "effect": {
-        "usable": false,
-        "actions": [],
-        "raw": "place_snare"
       }
     },
     {
@@ -1372,8 +1507,8 @@ window.TTD_DATA = {
       ],
       "머지 가능": true,
       "일회용": false,
-      "설명 텍스트": "단단한 돌맹이. 도구와 건축에 두루 쓰인다. 두 개를 합치면 석재가 된다.",
-      "효과 요약": "기본 건축/제작 재료. 합성 → 석재.",
+      "설명 텍스트": "단단한 돌맹이. 도구와 건축에 두루 쓰인다.",
+      "효과 요약": "기본 건축/제작 재료.",
       "사용 효과": "spawn_card:throw",
       "merge_result": "stone_block",
       "merge_enabled": true,
@@ -1386,28 +1521,6 @@ window.TTD_DATA = {
           }
         ],
         "raw": "spawn_card:throw"
-      }
-    },
-    {
-      "id": "torn_map",
-      "name": "찢어진 지도 조각",
-      "이름": "찢어진 지도 조각",
-      "카테고리": "소모품",
-      "재료 타입": null,
-      "아이템 등급": "1단계",
-      "가방칸수": "1x1",
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "물에 번진 잉크와 흙 자국. 한 귀퉁이만 남았지만, 화살표가 분명하다.",
-      "효과 요약": "탈출구 방향을 한 번 알려준다.",
-      "사용 효과": "hint:exit_direction",
-      "merge_result": null,
-      "merge_enabled": false,
-      "effect": {
-        "usable": false,
-        "actions": [],
-        "raw": "hint:exit_direction"
       }
     },
     {
@@ -1438,28 +1551,6 @@ window.TTD_DATA = {
           }
         ],
         "raw": "hunger+1"
-      }
-    },
-    {
-      "id": "wood_shard",
-      "name": "나무 조각",
-      "이름": "나무 조각",
-      "카테고리": "소모품",
-      "재료 타입": null,
-      "아이템 등급": "1단계",
-      "가방칸수": "1x1",
-      "나오는 지역": [],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "거칠게 부러진 나뭇조각. 손바닥에 거칠게 닿는 결이 묘하게 든든하다.",
-      "효과 요약": "함정 1회 자동 차단 (소지 시 패시브).",
-      "사용 효과": "shield_trap",
-      "merge_result": null,
-      "merge_enabled": false,
-      "effect": {
-        "usable": false,
-        "actions": [],
-        "raw": "shield_trap"
       }
     },
     {
@@ -1697,6 +1788,34 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "herb_extract",
+      "name": "약초즙",
+      "이름": "약초즙",
+      "카테고리": "food",
+      "재료 타입": "음식재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "짙은 풀 냄새가 코를 찌른다. 마시면 속이 데워지고 상처가 닫힌다.",
+      "효과 요약": "체력 +1.",
+      "사용 효과": "health+1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 1
+          }
+        ],
+        "raw": "health+1"
+      }
+    },
+    {
       "id": "meat_skewer",
       "name": "생고기꼬치",
       "이름": "생고기꼬치",
@@ -1727,6 +1846,31 @@ window.TTD_DATA = {
           }
         ],
         "raw": "hunger+1;health-1"
+      }
+    },
+    {
+      "id": "metal",
+      "name": "금속",
+      "이름": "금속",
+      "카테고리": "재료",
+      "재료 타입": "환경재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [
+        "동굴",
+        "폐허"
+      ],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "붉은 녹이 슨 금속 조각. 잘 닦으면 날이 살 것 같다.",
+      "효과 요약": "무기·고급 건축 재료.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
       }
     },
     {
@@ -1784,14 +1928,14 @@ window.TTD_DATA = {
       "name": "석재",
       "이름": "석재",
       "카테고리": "재료",
-      "재료 타입": null,
+      "재료 타입": "환경재료",
       "아이템 등급": "2단계",
       "가방칸수": "1x1",
       "나오는 지역": [],
       "머지 가능": false,
       "일회용": false,
-      "설명 텍스트": "돌맹이 두 개를 단단히 다듬어 만든 가공석. 견고한 시설 제작에 쓰인다.",
-      "효과 요약": "건축·시설 강화의 기본 재료.",
+      "설명 텍스트": "두 손으로 들어야 하는 단단한 돌덩이. 바닥에 놓으면 묵직한 소리가 난다.",
+      "효과 요약": "건축 재료.",
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
@@ -2036,7 +2180,7 @@ window.TTD_DATA = {
       "카테고리": "무기",
       "가방칸수": "2x1",
       "아이템 등급": "1단계",
-      "내구도": 5,
+      "내구도": 3,
       "설명 텍스트": "돌맹이를 장전해 날리는 소형 무기. 새총 쏘기 카드 사용.",
       "효과 요약": "새총 쏘기 카드 소지 조건."
     },
@@ -2047,7 +2191,7 @@ window.TTD_DATA = {
       "카테고리": "무기",
       "가방칸수": "2x1",
       "아이템 등급": "1단계",
-      "내구도": 6,
+      "내구도": 3,
       "설명 텍스트": "돌을 깨뜨려 날을 세운 가장 원시적인 도구. 치기·던지기 카드 사용.",
       "효과 요약": "뗀석기로 치기 / 뗀석기 던지기 카드 소지 조건."
     }

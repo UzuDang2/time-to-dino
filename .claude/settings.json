@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push origin main:*)"
+      "Bash(git push origin main:*)",
+      "Bash(python3 scripts/fetch_data.py *)",
+      "Bash(python3 scripts/fetch_data.py)",
+      "Bash(make data)",
+      "Bash(make data *)",
+      "Bash(ln -s ../../../.secrets .secrets)",
+      "Bash(ln -s ../../../.secrets *)"
     ]
   },
   "enabledMcpjsonServers": ["notion"]

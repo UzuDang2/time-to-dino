@@ -689,6 +689,17 @@ ITEM_NAME_TO_ID: dict[str, str] = {
     # D-94 (2026-04-25): 거대한 먹이 — 큰생고기 ×4 조합 + 보스 유인용. 2x2 음식.
     "거대한 먹이": "giant_bait",
     "거대한 먹이 구이": "grilled_giant_bait",
+    # D-174 (2026-04-30): 베이스캠프 빌딩 cost·reward_* 한글 매핑.
+    #   재료 4종(석재/금속/가죽/약초)·풀 아이템 3종(맑은물/딸기모둠/약초즙) 추가.
+    #   `천` 별칭은 빌딩 cost 호환 (clinic Lv.1 의 `깨끗한 천 x3`은 본명으로 처리됨).
+    "석재": "stone_block",
+    "금속": "metal",
+    "가죽": "leather",
+    "약초": "herb",
+    "맑은물": "clear_water",
+    "딸기모둠": "berry_mix",
+    "약초즙": "herb_extract",
+    "천": "clean_cloth",  # 깨끗한 천의 약식 별칭 (빌딩 비용 한글 표기 호환)
 }
 
 
