@@ -1370,13 +1370,13 @@ window.TTD_DATA = {
         "동굴",
         "시냇물"
       ],
-      "머지 가능": false,
+      "머지 가능": true,
       "일회용": false,
-      "설명 텍스트": "단단한 돌맹이. 도구와 건축에 두루 쓰인다.",
-      "효과 요약": "기본 건축/제작 재료.",
+      "설명 텍스트": "단단한 돌맹이. 도구와 건축에 두루 쓰인다. 두 개를 합치면 석재가 된다.",
+      "효과 요약": "기본 건축/제작 재료. 합성 → 석재.",
       "사용 효과": "spawn_card:throw",
-      "merge_result": null,
-      "merge_enabled": false,
+      "merge_result": "stone_block",
+      "merge_enabled": true,
       "effect": {
         "usable": true,
         "actions": [
@@ -1770,6 +1770,28 @@ window.TTD_DATA = {
       "일회용": false,
       "설명 텍스트": "식물에서 추출한 섬유로 만든 끈입니다. 붕대·가방·덫 제작에 쓰입니다.",
       "효과 요약": "묶고 엮는 기본 재료",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
+      "id": "stone_block",
+      "name": "석재",
+      "이름": "석재",
+      "카테고리": "재료",
+      "재료 타입": null,
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "돌맹이 두 개를 단단히 다듬어 만든 가공석. 견고한 시설 제작에 쓰인다.",
+      "효과 요약": "건축·시설 강화의 기본 재료.",
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
@@ -2233,6 +2255,13 @@ window.TTD_DATA = {
         "stem"
       ],
       "result": "plant_fiber"
+    },
+    {
+      "ingredients": [
+        "stone",
+        "stone"
+      ],
+      "result": "stone_block"
     },
     {
       "ingredients": [

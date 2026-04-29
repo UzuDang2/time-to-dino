@@ -29,6 +29,13 @@
   },
   {
     "ingredients": [
+      "stone",
+      "stone"
+    ],
+    "result": "stone_block"
+  },
+  {
+    "ingredients": [
       "plant_fiber",
       "stem"
     ],
