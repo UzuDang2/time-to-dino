@@ -3048,44 +3048,80 @@
 여기서부터, 시작이다.`;
 
         // D-168 (2026-04-29 요한): 텐트 레벨 시스템 (Lv.1~10).
-        //   - 보상은 가방+1칸 / 생명력+1 / 배고픔+1 의 3주기 교차.
-        //   - Lv.1 (questId=tent_1)은 기존 텐트 세우기 — 재료/이름/난이도 그대로 유지.
-        //   - Lv.2~10은 점진적 난이도 + 석재(stone_block, 2단계 합성) 비중 증가.
-        //   - questId는 'tent_N' 패턴 — startsWith('tent_')로 식별, 숫자 부분이 곧 레벨.
-        //   - campState.tentLevel: 0=미세움, 1~10=현재 완성된 단계. 이 값에 따라 max HP/배고픔/가방 보너스.
-        //   - 베이스 MAX는 BASE_MAX_HEALTH=6, BASE_MAX_HUNGER=10 (D-168 너프).
+        // D-174 (2026-04-30): 텐트는 "보관함 슬롯 확장" 단일 역할로 환원.
+        //   모든 단계 rewardType='camp_storage' (보관함 +1칸). health/hunger/pack 보너스는 빌딩 6종으로 이관.
+        //   questId 'tent_N' → 빌딩 어댑터에서 id='tent', stage=N으로 매핑. (`bld_tent_<N>`도 호환 — 신규 표기.)
         const TENT_LEVEL_DEFS = [
             null,
-            { level: 1,  name: '텐트 세우기',              icon: '🏕️', rewardType: 'pack',   rewardLabel: '가방 +1칸',       requirements: { branch: 6,  stone: 4, stem: 4 } },
-            { level: 2,  name: '텐트 보강 — 깔개 깔기',     icon: '🛌',  rewardType: 'health', rewardLabel: '최대 생명력 +1',  requirements: { branch: 8,  stone: 6, stem: 5 } },
-            { level: 3,  name: '텐트 보강 — 식료 칸 잇기',  icon: '🍱',  rewardType: 'hunger', rewardLabel: '최대 배고픔 +1',  requirements: { branch: 6,  stem: 4,  stone_block: 1 } },
-            { level: 4,  name: '텐트 확장 — 짐칸 증축',     icon: '🎒',  rewardType: 'pack',   rewardLabel: '가방 +1칸',       requirements: { stem: 6,    branch: 4, stone_block: 2 } },
-            { level: 5,  name: '텐트 보강 — 골조 보수',     icon: '🔧',  rewardType: 'health', rewardLabel: '최대 생명력 +1',  requirements: { branch: 8,  stem: 6,   stone_block: 2 } },
-            { level: 6,  name: '텐트 보강 — 저장창 만들기', icon: '📦',  rewardType: 'hunger', rewardLabel: '최대 배고픔 +1',  requirements: { stem: 8,    stone_block: 3 } },
-            { level: 7,  name: '텐트 확장 — 외벽 두르기',   icon: '🧱',  rewardType: 'pack',   rewardLabel: '가방 +1칸',       requirements: { branch: 10, stone_block: 4 } },
-            { level: 8,  name: '텐트 보강 — 침소 정비',     icon: '🛏️', rewardType: 'health', rewardLabel: '최대 생명력 +1',  requirements: { stem: 8,    stone_block: 5 } },
-            { level: 9,  name: '텐트 보강 — 식량창 확장',   icon: '🥘',  rewardType: 'hunger', rewardLabel: '최대 배고픔 +1',  requirements: { branch: 12, stone_block: 6 } },
-            { level: 10, name: '텐트 완성 — 영구 거점',     icon: '🏠',  rewardType: 'pack',   rewardLabel: '가방 +1칸',       requirements: { stem: 10,   stone_block: 8 } }
+            { level: 1,  name: '텐트 세우기',              icon: '🏕️', rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 6,  stone: 4, stem: 4 } },
+            { level: 2,  name: '텐트 보강 — 깔개 깔기',     icon: '🛌',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 8,  stone: 6, stem: 5 } },
+            { level: 3,  name: '텐트 보강 — 식료 칸 잇기',  icon: '🍱',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 6,  stem: 4,  stone_block: 1 } },
+            { level: 4,  name: '텐트 확장 — 짐칸 증축',     icon: '🎒',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { stem: 6,    branch: 4, stone_block: 2 } },
+            { level: 5,  name: '텐트 보강 — 골조 보수',     icon: '🔧',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 8,  stem: 6,   stone_block: 2 } },
+            { level: 6,  name: '텐트 보강 — 저장창 만들기', icon: '📦',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { stem: 8,    stone_block: 3 } },
+            { level: 7,  name: '텐트 확장 — 외벽 두르기',   icon: '🧱',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 10, stone_block: 4 } },
+            { level: 8,  name: '텐트 보강 — 침소 정비',     icon: '🛏️', rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { stem: 8,    stone_block: 5 } },
+            { level: 9,  name: '텐트 보강 — 식량창 확장',   icon: '🥘',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { branch: 12, stone_block: 6 } },
+            { level: 10, name: '텐트 완성 — 영구 거점',     icon: '🏠',  rewardType: 'camp_storage', rewardLabel: '보관함 +1칸', requirements: { stem: 10,   stone_block: 8 } }
         ];
         const TENT_MAX_LEVEL = 10;
         const BASE_MAX_HEALTH = 6;
         const BASE_MAX_HUNGER = 10;
+        // D-174: 캠프 보관함 BASE — 12x7 그리드 중 마지막 row(인덱스 6) 12칸이 텐트 슬롯.
+        //   tentLevel=0이면 12칸 모두 disabled → 활성 72칸(현행 BASE와 동일).
+        //   텐트 단계마다 마지막 row 좌측부터 1칸씩 풀림. tentLevel=10이면 활성 82, 우측 2칸 disabled.
+        const BASE_CAMP_STORAGE_SLOTS = 72;
 
-        // 텐트 보너스 누적 — 현재 완성된 레벨까지의 보상 합.
-        function tentBonuses(tentLevel) {
-            const cap = Math.max(0, Math.min(TENT_MAX_LEVEL, Number(tentLevel) || 0));
-            let pack = 0, health = 0, hunger = 0;
-            for (let i = 1; i <= cap; i++) {
-                const t = TENT_LEVEL_DEFS[i] && TENT_LEVEL_DEFS[i].rewardType;
-                if (t === 'pack') pack++;
-                else if (t === 'health') health++;
-                else if (t === 'hunger') hunger++;
+        // D-174: 단일 빌딩 단계 reward_passive를 키별 합산. 단계간 누적 X.
+        //   id==='tent'면 TENT_LEVEL_DEFS[stage] 1단계당 camp_storage+1.
+        //   그 외는 시트 BUILDINGS reward_passive DSL 파싱.
+        function buildingBonuses(id, stage) {
+            const lv = Number(stage) || 0;
+            if (lv <= 0) return {};
+            if (id === 'tent') {
+                // 텐트는 단계마다 camp_storage+1 — TENT_LEVEL_DEFS 누적 = lv칸.
+                return { camp_storage: 1 };
             }
-            return { pack, health, hunger };
+            const def = getBuildingDef(id, lv);
+            if (!def) return {};
+            const out = {};
+            for (const { key, delta } of parsePassive(def.reward_passive || '')) {
+                out[key] = (out[key] || 0) + delta;
+            }
+            return out;
         }
-        function getMaxHealth(tentLevel) { return BASE_MAX_HEALTH + tentBonuses(tentLevel).health; }
-        function getMaxHunger(tentLevel) { return BASE_MAX_HUNGER + tentBonuses(tentLevel).hunger; }
-        function getPackBonusSlots(tentLevel) { return tentBonuses(tentLevel).pack; }
+
+        // D-174: 모든 빌딩(텐트 포함) 누적 보너스. 텐트는 1~tentLevel 합 = camp_storage:tentLevel.
+        //   campState.buildingLevels: { [id]: stage } — id 'clinic'/'kitchen'/...
+        //   campState.tentLevel: 텐트 단계 (0..10).
+        function allCampBonuses(campState) {
+            const out = {
+                health_max: 0, hunger_max: 0, pack: 0, deck_size: 0,
+                evade: 0, accuracy: 0, detection: 0, armor: 0, camp_storage: 0
+            };
+            if (!campState) return out;
+            // 텐트: 1~tentLevel 누적 (단계마다 camp_storage+1).
+            const tentLv = Math.max(0, Math.min(TENT_MAX_LEVEL, Number(campState.tentLevel) || 0));
+            out.camp_storage += tentLv;
+            // 빌딩 6종: 현재 stage 한 줄만 산출 (단계간 누적 X — 시트 정의가 누적값).
+            const levels = (campState.buildingLevels && typeof campState.buildingLevels === 'object')
+                ? campState.buildingLevels : {};
+            for (const [id, stage] of Object.entries(levels)) {
+                if (id === 'tent') continue; // 텐트는 위에서 처리.
+                const lv = Number(stage) || 0;
+                if (lv <= 0) continue;
+                const b = buildingBonuses(id, lv);
+                for (const [k, v] of Object.entries(b)) {
+                    out[k] = (out[k] || 0) + v;
+                }
+            }
+            return out;
+        }
+
+        function getMaxHealth(campState) { return BASE_MAX_HEALTH + allCampBonuses(campState).health_max; }
+        function getMaxHunger(campState) { return BASE_MAX_HUNGER + allCampBonuses(campState).hunger_max; }
+        function getPackBonusSlots(campState) { return allCampBonuses(campState).pack; }
+        function getCampStorageSlots(campState) { return BASE_CAMP_STORAGE_SLOTS + allCampBonuses(campState).camp_storage; }
 
         // 'tent_N' questId 식별/조회 헬퍼 — campState.quests.active.id는 'tent_1' 같은 문자열.
         function isTentQuestId(qid) {
@@ -3112,6 +3148,185 @@
             const base = TENT_LEVEL_DEFS[lv];
             if (!base) return null;
             return { ...base, id: `tent_${lv}` };
+        }
+
+        // ── D-174 빌딩 시트 SSOT 통합 헬퍼 ────────────────────────────────
+        //
+        // 시트 산출 `data/buildings.json` (window.TTD_DATA.BUILDINGS) 18행을 코드에서 소비.
+        // 빌딩 6종(clinic/kitchen/workshop/storage/training/watchtower) × 3단계 + 텐트(id='tent') × 10단계.
+
+        // 빌딩 id → 카드 아이콘 매핑.
+        const BUILDING_ICON = {
+            tent: '🏕️',
+            clinic: '🏥',
+            kitchen: '🔥',
+            workshop: '🛠️',
+            storage: '🏚️',
+            training: '🏹',
+            watchtower: '🗼'
+        };
+
+        // 보상 패시브 키 화이트리스트 (9종). parsePassive에서 사용.
+        const PASSIVE_KEYS = new Set([
+            'health_max', 'hunger_max', 'pack', 'deck_size',
+            'evade', 'accuracy', 'detection', 'armor', 'camp_storage'
+        ]);
+        // 일회성 효과 키 화이트리스트 (7종). parseOneShot에서 사용.
+        const ONE_SHOT_KEYS = new Set([
+            'peek_boss', 'weather_forecast', 'safe_move',
+            'heal_on_return', 'feed_on_return', 'repair_kit', 'revive'
+        ]);
+
+        // "붕대 x1, 약초 x2" → [{type:'bandage',count:1}, {type:'herb',count:2}].
+        // 미매칭 토큰은 console.warn + 스킵.
+        function parseRewardItems(dsl) {
+            if (!dsl || typeof dsl !== 'string') return [];
+            const out = [];
+            for (const tok of dsl.split(',')) {
+                const m = tok.trim().match(/^(.+?)\s*[xX×]\s*(\d+)$/);
+                if (!m) continue;
+                const koName = m[1].trim();
+                const count = Number(m[2]) || 0;
+                if (count <= 0) continue;
+                const id = (typeof InventorySystem !== 'undefined' && typeof InventorySystem.findIdByKoreanName === 'function')
+                    ? InventorySystem.findIdByKoreanName(koName) : null;
+                if (!id) {
+                    console.warn(`[parseRewardItems] 미매칭 한글 자원: "${koName}"`);
+                    continue;
+                }
+                out.push({ type: id, count });
+            }
+            return out;
+        }
+
+        // "health_max+1, accuracy+2, detection-1" → [{key,delta}].
+        function parsePassive(dsl) {
+            if (!dsl || typeof dsl !== 'string') return [];
+            const out = [];
+            for (const tok of dsl.split(',')) {
+                const m = tok.trim().match(/^([a-z_]+)\s*([+-])\s*(\d+)$/);
+                if (!m) continue;
+                const key = m[1];
+                const sign = m[2] === '-' ? -1 : 1;
+                const delta = sign * (Number(m[3]) || 0);
+                if (!PASSIVE_KEYS.has(key)) {
+                    console.warn(`[parsePassive] 미허용 키: "${key}"`);
+                    continue;
+                }
+                out.push({ key, delta });
+            }
+            return out;
+        }
+
+        // "heal_on_return+2, repair_kit+1" → [{key,count}].
+        function parseOneShot(dsl) {
+            if (!dsl || typeof dsl !== 'string') return [];
+            const out = [];
+            for (const tok of dsl.split(',')) {
+                const m = tok.trim().match(/^([a-z_]+)\s*\+\s*(\d+)$/);
+                if (!m) continue;
+                const key = m[1];
+                const count = Number(m[2]) || 0;
+                if (count <= 0) continue;
+                if (!ONE_SHOT_KEYS.has(key)) {
+                    console.warn(`[parseOneShot] 미허용 키: "${key}"`);
+                    continue;
+                }
+                out.push({ key, count });
+            }
+            return out;
+        }
+
+        // 빌딩 1단계 정의. id==='tent'면 TENT_LEVEL_DEFS 기반 Def-shape 변환,
+        // 그 외는 시트 BUILDINGS 행을 그대로(+icon 보강).
+        // 반환: { id, name, stage, cost, cost_raw, effect_raw,
+        //         reward_items, reward_passive, reward_run_start, reward_one_shot, icon } | null
+        function getBuildingDef(id, stage) {
+            const lv = Number(stage) || 0;
+            if (!id || lv <= 0) return null;
+            if (id === 'tent') {
+                if (lv > TENT_MAX_LEVEL) return null;
+                const base = TENT_LEVEL_DEFS[lv];
+                if (!base) return null;
+                // requirements(영문 id 기준) → cost-shape (한글) 변환은 없음 — 텐트는 별도 모달 분기.
+                return {
+                    id: 'tent',
+                    name: base.name,
+                    stage: lv,
+                    cost: [], // 텐트는 requirements(영문 id) 사용 — bld_*_* 분기에서 미사용.
+                    cost_raw: '',
+                    effect_raw: '',
+                    reward_items: '',
+                    reward_passive: 'camp_storage+1',
+                    reward_run_start: '',
+                    reward_one_shot: '',
+                    icon: base.icon || BUILDING_ICON.tent,
+                    // 텐트 전용 — 한글 id 기반 requirements를 그대로 노출 (TentQuestModal 호환).
+                    requirements: base.requirements || {},
+                    rewardLabel: base.rewardLabel,
+                    level: lv
+                };
+            }
+            const bundle = (typeof window !== 'undefined' && window.TTD_DATA && Array.isArray(window.TTD_DATA.BUILDINGS))
+                ? window.TTD_DATA.BUILDINGS : [];
+            const row = bundle.find(b => b && b.id === id && Number(b.stage) === lv);
+            if (!row) return null;
+            return {
+                id: row.id,
+                name: row.name || id,
+                stage: lv,
+                cost: Array.isArray(row.cost) ? row.cost : [],
+                cost_raw: row.cost_raw || '',
+                effect_raw: row.effect_raw || '',
+                reward_items: row.reward_items || '',
+                reward_passive: row.reward_passive || '',
+                reward_run_start: row.reward_run_start || '',
+                reward_one_shot: row.reward_one_shot || '',
+                icon: BUILDING_ICON[id] || '🏗️'
+            };
+        }
+
+        // 다음 단계 빌딩 def. id==='tent'이면 getNextTentQuest 위임(+ id='tent' 보강).
+        function getNextBuildingStage(id, currentStage) {
+            const next = (Number(currentStage) || 0) + 1;
+            if (id === 'tent') {
+                if (next > TENT_MAX_LEVEL) return null;
+                return getBuildingDef('tent', next);
+            }
+            return getBuildingDef(id, next);
+        }
+
+        // 빌딩 id의 max stage. tent=10, 시트 빌딩 = 매칭 행 개수(없으면 0).
+        function getMaxStage(id) {
+            if (id === 'tent') return TENT_MAX_LEVEL;
+            const bundle = (typeof window !== 'undefined' && window.TTD_DATA && Array.isArray(window.TTD_DATA.BUILDINGS))
+                ? window.TTD_DATA.BUILDINGS : [];
+            let max = 0;
+            for (const b of bundle) {
+                if (b && b.id === id) {
+                    const s = Number(b.stage) || 0;
+                    if (s > max) max = s;
+                }
+            }
+            return max;
+        }
+
+        // 모든 빌딩의 현재 stage reward_run_start 합산 → [{type, count}].
+        // handleDepart에서 매 [탐험 떠나기] 시 가방에 자동 인입.
+        function collectRunStartItems(buildingLevels) {
+            const out = [];
+            const levels = (buildingLevels && typeof buildingLevels === 'object') ? buildingLevels : {};
+            for (const [id, stage] of Object.entries(levels)) {
+                if (id === 'tent') continue; // 텐트는 reward_run_start 없음.
+                const lv = Number(stage) || 0;
+                if (lv <= 0) continue;
+                const def = getBuildingDef(id, lv);
+                if (!def) continue;
+                for (const entry of parseRewardItems(def.reward_run_start || '')) {
+                    out.push(entry);
+                }
+            }
+            return out;
         }
 
         // 기존 TENT_QUEST 호환 — D-114 ActiveQuestHUDPanel/handleCompleteQuest 등에서 직접 참조 중인 곳을
@@ -4059,19 +4274,24 @@
         // D-168 (2026-04-29 요한): 베이스캠프 빌딩 그리드 — 3x3.
         //   첫 슬롯은 텐트(활성). 나머지 8개는 placeholder(추후 공개). 카드 클릭 → 모달.
         //   텐트는 tentLevel에 따라 30%/100% 투명도, Lv.N 라벨 표시.
-        const CAMP_BUILDINGS = [
-            { id: 'tent',        emoji: '🏕️', name: '텐트',         kind: 'tent' },
-            { id: 'campfire',    emoji: '🔥',  name: '모닥불',       kind: 'placeholder' },
-            { id: 'workbench',   emoji: '🛠️', name: '작업대',       kind: 'placeholder' },
-            { id: 'storage_b',   emoji: '🏚️', name: '저장고',       kind: 'placeholder' },
-            { id: 'well',        emoji: '💧',  name: '우물',         kind: 'placeholder' },
-            { id: 'hunter_hut',  emoji: '🏹',  name: '사냥꾼 오두막', kind: 'placeholder' },
-            { id: 'herb_garden', emoji: '🌿',  name: '약초 텃밭',     kind: 'placeholder' },
-            { id: 'forager',     emoji: '🌾',  name: '채집소',       kind: 'placeholder' },
-            { id: 'totem',       emoji: '🗿',  name: '토템',         kind: 'placeholder' }
+        // D-174 (2026-04-30): 시트 SSOT 통합 — 빌딩 6종 + 텐트 + 잠금 2칸 = 9칸.
+        //   slots: { id, kind } — kind: 'tent' | 'sheet' | 'locked'.
+        //   라벨 통일 — Lv.{stage}/{maxStage}. stage=0이면 30% 투명도.
+        const BUILDING_SLOTS = [
+            { id: 'tent',       kind: 'tent' },
+            { id: 'clinic',     kind: 'sheet' },
+            { id: 'kitchen',    kind: 'sheet' },
+            { id: 'workshop',   kind: 'sheet' },
+            { id: 'storage',    kind: 'sheet' },
+            { id: 'training',   kind: 'sheet' },
+            { id: 'watchtower', kind: 'sheet' },
+            { id: 'locked_1',   kind: 'locked' },
+            { id: 'locked_2',   kind: 'locked' }
         ];
 
-        function BuildingsGrid({ tentLevel, onClickBuilding }) {
+        function BuildingsGrid({ campState, onClickBuilding }) {
+            const tentLevel = (campState && campState.tentLevel) || 0;
+            const buildingLevels = (campState && campState.buildingLevels) || {};
             return (
                 <div style={{
                     marginBottom: '16px',
@@ -4084,13 +4304,30 @@
                         🏘️ 베이스캠프
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                        {CAMP_BUILDINGS.map(b => {
-                            const isTent = b.kind === 'tent';
-                            const lv = isTent ? (Number(tentLevel) || 0) : 0;
-                            // 텐트: Lv.0이면 30% 투명도(미세움). Lv.1+면 100%. placeholder는 항상 30%.
-                            const dim = isTent ? lv === 0 : true;
+                        {BUILDING_SLOTS.map(b => {
+                            let stage = 0, maxStage = 0, name = '', emoji = '🔒';
+                            if (b.kind === 'tent') {
+                                stage = Number(tentLevel) || 0;
+                                maxStage = TENT_MAX_LEVEL;
+                                name = '텐트';
+                                emoji = BUILDING_ICON.tent;
+                            } else if (b.kind === 'sheet') {
+                                stage = Number(buildingLevels[b.id]) || 0;
+                                maxStage = getMaxStage(b.id) || 3;
+                                // 시트에서 한글 name 1단계 행 기준 — 표시용.
+                                const def0 = getBuildingDef(b.id, 1);
+                                name = (def0 && def0.name) || b.id;
+                                emoji = BUILDING_ICON[b.id] || '🏗️';
+                            } else {
+                                // locked
+                                stage = 0;
+                                maxStage = 0;
+                                name = '잠금';
+                                emoji = '🔒';
+                            }
+                            const dim = b.kind === 'locked' ? true : (stage === 0);
                             const opacity = dim ? 0.3 : 1;
-                            const lvColor = isTent ? '#d4b84a' : '#666';
+                            const lvColor = b.kind === 'locked' ? '#666' : (stage > 0 ? '#d4b84a' : '#888');
                             return (
                                 <button
                                     key={b.id}
@@ -4110,9 +4347,11 @@
                                         transition: 'opacity 0.2s, transform 0.1s'
                                     }}
                                 >
-                                    <div style={{ fontSize: '30px', lineHeight: 1 }}>{b.emoji}</div>
-                                    <div style={{ fontSize: '11px', fontWeight: 600 }}>{b.name}</div>
-                                    <div style={{ fontSize: '10px', color: lvColor }}>Lv.{lv}</div>
+                                    <div style={{ fontSize: '30px', lineHeight: 1 }}>{emoji}</div>
+                                    <div style={{ fontSize: '11px', fontWeight: 600 }}>{name}</div>
+                                    <div style={{ fontSize: '10px', color: lvColor }}>
+                                        {b.kind === 'locked' ? '추후' : `Lv.${stage}/${maxStage}`}
+                                    </div>
                                 </button>
                             );
                         })}
@@ -4121,9 +4360,10 @@
             );
         }
 
-        // 빌딩 카드 클릭 시 띄우는 상세 모달.
-        //   - placeholder: "추후 공개" 안내.
-        //   - tent: 현재 레벨 + 다음 레벨 퀘스트(요구재료 + 보상). 미수락이면 [받기] / 진행 중이면 [완수](재료 충족 시) / 최고 레벨이면 알림.
+        // D-174: 빌딩 카드 클릭 시 띄우는 상세 모달.
+        //   - locked: "추후 공개" 안내.
+        //   - tent: 현재 레벨 + 다음 레벨 퀘스트(요구재료 + 보상). [받기]/[완수].
+        //   - sheet: 시트 빌딩 6종. 다음 stage cost(한글 자원) 카운트 + 4종 보상 표시. [완수](재료 충족 시 즉시).
         function BuildingDetailModal({ building, campState, activeQuests, completedQuests, onClose, onTakeQuest, onCompleteQuest }) {
             if (!building) return null;
             const cardStyle = {
@@ -4152,12 +4392,12 @@
                     닫기
                 </button>
             );
-            if (building.kind === 'placeholder') {
+            if (building.kind === 'locked') {
                 return (
                     <div className="modal" style={{ zIndex: 3500 }}>
                         <div style={{ ...cardStyle, textAlign: 'center' }}>
-                            <div style={{ fontSize: '48px', marginBottom: '8px', opacity: 0.5 }}>{building.emoji}</div>
-                            <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>{building.name}</div>
+                            <div style={{ fontSize: '48px', marginBottom: '8px', opacity: 0.5 }}>🔒</div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>잠금</div>
                             <div style={{ color: '#888', fontSize: '13px', marginBottom: '20px', lineHeight: 1.6 }}>
                                 추후 공개 예정.<br />베이스캠프가 더 커지면 잠금이 풀린다.
                             </div>
@@ -4166,13 +4406,105 @@
                     </div>
                 );
             }
-            // 텐트 분기.
+            // 시트 빌딩 분기 ── kind === 'sheet'.
+            if (building.kind === 'sheet') {
+                const buildingLevels = (campState && campState.buildingLevels) || {};
+                const curStage = Number(buildingLevels[building.id]) || 0;
+                const maxStage = getMaxStage(building.id) || 3;
+                const def0 = getBuildingDef(building.id, Math.max(1, curStage));
+                const headerName = (def0 && def0.name) || building.id;
+                const nextDef = getNextBuildingStage(building.id, curStage);
+                const inv = campState && campState.inventory;
+                const countOfId = (idEn) => (inv && Array.isArray(inv.items)) ? inv.items.filter(it => it.type === idEn).length : 0;
+                // cost 행 — 한글 자원명을 영문 id로 매핑해 카운트. 매핑 실패는 not-ok로 표시.
+                const costRows = nextDef ? (nextDef.cost || []).map(c => {
+                    const idEn = InventorySystem.findIdByKoreanName(c.material);
+                    const have = idEn ? countOfId(idEn) : 0;
+                    const need = Number(c.count) || 0;
+                    return { koName: c.material, idEn, have, need, ok: !!idEn && have >= need };
+                }) : [];
+                const canComplete = !!nextDef && costRows.length > 0 && costRows.every(r => r.ok);
+                const passive = nextDef ? parsePassive(nextDef.reward_passive || '') : [];
+                const runStart = nextDef ? parseRewardItems(nextDef.reward_run_start || '') : [];
+                const items = nextDef ? parseRewardItems(nextDef.reward_items || '') : [];
+                const oneShot = nextDef ? parseOneShot(nextDef.reward_one_shot || '') : [];
+                const renderItemList = (entries) => entries.map(e => {
+                    const d = InventorySystem.resolveDef(e.type) || {};
+                    return `${d.name || e.type} x${e.count}`;
+                }).join(', ');
+                return (
+                    <div className="modal" style={{ zIndex: 3500 }}>
+                        <div style={cardStyle}>
+                            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                                <div style={{ fontSize: '48px', lineHeight: 1 }}>{BUILDING_ICON[building.id] || '🏗️'}</div>
+                                <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>
+                                    {headerName} <span style={{ color: '#d4b84a' }}>Lv.{curStage}/{maxStage}</span>
+                                </div>
+                            </div>
+                            {!nextDef ? (
+                                <div style={{ textAlign: 'center', color: '#8bd17c', padding: '16px 0' }}>
+                                    최고 단계에 도달했다.
+                                </div>
+                            ) : (
+                                <div style={{
+                                    background: 'rgba(0,0,0,0.25)',
+                                    padding: '12px 14px',
+                                    borderRadius: '6px',
+                                    marginBottom: '16px',
+                                    fontSize: '13px',
+                                    lineHeight: 1.6
+                                }}>
+                                    <div style={{ color: '#d4b84a', fontWeight: 700, marginBottom: '4px' }}>
+                                        {nextDef.icon} {nextDef.name} <span style={{ color: '#888', fontSize: '11px', fontWeight: 400 }}>(Lv.{nextDef.stage})</span>
+                                    </div>
+                                    {nextDef.effect_raw && (
+                                        <div style={{ color: '#bbb', fontSize: '12px', fontStyle: 'italic', marginTop: '4px', marginBottom: '6px' }}>
+                                            {String(nextDef.effect_raw).replace(/^"|"$/g, '')}
+                                        </div>
+                                    )}
+                                    <div style={{ marginTop: '6px' }}>
+                                        {costRows.map((r, i) => (
+                                            <div key={i} style={{ color: r.ok ? '#8bd17c' : '#ddd' }}>
+                                                · {r.koName} {r.have}/{r.need}{!r.idEn && ' (자원 매핑 실패)'}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div style={{ color: '#8bd17c', marginTop: '10px', fontSize: '12px', lineHeight: 1.6 }}>
+                                        {passive.length > 0 && <div>· 패시브: {passive.map(p => `${p.key}${p.delta >= 0 ? '+' : ''}${p.delta}`).join(', ')}</div>}
+                                        {items.length > 0 && <div>· 즉시: {renderItemList(items)}</div>}
+                                        {runStart.length > 0 && <div>· 매-탐험 시작: {renderItemList(runStart)}</div>}
+                                        {oneShot.length > 0 && <div>· 일회성: {oneShot.map(o => `${o.key}+${o.count}`).join(', ')}</div>}
+                                    </div>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                                {closeBtn}
+                                {nextDef && (
+                                    <button
+                                        disabled={!canComplete}
+                                        onClick={() => { onCompleteQuest && onCompleteQuest(`bld_${building.id}_${nextDef.stage}`); onClose && onClose(); }}
+                                        style={{
+                                            background: canComplete ? '#4CAF50' : '#444',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '8px 22px',
+                                            borderRadius: '6px',
+                                            cursor: canComplete ? 'pointer' : 'not-allowed',
+                                            fontSize: '13px',
+                                            fontWeight: 700
+                                        }}
+                                    >
+                                        완수
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            // 텐트 분기 (kind === 'tent').
             const lv = Number((campState && campState.tentLevel) || 0);
             const nextDef = getNextTentQuest(lv);
-            const taken = new Set([
-                ...(activeQuests || []).map(q => q.id),
-                ...(completedQuests || []).map(q => q.id)
-            ]);
             const inActive = nextDef && (activeQuests || []).find(q => q.id === nextDef.id);
             const inv = campState && campState.inventory;
             const countOf = (type) => (inv && Array.isArray(inv.items)) ? inv.items.filter(it => it.type === type).length : 0;
@@ -4191,7 +4523,7 @@
                         <div style={{ textAlign: 'center', marginBottom: '12px' }}>
                             <div style={{ fontSize: '48px', lineHeight: 1 }}>🏕️</div>
                             <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>
-                                텐트 <span style={{ color: '#d4b84a' }}>Lv.{lv}</span>
+                                텐트 <span style={{ color: '#d4b84a' }}>Lv.{lv}/{TENT_MAX_LEVEL}</span>
                             </div>
                         </div>
                         {!nextDef ? (
@@ -4437,9 +4769,9 @@
                             </button>
                         </div>
 
-                        {/* D-168: 베이스캠프 빌딩 그리드 (3x3). 카드 클릭 → 상세 모달. */}
+                        {/* D-168/D-174: 베이스캠프 빌딩 그리드 (3x3). 카드 클릭 → 상세 모달. */}
                         <BuildingsGrid
-                            tentLevel={(campState && campState.tentLevel) || 0}
+                            campState={campState}
                             onClickBuilding={(b) => setSelectedBuilding(b)}
                         />
 
@@ -6073,11 +6405,12 @@
 
         // D-113: initialInventory — 탐험 시작 시 가방(pack)에서 넘겨받은 InventorySystem 인스턴스.
         //   undefined면 빈 5x5 기본 가방으로 시작(이전 동작).
-        function Game({ onRunEnd, initialInventory, activeQuests, tentLevel } = {}) {
-            // D-168: 텐트 레벨 누적 보너스로 동적 max. tentLevel=0이면 BASE_MAX_HEALTH=6, BASE_MAX_HUNGER=10.
-            const __tentLv = Number(tentLevel) || 0;
-            const MAX_HEALTH = getMaxHealth(__tentLv);
-            const MAX_HUNGER = getMaxHunger(__tentLv);
+        // D-174: tentLevel → campState 전체 전달. allCampBonuses가 빌딩 보너스까지 합산.
+        //   하위 호환 — campState 미전달 시 tentLevel만으로 폴백 객체 합성.
+        function Game({ onRunEnd, initialInventory, activeQuests, campState, tentLevel } = {}) {
+            const __campState = campState || { tentLevel: Number(tentLevel) || 0, buildingLevels: {} };
+            const MAX_HEALTH = getMaxHealth(__campState);
+            const MAX_HUNGER = getMaxHunger(__campState);
             // 상태 관리
             const [tiles, setTiles] = useState([]);
             const [currentTile, setCurrentTile] = useState(0);
@@ -8505,19 +8838,36 @@
         // D-113: 보관함은 12x8(rows=12, cols=8 — 세로로 김). 탐험용 가방(pack)은 5x5(D-47 모양).
         // D-147 (2026-04-27 요한): 보관함 12x6로 좁힘 — 세로 모바일에서 더 깔끔.
         // D-148 (2026-04-27 요한): tentBuilt 플래그 — true면 가방 좌측 위 1칸 추가 활성(텐트 보상).
+        // D-174 (2026-04-30): 보관함 12x7 — 마지막 row(인덱스 6) 12칸이 텐트 슬롯(BASE_CAMP_STORAGE_SLOTS=72 + 텐트 단계당 1칸).
+        //   buildingLevels — { [id]: stage } 빌딩 6종 + tent 진행도. 텐트는 tentLevel과 동기.
+        //   oneShotInventory — { [key]: count } heal_on_return 등 누적 일회성 효과(D-176+ 사용).
         function makeInitialCampState() {
             return {
                 version: 1,
                 seenIntro: false,
                 firstReturnDone: false,
-                // D-168: tentBuilt(bool) → tentLevel(0..10). 0=미세움. boolean 호환은 직렬화 시 처리.
                 tentLevel: 0,
-                inventory: new InventorySystem(12, 6, { disabled: [] }),
-                pack: makePackInventory(0),  // D-113/D-148: 탐험 시 들고 가는 가방. 기본 disabled 패턴.
+                buildingLevels: {},        // D-174
+                oneShotInventory: {},      // D-174
+                inventory: makeCampStorageInventory(0),  // D-174: 12x7 + 마지막 row 12칸 disabled.
+                pack: makePackInventory(0),
                 quests: { active: [], completed: [] },
-                // D-110: bestScore(최고 점수) / totalScore(누적합) / lastScore(마지막 런).
                 runs: { total: 0, victories: 0, deaths: 0, bestScore: 0, totalScore: 0, lastScore: 0 }
             };
+        }
+
+        // D-174: 캠프 보관함 InventorySystem 생성 — 12x7 그리드, 마지막 row 12칸을 시작 시 disabled.
+        //   tentLevel만큼 좌측부터 expandStorage로 풀린 인스턴스 반환.
+        function makeCampStorageInventory(tentLevel) {
+            const lastRowDisabled = [];
+            const ROWS = 7, COLS = 12;
+            for (let x = 0; x < COLS; x++) {
+                lastRowDisabled.push({ x, y: ROWS - 1 });
+            }
+            const inv = new InventorySystem(ROWS, COLS, { disabled: lastRowDisabled });
+            const lv = Math.max(0, Math.min(TENT_MAX_LEVEL, Number(tentLevel) || 0));
+            if (lv > 0) inv.expandStorage(lv);
+            return inv;
         }
 
         // 직렬화 — InventorySystem.items만 {type,x,y,rotation,durabilityLeft} 배열로 보존.
@@ -8540,12 +8890,19 @@
             const tentLevel = (typeof state.tentLevel === 'number')
                 ? Math.max(0, Math.min(TENT_MAX_LEVEL, state.tentLevel))
                 : (state.tentBuilt ? 1 : 0);
+            // D-174: buildingLevels { [id]: stage } + oneShotInventory { [key]: count }.
+            const buildingLevels = (state.buildingLevels && typeof state.buildingLevels === 'object')
+                ? { ...state.buildingLevels } : {};
+            const oneShotInventory = (state.oneShotInventory && typeof state.oneShotInventory === 'object')
+                ? { ...state.oneShotInventory } : {};
             return {
-                version: 3,
+                version: 4,
                 seenIntro: !!state.seenIntro,
                 firstReturnDone: !!state.firstReturnDone,
                 tentLevel,
                 tentBuilt: tentLevel >= 1,
+                buildingLevels,         // D-174
+                oneShotInventory,       // D-174
                 inventory: serializeInvItems(state.inventory),
                 pack: serializeInvItems(state.pack),
                 quests: {
@@ -8613,26 +8970,37 @@
         //     placeItem 실패 시 빈자리로 재배치 fallback (있다면).
         function deserializeCampState(raw) {
             if (!raw || typeof raw !== 'object') return null;
-            const inv = new InventorySystem(12, 6, { disabled: [] });
-            const itemsRaw = Array.isArray(raw.inventory) ? raw.inventory : [];
-            for (const entry of itemsRaw) restoreItemEntry(inv, entry);
-
-            // pack — 신규 필드. 기존 저장본엔 없을 수 있으니 빈 인벤으로 시작.
-            // D-148: tentBuilt면 좌측 위 1칸 활성 — pack은 그 disabled 패턴으로 생성.
-            // D-168: tentLevel 우선 복원, 없으면 tentBuilt(boolean) 폴백. 가방 보너스도 tentLevel 기반.
+            // D-168: tentLevel 우선 복원, 없으면 tentBuilt(boolean) 폴백.
             const tentLevelRestored = (typeof raw.tentLevel === 'number')
                 ? Math.max(0, Math.min(TENT_MAX_LEVEL, raw.tentLevel))
                 : (raw.tentBuilt ? 1 : 0);
-            const pack = makePackInventory(getPackBonusSlots(tentLevelRestored));
+            // D-174: buildingLevels / oneShotInventory 복원 — v3 이하 폴백 {}.
+            const buildingLevels = (raw.buildingLevels && typeof raw.buildingLevels === 'object')
+                ? { ...raw.buildingLevels } : {};
+            const oneShotInventory = (raw.oneShotInventory && typeof raw.oneShotInventory === 'object')
+                ? { ...raw.oneShotInventory } : {};
+
+            // D-174: 캠프 보관함 12x7 + 마지막 row가 텐트 슬롯.
+            //   기존 v3 12x6 세이브 → 12x7로 마이그레이션. 좌표 그대로 복원 가능
+            //   (cols=12 동일, rows만 6→7로 늘어남, 0~5 row는 그대로 유효).
+            const inv = makeCampStorageInventory(tentLevelRestored);
+            const itemsRaw = Array.isArray(raw.inventory) ? raw.inventory : [];
+            for (const entry of itemsRaw) restoreItemEntry(inv, entry);
+
+            // pack — 빌딩 보너스 반영(allCampBonuses).
+            const stateForPack = { tentLevel: tentLevelRestored, buildingLevels };
+            const pack = makePackInventory(getPackBonusSlots(stateForPack));
             const packRaw = Array.isArray(raw.pack) ? raw.pack : [];
             for (const entry of packRaw) restoreItemEntry(pack, entry);
 
             return {
-                version: 3,
+                version: 4,
                 seenIntro: !!raw.seenIntro,
                 firstReturnDone: !!raw.firstReturnDone,
                 tentLevel: tentLevelRestored,
                 tentBuilt: tentLevelRestored >= 1,
+                buildingLevels,
+                oneShotInventory,
                 inventory: inv,
                 pack,
                 quests: {
@@ -8798,9 +9166,21 @@
             const [departInv, setDepartInv] = useState(null);
             const handleDepart = () => {
                 const carried = campState.pack;
+                // D-174: reward_run_start — 완성된 빌딩들의 매-탐험 시작 자동 인입 아이템.
+                //   각 빌딩의 현재 stage reward_run_start를 합산해 가방 빈자리에 인입.
+                //   가득이면 들어갈 만큼만(나머지는 무시 — 사용자 손실 메시지는 토스트 X, D-176+에서 보강).
+                if (carried) {
+                    const runStart = collectRunStartItems(campState.buildingLevels || {});
+                    for (const { type, count } of runStart) {
+                        for (let i = 0; i < count; i++) {
+                            const ok = carried.addItem(type);
+                            if (!ok) break;
+                        }
+                    }
+                }
                 setDepartInv(carried || null);
-                // D-148/D-168: 새 빈 pack은 tentLevel 누적 보너스 반영(getPackBonusSlots).
-                setCampState(prev => ({ ...prev, pack: makePackInventory(getPackBonusSlots(prev.tentLevel || 0)) }));
+                // D-148/D-168/D-174: 새 빈 pack은 buildingLevels+tentLevel 합산 보너스 반영.
+                setCampState(prev => ({ ...prev, pack: makePackInventory(getPackBonusSlots(prev)) }));
                 setView('play');
             };
 
@@ -8809,19 +9189,120 @@
 
             // [완수] — 재료 차감 + completed 이동 + 알림.
             //   재료 보유량 재확인(레이스 가드). 부족하면 무시(버튼은 disabled여야 함).
+            // D-174: 빌딩 6종 'bld_<id>_<stage>' 분기 — 시트 cost(한글) 차감 + buildingLevels 갱신
+            //        + reward_items(보관함 인입) + reward_one_shot(누적). reward_passive/run_start는 동적 산출.
             const handleCompleteQuest = (questId) => {
-                // D-168: tent_N 다단계 — getTentQuestDef로 동적 조회. 정확한 레벨/보상 추출.
-                const def = getTentQuestDef(questId);
-                if (!def) return;
+                if (typeof questId !== 'string') return;
                 const inv = campState.inventory;
                 if (!inv) return;
-                // 재확인.
+
+                // 빌딩 분기 ── 'bld_<id>_<stage>'
+                if (questId.startsWith('bld_')) {
+                    const m = questId.match(/^bld_([a-z_]+)_(\d+)$/);
+                    if (!m) return;
+                    const bId = m[1];
+                    const bStage = Number(m[2]) || 0;
+                    const bDef = getBuildingDef(bId, bStage);
+                    if (!bDef) return;
+
+                    // 시트 cost(한글) → 영문 id 변환 + 차감 가드.
+                    const costEntries = []; // [{id, count, koName}]
+                    for (const c of (bDef.cost || [])) {
+                        const koName = c && c.material;
+                        const cnt = Number(c && c.count) || 0;
+                        if (!koName || cnt <= 0) continue;
+                        const idEn = InventorySystem.findIdByKoreanName(koName);
+                        if (!idEn) {
+                            console.warn(`[handleCompleteQuest] 빌딩 cost 미매칭: "${koName}" (${questId})`);
+                            return; // 매핑 실패면 진행 거부 — 게임 크래시 회피.
+                        }
+                        costEntries.push({ id: idEn, count: cnt, koName });
+                    }
+                    // 보유량 가드 (레이스).
+                    for (const e of costEntries) {
+                        const have = inv.items.filter(it => it.type === e.id).length;
+                        if (have < e.count) return;
+                    }
+                    // 차감.
+                    for (const e of costEntries) {
+                        let remaining = e.count;
+                        const keep = [];
+                        for (const it of inv.items) {
+                            if (remaining > 0 && it.type === e.id) {
+                                inv.removeItem(it);
+                                remaining -= 1;
+                                continue;
+                            }
+                            keep.push(it);
+                        }
+                        inv.items = keep;
+                    }
+                    // reward_items — 보관함에 인입(가득이면 토스트로만 알림).
+                    let overflowed = 0;
+                    for (const { type, count } of parseRewardItems(bDef.reward_items || '')) {
+                        for (let i = 0; i < count; i++) {
+                            const ok = inv.addItem(type);
+                            if (!ok) overflowed += 1;
+                        }
+                    }
+
+                    setCampState(prev => {
+                        const next = { ...prev };
+                        next.buildingLevels = { ...(prev.buildingLevels || {}), [bId]: bStage };
+                        // reward_one_shot — 누적 저장만 (사용 시점은 D-176+).
+                        const oneShotAdds = parseOneShot(bDef.reward_one_shot || '');
+                        if (oneShotAdds.length > 0) {
+                            const merged = { ...(prev.oneShotInventory || {}) };
+                            for (const { key, count } of oneShotAdds) {
+                                merged[key] = (Number(merged[key]) || 0) + count;
+                            }
+                            next.oneShotInventory = merged;
+                        }
+                        // pack 보너스 변경 가능성 — pack+ 효과 즉시 반영.
+                        const newBonus = getPackBonusSlots(next);
+                        const prevBonus = getPackBonusSlots(prev);
+                        if (newBonus !== prevBonus) {
+                            const newPack = makePackInventory(newBonus);
+                            const oldItems = (prev.pack && Array.isArray(prev.pack.items)) ? prev.pack.items.slice() : [];
+                            for (const it of oldItems) {
+                                if (newPack.canPlace(it.shape, it.x, it.y)) {
+                                    newPack.placeItem(it);
+                                    newPack.items.push(it);
+                                } else {
+                                    const pos = newPack.findEmptySpace(it.shape);
+                                    if (pos) {
+                                        it.x = pos.x; it.y = pos.y;
+                                        newPack.placeItem(it);
+                                        newPack.items.push(it);
+                                    }
+                                }
+                            }
+                            next.pack = newPack;
+                        }
+                        // 빌딩 분기는 quests.active에 안 들어가는 단발 액션(현재 흐름) — moved 처리 없음.
+                        // 단, 향후 quests에 등록된 경우 호환을 위해 active/completed 이동 시도.
+                        const active = (prev.quests && prev.quests.active || []).filter(q => q.id !== questId);
+                        const moved = (prev.quests && prev.quests.active || []).find(q => q.id === questId);
+                        next.quests = {
+                            active,
+                            completed: moved ? [...(prev.quests.completed || []), moved] : (prev.quests && prev.quests.completed) || []
+                        };
+                        return next;
+                    });
+
+                    const baseMsg = `${bDef.icon || ''} ${bDef.name} Lv.${bStage} 완성.`;
+                    setQuestCompleteMsg(overflowed > 0 ? `${baseMsg} (보관함이 가득 차 ${overflowed}개 분실)` : baseMsg);
+                    return;
+                }
+
+                // 텐트 분기 ── 'tent_N' (D-168 호환).
+                const def = getTentQuestDef(questId);
+                if (!def) return;
                 const reqs = def.requirements || {};
                 for (const [type, need] of Object.entries(reqs)) {
                     const have = inv.items.filter(it => it.type === type).length;
-                    if (have < need) return; // disabled여야 했지만 가드.
+                    if (have < need) return;
                 }
-                // 차감 — 각 type 앞에서부터 need개 removeItem + items 배열 갱신.
                 for (const [type, need] of Object.entries(reqs)) {
                     let remaining = need;
                     const keep = [];
@@ -8835,6 +9316,8 @@
                     }
                     inv.items = keep;
                 }
+                // D-174: 텐트 단계 → 보관함 슬롯 좌측부터 1칸 풀기.
+                inv.expandStorage(1);
                 setCampState(prev => {
                     const active = prev.quests.active.filter(q => q.id !== questId);
                     const moved = prev.quests.active.find(q => q.id === questId);
@@ -8845,36 +9328,15 @@
                             completed: moved ? [...(prev.quests.completed || []), moved] : prev.quests.completed
                         }
                     };
-                    // D-168: 텐트 레벨 갱신 — 완수한 questId의 레벨을 tentLevel에 반영.
-                    //   - rewardType=pack 이면 pack 인스턴스를 새 보너스 적용본으로 즉시 교체.
-                    //   - rewardType=health/hunger 는 tentLevel 갱신만으로 getMaxHealth/Hunger가 자동 반영.
                     next.tentLevel = Math.max(prev.tentLevel || 0, def.level);
                     next.tentBuilt = next.tentLevel >= 1;
-                    if (def.rewardType === 'pack') {
-                        const bonus = getPackBonusSlots(next.tentLevel);
-                        const newPack = makePackInventory(bonus);
-                        const oldItems = (prev.pack && Array.isArray(prev.pack.items)) ? prev.pack.items.slice() : [];
-                        for (const it of oldItems) {
-                            if (newPack.canPlace(it.shape, it.x, it.y)) {
-                                newPack.placeItem(it);
-                                newPack.items.push(it);
-                            } else {
-                                const pos = newPack.findEmptySpace(it.shape);
-                                if (pos) {
-                                    it.x = pos.x; it.y = pos.y;
-                                    newPack.placeItem(it);
-                                    newPack.items.push(it);
-                                }
-                            }
-                        }
-                        next.pack = newPack;
-                    }
+                    // D-174: 텐트는 buildingLevels에도 동기 반영(allCampBonuses에서 읽지 않지만 통일성).
+                    next.buildingLevels = { ...(prev.buildingLevels || {}), tent: next.tentLevel };
                     return next;
                 });
-                // D-168: 레벨별 완수 알림 — 보상 라벨을 그대로 노출.
-                const lvLabel = `텐트 Lv.${def.level}`;
-                let msg = `${lvLabel} 완성. ${def.rewardLabel}.`;
-                if (def.level === 1) msg = '텐트 자리를 잡았다. 가방 한 칸이 더 생겼다 (좌측 위).';
+                // D-174: 텐트 보상은 보관함 +1칸으로 단일화.
+                let msg = `텐트 Lv.${def.level} 완성. ${def.rewardLabel}.`;
+                if (def.level === 1) msg = '텐트 자리를 잡았다. 보관함 한 칸이 더 생겼다.';
                 setQuestCompleteMsg(msg);
             };
 
@@ -8900,7 +9362,7 @@
                         onRunEnd={handleRunEnd}
                         initialInventory={departInv}
                         activeQuests={(campState && campState.quests && campState.quests.active) || []}
-                        tentLevel={(campState && campState.tentLevel) || 0}
+                        campState={campState}
                     />
                 );
             }

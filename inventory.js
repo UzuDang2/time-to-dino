@@ -204,6 +204,51 @@ class InventorySystem {
         return merged;
     }
 
+    // D-174: 한글 자원 이름 → 영문 id 매핑.
+    //   parseRewardItems / handleCompleteQuest 한글 cost 차감에서 사용.
+    //   우선순위: static ITEMS 매칭(레거시 안정) → window.TTD_DATA.ITEMS 매칭(런타임 신규).
+    //   - 동일 이름이 여러 id에 걸친 경우(예: '맑은물' = water/clear_water) static의 'water'가 우선.
+    //   미매칭 시 null. 호출부는 console.warn + 스킵.
+    static findIdByKoreanName(koName) {
+        if (!koName || typeof koName !== 'string') return null;
+        const target = koName.trim();
+        if (!target) return null;
+        // 1. static ITEMS — 레거시 안정 영역 우선.
+        for (const [id, def] of Object.entries(InventorySystem.ITEMS)) {
+            if (def && def.name === target) return id;
+        }
+        // 2. window.TTD_DATA.ITEMS — 시트 신규 자원(석재·금속·가죽 등).
+        const td = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : null;
+        const bundle = td && Array.isArray(td.ITEMS) ? td.ITEMS : null;
+        if (bundle) {
+            for (const it of bundle) {
+                if (!it) continue;
+                if (it['이름'] === target || it.name === target) {
+                    return it.id || null;
+                }
+            }
+        }
+        return null;
+    }
+
+    // D-174: 마지막 row(인덱스 ROWS-1)의 disabled 셀 좌측부터 slotsToOpen만큼 풀기.
+    //   캠프 보관함 12x7 — tentLevel=N이면 마지막 row 좌측 N칸 활성, 우측 12-N칸 disabled.
+    //   slotsToOpen은 "이번에 풀 칸 수"가 아니라 "원하는 활성 칸 수"가 아니다 — 차감만 처리.
+    //   안전: 음수/0이면 no-op. disabled에 없으면 건너뜀(idempotent).
+    expandStorage(slotsToOpen) {
+        const n = Math.max(0, Number(slotsToOpen) || 0);
+        if (n <= 0) return;
+        const lastRow = this.rows - 1;
+        let opened = 0;
+        for (let x = 0; x < this.cols && opened < n; x++) {
+            const key = `${x},${lastRow}`;
+            if (this.disabled.has(key)) {
+                this.disabled.delete(key);
+                opened += 1;
+            }
+        }
+    }
+
     // 두 아이템의 2종 조합 레시피 조회 (TTD_DATA.COMBOS 전역 리스트).
     // ingredients 순서 무관 비교. **2종 레시피만** 매칭 — 3종은 합성 패널 경유.
     // (D-24 자동 조합 경로에서 쓰던 API. 현재는 fallback 용으로만 유지.)
