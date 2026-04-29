@@ -279,8 +279,8 @@ button:active {
 }
 
 /* D-171 (요한): 진행 중 퀘스트가 요구하는 type 보유 시 우상단 마커.
-   D-172 (요한): 초록 점(좌상단)과 동일 크기·스타일의 노란 점으로 단순화.
-                   배지 + 글자 형태(D-172 초기) 폐기 — 좌·우 대칭 점 한 쌍이 시각 정돈. */
+   D-172 (요한): 노란 원형 배지 + 검은 ! 글자. 6x6 — 좌상단 초록 점과 동일 크기.
+                   글자는 약간 오버플로우 허용해 작은 크기에서도 ! 형태 식별. */
 .inventory-quest-check {
     position: absolute;
     top: 3px;
@@ -289,11 +289,17 @@ button:active {
     height: 6px;
     border-radius: 50%;
     background: #f5c842;
+    color: #1a1a2e;
+    font-size: 7px;
+    font-weight: 900;
+    line-height: 6px;
+    text-align: center;
     box-shadow: 0 0 0 1px #0f3460;
     pointer-events: none;
-    font-size: 0;
     box-sizing: border-box;
     z-index: 5;
+    overflow: visible;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .inventory-item {
