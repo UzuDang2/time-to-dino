@@ -96,10 +96,10 @@ window.TTD_DATA = {
       "id": "throw_stone",
       "name": "돌 던지기",
       "damage": 2,
-      "success_rate": 90,
+      "success_rate": 100,
       "requirement": "돌맹이",
       "count": 1,
-      "accuracy": 0,
+      "accuracy": 1,
       "full_loss": "N",
       "defense": "",
       "evade": "",
@@ -160,7 +160,7 @@ window.TTD_DATA = {
     {
       "id": "slingshot_shot",
       "name": "새총 쏘기",
-      "damage": 2,
+      "damage": 3,
       "success_rate": 100,
       "requirement": "새총 + 돌맹이",
       "count": 1,
@@ -494,7 +494,7 @@ window.TTD_DATA = {
       "name": "일반 공격",
       "type": "attack",
       "damage": 2,
-      "accuracy": 0,
+      "accuracy": 1,
       "defense": 0,
       "description": "기본 공격 — L2 prey 평타"
     },
@@ -638,7 +638,7 @@ window.TTD_DATA = {
       "name": "광폭 발톱",
       "type": "attack",
       "damage": 2,
-      "accuracy": 0,
+      "accuracy": 1,
       "defense": 0,
       "description": "오소리 특수"
     },
@@ -656,7 +656,7 @@ window.TTD_DATA = {
       "name": "날개 후려치기",
       "type": "attack",
       "damage": 2,
-      "accuracy": 0,
+      "accuracy": 1,
       "defense": 0,
       "description": "큰 새 특수"
     },
@@ -1137,7 +1137,7 @@ window.TTD_DATA = {
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
-      "내구도": 3,
+      "내구도": 6,
       "effect": {
         "usable": false,
         "actions": [],
@@ -1304,7 +1304,7 @@ window.TTD_DATA = {
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
-      "내구도": 3,
+      "내구도": 5,
       "effect": {
         "usable": false,
         "actions": [],
@@ -2014,7 +2014,7 @@ window.TTD_DATA = {
       "카테고리": "무기",
       "가방칸수": "2x1",
       "아이템 등급": "1단계",
-      "내구도": 3,
+      "내구도": 5,
       "설명 텍스트": "돌맹이를 장전해 날리는 소형 무기. 새총 쏘기 카드 사용.",
       "효과 요약": "새총 쏘기 카드 소지 조건."
     },
@@ -2025,7 +2025,7 @@ window.TTD_DATA = {
       "카테고리": "무기",
       "가방칸수": "2x1",
       "아이템 등급": "1단계",
-      "내구도": 3,
+      "내구도": 6,
       "설명 텍스트": "돌을 깨뜨려 날을 세운 가장 원시적인 도구. 치기·던지기 카드 사용.",
       "효과 요약": "뗀석기로 치기 / 뗀석기 던지기 카드 소지 조건."
     }
