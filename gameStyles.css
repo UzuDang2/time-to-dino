@@ -267,14 +267,15 @@ button:active {
     position: absolute;
     top: 4px;
     left: 4px;
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: #3dd68c;
-    box-shadow: 0 0 0 1.5px #0f3460;
+    box-shadow: 0 0 0 2px #0f3460;
     pointer-events: none;
     font-size: 0;
     box-sizing: border-box;
+    z-index: 4;
 }
 
 /* D-171 (요한): 진행 중 퀘스트가 요구하는 type 보유 시 우상단 마커.
