@@ -279,26 +279,21 @@ button:active {
 }
 
 /* D-171 (요한): 진행 중 퀘스트가 요구하는 type 보유 시 우상단 마커.
-   D-172 (요한): ❗ 빨간 이모지 대신 노란 원형 배지 + 검은 ! 글자.
-                   슬롯 모서리 밖으로 살짝 튀어나와 "스티커" 느낌. */
+   D-172 (요한): 초록 점(좌상단)과 동일 크기·스타일의 노란 점으로 단순화.
+                   배지 + 글자 형태(D-172 초기) 폐기 — 좌·우 대칭 점 한 쌍이 시각 정돈. */
 .inventory-quest-check {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 18px;
-    height: 18px;
+    top: 3px;
+    right: 3px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: #f5c842;
-    color: #1a1a2e;
-    font-size: 13px;
-    font-weight: 900;
-    line-height: 18px;
-    text-align: center;
+    box-shadow: 0 0 0 1px #0f3460;
     pointer-events: none;
-    z-index: 5;
+    font-size: 0;
     box-sizing: border-box;
-    box-shadow: 0 0 0 1.5px #1a1a2e, 0 1px 3px rgba(0,0,0,0.5);
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    z-index: 5;
 }
 
 .inventory-item {
