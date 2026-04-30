@@ -5840,72 +5840,58 @@
                     border: '1px solid #444',
                     overflow: 'hidden'
                 }}>
-                    {/* 좌상 — 사냥감 정보 박스 (D-180: 우상→좌상). */}
+                    {/* D-186: 사냥감 띠 — 정보박스(flex:1) + 머리(88x88) 가로 한 줄. 거울 대칭 메타포 시작점.
+                        잔여 행동 dot은 사냥감 슬롯이 대체하므로 제거. */}
                     <div style={{
-                        position: 'absolute', top: 8, left: 8, maxWidth: '52%',
-                        background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
-                        borderRadius: '8px', boxSizing: 'border-box', zIndex: 2
+                        position: 'absolute', top: 8, left: 8, right: 8,
+                        display: 'flex', alignItems: 'flex-start', gap: 8, zIndex: 2
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, gap: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600 }}>{preyName}</span>
-                            <span style={{ fontSize: 11, color: '#ffd58a' }}>🥩×{preyMeat}</span>
+                        <div style={{
+                            flex: 1,
+                            background: 'rgba(0,0,0,0.6)', padding: '8px 10px',
+                            borderRadius: '8px', boxSizing: 'border-box',
+                            alignSelf: 'center'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                                <span style={{ fontSize: 13, fontWeight: 600 }}>{preyName}</span>
+                                <span style={{ fontSize: 11, color: '#ffd58a' }}>🥩×{preyMeat}</span>
+                            </div>
+                            <div style={{ height: 8, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
+                                <div style={{
+                                    width: `${hpDisplayPct}%`, height: '100%',
+                                    background: 'linear-gradient(90deg, #b24656 0%, #e2718a 100%)',
+                                    transition: 'width 0.3s ease'
+                                }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: 10, color: '#ccc', flexWrap: 'wrap' }}>
+                                <span>HP {hpCurrent}/{hpMax}</span>
+                                {preyAttack > 0 && <span style={{ color: '#ff9999' }}>🗡️{preyAttack}</span>}
+                                {preyDefense > 0 && <span style={{ color: '#9bd6ff' }}>🛡️{preyDefense}</span>}
+                            </div>
                         </div>
-                        <div style={{ height: 8, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
-                            <div style={{
-                                width: `${hpDisplayPct}%`, height: '100%',
-                                background: 'linear-gradient(90deg, #b24656 0%, #e2718a 100%)',
-                                transition: 'width 0.3s ease'
-                            }} />
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10, color: '#ccc', flexWrap: 'wrap' }}>
-                            <span>HP {hpCurrent}/{hpMax}</span>
-                            {preyAttack > 0 && <span style={{ color: '#ff9999' }}>🗡️{preyAttack}</span>}
-                            {preyDefense > 0 && <span style={{ color: '#9bd6ff' }}>🛡️{preyDefense}</span>}
-                        </div>
-                        {/* 잔여 행동 dot — 패턴 미리 노출(기획서 명시) */}
-                        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                            {(slotActions || []).map((a, i) => {
-                                const t = (a && a.type) || 'peek';
-                                const dim = !!(slotsConsumed && slotsConsumed[i]);
-                                return (
-                                    <div key={i} title={`T${i+1} ${a && a.name || '?'}`} style={{
-                                        width: 22, height: 22, borderRadius: '50%',
-                                        background: dim ? '#222' : '#3a3a5e',
-                                        border: `1px solid ${dim ? '#333' : '#6a6aaa'}`,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 11, opacity: dim ? 0.4 : 1
-                                    }}>
-                                        {actionTypeIcon[t] || '?'}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* 우중 — 사냥감 비주얼 (정보 박스 아래에 큰 이미지/이모지)
-                        Phase B: 회피=shake / 피격=flash. activeEvent.id를 key에 묶어 매 턴 마다 애니 재시작. */}
-                    <div style={{
-                        position: 'absolute', top: 14, right: 14,
-                        width: 120, height: 120, marginTop: 0,
-                        display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end',
-                        filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))',
-                        zIndex: 1, pointerEvents: 'none'
-                    }}>
-                        <div
-                            key={`prey-anim-${eventId || 'idle'}`}
-                            className={`${preyShakeClass} ${preyFlashClass}`.trim()}
-                            style={{ width: '100%', height: '100%', position: 'relative',
-                                     display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
-                            {preyImageUrl ? (
-                                <img src={preyImageUrl} alt={preyName}
-                                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                            ) : (
-                                <span style={{ fontSize: 96, lineHeight: 1, marginTop: 24 }}>{preyEmoji}</span>
-                            )}
-                            {/* Phase B: 사냥감 위 floating 데미지/MISS */}
-                            {floats.filter(f => f.side === 'prey').map(f => (
-                                <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
-                            ))}
+                        {/* 사냥감 머리 — 박스보다 살짝 큰 정사각.
+                            Phase B: 회피=shake / 피격=flash. activeEvent.id로 wrapper key 갱신해 매 턴 애니 재시작. */}
+                        <div style={{
+                            width: 88, height: 88, flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))',
+                            pointerEvents: 'none'
+                        }}>
+                            <div
+                                key={`prey-anim-${eventId || 'idle'}`}
+                                className={`${preyShakeClass} ${preyFlashClass}`.trim()}
+                                style={{ width: '100%', height: '100%', position: 'relative',
+                                         display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {preyImageUrl ? (
+                                    <img src={preyImageUrl} alt={preyName}
+                                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                ) : (
+                                    <span style={{ fontSize: 72, lineHeight: 1 }}>{preyEmoji}</span>
+                                )}
+                                {floats.filter(f => f.side === 'prey').map(f => (
+                                    <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
@@ -5938,13 +5924,28 @@
                         </div>
                     </div>
 
-                    {/* D-180/D-182: 캐릭터 아래 "나" 라벨. */}
+                    {/* D-186: "나" 정보 박스 — 사냥감 정보 박스 거울 대칭. 캐릭터 우측 옆 가로 길게.
+                        외부 모달 헤더 박스(D-184) 대체. HP 게이지 + 🍖 N/M 메타포 동일. */}
                     <div style={{
-                        position: 'absolute', bottom: 14, left: 6, width: 130,
-                        textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#ddd',
-                        background: 'rgba(0,0,0,0.4)', borderRadius: 4, padding: '2px 0',
-                        zIndex: 2
-                    }}>나</div>
+                        position: 'absolute', bottom: 14, left: 148, right: 8,
+                        background: 'rgba(0,0,0,0.6)', padding: '8px 10px',
+                        borderRadius: '8px', boxSizing: 'border-box', zIndex: 2
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>나</span>
+                            <span style={{ fontSize: 11, color: '#f5c46d' }}>🍖 {playerHunger}/{maxHunger}</span>
+                        </div>
+                        <div style={{ height: 8, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{
+                                width: `${healthPct}%`, height: '100%',
+                                background: 'linear-gradient(90deg, #c73e4f 0%, #ff7a8a 100%)',
+                                transition: 'width 0.3s ease'
+                            }} />
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: 10, color: '#ccc' }}>
+                            <span>HP {playerHealth}/{maxHealth}</span>
+                        </div>
+                    </div>
 
                     {/* D-180: 슬롯 overlay 등 외부 주입 영역 — HuntCombatModal에서 absolute로 사냥감/내 슬롯 띄움. */}
                     {children}
@@ -6330,28 +6331,7 @@
                         overflowY: 'auto',
                         boxSizing: 'border-box'
                     }}>
-                        {/* D-184: 내 정보 박스 — 사냥감 정보 박스와 동일 메타포(체력=게이지, 나머지=아이콘+숫자).
-                            BattleStage 외부 헤더 위치 유지. 디자인 톤은 사냥감 박스(검은 반투명, 라운드, 다층) 동일. */}
-                        <div style={{
-                            background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
-                            borderRadius: 8, marginBottom: 8, boxSizing: 'border-box'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, gap: 8 }}>
-                                <span style={{ fontSize: 13, fontWeight: 600 }}>나</span>
-                                <span style={{ fontSize: 11, color: '#f5c46d' }}>🍖 {playerHunger}/{maxHunger}</span>
-                            </div>
-                            <div style={{ height: 8, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
-                                <div style={{
-                                    width: `${Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100))}%`,
-                                    height: '100%',
-                                    background: 'linear-gradient(90deg, #c73e4f 0%, #ff7a8a 100%)',
-                                    transition: 'width 0.3s ease'
-                                }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10, color: '#ccc' }}>
-                                <span>HP {playerHealth}/{maxHealth}</span>
-                            </div>
-                        </div>
+                        {/* D-186: 외부 헤더 "나" 박스 제거 — BattleStage 내부 우하 캐릭터 옆 박스로 이관(D-184 → D-186). */}
 
                         {/* D-180 (요한 시안): BattleStage 안에 사냥감 슬롯/내 슬롯 통합.
                             - 사냥감 슬롯: 사냥감 정보·비주얼 아래(중앙 영역) 가로 4칸.
@@ -6377,11 +6357,11 @@
                             playerImageUrl={playerImageUrl}
                             activeEvent={activeEvent}
                         >
-                            {/* 사냥감 슬롯 — D-185 (요한 지시): HuntCard 비주얼 → D-180 단순 박스로 되돌림.
-                                T1/T2/.. + 행동명 + ⚔/💨/🛡 배지. 사냥감의 행동 패턴 미리 노출. */}
+                            {/* 사냥감 슬롯 — D-185 단순 박스. T1/T2/.. + 행동명 + ⚔/💨/🛡 배지.
+                                D-186: 사냥감 띠가 ~96px 차지 → top:120. 내 슬롯과 같은 left/right/grid로 컬럼 정렬. */}
                             <div style={{
-                                position: 'absolute', top: 130, left: 8, right: 8,
-                                display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 4,
+                                position: 'absolute', top: 120, left: 8, right: 8,
+                                display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 6,
                                 zIndex: 2
                             }}>
                                 {Array.from({ length: SLOT_COUNT }, (_, i) => {
@@ -6418,10 +6398,15 @@
                                 })}
                             </div>
 
-                            {/* 내 슬롯 — 캐릭터(좌하 130x170, bottom 50~220) 우측 옆 가로.
-                                D-185 (요한 지시): 빈 슬롯 1/2/3/.. 번호 박스, 카드 들어간 자리는 HuntCard 비주얼. */}
+                            {/* 내 슬롯 — D-186: 사냥감 슬롯 바로 아래에 동일 left/right + 동일 grid로 배치 → 컬럼 정렬.
+                                위에 "내카드" 라벨. 빈 슬롯 1/2/3/4 번호, 채워진 슬롯 HuntCard. */}
                             <div style={{
-                                position: 'absolute', bottom: 100, left: 144, right: 8,
+                                position: 'absolute', top: 198, left: 8, right: 8,
+                                fontSize: 10, color: '#9aa5c0', fontWeight: 600,
+                                letterSpacing: 0.5, zIndex: 2, paddingLeft: 2
+                            }}>내카드</div>
+                            <div style={{
+                                position: 'absolute', top: 215, left: 8, right: 8,
                                 display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 6,
                                 zIndex: 2
                             }}>
