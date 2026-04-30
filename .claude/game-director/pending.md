@@ -60,6 +60,48 @@
 
 ---
 
+## D-176 (2026-04-30 요한 지시): 전투 화면 풀 개편 — 포켓몬식 BattleStage
+
+3단계 분할 진행. 디자인 결정/구현 상세는 `design-decisions.md` D-176 Phase A 단락 참조.
+
+### Phase A 완료 (커밋 `f11b07f` + 본 세션 메모리 보강)
+
+- [x] **[디렉터/웹]** ✅ `BattleStage` 컴포넌트 신설 (`index.html`, ~140줄, 230px 컨테이너 4영역 절대 배치).
+- [x] **[디렉터/웹]** ✅ 자산 파이프라인 — `data/Assets/character/Player.png` + `prey.imageUrl` 추상화.
+- [x] **[디렉터/웹]** ✅ `HuntCombatModal` 상단 BattleStage 배치, 카드 손패·슬롯·결과 배너 그대로 보존.
+- [x] **[디렉터/웹]** ✅ 잔여 행동 dot 시각화 (`slotsConsumed` 기반 흐림).
+
+### Phase A 마무리 작업 (이번 세션, 다음 항목)
+
+- [ ] **[디렉터/웹]** `ActiveQuestHUDPanel` z-index 1400 가림 픽스 — 사냥 모달 진입 시 HUD 자동 숨김 또는 모달 zIndex 1500+ (D-171 InventoryModal 패턴 참조).
+
+### 요한 QA 대기 (D-176 Phase A)
+
+- [ ] **[요한]** 🧪 새 캠프 → 탐험 → 사냥감 만나기 → 사냥 카드 사용 → BattleStage 정상 노출 (모바일 viewport 375).
+- [ ] **[요한]** 🧪 좌하 캐릭터(Player.png 뒷모습) + ❤️/🍖 바 동작 — 회복/소모 시 width 트랜지션.
+- [ ] **[요한]** 🧪 우상 사냥감 정보 박스 — 이름·🥩×N·HP 바·🗡️/🛡️ 배지·잔여 행동 dot 모두 정렬.
+- [ ] **[요한]** 🧪 잔여 행동 dot — 슬롯 소비 시 해당 dot 흐려짐 (`opacity:0.4`).
+- [ ] **[요한]** 🧪 우중 사냥감 비주얼 — `imageUrl` 없으니 96px 이모지 fallback 정상.
+- [ ] **[요한]** 🧪 카드 손패·슬롯·결과 배너 영역 회귀 없음 (Phase A 범위 보존 확인).
+- [ ] **[요한]** 🧪 L1(3턴) / L2(4턴) 양쪽 사냥감에서 `slotActions.length` 정상 (3개 / 4개 dot).
+
+### Phase B 대기 (Phase A 마무리 후 착수)
+
+액션 시네마틱. CSS `@keyframes` + React state로 트랜지션 트리거, BattleStage 내부에 한정.
+
+- [ ] **[디렉터/웹]** 카드 사용 시 트랜지션 — 찌르기/공격: 캐릭터 우측으로 0.15s 밀기. 회피: 사냥감 좌우 흔들림. 던지기: 캐릭터 던지는 자세(image swap 자리만).
+- [ ] **[디렉터/웹]** 데미지 숫자 floating — HP 바 위에 `-N` 텍스트 0.6s 페이드.
+- [ ] **[디렉터/웹]** 회피 표시 — `MISS!` 또는 `💨` 0.4s.
+- [ ] **[디렉터/웹]** 잔여 행동 dot 소비 시 채워지는 transition (`opacity:1 → 0.4` 0.3s ease).
+
+### Phase C 대기 (Phase B 후, 자산 의뢰 영역)
+
+- [ ] **[요한]** 사냥감별 PNG 일러스트 의뢰 — 시트 `사냥감.imageUrl` 컬럼 채우면 즉시 반영(추상화는 Phase A에서 완료).
+- [ ] **[요한]** 무기별 캐릭터 자세 변형 — `Player_chipped_stone.png`, `Player_spear.png` 등. 무기 보유 상태로 image 변경.
+- [ ] **[요한/디렉터]** 배경 지형 차별화 — 시냇물·동굴·평원·숲·덤불별 그라디언트 또는 PNG 배경.
+
+---
+
 ## 13차 세션 — 웹 세션 (2026-04-25, D-98: L1 사냥감 행동 패턴)
 
 ### D-98 (2026-04-25 요한 지시): L1 사냥감 3턴 행동 패턴 (peek≤2 / evade≤1 / defend≤1)

@@ -2941,3 +2941,47 @@ Level 2 사냥감 7종은 빈값 — 기존 evade_rate 그대로 사용.
 **노트 — 시트 컬럼명**: `update-cell` 인자는 영문 헤더(`durability`)를 써야 매칭. JSON 키(`내구도`)는 fetch_data 내부 매핑 후 산출물에만 등장. 시트 raw 헤더 확인 후 명령 실행 (`scripts/fetch_data.py:472`에서 컬럼 누락 에러 던짐).
 
 **파일**: 시트 `무기`/`아이템마스터`, 산출물 `data/weapons.json` `data/items.json` `data/data.js`.
+
+---
+
+## D-176 Phase A (2026-04-30 요한 지시): 전투 화면 — 포켓몬식 대결 구도 BattleStage
+
+**경위**: 요한 지시 — 사냥 전투 모달이 카드 손패만 부각된 "보드게임" 느낌이라 몰입이 약함. 포켓몬류 RPG처럼 캐릭터(나) 좌하·사냥감(상대) 우상으로 마주보는 전투 구도를 만들고, 향후 액션 시네마틱·풀 일러스트로 확장 가능한 자리 잡기. **3단계로 분할** — Phase A(구도/스탯 노출), Phase B(액션 시네마틱 트랜지션), Phase C(풀 일러스트). 본 단락은 Phase A.
+
+**결정**: `HuntCombatModal` 상단(카드 손패·슬롯 위)에 신규 `BattleStage` 컴포넌트 삽입. 230px 높이 컨테이너에 4영역 절대 배치. 카드 손패·슬롯·결과 배너 등 기존 영역은 그대로 보존(Phase A는 윗단 추가만, 아래 영역 회귀 없음).
+
+**구현** (`index.html`, BattleStage 컴포넌트 신설, ~140줄):
+
+- **컨테이너** (`230px` 높이, `linear-gradient` 배경 하늘→밤→흙색, `border-radius:10`, `overflow:hidden`).
+- **우상 사냥감 정보 박스** (`absolute top:8 right:8 maxWidth:52%`, 검은 반투명):
+  - 사냥감 이름 + `🥩×{meat}` 한 줄.
+  - HP 바(빨강 그라디언트, `hpDisplayPct%`) + `HP cur/max` 텍스트.
+  - `🗡️{attack}` / `🛡️{defense}` 배지(0이면 숨김).
+  - **잔여 행동 dot** — `slotActions` 순서대로 작은 원에 액션 타입 이모지(👁️/🗡️/🛡️/💨), 소비된 슬롯(`slotsConsumed[i]`)은 `opacity:0.4 + #222` 흐리게. 기획서에서 명시한 "패턴 미리 노출" 원칙 충족.
+- **우중 사냥감 비주얼** (`absolute top:14 right:14 width:120 height:120`):
+  - `prey.imageUrl`이 있으면 `<img>` 풀 영역, 없으면 96px 이모지 fallback.
+  - **추상화 의도**: 시트 `사냥감.imageUrl` 컬럼이 비어있어도 동작, 채우면 즉시 PNG 교체. Phase C에서 일러스트 의뢰 시 시트만 채우면 끝나도록 자리 마련.
+- **좌하 캐릭터 비주얼** (`absolute bottom:0 left:6 width:130 height:170`):
+  - `playerImageUrl` (기본값 `data/Assets/character/Player.png` — 요한이 직접 넣은 캐릭터 뒷모습 스케치).
+  - 없으면 `🧍` 96px fallback.
+- **좌하 내 스탯 박스** (`absolute bottom:8 left:142 right:8`, 캐릭터 옆에 정렬):
+  - `'나'` 라벨 + `❤️` health 바(빨강) + `🍖` hunger 바(주황). 둘 다 7px 높이, `width:%`로 동적.
+  - HP·hunger 수치 우측 정렬(`{cur}/{max}`).
+
+**자산 파이프라인**:
+- `data/Assets/character/Player.png` (84KB, 요한 스케치) — Git LFS 아닌 일반 binary로 커밋. cache-busting은 D-173 인라인 로더가 `?v=` 전파해 처리하므로 자동 반영.
+- `prey.imageUrl` 컬럼은 시트에서 향후 추가. 현 시점에는 `prey.imageUrl || null` 분기로 이모지 fallback.
+
+**레이아웃 v2 정정**: 첫 1차 결과물에서 사냥감/캐릭터/스탯이 "한 줄 가로 배치"로 나와 포켓몬식 마주보기 의도가 안 살았음. 4영역 절대 배치(우상/우중/좌하/좌하 옆)로 v2 재구성하여 시각적으로 좌-아래 vs 우-위 구도가 명확해짐. 컨테이너 230px 높이는 이 구도 + 모바일 viewport(`maxHeight: 92vh`)에서 카드 손패도 같이 보이는 균형값.
+
+**Phase A 범위 확정**:
+- ✅ 구도·스탯·잔여 행동 dot 노출.
+- ❌ 카드 사용 시 트랜지션(흔들림/밀기/데미지 숫자 floating) — Phase B 이관.
+- ❌ 사냥감별 PNG 일러스트, 무기별 캐릭터 자세 변형, 지형별 배경 — Phase C 이관 (자산 의뢰 영역).
+
+**검증 한계**: 본 세션은 디버그 훅으로만 BattleStage 렌더링 확인하고 훅은 제거 후 커밋. **실제 게임 흐름(캠프 → 탐험 → 사냥감 → 사냥 카드 사용 → BattleStage)으로 시각 재검증은 다음 세션 Phase A 마무리 단계에서 수행** — pending.md QA 항목 참조.
+
+**알려진 자잘 이슈** (Phase A 마무리 단계에서 픽스):
+- `ActiveQuestHUDPanel` `zIndex:1400`이 사냥 모달 우상단 사냥감 정보 박스를 가릴 수 있음. D-171에서 InventoryModal `zIndex:1500`로 띄운 패턴 참고 — 사냥 모달도 동일 처리 또는 HUD를 모달 진입 시 자동 숨김.
+
+**파일**: `index.html` (BattleStage 컴포넌트 신설 + HuntCombatModal에 prop 5종 추가 + 호출부 `playerImageUrl="data/Assets/character/Player.png"` 전달), `data/Assets/character/Player.png` 신규.

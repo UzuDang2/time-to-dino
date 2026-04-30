@@ -680,3 +680,58 @@ button:disabled {
 .score-badge .score-row .lbl {
     color: #b09753;
 }
+
+/* D-176 Phase B: 사냥 BattleStage 액션 시네마틱.
+   - 캐릭터 공격: 0.3s 우측 밀기.
+   - 사냥감 회피: 0.4s 좌우 흔들림(MISS 텍스트 동반).
+   - 캐릭터 피격: 가벼운 흔들림 + 빨강 플래시(데미지 숫자 동반).
+   - 사냥감 피격: 빨강 플래시(데미지 숫자 동반).
+   - 데미지 숫자 / MISS: 0.7s 위로 페이드 아웃.
+   회피=흔들림 / 피격=플래시 분리 — 시각 의미 충돌 방지. */
+@keyframes battle-attack-push {
+    0% { transform: translateX(0); }
+    40% { transform: translateX(12px); }
+    100% { transform: translateX(0); }
+}
+@keyframes battle-prey-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+@keyframes battle-player-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    50% { transform: translateX(3px); }
+    75% { transform: translateX(-2px); }
+}
+@keyframes battle-damage-flash {
+    0% { filter: brightness(1) drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+    30% { filter: brightness(1.4) drop-shadow(0 0 14px rgba(255,80,80,0.95)) drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+    100% { filter: brightness(1) drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+}
+@keyframes battle-float-up {
+    0% { opacity: 0; transform: translate(-50%, 0); }
+    20% { opacity: 1; transform: translate(-50%, -8px); }
+    80% { opacity: 1; transform: translate(-50%, -28px); }
+    100% { opacity: 0; transform: translate(-50%, -36px); }
+}
+.battle-anim-attack-push { animation: battle-attack-push 0.3s ease-out; }
+.battle-anim-prey-shake { animation: battle-prey-shake 0.4s ease-in-out; }
+.battle-anim-prey-flash { animation: battle-damage-flash 0.4s ease-out; }
+/* 캐릭터 피격은 흔들림+플래시 동시 — 사냥감 흔들림(=회피)과 의미 분리. */
+.battle-anim-player-hit { animation: battle-player-shake 0.3s ease-in-out, battle-damage-flash 0.4s ease-out; }
+.battle-float-text {
+    position: absolute;
+    left: 50%;
+    bottom: 60%;
+    transform: translate(-50%, 0);
+    font-weight: 800;
+    pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.5);
+    animation: battle-float-up 0.7s ease-out forwards;
+    z-index: 5;
+}
+.battle-float-text.kind-damage { color: #ff7a8a; font-size: 22px; }
+.battle-float-text.kind-miss { color: #fff; font-size: 18px; letter-spacing: 1px; }

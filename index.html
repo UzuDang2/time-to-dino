@@ -5708,10 +5708,39 @@
             slotActions, computedEvades, slotsConsumed,
             playerHealth, playerHunger, maxHealth, maxHunger,
             playerImageUrl,
+            activeEvent,
         }) {
             const healthPct = Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100));
             const hungerPct = Math.max(0, Math.min(100, (playerHunger / Math.max(1, maxHunger)) * 100));
             const actionTypeIcon = { peek: '👁️', attack: '🗡️', defend: '🛡️', evade: '💨' };
+
+            // D-176 Phase B: 액션 시네마틱.
+            //   activeEvent: { id, slotIdx, playerAttack, preyEvaded, preyDamage, playerDamage } | null
+            //   - id를 React key에 연결 → wrapper remount → CSS animation 재시작 (캐릭터 공격/피격, 사냥감 회피/피격).
+            //   - 데미지 숫자 / MISS 텍스트는 useEffect로 floats 큐에 추가하고 0.7s 후 제거.
+            //   - 회피=흔들림 / 피격=플래시 분리 (gameStyles.css 동일 정책).
+            const floatCounterRef = React.useRef(0);
+            const [floats, setFloats] = useState([]);
+            useEffect(() => {
+                if (!activeEvent) return;
+                const newOnes = [];
+                if (activeEvent.preyDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'damage', text: `-${activeEvent.preyDamage}` });
+                if (activeEvent.playerDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'damage', text: `-${activeEvent.playerDamage}` });
+                if (activeEvent.preyEvaded) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'miss', text: 'MISS!' });
+                if (newOnes.length === 0) return;
+                setFloats(prev => [...prev, ...newOnes]);
+                const expireIds = newOnes.map(f => f.id);
+                const t = setTimeout(() => {
+                    setFloats(prev => prev.filter(f => !expireIds.includes(f.id)));
+                }, 750);
+                return () => clearTimeout(t);
+            }, [activeEvent && activeEvent.id]);
+
+            const eventId = activeEvent && activeEvent.id;
+            const playerAttackClass = activeEvent && activeEvent.playerAttack ? 'battle-anim-attack-push' : '';
+            const playerHitClass = activeEvent && activeEvent.playerDamage > 0 ? 'battle-anim-player-hit' : '';
+            const preyShakeClass = activeEvent && activeEvent.preyEvaded ? 'battle-anim-prey-shake' : '';
+            const preyFlashClass = activeEvent && activeEvent.preyDamage > 0 ? 'battle-anim-prey-flash' : '';
             return (
                 <div style={{
                     position: 'relative',
@@ -5764,7 +5793,8 @@
                         </div>
                     </div>
 
-                    {/* 우중 — 사냥감 비주얼 (정보 박스 아래에 큰 이미지/이모지) */}
+                    {/* 우중 — 사냥감 비주얼 (정보 박스 아래에 큰 이미지/이모지)
+                        Phase B: 회피=shake / 피격=flash. activeEvent.id를 key에 묶어 매 턴 마다 애니 재시작. */}
                     <div style={{
                         position: 'absolute', top: 14, right: 14,
                         width: 120, height: 120, marginTop: 0,
@@ -5772,28 +5802,53 @@
                         filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))',
                         zIndex: 1, pointerEvents: 'none'
                     }}>
-                        {preyImageUrl ? (
-                            <img src={preyImageUrl} alt={preyName}
-                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                        ) : (
-                            <span style={{ fontSize: 96, lineHeight: 1, marginTop: 24 }}>{preyEmoji}</span>
-                        )}
+                        <div
+                            key={`prey-anim-${eventId || 'idle'}`}
+                            className={`${preyShakeClass} ${preyFlashClass}`.trim()}
+                            style={{ width: '100%', height: '100%', position: 'relative',
+                                     display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+                            {preyImageUrl ? (
+                                <img src={preyImageUrl} alt={preyName}
+                                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                            ) : (
+                                <span style={{ fontSize: 96, lineHeight: 1, marginTop: 24 }}>{preyEmoji}</span>
+                            )}
+                            {/* Phase B: 사냥감 위 floating 데미지/MISS */}
+                            {floats.filter(f => f.side === 'prey').map(f => (
+                                <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
+                            ))}
+                        </div>
                     </div>
 
-                    {/* 좌하 — 캐릭터 비주얼 (큰 이미지) */}
-                    <div style={{
-                        position: 'absolute', bottom: 0, left: 6,
-                        width: 130, height: 170,
-                        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-                        filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))',
-                        zIndex: 1, pointerEvents: 'none'
-                    }}>
-                        {playerImageUrl ? (
-                            <img src={playerImageUrl} alt="나"
-                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                        ) : (
-                            <span style={{ fontSize: 96, lineHeight: 1 }}>🧍</span>
-                        )}
+                    {/* 좌하 — 캐릭터 비주얼 (큰 이미지)
+                        Phase B: 외곽 wrapper에 attack-push (공격 시), 내곽 wrapper에 player-hit (피격 시) — 두 layer 분리해 동시 발동 가능. */}
+                    <div
+                        key={`player-push-${eventId || 'idle'}`}
+                        className={playerAttackClass}
+                        style={{
+                            position: 'absolute', bottom: 0, left: 6,
+                            width: 130, height: 170,
+                            zIndex: 1, pointerEvents: 'none'
+                        }}>
+                        <div
+                            key={`player-hit-${eventId || 'idle'}`}
+                            className={playerHitClass}
+                            style={{
+                                width: '100%', height: '100%', position: 'relative',
+                                display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                                filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))'
+                            }}>
+                            {playerImageUrl ? (
+                                <img src={playerImageUrl} alt="나"
+                                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                            ) : (
+                                <span style={{ fontSize: 96, lineHeight: 1 }}>🧍</span>
+                            )}
+                            {/* Phase B: 캐릭터 위 floating 데미지 */}
+                            {floats.filter(f => f.side === 'player').map(f => (
+                                <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
+                            ))}
+                        </div>
                     </div>
 
                     {/* 좌하 — 내 스탯 바 (캐릭터 우측 옆에 정렬) */}
@@ -5844,6 +5899,10 @@
             const [phase, setPhase] = useState('select');     // 'select' | 'resolve' | 'done'
             const [logs, setLogs] = useState([]);             // 표시된 턴 로그
             const [result, setResult] = useState(null);
+            // D-176 Phase B: 액션 시네마틱 — BattleStage에 전달되는 현재 턴 이벤트.
+            //   { id, slotIdx, playerAttack, preyEvaded, preyDamage, playerDamage } | null
+            //   id가 바뀔 때마다 BattleStage가 wrapper key를 갱신해 CSS 애니 재시작.
+            const [activeEvent, setActiveEvent] = useState(null);
 
             // D-58/D-60/D-96: 슬롯별 최종 회피 계산 (턴별 base 반영).
             //   SSOT: combatDeck.js::resolveHunt 공식과 동일.
@@ -6045,17 +6104,31 @@
                 setResult(res);
                 setPhase('resolve');
 
-                // 턴 로그 500ms 간격 순차 표시.
+                // D-176 Phase B: 턴 로그 600ms 간격 순차 표시 + BattleStage activeEvent 트리거.
+                //   - 500→600ms: 데미지 숫자/MISS 0.7s 페이드와 다음 턴 진입 사이 여유.
+                //   - 카드 damage>0 + hit이면 playerAttack=true (사냥감 회피해도 공격 모션은 발동 — 헛스윙 자연).
+                //   - preyEvaded / preyDamage / playerDamage 그대로 전달.
                 res.turns.forEach((turn, idx) => {
                     setTimeout(() => {
                         setLogs(prev => [...prev, turn]);
                         if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
-                    }, 500 * (idx + 1));
+                        const card = turn.userCard;
+                        const cardDamage = Number(card && card.damage) || 0;
+                        setActiveEvent({
+                            id: idx + 1,
+                            slotIdx: idx,
+                            playerAttack: !!(turn.hit && cardDamage > 0),
+                            preyEvaded: !!turn.preyEvaded,
+                            preyDamage: Number(turn.damage) || 0,
+                            playerDamage: Number(turn.playerDamage) || 0,
+                        });
+                    }, 600 * (idx + 1));
                 });
                 // 마지막 로그 후 결과 페이즈 전환. onResolve는 '결과 확인' 버튼에서 호출.
                 setTimeout(() => {
                     setPhase('done');
-                }, 500 * (res.turns.length + 1));
+                    setActiveEvent(null);
+                }, 600 * (res.turns.length + 1));
             };
 
             // D-48: '결과 확인' 버튼 — 유저가 결과를 읽고 수동으로 닫을 때 onResolve 호출.
@@ -6085,7 +6158,9 @@
             const resultTone = result && result.outcome === 'victory' ? 'victory' : 'fail';
 
             return (
-                <div className="modal">
+                // D-176 Phase A 마무리: ActiveQuestHUDPanel(z=1400)이 BattleStage 우상단 사냥감 정보 박스를 가려
+                //   HuntCombatModal 루트 zIndex 1500으로 띄움. D-171 InventoryModal 패턴과 동일.
+                <div className="modal" style={{ zIndex: 1500 }}>
                     <div style={{
                         background: '#1a1a2e',
                         color: '#eee',
@@ -6119,6 +6194,7 @@
                             maxHealth={maxHealth}
                             maxHunger={maxHunger}
                             playerImageUrl={playerImageUrl}
+                            activeEvent={activeEvent}
                         />
 
                         {/* D-48: 전투 결과 배너 — phase='done'에서만 노출. */}
