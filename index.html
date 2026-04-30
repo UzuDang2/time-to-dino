@@ -5969,6 +5969,86 @@
             );
         }
 
+        // D-178 (2026-04-30 요한 지시): 사냥 전투 카드 비주얼 — Figma 디자인(node 41:485) 정착.
+        //   카드 본체 141:210 비율, 좌측 4 스탯 배지(att/acc/eva/def — 0이면 숨김),
+        //   상단 카드 이름, 중앙 일러스트, 하단 효과 본문.
+        //   일러스트 PNG는 CARD_ILLUSTRATIONS 매핑 — punch만 우선 공급, 나머지는 빈 자리.
+        //   향후 카드별 PNG 추가는 매핑 객체에 한 줄씩 더하면 즉시 반영.
+        const CARD_ILLUSTRATIONS = {
+            punch: 'data/Assets/cards/punch.png',
+        };
+        const HUNT_CARD_ICONS = {
+            att: 'data/Assets/cards/icons/att.png',
+            acc: 'data/Assets/cards/icons/acc.png',
+            eva: 'data/Assets/cards/icons/eva.png',
+            def: 'data/Assets/cards/icons/def.png',
+        };
+        // 디자인 명세상 카드 하단 본문은 카드별 다른 효과 설명. 시트 컬럼 추가 전까지
+        //   디자인에 명시된 punch만 하드코딩. 나머지는 빈 본문(추가 정보 영역으로 사용).
+        const CARD_DESCRIPTIONS = {
+            punch: '두 주먹 불끈쥐고 휘둘러\n1 대미지를 줍니다.',
+        };
+        // HuntCard — 디자인 카드 한 장 렌더.
+        //   props:
+        //     card        — combat_card 객체.
+        //     exhausted   — 잔여 0 / 무기 부재 등 비활성. opacity 0.45 + click ignore.
+        //     selected    — 슬롯 배치 상태(외곽 강조).
+        //     onClick     — 클릭 핸들러.
+        //     cornerBadge — 우상단 작은 배지(잔여 ×N 또는 ∞).
+        //     extraInfo   — 본문 영역에 추가 표시할 정보(내구도/분실/방어구). ReactNode.
+        function HuntCard({ card, exhausted, selected, onClick, cornerBadge, extraInfo }) {
+            if (!card) return null;
+            const illustUrl = CARD_ILLUSTRATIONS[card.id];
+            const desc = CARD_DESCRIPTIONS[card.id];
+            const att = Number(card.damage) || 0;
+            const acc = Number(card.accuracy) || 0;
+            const eva = Number(card.evade) || 0;
+            const def = Number(card.defense) || 0;
+            const cls = ['hunt-card', exhausted ? 'is-exhausted' : '', selected ? 'is-selected' : '']
+                .filter(Boolean).join(' ');
+            return (
+                <div className={cls} onClick={exhausted ? undefined : onClick}>
+                    <div className="hunt-card-name">{card.name}</div>
+                    <div className="hunt-card-illust">
+                        {illustUrl ? (
+                            <img src={illustUrl} alt={card.name} />
+                        ) : (
+                            <div className="hunt-card-illust-empty">(준비 중)</div>
+                        )}
+                    </div>
+                    {att > 0 && (
+                        <div className="hunt-card-stat hunt-card-stat--att">
+                            <img src={HUNT_CARD_ICONS.att} alt="" />
+                            <span>{att}</span>
+                        </div>
+                    )}
+                    {acc > 0 && (
+                        <div className="hunt-card-stat hunt-card-stat--acc">
+                            <img src={HUNT_CARD_ICONS.acc} alt="" />
+                            <span>{acc}</span>
+                        </div>
+                    )}
+                    {eva > 0 && (
+                        <div className="hunt-card-stat hunt-card-stat--eva">
+                            <img src={HUNT_CARD_ICONS.eva} alt="" />
+                            <span>{eva}</span>
+                        </div>
+                    )}
+                    {def > 0 && (
+                        <div className="hunt-card-stat hunt-card-stat--def">
+                            <img src={HUNT_CARD_ICONS.def} alt="" />
+                            <span>{def}</span>
+                        </div>
+                    )}
+                    {cornerBadge && <div className="hunt-card-corner-badge">{cornerBadge}</div>}
+                    <div className="hunt-card-body">
+                        {desc && <div style={{ whiteSpace: 'pre-line' }}>{desc}</div>}
+                        {extraInfo}
+                    </div>
+                </div>
+            );
+        }
+
         // D-176 Phase A (2026-04-30 요한 지시): 전투 모달을 포켓몬식 대결 구도로 개편.
         //   - playerHealth / playerHunger / maxHealth / maxHunger 추가 prop으로 받아 BattleStage에 표시.
         //   - 사냥감은 emoji 또는 imageUrl(prey.imageUrl, 향후 시트 컬럼) 분기.
@@ -6298,54 +6378,61 @@
                             </div>
                         )}
 
-                        {/* D-48/D-75: 내 슬롯 — L1 3칸 / L2 4칸. */}
+                        {/* D-48/D-75: 내 슬롯 — L1 3칸 / L2 4칸. D-178: HuntCard 비주얼 통일. */}
                         <div style={{ marginBottom: '10px' }}>
                             <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>내 슬롯</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: '6px' }}>
-                                {slots.map((card, i) => (
-                                    <div key={i}
-                                        onClick={() => handleSlotClick(i)}
-                                        style={{
-                                            padding: '10px 4px',
-                                            background: card ? '#3a3a5e' : '#222',
-                                            border: card ? '1px solid #6a6aaa' : '1px dashed #444',
-                                            borderRadius: '6px',
-                                            fontSize: '12px',
-                                            textAlign: 'center',
-                                            cursor: phase === 'select' && card ? 'pointer' : 'default',
-                                            minHeight: '48px'
-                                        }}>
-                                        {card ? (
-                                            <div>
-                                                <div style={{ fontWeight: '600' }}>{card.name}</div>
-                                                <div style={{ fontSize: '10px' }}>
-                                                    <StatBadges card={card} />
-                                                </div>
-                                                {slotWeaponDur[i] && (
-                                                    <div style={{ fontSize: '10px', color: '#aaa', marginTop: '2px' }}>
-                                                        내구 {slotWeaponDur[i].before}/{slotWeaponDur[i].after}
-                                                    </div>
-                                                )}
-                                                {/* D-153: 방어 카드(defense>0)면 인벤 방어구별 사용 후 내구 표시. */}
-                                                {Number(card.defense) > 0 && slotArmorBefore[i] && slotArmorBefore[i].length > 0 && (
-                                                    <div style={{ fontSize: '10px', color: '#88aaff', marginTop: '2px' }}>
-                                                        {slotArmorBefore[i].map(a => (
-                                                            <div key={a.id}>🛡️ {a.name} {Math.max(0, a.left - 1)}/{a.max}</div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {/* D-97: 분실 확률 안내 — 슬롯에 배치된 카드도 동일 표기. */}
-                                                {(() => {
-                                                    const fl = String(card.full_loss || '').toUpperCase() === 'Y';
-                                                    const lc = Number(card.loss_chance) || 0;
-                                                    if (fl) return <div style={{ fontSize: '10px', color: '#ff9999' }}>⚠ 100% 분실</div>;
-                                                    if (lc > 0) return <div style={{ fontSize: '10px', color: '#ff9999' }}>⚠ {lc}% 분실</div>;
-                                                    return null;
-                                                })()}
+                            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: '8px' }}>
+                                {slots.map((card, i) => {
+                                    if (!card) {
+                                        return (
+                                            <div key={i}
+                                                onClick={() => handleSlotClick(i)}
+                                                style={{
+                                                    aspectRatio: '141 / 210',
+                                                    background: '#16213e',
+                                                    border: '1px dashed #444',
+                                                    borderRadius: '10px',
+                                                    fontSize: '11px',
+                                                    color: '#666',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'default'
+                                                }}>
+                                                비었음
                                             </div>
-                                        ) : <span style={{ color: '#666' }}>비었음</span>}
-                                    </div>
-                                ))}
+                                        );
+                                    }
+                                    const fl = String(card.full_loss || '').toUpperCase() === 'Y';
+                                    const lc = Number(card.loss_chance) || 0;
+                                    const extraInfo = (
+                                        <>
+                                            {slotWeaponDur[i] && (
+                                                <div style={{ color: '#aaa', fontSize: '9px' }}>
+                                                    내구 {slotWeaponDur[i].before}/{slotWeaponDur[i].after}
+                                                </div>
+                                            )}
+                                            {Number(card.defense) > 0 && slotArmorBefore[i] && slotArmorBefore[i].length > 0 && (
+                                                <div style={{ color: '#88aaff', fontSize: '9px' }}>
+                                                    {slotArmorBefore[i].map(a => (
+                                                        <div key={a.id}>🛡️ {a.name} {Math.max(0, a.left - 1)}/{a.max}</div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {fl && <div style={{ color: '#ff9999', fontSize: '9px' }}>⚠ 100% 분실</div>}
+                                            {!fl && lc > 0 && <div style={{ color: '#ff9999', fontSize: '9px' }}>⚠ {lc}% 분실</div>}
+                                        </>
+                                    );
+                                    return (
+                                        <HuntCard
+                                            key={i}
+                                            card={card}
+                                            selected={true}
+                                            onClick={phase === 'select' ? () => handleSlotClick(i) : undefined}
+                                            extraInfo={extraInfo}
+                                        />
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -6572,13 +6659,11 @@
                                         사용할 수 있는 전투 카드가 없다.
                                     </div>
                                 ) : (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                                         {hand.map(card => {
-                                            // D-64: 실시간 재고 기반 비활성 판정. canPlaceCard가 requirements
-                                            //   모두에 대해 remainingByReq 체크 — slotLimit보다 정확.
+                                            // D-64: 실시간 재고 기반 비활성 판정.
                                             const exhausted = !canPlaceCard(card);
                                             // D-51/D-64: 무기 요구 카드면 현재 잔여 내구도 표시.
-                                            //   슬롯에 이미 배치된 해당 무기 카드 수만큼 실시간 차감.
                                             let durBadge = null;
                                             if (card.weaponId) {
                                                 const items = (inventory && inventory.items) || [];
@@ -6590,62 +6675,37 @@
                                                 if (durMaxInitial > 0) durBadge = `내구 ${durLeft}/${durMaxInitial}`;
                                             }
                                             // D-66: 잔여 × 표시는 requirements 기반 실시간 min.
-                                            //   서로 다른 카드가 같은 재료를 공유할 때도 차감이 공유됨.
-                                            //   예: 돌던지기(돌맹이)·새총쏘기(새총+돌맹이) 모두 '돌맹이' 소비.
-                                            //   한쪽을 슬롯에 올리면 다른 쪽의 × 표시도 실시간 감소.
                                             const reqRemaining = (Array.isArray(card.requirements) && card.requirements.length > 0)
                                                 ? Math.max(0, Math.min(...card.requirements.map(r => remainingByReq[r] ?? 0)))
                                                 : null;
-                                            return (
-                                                <div key={card.uid}
-                                                    onClick={() => handleHandClick(card)}
-                                                    style={{
-                                                        padding: '8px 4px',
-                                                        background: exhausted ? '#1a1a2a' : '#2a2a4e',
-                                                        border: `1px solid ${exhausted ? '#333' : '#555'}`,
-                                                        borderRadius: '6px',
-                                                        fontSize: '11px',
-                                                        textAlign: 'center',
-                                                        cursor: exhausted ? 'not-allowed' : 'pointer',
-                                                        minHeight: '44px',
-                                                        opacity: exhausted ? 0.45 : 1
-                                                    }}>
-                                                    <div style={{ fontWeight: '600' }}>
-                                                        {card.name}
-                                                        {card.infinite && (
-                                                            <span style={{ color: '#3dd68c', marginLeft: '4px' }}>∞</span>
-                                                        )}
-                                                        {card.slotLimit && reqRemaining !== null && (
-                                                            <span style={{ color: '#d4b84a', marginLeft: '4px' }}>
-                                                                ×{reqRemaining}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div style={{ fontSize: '10px' }}>
-                                                        <StatBadges card={card} />
-                                                    </div>
-                                                    {durBadge && (
-                                                        <div style={{ fontSize: '10px', color: '#d4b84a' }}>
-                                                            {durBadge}
-                                                        </div>
-                                                    )}
-                                                    {/* D-153: 방어 카드면 손패에서도 인벤 보유 방어구별 현재 잔여 표시. */}
+                                            const cornerBadge = card.infinite
+                                                ? '∞'
+                                                : (card.slotLimit && reqRemaining !== null ? `×${reqRemaining}` : null);
+                                            const fl = String(card.full_loss || '').toUpperCase() === 'Y';
+                                            const lc = Number(card.loss_chance) || 0;
+                                            const extraInfo = (
+                                                <>
+                                                    {durBadge && <div style={{ color: '#d4b84a', fontSize: '9px' }}>{durBadge}</div>}
                                                     {Number(card.defense) > 0 && armorInstancesInitial.length > 0 && (
-                                                        <div style={{ fontSize: '10px', color: '#88aaff' }}>
+                                                        <div style={{ color: '#88aaff', fontSize: '9px' }}>
                                                             {armorInstancesInitial.map(a => (
                                                                 <div key={a.id}>🛡️ {a.name} {a.left}/{a.max}</div>
                                                             ))}
                                                         </div>
                                                     )}
-                                                    {/* D-97: 분실 확률 안내 (창던지기 등). full_loss=Y면 "분실", 확률이면 "N% 분실". */}
-                                                    {(() => {
-                                                        const fl = String(card.full_loss || '').toUpperCase() === 'Y';
-                                                        const lc = Number(card.loss_chance) || 0;
-                                                        if (fl) return <div style={{ fontSize: '10px', color: '#ff9999' }}>⚠ 100% 분실</div>;
-                                                        if (lc > 0) return <div style={{ fontSize: '10px', color: '#ff9999' }}>⚠ {lc}% 분실</div>;
-                                                        return null;
-                                                    })()}
-                                                </div>
+                                                    {fl && <div style={{ color: '#ff9999', fontSize: '9px' }}>⚠ 100% 분실</div>}
+                                                    {!fl && lc > 0 && <div style={{ color: '#ff9999', fontSize: '9px' }}>⚠ {lc}% 분실</div>}
+                                                </>
+                                            );
+                                            return (
+                                                <HuntCard
+                                                    key={card.uid}
+                                                    card={card}
+                                                    exhausted={exhausted}
+                                                    onClick={() => handleHandClick(card)}
+                                                    cornerBadge={cornerBadge}
+                                                    extraInfo={extraInfo}
+                                                />
                                             );
                                         })}
                                     </div>

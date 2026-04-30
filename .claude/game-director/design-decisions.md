@@ -3089,3 +3089,79 @@ if tab_name == "빌딩":
 - `gameStyles.css`: `.building-takeable-dot` 신규 (8x8 빨강 + 글로우, 우상단 absolute).
 - `scripts/fetch_data.py`: 빌딩 탭 빈 행 가드.
 - `data/buildings.json` 외 다수 시트 sync (별도 `chore(data)` 커밋).
+
+---
+
+## D-178 (2026-04-30 요한 지시): 사냥 전투 카드 비주얼 — Figma 디자인 정착 + 일러스트 자산 자리 마련
+
+요한 원문: "사용한 컴포넌트나 디자인들도 연결 가능해? 너가 png뽑아서 정리하고 반영 가능해?" → C 옵션 선택 ("자산 다운로드 + 카드 비주얼 시스템 전반 개편 + 이미지 없는 것들은 자리만 만들어줘, 빈자리로").
+
+### 배경
+
+Figma 파일 `Yub62tXhIObAr6PoVKtzC2` node `41:485` — 사냥 전투 카드 "주먹으로 치기" 비주얼. 기존 `HuntCombatModal`의 손패/슬롯 카드는 단순 사각 박스 + 이모지 배지(🗡️/🛡️/💨)였음. 디자인은 141×210 비율 카드에 좌측 4 스탯 배지(att·acc·eva·def 아이콘 PNG + 숫자) + 상단 카드 이름 + 중앙 일러스트 영역 + 하단 효과 본문.
+
+### 결정
+
+손패/슬롯 카드 비주얼을 디자인에 정렬. 11종 카드 모두 동일 카드 컴포넌트(`HuntCard`) 사용. 메인 일러스트는 `punch`만 우선 공급(요한 시트 + Figma 자산), 나머지 10종은 빈 자리("(준비 중)" placeholder) — 향후 자산 추가 시 `CARD_ILLUSTRATIONS` 매핑에 한 줄씩 더하면 즉시 반영.
+
+### 자산 파이프라인 (`data/Assets/cards/`)
+
+Figma MCP `get_design_context`로 5개 download URL 추출 → curl 다운로드:
+- `data/Assets/cards/punch.png` (596KB, 주먹 메인 일러스트, punch 카드 한정).
+- `data/Assets/cards/icons/att.png` (검 아이콘, 스탯 배지 빨강).
+- `data/Assets/cards/icons/acc.png` (과녁 아이콘, 스탯 배지 청).
+- `data/Assets/cards/icons/eva.png` (발자국 아이콘, 스탯 배지 녹).
+- `data/Assets/cards/icons/def.png` (방패 아이콘, 스탯 배지 회).
+
+D-173 인라인 `?v=` 로더가 자동으로 cache-busting 처리 — 새 카드 PNG 추가 시 별도 작업 불필요.
+
+### 구현
+
+#### 1) CSS (`gameStyles.css` 끝 추가)
+
+`.hunt-card` 컨테이너 — `aspect-ratio: 141/210`, `width: 100%` (그리드 컬럼 폭에 자연 스케일). 모든 자식 위치는 % 비율(디자인 명세 absolute 좌표를 카드 폭/높이 기준 %로 변환).
+- `.hunt-card-illust`: top 15.71% / bottom 29.05% / left 3.55% — 안쪽 짙은 청 패널.
+- `.hunt-card-name`: top 4.76% — 카드 이름 (12px, `#b4c5f2`).
+- `.hunt-card-body`: bottom 3.33% — 효과 본문 + 부가 정보 (10px, `#e3e9f9`).
+- `.hunt-card-stat`: 4 배지 stack — 21.28% × 11.9%, 라운드 `5px 5px 5px 0` (좌측 카드 외곽에 붙음). 색상 4종(`#773536`/`#2e4168`/`#365850`/`#454b56`).
+- `.hunt-card-corner-badge`: 우상단 잔여×N 또는 ∞ 미니 배지.
+- 상태 변형: `.is-exhausted`(opacity 0.45 + cursor not-allowed), `.is-selected`(외곽 강조).
+
+#### 2) `HuntCard` 컴포넌트 (`index.html` BattleStage 다음)
+
+```jsx
+function HuntCard({ card, exhausted, selected, onClick, cornerBadge, extraInfo })
+```
+- 4 스탯 배지: `att/acc/eva/def` 값이 0이면 숨김 (시각 노이즈 감소).
+- 일러스트: `CARD_ILLUSTRATIONS[card.id]`가 있으면 `<img>`, 없으면 "(준비 중)" placeholder.
+- 본문: `CARD_DESCRIPTIONS[card.id]` (현재 punch만 정의, 시트 컬럼 추가 후 일괄 매핑 예정) + `extraInfo`(내구도/분실/방어구 인스턴스).
+
+#### 3) 손패 그리드 → `HuntCard` 교체 (`HuntCombatModal` 손패 영역)
+
+기존 `<div>{card.name}<StatBadges/>...</div>` 인라인 → `<HuntCard card extraInfo cornerBadge>`. 동작 보존:
+- `exhausted = !canPlaceCard(card)` — 가방 자원 부족 시 비활성.
+- `cornerBadge` — `card.infinite`면 ∞, `slotLimit`면 `×{reqRemaining}`.
+- `extraInfo` — 무기 내구도(`내구 N/M`), 방어구별 잔여(`🛡️ 가죽 갑옷 2/3`), 분실 안내(`⚠ 50% 분실`).
+- 그리드 gap 6→8 (카드 비주얼 강화에 맞춰 여유).
+
+#### 4) 슬롯 그리드 → `HuntCard` 교체
+
+빈 슬롯은 `aspect-ratio 141/210` + dashed border + "비었음" 중앙. 카드 들어간 슬롯은 `<HuntCard selected={true}>` (외곽 강조). 클릭 시 손패로 복귀(phase==='select' 한정). 슬롯 내구도/방어구/분실은 `extraInfo`로 통일.
+
+### 폰트
+
+디자인 명세는 `Paperlogy` (Korean web font) 사용 — 현 프로젝트는 시스템 기본 폰트라 폰트 매칭은 후속 작업. CSS는 시스템 폰트 그대로 두고 향후 `@font-face` 도입 시 일괄 갱신.
+
+### 한계 / 후속
+
+- **카드 일러스트 10종 추가 자산 필요** — `throw_stone`, `stab_weapon`, `dodge`, `run_away`, `throw_spear`, `slingshot_shot`, `crouch`, `shield_block`, `chipped_stone_strike`, `chipped_stone_throw`. Figma에서 디자인 추가 후 같은 흐름(URL 추출 → curl → `CARD_ILLUSTRATIONS` 매핑 한 줄)으로 즉시 반영.
+- **카드 본문 텍스트 10종 추가** — 시트 `전투카드` 탭에 `description` 컬럼 추가하고 `make data` 후 `CARD_DESCRIPTIONS`를 동적 매핑(`card.description`)으로 전환 예정.
+- **Paperlogy 폰트** — 디자인 정확 매칭 위해 후속 도입 검토.
+- **시각 검증** — 본 세션은 코드/자산 단계 검증(CSS 5종 등록, HuntCard 함수 정의, 자산 5종 200 OK, React mount OK)까지. 실제 사냥 모달 진입 시각 확인은 요한 QA 이관(BattleStage Phase A와 동일 패턴, 자동화 신뢰성 한계).
+
+### 파일
+
+- `gameStyles.css`: `.hunt-card` + 자식 클래스 8종 + 상태 변형 신설.
+- `index.html`: `CARD_ILLUSTRATIONS`/`HUNT_CARD_ICONS`/`CARD_DESCRIPTIONS` 상수, `HuntCard` 컴포넌트(BattleStage 다음), HuntCombatModal 손패/슬롯 그리드 교체.
+- `data/Assets/cards/punch.png` 신규.
+- `data/Assets/cards/icons/{att,acc,eva,def}.png` 신규.
