@@ -4405,9 +4405,14 @@
                                 name = '잠금';
                                 emoji = '🔒';
                             }
-                            const dim = b.kind === 'locked' ? true : (stage === 0);
-                            const opacity = dim ? 0.3 : 1;
-                            const lvColor = b.kind === 'locked' ? '#666' : (stage > 0 ? '#d4b84a' : '#888');
+                            // D-177: 카드 전체 dim → 아이콘만 dim 으로 분리.
+                            //   미빌드 일반 빌딩(stage===0): 배경/이름/Lv 텍스트는 정상, 아이콘만 흐림 + 빨간 점은 그대로 밝게.
+                            //   locked: 카드 전체 흐림(잠금 의도 유지) — takeable=false라 빨간 점 없음.
+                            const isLocked = b.kind === 'locked';
+                            const isUnbuilt = !isLocked && stage === 0;
+                            const cardOpacity = isLocked ? 0.3 : 1;
+                            const iconOpacity = isUnbuilt ? 0.45 : 1;
+                            const lvColor = isLocked ? '#666' : (stage > 0 ? '#d4b84a' : '#888');
                             const takeable = isTakeable(b);
                             return (
                                 <button
@@ -4420,7 +4425,7 @@
                                         padding: '10px 4px',
                                         cursor: 'pointer',
                                         color: '#eee',
-                                        opacity,
+                                        opacity: cardOpacity,
                                         position: 'relative',
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -4430,10 +4435,10 @@
                                     }}
                                 >
                                     {takeable && <span className="building-takeable-dot" />}
-                                    <div style={{ fontSize: '30px', lineHeight: 1 }}>{emoji}</div>
+                                    <div style={{ fontSize: '30px', lineHeight: 1, opacity: iconOpacity }}>{emoji}</div>
                                     <div style={{ fontSize: '11px', fontWeight: 600 }}>{name}</div>
                                     <div style={{ fontSize: '10px', color: lvColor }}>
-                                        {b.kind === 'locked' ? '추후' : `Lv.${stage}/${maxStage}`}
+                                        {isLocked ? '추후' : `Lv.${stage}/${maxStage}`}
                                     </div>
                                 </button>
                             );
