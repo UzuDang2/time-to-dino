@@ -5695,7 +5695,148 @@
             );
         }
 
-        function HuntCombatModal({ prey, inventory, combatCards, onResolve, onCancel }) {
+        // D-176 Phase A (2026-04-30 요한 지시): 포켓몬식 대결 구도 패널.
+        //   상단 좌하에 내 캐릭터 뒷모습, 우상에 사냥감을 배치 — "마주 보는" 구도.
+        //   - 사냥감 imageUrl 비어있으면 큰 이모지(72px) fallback.
+        //   - 사냥감 위 HP 바(빨강) + 🗡️/🛡️/회피 배지.
+        //   - 내 캐릭터 위 health(빨강) + hunger(주황) 바.
+        //   - 잔여 행동(slotActions)을 사냥감 옆에 작은 dot으로 미리 노출 — 소비된 턴은 흐림.
+        //   - 향후 Phase B에서 카드 사용 시 트랜지션(흔들림/밀기)을 이 컴포넌트에 추가.
+        function BattleStage({
+            preyName, preyEmoji, preyImageUrl, preyMeat,
+            hpCurrent, hpMax, hpDisplayPct, preyAttack, preyDefense,
+            slotActions, computedEvades, slotsConsumed,
+            playerHealth, playerHunger, maxHealth, maxHunger,
+            playerImageUrl,
+        }) {
+            const healthPct = Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100));
+            const hungerPct = Math.max(0, Math.min(100, (playerHunger / Math.max(1, maxHunger)) * 100));
+            const actionTypeIcon = { peek: '👁️', attack: '🗡️', defend: '🛡️', evade: '💨' };
+            return (
+                <div style={{
+                    position: 'relative',
+                    height: '230px',
+                    marginBottom: '14px',
+                    background: 'linear-gradient(180deg, #1f2a3a 0%, #2a2a3e 60%, #3a2f2a 100%)',
+                    borderRadius: '10px',
+                    border: '1px solid #444',
+                    overflow: 'hidden'
+                }}>
+                    {/* 우상 — 사냥감 정보 박스 */}
+                    <div style={{
+                        position: 'absolute', top: 8, right: 8, maxWidth: '52%',
+                        background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
+                        borderRadius: '8px', boxSizing: 'border-box', zIndex: 2
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, gap: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>{preyName}</span>
+                            <span style={{ fontSize: 11, color: '#ffd58a' }}>🥩×{preyMeat}</span>
+                        </div>
+                        <div style={{ height: 8, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{
+                                width: `${hpDisplayPct}%`, height: '100%',
+                                background: 'linear-gradient(90deg, #b24656 0%, #e2718a 100%)',
+                                transition: 'width 0.3s ease'
+                            }} />
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10, color: '#ccc', flexWrap: 'wrap' }}>
+                            <span>HP {hpCurrent}/{hpMax}</span>
+                            {preyAttack > 0 && <span style={{ color: '#ff9999' }}>🗡️{preyAttack}</span>}
+                            {preyDefense > 0 && <span style={{ color: '#9bd6ff' }}>🛡️{preyDefense}</span>}
+                        </div>
+                        {/* 잔여 행동 dot — 패턴 미리 노출(기획서 명시) */}
+                        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                            {(slotActions || []).map((a, i) => {
+                                const t = (a && a.type) || 'peek';
+                                const dim = !!(slotsConsumed && slotsConsumed[i]);
+                                return (
+                                    <div key={i} title={`T${i+1} ${a && a.name || '?'}`} style={{
+                                        width: 22, height: 22, borderRadius: '50%',
+                                        background: dim ? '#222' : '#3a3a5e',
+                                        border: `1px solid ${dim ? '#333' : '#6a6aaa'}`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 11, opacity: dim ? 0.4 : 1
+                                    }}>
+                                        {actionTypeIcon[t] || '?'}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* 우중 — 사냥감 비주얼 (정보 박스 아래에 큰 이미지/이모지) */}
+                    <div style={{
+                        position: 'absolute', top: 14, right: 14,
+                        width: 120, height: 120, marginTop: 0,
+                        display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end',
+                        filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))',
+                        zIndex: 1, pointerEvents: 'none'
+                    }}>
+                        {preyImageUrl ? (
+                            <img src={preyImageUrl} alt={preyName}
+                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                        ) : (
+                            <span style={{ fontSize: 96, lineHeight: 1, marginTop: 24 }}>{preyEmoji}</span>
+                        )}
+                    </div>
+
+                    {/* 좌하 — 캐릭터 비주얼 (큰 이미지) */}
+                    <div style={{
+                        position: 'absolute', bottom: 0, left: 6,
+                        width: 130, height: 170,
+                        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                        filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))',
+                        zIndex: 1, pointerEvents: 'none'
+                    }}>
+                        {playerImageUrl ? (
+                            <img src={playerImageUrl} alt="나"
+                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                        ) : (
+                            <span style={{ fontSize: 96, lineHeight: 1 }}>🧍</span>
+                        )}
+                    </div>
+
+                    {/* 좌하 — 내 스탯 바 (캐릭터 우측 옆에 정렬) */}
+                    <div style={{
+                        position: 'absolute', bottom: 8, left: 142, right: 8,
+                        background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
+                        borderRadius: '8px', zIndex: 2
+                    }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>나</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                            <span style={{ fontSize: 10, width: 14 }}>❤️</span>
+                            <div style={{ flex: 1, height: 7, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
+                                <div style={{
+                                    width: `${healthPct}%`, height: '100%',
+                                    background: 'linear-gradient(90deg, #c73e4f 0%, #ff7a8a 100%)',
+                                    transition: 'width 0.3s ease'
+                                }} />
+                            </div>
+                            <span style={{ fontSize: 10, color: '#ccc', width: 30, textAlign: 'right' }}>{playerHealth}/{maxHealth}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 10, width: 14 }}>🍖</span>
+                            <div style={{ flex: 1, height: 7, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
+                                <div style={{
+                                    width: `${hungerPct}%`, height: '100%',
+                                    background: 'linear-gradient(90deg, #d2933a 0%, #f5c46d 100%)',
+                                    transition: 'width 0.3s ease'
+                                }} />
+                            </div>
+                            <span style={{ fontSize: 10, color: '#ccc', width: 30, textAlign: 'right' }}>{playerHunger}/{maxHunger}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // D-176 Phase A (2026-04-30 요한 지시): 전투 모달을 포켓몬식 대결 구도로 개편.
+        //   - playerHealth / playerHunger / maxHealth / maxHunger 추가 prop으로 받아 BattleStage에 표시.
+        //   - 사냥감은 emoji 또는 imageUrl(prey.imageUrl, 향후 시트 컬럼) 분기.
+        //   - playerImageUrl 기본값: data/Assets/character/Player.png (뒷모습 스케치).
+        function HuntCombatModal({ prey, inventory, combatCards, onResolve, onCancel,
+                                   playerHealth, playerHunger, maxHealth, maxHunger,
+                                   playerImageUrl }) {
             // D-75: Level 2 prey는 4턴. Level 1은 기존 3턴.
             const SLOT_COUNT = Number(prey && prey.level) === 2 ? 4 : 3;
             const [slots, setSlots] = useState(() => Array(SLOT_COUNT).fill(null));
@@ -5950,42 +6091,35 @@
                         color: '#eee',
                         padding: '20px',
                         borderRadius: '12px',
-                        width: '92%',
-                        maxWidth: '480px',
-                        maxHeight: '90vh',
+                        width: '94%',
+                        maxWidth: '520px',
+                        maxHeight: '92vh',
                         overflowY: 'auto'
                     }}>
-                        {/* 상단: prey 정보 */}
-                        {/* D-91 (2026-04-25 요한 지시): L2 사냥감 공격력/방어력 배지 노출.
-                            기존엔 evade 배지만 표시되어 prey가 어느 정도 위협인지 가늠 어려움.
-                            🗡️ attack / 🛡️ defense를 HP 옆에 함께 표시. 0이면 배지 생략. */}
-                        <div style={{ marginBottom: '14px' }}>
-                            <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '6px' }}>
-                                사냥: {preyName} 🥩×{prey.meat}
-                            </div>
-                            <div style={{
-                                height: '14px',
-                                background: '#333',
-                                borderRadius: '7px',
-                                overflow: 'hidden'
-                            }}>
-                                <div style={{
-                                    width: `${hpDisplayPct}%`,
-                                    height: '100%',
-                                    background: '#b24656',
-                                    transition: 'width 0.3s ease'
-                                }} />
-                            </div>
-                            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <span>HP {hpCurrent}/{prey.hp}</span>
-                                {Number(prey.attack) > 0 && (
-                                    <span style={{ color: '#ff9999' }}>🗡️ 공격력 {prey.attack}</span>
-                                )}
-                                {Number(prey.defense) > 0 && (
-                                    <span style={{ color: '#4db8ff' }}>🛡️ 방어력 {prey.defense}</span>
-                                )}
-                            </div>
-                        </div>
+                        {/* D-176 Phase A (2026-04-30 요한 지시): 포켓몬식 대결 구도 패널.
+                            - 좌하: 내 캐릭터(뒷모습 PNG) + health/hunger 바.
+                            - 우상: 사냥감(이모지 또는 imageUrl) + HP 바 + 공격/방어/회피 배지.
+                            - 사냥감 imageUrl이 비어있으면 큰 이모지로 fallback (시트에 imageUrl 컬럼 추가 시 즉시 PNG 교체).
+                            - 카드 손패·슬롯 영역은 그 아래 그대로 유지(Phase A 범위). */}
+                        <BattleStage
+                            preyName={preyName}
+                            preyEmoji={PREY_EMOJI[prey.preyType] || '🐾'}
+                            preyImageUrl={prey.imageUrl || null}
+                            preyMeat={prey.meat}
+                            hpCurrent={hpCurrent}
+                            hpMax={prey.hp}
+                            hpDisplayPct={hpDisplayPct}
+                            preyAttack={Number(prey.attack) || 0}
+                            preyDefense={Number(prey.defense) || 0}
+                            slotActions={slotActions}
+                            computedEvades={computedEvades}
+                            slotsConsumed={slots.map((_, i) => !!logs.find(l => l.turn === i + 1))}
+                            playerHealth={playerHealth}
+                            playerHunger={playerHunger}
+                            maxHealth={maxHealth}
+                            maxHunger={maxHunger}
+                            playerImageUrl={playerImageUrl}
+                        />
 
                         {/* D-48: 전투 결과 배너 — phase='done'에서만 노출. */}
                         {phase === 'done' && resultMessage && (
@@ -8750,6 +8884,11 @@
                             combatCards={(window.TTD_DATA && window.TTD_DATA.COMBAT_CARDS) || []}
                             onResolve={handleHuntResolve}
                             onCancel={() => setActiveHunt(null)}
+                            playerHealth={health}
+                            playerHunger={hunger}
+                            maxHealth={MAX_HEALTH}
+                            maxHunger={MAX_HUNGER}
+                            playerImageUrl="data/Assets/character/Player.png"
                         />
                     )}
 
