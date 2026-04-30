@@ -3165,3 +3165,51 @@ function HuntCard({ card, exhausted, selected, onClick, cornerBadge, extraInfo }
 - `index.html`: `CARD_ILLUSTRATIONS`/`HUNT_CARD_ICONS`/`CARD_DESCRIPTIONS` 상수, `HuntCard` 컴포넌트(BattleStage 다음), HuntCombatModal 손패/슬롯 그리드 교체.
 - `data/Assets/cards/punch.png` 신규.
 - `data/Assets/cards/icons/{att,acc,eva,def}.png` 신규.
+
+---
+
+## D-179 (2026-04-30 요한 지시): 사냥 손패 부채꼴 스택 + 무덤 + 스탯 좌상단 스택
+
+요한 원문(시안+결정): 카드를 부채꼴 스택으로 펼치고, 비활성 카드는 손패에서 빼서 무덤(별도 UI)으로. 스탯 아이콘은 카드가 가진 양수 스탯만 좌상단부터 차례로 쌓이게.
+
+### 결정 종합
+
+- **부채꼴 스택**: 가운데 0°, 양옆 ±step° 회전 + xOffset/yOffset(parabolic). 카드 수 동적(원래 흐름 유지 — 무기 소지 시 늘어남). N장 따라 step·xStep 자동 조정 — `step = min(8°, 40°/N)`, `xStep = min(28px, 220px/(N-1))`. 모바일 viewport 375px에서 N=5일 때 ±~56px 범위로 자연스러운 부채꼴.
+- **활성/비활성 분리**: `canPlaceCard(card)` 통과 = 활성(부채꼴), 실패 = 비활성(무덤). 슬롯 배치 변동에 따라 동적 재분류 (예: 슬롯에서 빼면 자원 회복되어 재활성).
+- **무덤 더미 UI**: 부채꼴 우측에 작은 카드 모양(56px) + 🪦 + 카운트 배지. 비활성 카드 0이면 흐림(`is-empty`). 클릭 시 모달 — 비활성 카드 그리드 노출, 클릭 동작 없음(읽기 전용).
+- **스탯 아이콘 좌상단 스택**: 기존 절대 top 4종(att 17.62%, acc 30.95%, eva 44.29%, def 57.62%) → flex column wrapper(`top: 17.62%` + `flex-direction: column gap: 4px`). 양수 스탯만 위에서부터 차례로 쌓임 — 빈 슬롯 자리 사라져 시각 정돈. 색상·아이콘은 변형별 클래스 그대로.
+
+### 구현
+
+#### 1) CSS (`gameStyles.css`)
+
+`.hunt-card-stats` — `position: absolute; top: 17.62%; left: 0; width: 21.28%; flex-direction: column; gap: 4px;`. 자식 `.hunt-card-stat`은 `position: relative; width: 100%; aspect-ratio: 30/25;`로 변경(기존 absolute 4 좌표 제거).
+
+`.hunt-hand-fan` — `position: relative; height: 175px; padding-top: 30px; padding-bottom: 6px;`. 자식 `.hunt-card-fan-slot`은 `position: absolute; bottom: 6px; width: 96px; transform-origin: 50% 110%;` (회전축 카드 하단 가운데 약간 아래). `:hover` 시 `translateY(-12px) rotate(0)` + zIndex 100 — 데스크톱 마우스 위에 올렸을 때 미리보기. 모바일 탭은 즉시 슬롯 배치라 hover 안 트리거.
+
+`.hunt-discard-pile` — 카드 비율 미니어처(56px 폭). 🪦 아이콘 + `.hunt-discard-pile-count` 우하단 + `.hunt-discard-pile-label` "무덤" 상단. `.is-empty`면 흐림 + cursor not-allowed.
+
+`.hunt-hand-row` — 부채꼴(좌, flex 1) + 무덤(우, 56px) 한 줄 정렬용 wrapper.
+
+#### 2) HuntCard JSX (`index.html`)
+
+기존 4 스탯 div → `<div className="hunt-card-stats">`로 감싸기. 양수 스탯이 0개면 wrapper 자체 미렌더(시각 정리). 카드 색·아이콘·숫자는 그대로.
+
+#### 3) HuntCombatModal 손패 영역
+
+기존 `hand.map()` → 카드별 메타 한 번에 계산(`cardMeta`) → 활성/비활성 분리. 부채꼴은 활성만 인덱스 기반 `transform: translate(${xPx}px, ${yPx}px) rotate(${rot}deg)` + `zIndex: N - |off|` (가운데 가장 위).
+
+`discardOpen` state 신규(useState false 초기) — 무덤 더미 클릭 시 토글. 모달 z-index 1700 (HuntCombatModal 1500보다 위).
+
+무덤 모달은 비활성 카드 3-grid + 닫기 버튼. 클릭 동작 없음(읽기 전용 — 게임플레이 영향 X).
+
+### 한계 / 후속
+
+- **시각 검증**: 본 세션은 코드 단계 검증(CSS 4종 등록, fan layout JSX, 무덤 state, React mount OK)까지. 실제 사냥 모달 진입 시각은 요한 QA 이관 — D-176 Phase A·D-178 동일 패턴.
+- **부채꼴 hover 효과**: 데스크톱 한정. 모바일은 1탭 즉시 슬롯 배치라 미리보기 불필요.
+- **무덤 카드 일러스트 없는 카드(준비 중)**: 무덤 그리드에서도 동일하게 빈 자리 노출 — 시각적 차이 X. D-178 일러스트 매핑 후 자동 반영.
+
+### 파일
+
+- `gameStyles.css`: `.hunt-card-stats` flex-column 도입, `.hunt-card-stat` position 변경, `.hunt-hand-fan`/`.hunt-card-fan-slot`/`.hunt-discard-pile`/`.hunt-hand-row` 신설.
+- `index.html`: HuntCard JSX 스탯 wrapper 도입, HuntCombatModal `discardOpen` state + 손패 영역 부채꼴+무덤 교체 + 무덤 모달.
