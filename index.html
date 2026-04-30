@@ -1655,12 +1655,15 @@
             };
 
             // D-47: 가방 크기는 inventory 인스턴스 기준. disabled 셀은 inventory.isDisabled로.
-            // D-174 v4 (요한): 보관함(storage)은 7열을 모바일에 fit시키기 위해 셀 40px로 축소.
-            // CELL/PAD는 absolute placement(아이템·미리보기·floating) 좌표 계산에 쓰이므로
-            // 그리드 셀 폭(40 or 45)과 동일하게 가야 어긋나지 않는다. 게임 인벤(5x5)은 CELL=47 유지.
+            // D-174 v4 (요한): 보관함(storage)은 7열 모바일 fit을 위해 셀 40px로 축소.
+            // D-174 v6 (요한): CELL은 "셀폭 + gap"(=다음 셀 시작 간격), PAD는 그리드 자체 padding.
+            //   - 게임 인벤: 셀 45 + gap 2 → CELL=47, grid padding 4 → PAD=4.
+            //   - 보관함:   셀 40 + gap 2 → CELL=42, grid padding 4 → PAD=4.
+            //   v4의 CELL=40/PAD=3은 셀폭만 본 오류 — 아이템·미리보기·floating 좌표가
+            //   하단으로 갈수록 누적 5~10px 어긋났음. 이번에 정정.
             const ROWS = inventory.rows, COLS = inventory.cols;
-            const CELL = mode === 'storage' ? 40 : 47;
-            const PAD = mode === 'storage' ? 3 : 4;
+            const CELL = mode === 'storage' ? 42 : 47;
+            const PAD = 4;
             const LONG_PRESS_MS = 400;
 
             // 프레스 상태를 ref로 관리해 재렌더 없이 타이머/가드 갱신.

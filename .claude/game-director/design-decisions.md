@@ -2888,3 +2888,37 @@ Level 2 사냥감 7종은 빈값 — 기존 evade_rate 그대로 사용.
 **검증** (Claude Preview, mobile 375x812, 보관함 9개 보유 상태): BASE 70칸은 또렷한 셀 외곽선 + 머지 마커 정상, 잠금 70칸은 빗금 패턴으로 분리감 명확. BASE/잠금 경계가 자연스레 나뉘어 별도 구분선 불필요.
 
 **파일**: `gameStyles.css` (D-174 v4 .is-storage grid gap 블록 바로 아래에 .is-storage disabled 한 블록 추가).
+
+---
+
+## D-174 v6 (2026-04-30 요한 지시): 보관함 아이템 좌표 정렬 정정 — CELL/PAD 의미 재정의
+
+**문제**: D-174 v4에서 보관함 셀을 45→40px로 줄이며 `InventoryModal`의 absolute placement 상수를 `CELL = mode==='storage' ? 40 : 47`, `PAD = mode==='storage' ? 3 : 4`로 분기했는데, 셀폭만 본 오류. 산딸기(1×1)가 (col=2, row=1) 셀에 있을 때 left=83px로 나오지만 실제 셀 left=88px → 5px 왼쪽으로 어긋남. 행이 늘수록 누적 오차 커지고, 다중 셀 아이템(2×1 등) width도 같이 어긋남. 사용자: "가방에 실재하는 슬롯과 아이템이 있는 곳의 위치가 좀 어긋나는거 같아".
+
+**원인 분석**: 
+- `.inventory-grid`는 CSS grid + `padding: 4px` + `gap: 2px`. 다음 셀 시작점 간격 = 셀폭 + gap.
+- 게임 인벤(셀 45 + gap 2 = 47)에서 `CELL=47, PAD=4`가 맞았던 이유: CELL = "셀폭 + gap" = next-cell-start delta, PAD = grid padding = 첫 셀 시작 offset.
+- v4에서 보관함을 분기할 때 이 의미 체계를 놓치고 셀폭(40)만 그대로 썼음. PAD도 3으로 임의 변경(이유 없음).
+
+**결정** (`index.html` L1661~1664):
+- `const CELL = mode === 'storage' ? 42 : 47;` (40+2 / 45+2).
+- `const PAD = 4;` (분기 불필요, grid CSS padding 4px로 통일).
+- 주석에 CELL/PAD 의미와 v4 오류 정정 사실 명시 — 다음 인스턴스가 또 같은 실수 안 하게.
+
+**검증** (Claude Preview, mobile 375x812):
+- 셀 col 0/1/2: getBoundingClientRect left = 4 / 46 / 88 (= 4 + n×42).
+- 아이템 (1×1) col 0/1: rect/style left = 4 / 46 — 셀과 1:1 일치.
+- 아이템 (2×1) col 2: rect/style left = 88, width = 80 (= 2×40, 셀 두 개 폭 정확).
+- 시각: 산딸기·돌맹이가 각 셀 안에 정확히 정렬 (이전엔 두 셀 경계에 걸쳐 보였음).
+
+**파일**: `index.html` (CELL/PAD 분기 한 줄 + 주석 갱신).
+
+### v6 보강 (같은 날 요한): 마지막 열 잘림 — modal-content 좌우 padding 압축
+
+**문제**: CELL/PAD 정정 후에도 사용자: "이 부분 약간 잘려보이는건 좀 해결 안 되겠니?". 7번째 열(마지막)이 slot-panel 우측 가장자리에 닿아 잘려 보임. 측정 결과 modal-content 기본 padding 20px가 좌우에도 적용 → content 폭 - 40, 그 안 slot-panel padding 8 → grid 가용 폭이 그리드 폭(300)과 거의 같아 좌우 여유 0~3px.
+
+**결정** (`gameStyles.css` `.modal-content.inventory-modal.is-storage`):
+- `padding: 20px 8px` — 위·아래는 헤더/하단 여백 위해 20 유지, 좌우는 8로 압축.
+- 결과: viewport 375 → modal 332, slot 316, grid 300, 좌우 여유 8px씩.
+
+**검증**: getComputedStyle 확인 후 좌우 `padding: 8px` 적용 + 마지막 열 셀·아이템 모두 시각적으로 안에 들어옴.

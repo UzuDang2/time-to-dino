@@ -479,13 +479,16 @@ button:disabled {
 
 /* D-174 v4: 보관함 모달은 stage 가용 영역을 꽉 채워야 슬롯 패널 자체 스크롤이 작동.
    modal-content가 콘텐츠 높이로 줄면 flex:1인 slot-panel이 0이 되어 스크롤 안 생김.
-   게임 인벤(5x5)은 회귀 영향 없도록 .is-storage 한정. */
+   게임 인벤(5x5)은 회귀 영향 없도록 .is-storage 한정.
+   D-174 v6: 좌우 padding 20→8로 좁힘 — 7열 그리드(300px)가 slot-panel 가장자리에
+   잘리던 문제 해결 + 좌우 여유 ~13px 확보. 위·아래 패딩(20)은 그대로. */
 .modal-content.inventory-modal.is-storage {
     flex: 1 1 auto;
     min-height: 0;
     align-self: stretch;
     /* stage가 콘텐츠 길이로 줄면 flex:1도 0이 되므로, stage 자체에 height 강제. */
     height: 100%;
+    padding: 20px 8px;
 }
 
 /* D-174 v4: 보관함 모달이 안에 있는 stage는 max-height가 아닌 height로 stretch — 슬롯
