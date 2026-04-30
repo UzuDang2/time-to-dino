@@ -2841,3 +2841,50 @@ Level 2 사냥감 7종은 빈값 — 기존 evade_rate 그대로 사용.
   - `visitedTiles.size = 23`, 고유 시퀀스 22 — 기존 랜덤(평균 7~10 고유)보다 현저히 많음.
 
 **파일**: `boss.js`(visitedTiles, setPosition, moveRandom/moveTowards), `index.html`(initializeGame setPosition, moveTo 일반 모드 moveRandom 위임).
+
+## D-174 v4. 보관함 모달 — 슬롯 그리드만 자체 스크롤 분리 + 가로 스크롤 차단 (2026-04-30, `index.html` / `gameStyles.css`)
+
+**결정**: 보관함(`mode==='storage'`) 모달을 [헤더 / 슬롯 패널(자체 스크롤) / helper] 세로 분할. 헤더와 helper text는 모달 안에서 항상 보이는 고정 영역, 슬롯 그리드만 한 겹 어두운 패널 안에서 자체 세로 스크롤. 모바일(375vw)에서 7열이 모달 컨텐츠 영역에 fit하도록 보관함 모드만 셀 크기 45→40px 축소. 게임 인벤(5x5)은 D-174 v3 sticky 헤더 + 모달 자체 스크롤 + 셀 45px 그대로 유지(회귀 X).
+
+**문제 세 가지** (요한이 모바일 프리뷰에서 지적):
+1. 보관함 7×45=335px 그리드가 모바일 모달 컨텐츠 영역(약 305px)을 초과 → 가로 스크롤.
+2. 셀 마커(`.inventory-merge-check` z=4 / `.inventory-quest-check` z=5)가 sticky 헤더(z=3) 위로 통과해 헤더와 겹쳐 보임.
+3. helper text가 모달 자체 스크롤 안에 들어 있어 그리드 스크롤 시 같이 움직임.
+
+**구현**:
+- `index.html::InventoryModal`:
+  - `modal-content`에 조건부 `is-storage` 클래스 — `mode==='storage'`일 때만 새 레이아웃 적용.
+  - 헤더 div를 `mode==='storage'`면 일반(static, marginBottom:10), 아니면 D-174 v3 sticky(top:-20, bg:#16213e, z:3) 양분.
+  - 새 wrapper `.inventory-slot-panel > .inventory-slot-panel-inner` 도입 — 그 안에 그리드/preview/items/floating/popover 전부 이동. 기존 grid wrapper(`width:fit-content; margin:0 auto`)는 inner가 계승.
+  - 그리드 인라인 셀 크기를 `mode==='storage' ? 40 : 45`로 분기. CELL/PAD 상수도 동일 분기(`storage`: CELL=40/PAD=3, 그 외: CELL=47/PAD=4) — absolute placement 좌표가 셀 폭과 어긋나지 않게.
+  - helper text와 craft-inline에 `flexShrink:0` 추가 (storage일 때 modal-content가 flex column이므로).
+- `gameStyles.css`:
+  - `.modal-content.inventory-modal`: 기본은 D-134 그대로 `overflow-y:auto`. `.is-storage` 한정 `overflow:hidden + display:flex column + flex:1 + height:100% + align-self:stretch`.
+  - `.inventory-stage:has(.inventory-modal.is-storage)`: max-height → height(같은 calc식) — 슬롯 패널 flex:1이 의미 있도록 stage stretch 강제. landscape 분기도 추가.
+  - `.inventory-slot-panel`: 기본은 `flex:1 + min-height:0 + overflow-y:auto + overflow-x:hidden`만. 배경/라운드/패딩/inset shadow는 `.is-storage` 한정 — 게임 인벤은 룩 회귀 없음.
+  - `.inventory-modal.is-storage .inventory-grid { gap: 2px }` (보관함 셀 간격 명시).
+
+**원칙**: 보관함만 분리 — 게임 인벤(5x5)은 D-174 v3(sticky 헤더 + 모달 자체 스크롤) 그대로. 회귀 표면적 최소화.
+
+**검증** (Claude Preview, mobile 375x812):
+- 보관함: modal `sw=cw=338`(가로 스크롤 X), slot `sh=862>ch=624`(자체 세로 스크롤 작동), slot bg #0b1d3a + padding 8 (한 겹 패널). 슬롯 패널 scrollTop을 max(238)까지 밀어도 헤더("📦 보관함"/"닫기")와 helper("짧게 탭...")는 그대로 고정. 마커가 헤더 영역에 침범하지 않음(헤더 bottom=66 < 첫 아이템 top=87).
+- 게임 인벤(탐험 → 가방 열기): mode=other, modal `display:block + overflow:auto`(D-134 그대로), 헤더 `position:sticky/top:-20/bg:#16213e/z:3` 유지, 셀 45×45 유지, slot bg transparent + padding 0 (룩 회귀 X), modal `sh=782>ch=731`(모달 자체 스크롤 작동).
+
+**파일**: `index.html`(InventoryModal: is-storage 클래스, 헤더 양분, slot-panel/inner 추가, CELL/PAD 분기, flexShrink), `gameStyles.css`(modal-content 두 모드 분기, slot-panel + inner, stage:has() height stretch, .is-storage grid gap).
+
+---
+
+## D-174 v5 (2026-04-30 요한 지시): 보관함 잠금 셀 마감 강화
+
+**문제**: D-174 v4 적용 후 보관함을 모바일 프리뷰에서 보니 텐트 단계 해제 영역(row 10~19, 70칸)이 시각적으로 흐릿. `.inventory-cell.disabled` 기본 스타일은 `background: transparent + border: 1px dashed rgba(255,255,255,0.05)`로 D-47 가방 모양 구석 4칸용 설계 — 70칸 잠금 영역에 그대로 적용되니 슬롯 패널 배경에 묻혀 의미 전달이 안 됨. 요한 피드백: "칸의 마감처리가 애매하네".
+
+**결정**: `.inventory-modal.is-storage .inventory-cell.disabled` 한정 빗금 패턴 + 진한 배경/보더로 마감 강화. "텐트 단계 해제 대기" 의미를 시각화. `.is-storage` 한정으로 게임 인벤(D-47 5x5 구석 4칸) 회귀 0.
+
+**구현** (`gameStyles.css` D-174 v4 셀 분기 블록 바로 아래):
+- `background-color: rgba(0,0,0,0.28)` — slot 패널 배경(#0b1d3a)보다 더 어두운 띠.
+- `border: 1px solid rgba(255,255,255,0.06)` — 셀 외곽선 명확화 (점선 → 실선).
+- `background-image: repeating-linear-gradient(45deg, transparent 0/5px, rgba(255,255,255,0.05) 5px/10px)` — 사선 빗금으로 "잠금" 시각 신호.
+
+**검증** (Claude Preview, mobile 375x812, 보관함 9개 보유 상태): BASE 70칸은 또렷한 셀 외곽선 + 머지 마커 정상, 잠금 70칸은 빗금 패턴으로 분리감 명확. BASE/잠금 경계가 자연스레 나뉘어 별도 구분선 불필요.
+
+**파일**: `gameStyles.css` (D-174 v4 .is-storage grid gap 블록 바로 아래에 .is-storage disabled 한 블록 추가).

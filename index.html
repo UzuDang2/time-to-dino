@@ -1655,7 +1655,12 @@
             };
 
             // D-47: 가방 크기는 inventory 인스턴스 기준. disabled 셀은 inventory.isDisabled로.
-            const ROWS = inventory.rows, COLS = inventory.cols, CELL = 47, PAD = 4;
+            // D-174 v4 (요한): 보관함(storage)은 7열을 모바일에 fit시키기 위해 셀 40px로 축소.
+            // CELL/PAD는 absolute placement(아이템·미리보기·floating) 좌표 계산에 쓰이므로
+            // 그리드 셀 폭(40 or 45)과 동일하게 가야 어긋나지 않는다. 게임 인벤(5x5)은 CELL=47 유지.
+            const ROWS = inventory.rows, COLS = inventory.cols;
+            const CELL = mode === 'storage' ? 40 : 47;
+            const PAD = mode === 'storage' ? 3 : 4;
             const LONG_PRESS_MS = 400;
 
             // 프레스 상태를 ref로 관리해 재렌더 없이 타이머/가드 갱신.
@@ -1922,11 +1927,21 @@
                 //   가방 일부를 가렸음. 모달을 z=1500으로 띄워 HUD 위에 둔다.
                 <div className="modal" style={{ zIndex: 1500 }}>
                     <div className="inventory-stage">
-                    <div className="modal-content inventory-modal">
-                        {/* D-174 v3 (요한 지시): 헤더 sticky — 모달 자체 스크롤 시에도 제목/닫기 고정.
-                            top:-20px + 음수 margin으로 .modal-content padding(20px) 영역까지 배경 덮음.
-                            background는 .modal-content 색(#16213e)과 일치 + zIndex로 그리드 위. */}
-                        <div style={{
+                    <div className={`modal-content inventory-modal${mode === 'storage' ? ' is-storage' : ''}`}>
+                        {/* D-174 v4 (요한 지시):
+                            보관함(mode==='storage'): 모달을 [헤더 / 슬롯 패널(자체 스크롤) / helper] 세로
+                              분할 — 헤더는 자연 고정(sticky 불필요), 슬롯 그리드만 안에서 스크롤. 마커가
+                              헤더 영역에 침범하던 z-index 통과 문제도 같이 해소. 가로 스크롤 차단은 셀 크기
+                              축소(45→40)로 처리.
+                            게임 인벤(그 외 모드): D-174 v3 sticky 헤더 유지 — 모달 자체 스크롤이라 헤더가
+                              스크롤로 사라지지 않게. */}
+                        <div style={mode === 'storage' ? {
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '10px',
+                            flexShrink: 0
+                        } : {
                             display: 'flex',
                             justifyContent: 'space-between',
                             position: 'sticky',
@@ -1940,11 +1955,15 @@
                             <h3 style={{ margin: 0 }}>{title || '가방'}</h3>
                             <button onClick={handleClose}>닫기</button>
                         </div>
-                                <div style={{ position: 'relative', width: 'fit-content', margin: '0 auto' }}>
-                            {/* D-145: 그리드 cols/rows 인라인 동적 — 보관함(12x8) 등 가변 사이즈 지원. */}
+                        {/* D-174 v4: 슬롯 그리드만 자체 스크롤 영역 — 한 겹 배경(.inventory-slot-panel). */}
+                        <div className="inventory-slot-panel">
+                                <div className="inventory-slot-panel-inner">
+                            {/* D-145: 그리드 cols/rows 인라인 동적 — 보관함(7x20) 등 가변 사이즈 지원.
+                                D-174 v4: 보관함(mode==='storage')은 40px, 그 외는 45px — 모바일 375vw에서
+                                7열이 modal 컨텐츠 영역에 fit (가로 스크롤 차단). */}
                             <div className="inventory-grid" style={{
-                                gridTemplateColumns: `repeat(${COLS}, 45px)`,
-                                gridTemplateRows: `repeat(${ROWS}, 45px)`
+                                gridTemplateColumns: `repeat(${COLS}, ${mode === 'storage' ? 40 : 45}px)`,
+                                gridTemplateRows: `repeat(${ROWS}, ${mode === 'storage' ? 40 : 45}px)`
                             }}>
                                 {Array(ROWS).fill(null).map((_, row) =>
                                     Array(COLS).fill(null).map((_, col) => {
@@ -2062,10 +2081,11 @@
                                     />
                                 </div>
                             )}
+                                </div>
                         </div>
 
                         {selectedItem ? (
-                            <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
                                 <button onClick={handleRotate}>회전</button>
                                 <button
                                     onClick={handleConfirm}
@@ -2092,7 +2112,7 @@
                                 </button>
                             </div>
                         ) : (
-                            <div style={{ marginTop: '10px', fontSize: '11px', color: '#aaa' }}>
+                            <div style={{ marginTop: '10px', fontSize: '11px', color: '#aaa', flexShrink: 0 }}>
                                 짧게 탭 = 선택모드 · 길게 누르면 = 아이템정보
                             </div>
                         )}
@@ -2101,9 +2121,11 @@
                             D-84b (2026-04-24 요한 지시): portrait에서는 이 인라인 인스턴스가,
                             landscape에서는 아래 .inventory-craft-side 인스턴스가 노출된다 (CSS로 택일).
                             두 인스턴스는 동일 props이며 CraftPanel은 내부 state가 없어 중복 렌더 안전.
-                            D-147: mode='storage'면 인라인/사이드 둘 다 미렌더 — 보관함은 floating popover. */}
+                            D-147: mode='storage'면 인라인/사이드 둘 다 미렌더 — 보관함은 floating popover.
+                            D-174 v4: modal-content가 flex column + overflow:hidden이므로 craft-inline은
+                            flexShrink:0으로 줄어들지 않게 — 슬롯 패널만 flex:1로 가용 영역을 흡수. */}
                         {mode !== 'storage' && (
-                            <div className="inventory-craft-inline">
+                            <div className="inventory-craft-inline" style={{ flexShrink: 0 }}>
                                 <CraftPanel
                                     recipes={displayedRecipes}
                                     inventory={inventory}

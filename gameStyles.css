@@ -413,13 +413,90 @@ button:disabled {
     max-width: min(92vw, 760px);
 }
 
-/* D-134 (2026-04-27 요한 지시 — D-105 SUPERSEDED): 가방 모달 자체 스크롤 허용.
-   가방 그리드 + 안내 + 합성 패널 합산이 stage max-height 초과 시 모달 자체가
-   세로 스크롤. 합성 패널 자체도 maxHeight + overflow-y:auto 유지 — 카드 많을 때
-   panel 내부 + 모달 자체 둘 다 스크롤 가능 (이중 스크롤 허용). */
+/* D-174 v4 (요한 지시 — D-134는 게임 인벤에서만 유지, 보관함은 SUPERSEDED):
+   - 게임 인벤(5x5): 기존처럼 모달 자체 스크롤(overflow-y:auto).
+   - 보관함(.is-storage): 모달 자체 스크롤 X. 헤더 + 슬롯 패널 + helper 세 영역으로
+     flex column 분할, 슬롯 그리드만 안에서 자체 스크롤. 헤더 sticky 불필요.
+   slot-panel은 두 모드 모두에서 렌더되지만, .is-storage가 아니면 background/padding
+   제거 + flex:1만 유효. */
 .modal-content.inventory-modal {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+}
+.modal-content.inventory-modal.is-storage {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* D-174 v4: 슬롯 그리드 전용 스크롤 패널.
+   - flex:1로 모달 안의 가용 세로 영역 차지, overflow-y:auto로 자체 스크롤.
+   - overflow-x:hidden — 가로 스크롤은 절대 발생 X (셀 크기로 fit 보장).
+   - 한 겹 배경/라운드/섀도는 보관함(.is-storage) 한정 — 게임 인벤(5x5)은
+     기존 룩(투명, 모달 배경 그대로) 유지로 회귀 영향 최소화. */
+.inventory-slot-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+.inventory-modal.is-storage .inventory-slot-panel {
+    background: #0b1d3a;
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+/* D-174 v4: 슬롯 패널 내부의 그리드 wrapper — width:fit-content + 가로 중앙. */
+.inventory-slot-panel-inner {
+    position: relative;
+    width: fit-content;
+    margin: 0 auto;
+}
+
+/* D-174 v4: 보관함 모드에서 그리드 셀을 40px로 축소 — 7열이 모바일(375vw)
+   modal 컨텐츠 영역에 fit. 게임 인벤(5x5)은 영향 없음 (인라인 스타일이 상위). */
+.inventory-modal.is-storage .inventory-grid {
+    gap: 2px;
+}
+
+/* D-174 v5: 보관함 잠금 셀(텐트 단계별 해제 영역) 마감 강화.
+   .inventory-cell.disabled 기본 스타일은 D-47 가방 모양 구석 4칸용 — 투명 + 옅은 점선이라
+   보관함의 큰 잠금 영역(row 10~19, 최대 70칸)에 적용되면 마감이 흐릿. 빗금 패턴 +
+   진한 보더로 "텐트 단계 해제 대기" 의미를 시각화. .is-storage 한정으로 게임 인벤 회귀 X. */
+.inventory-modal.is-storage .inventory-cell.disabled {
+    background-color: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent 0,
+        transparent 5px,
+        rgba(255, 255, 255, 0.05) 5px,
+        rgba(255, 255, 255, 0.05) 10px
+    );
+}
+
+/* D-174 v4: 보관함 모달은 stage 가용 영역을 꽉 채워야 슬롯 패널 자체 스크롤이 작동.
+   modal-content가 콘텐츠 높이로 줄면 flex:1인 slot-panel이 0이 되어 스크롤 안 생김.
+   게임 인벤(5x5)은 회귀 영향 없도록 .is-storage 한정. */
+.modal-content.inventory-modal.is-storage {
+    flex: 1 1 auto;
+    min-height: 0;
+    align-self: stretch;
+    /* stage가 콘텐츠 길이로 줄면 flex:1도 0이 되므로, stage 자체에 height 강제. */
+    height: 100%;
+}
+
+/* D-174 v4: 보관함 모달이 안에 있는 stage는 max-height가 아닌 height로 stretch — 슬롯
+   패널이 자체 스크롤을 갖는 안정 영역이 되도록. (게임 인벤은 .is-storage 없으므로 영향 X) */
+.inventory-stage:has(.inventory-modal.is-storage) {
+    height: calc(100dvh - 36px - env(safe-area-inset-bottom, 0px));
+}
+@media (orientation: landscape) and (min-width: 720px) {
+    .inventory-stage:has(.inventory-modal.is-storage) {
+        height: calc(100dvh - 12px - env(safe-area-inset-bottom, 0px));
+    }
 }
 
 /* D-115 (요한 지시): 가방 모달 상단 고정 정렬.
