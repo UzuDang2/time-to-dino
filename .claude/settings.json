@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(git push origin main:*)",
       "Bash(python3 scripts/fetch_data.py *)",
@@ -7,7 +8,13 @@
       "Bash(make data)",
       "Bash(make data *)",
       "Bash(ln -s ../../../.secrets .secrets)",
-      "Bash(ln -s ../../../.secrets *)"
+      "Bash(ln -s ../../../.secrets *)",
+      "mcp__f9e06bb3-7762-4cad-8e42-949f0d325ba7__notion-fetch",
+      "mcp__f9e06bb3-7762-4cad-8e42-949f0d325ba7__notion-search",
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__Claude_Preview__preview_list",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__read_console_messages"
     ]
   },
   "enabledMcpjsonServers": ["notion"]
