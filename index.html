@@ -5829,7 +5829,7 @@
             return (
                 <div style={{
                     position: 'relative',
-                    height: '320px',  // D-180: 230→320, 슬롯 영역 통합 + "나" 라벨 자리.
+                    height: '380px',  // D-182: 320→380. 사냥감 슬롯이 캐릭터 머리·어깨 가리는 문제 해결 — 캐릭터 영역과 사냥감 슬롯 영역 분리.
                     marginBottom: '14px',
                     background: 'linear-gradient(180deg, #1f2a3a 0%, #2a2a3e 60%, #3a2f2a 100%)',
                     borderRadius: '10px',
@@ -5905,14 +5905,13 @@
                         </div>
                     </div>
 
-                    {/* 좌하 — 캐릭터 비주얼 (D-180: 130x170 → 110x140, bottom 0→28 — 슬롯·"나" 라벨 자리 마련).
-                        Phase B 시네마틱: 외곽 wrapper에 attack-push, 내곽 wrapper에 player-hit. */}
+                    {/* 좌하 — 캐릭터 비주얼 (D-182: 110x140 → 130x170 사이즈 회복 + bottom 50으로 위치 — 사냥감 슬롯 영역(130~190)과 캐릭터(top 160~330) 안 겹침). */}
                     <div
                         key={`player-push-${eventId || 'idle'}`}
                         className={playerAttackClass}
                         style={{
-                            position: 'absolute', bottom: 28, left: 6,
-                            width: 110, height: 140,
+                            position: 'absolute', bottom: 50, left: 6,
+                            width: 130, height: 170,
                             zIndex: 1, pointerEvents: 'none'
                         }}>
                         <div
@@ -5935,9 +5934,9 @@
                         </div>
                     </div>
 
-                    {/* D-180: 캐릭터 아래 "나" 라벨 (시안 따라). 내 스탯 바(❤️🍖)는 BattleStage 외부 모달 헤더로 이동. */}
+                    {/* D-180/D-182: 캐릭터 아래 "나" 라벨. */}
                     <div style={{
-                        position: 'absolute', bottom: 6, left: 6, width: 110,
+                        position: 'absolute', bottom: 14, left: 6, width: 130,
                         textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#ddd',
                         background: 'rgba(0,0,0,0.4)', borderRadius: 4, padding: '2px 0',
                         zIndex: 2
@@ -6361,9 +6360,9 @@
                             playerImageUrl={playerImageUrl}
                             activeEvent={activeEvent}
                         >
-                            {/* 사냥감 슬롯 — 정보·비주얼 아래 가로 4칸. 행동 패턴 미리 노출. */}
+                            {/* 사냥감 슬롯 — 정보·비주얼 아래 가로. D-182: top 142→130, 캐릭터(top 160~)와 안 겹치게. */}
                             <div style={{
-                                position: 'absolute', top: 142, left: 8, right: 8,
+                                position: 'absolute', top: 130, left: 8, right: 8,
                                 display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 4,
                                 zIndex: 2
                             }}>
@@ -6401,10 +6400,10 @@
                                 })}
                             </div>
 
-                            {/* 내 슬롯 — 캐릭터(좌하 110x140) 우측 옆 가로 4칸.
-                                좁은 viewport 대응: 슬롯 한 칸 ~50px 간단 박스, 카드 들어가면 이름·att 1줄. */}
+                            {/* 내 슬롯 — 캐릭터(좌하 130x170, bottom 50~220) 우측 옆 가로.
+                                D-182: bottom 32→100 (캐릭터 가운데 라인 정렬), left 124→144 (캐릭터 우측 끝 + 8 여유). */}
                             <div style={{
-                                position: 'absolute', bottom: 32, left: 124, right: 8,
+                                position: 'absolute', bottom: 100, left: 144, right: 8,
                                 display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 4,
                                 zIndex: 2
                             }}>
@@ -6693,8 +6692,9 @@
                                             사용할 수 있는 전투 카드가 없다.
                                         </div>
                                     ) : (
-                                        <div className="hunt-hand-row">
-                                            <div className="hunt-hand-fan" style={{ flex: 1, maxWidth: 360 }}>
+                                        <>
+                                            {/* D-182: 부채꼴 가운데 정렬 — 무덤은 우측 absolute로 분리해 부채꼴 무게에 영향 X. */}
+                                            <div className="hunt-hand-fan" style={{ width: '100%', maxWidth: 360 }}>
                                                 {active.map((m, i) => {
                                                     const off = i - (N - 1) / 2;
                                                     const rot = off * step;
@@ -6708,27 +6708,30 @@
                                                                 transform: `translate(${xPx}px, ${yPx}px) rotate(${rot}deg)`,
                                                                 zIndex: N - Math.abs(off),
                                                             }}>
-                                                            <HuntCard
-                                                                card={m.card}
-                                                                onClick={() => handleHandClick(m.card)}
-                                                                cornerBadge={m.cornerBadge}
-                                                                extraInfo={m.extraInfo}
-                                                            />
+                                                            <div className="hunt-card-fan-inner">
+                                                                <HuntCard
+                                                                    card={m.card}
+                                                                    onClick={() => handleHandClick(m.card)}
+                                                                    cornerBadge={m.cornerBadge}
+                                                                    extraInfo={m.extraInfo}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     );
                                                 })}
                                             </div>
+                                            {/* 무덤 — 우측 하단 작은 원형 버튼. 부채꼴과 분리. */}
                                             <div
                                                 className={`hunt-discard-pile ${discarded.length === 0 ? 'is-empty' : ''}`}
                                                 onClick={() => discarded.length > 0 && setDiscardOpen(true)}
-                                                title="비활성 카드">
-                                                <div className="hunt-discard-pile-label">무덤</div>
+                                                title="비활성 카드"
+                                                style={{ position: 'absolute', right: 12, bottom: 12 }}>
                                                 <div className="hunt-discard-pile-icon">🪦</div>
                                                 {discarded.length > 0 && (
                                                     <div className="hunt-discard-pile-count">{discarded.length}</div>
                                                 )}
                                             </div>
-                                        </div>
+                                        </>
                                     )}
                                 </div>
                             );

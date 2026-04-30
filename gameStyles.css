@@ -880,58 +880,59 @@ button:disabled {
     width: 96px;
     transform-origin: 50% 110%;
 }
-/* D-181: hover 시 transform 변경 X — 위치 그대로, z-index만 최상으로 + glow 테두리.
-   덜덜거림(D-180) 원인은 transform 변경이었음. position/transform 손대지 않으니 안전. */
+/* D-182: hover 시 외곽 wrapper transform(회전·xOffset·yOffset) 보존 + 내곽 wrapper translateY로 위로.
+   inner는 hover 외 transform 없어 덜덜거림 없이 추가됨. z-index 200으로 다른 카드 위에. */
+.hunt-card-fan-inner {
+    transition: transform 0.15s ease-out;
+}
 .hunt-card-fan-slot:hover { z-index: 200 !important; }
+.hunt-card-fan-slot:hover .hunt-card-fan-inner {
+    transform: translateY(-30px);
+}
 .hunt-card-fan-slot:hover .hunt-card {
     box-shadow: 0 0 0 2px #d4b84a, 0 0 18px rgba(212, 184, 74, 0.7);
     border-radius: 10px;
 }
 
-/* 무덤(discard pile) — 비활성 카드들 모아둔 더미. 부채꼴 우측 외곽에 카드 모양 미니어처. */
+/* D-182: 무덤 — 카드 미니어처 → 작은 원형 버튼. 우측 absolute로 부채꼴과 분리해 부채꼴 가운데 정렬 살림.
+   라벨 "무덤" 제거(아이콘 🪦 자체로 의미 충분). */
 .hunt-discard-pile {
     position: relative;
-    width: 56px;
-    aspect-ratio: 141 / 210;
-    background: linear-gradient(180deg, #1a1a2e 0%, #0d0d18 100%);
-    border: 1px solid #444;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid #555;
+    border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    margin-left: 8px;
     user-select: none;
 }
 .hunt-discard-pile.is-empty { opacity: 0.35; cursor: not-allowed; }
-.hunt-discard-pile-icon { font-size: 22px; line-height: 1; }
+.hunt-discard-pile-icon { font-size: 18px; line-height: 1; }
 .hunt-discard-pile-count {
     position: absolute;
-    bottom: 4px;
-    right: 4px;
-    background: rgba(0, 0, 0, 0.7);
-    color: #ddd;
+    top: -4px;
+    right: -4px;
+    min-width: 16px;
+    background: #b24656;
+    color: #fff;
     font-size: 10px;
     font-weight: 700;
-    padding: 1px 5px;
-    border-radius: 4px;
-}
-.hunt-discard-pile-label {
-    position: absolute;
-    top: 4px;
-    left: 0;
-    right: 0;
+    padding: 1px 4px;
+    border-radius: 8px;
+    border: 1px solid #1a1a2e;
     text-align: center;
-    font-size: 9px;
-    color: #888;
 }
-/* 무덤 + 부채꼴을 한 줄에 두기 위한 wrap */
+/* 부채꼴은 가운데 정렬 — 무덤은 별도 absolute right(JSX inline)로 부채꼴에 영향 X. */
 .hunt-hand-row {
+    position: relative;
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    gap: 0;
+    width: 100%;
 }
 
 /* D-181: 손패 viewport 하단 fixed — 풀스크린 사냥 화면 하단에 항상 고정.
@@ -948,6 +949,8 @@ button:disabled {
     z-index: 10;
     padding: 0 8px 8px;
     pointer-events: none;
+    /* D-182: 무덤 absolute right 기준점. */
+    height: 175px;
 }
 .hunt-hand-fixed-bottom > * { pointer-events: auto; }
 .hunt-hand-fixed-bottom .hunt-hand-fan {
