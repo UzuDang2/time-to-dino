@@ -5793,6 +5793,7 @@
             playerHealth, playerHunger, maxHealth, maxHunger,
             playerImageUrl,
             activeEvent,
+            children,  // D-180: 슬롯 overlay 등 외부 주입 — HuntCombatModal에서 사냥감 슬롯/내 슬롯을 absolute로 띄움.
         }) {
             const healthPct = Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100));
             const hungerPct = Math.max(0, Math.min(100, (playerHunger / Math.max(1, maxHunger)) * 100));
@@ -5828,16 +5829,16 @@
             return (
                 <div style={{
                     position: 'relative',
-                    height: '230px',
+                    height: '320px',  // D-180: 230→320, 슬롯 영역 통합 + "나" 라벨 자리.
                     marginBottom: '14px',
                     background: 'linear-gradient(180deg, #1f2a3a 0%, #2a2a3e 60%, #3a2f2a 100%)',
                     borderRadius: '10px',
                     border: '1px solid #444',
                     overflow: 'hidden'
                 }}>
-                    {/* 우상 — 사냥감 정보 박스 */}
+                    {/* 좌상 — 사냥감 정보 박스 (D-180: 우상→좌상). */}
                     <div style={{
-                        position: 'absolute', top: 8, right: 8, maxWidth: '52%',
+                        position: 'absolute', top: 8, left: 8, maxWidth: '52%',
                         background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
                         borderRadius: '8px', boxSizing: 'border-box', zIndex: 2
                     }}>
@@ -5904,14 +5905,14 @@
                         </div>
                     </div>
 
-                    {/* 좌하 — 캐릭터 비주얼 (큰 이미지)
-                        Phase B: 외곽 wrapper에 attack-push (공격 시), 내곽 wrapper에 player-hit (피격 시) — 두 layer 분리해 동시 발동 가능. */}
+                    {/* 좌하 — 캐릭터 비주얼 (D-180: 130x170 → 110x140, bottom 0→28 — 슬롯·"나" 라벨 자리 마련).
+                        Phase B 시네마틱: 외곽 wrapper에 attack-push, 내곽 wrapper에 player-hit. */}
                     <div
                         key={`player-push-${eventId || 'idle'}`}
                         className={playerAttackClass}
                         style={{
-                            position: 'absolute', bottom: 0, left: 6,
-                            width: 130, height: 170,
+                            position: 'absolute', bottom: 28, left: 6,
+                            width: 110, height: 140,
                             zIndex: 1, pointerEvents: 'none'
                         }}>
                         <div
@@ -5926,45 +5927,24 @@
                                 <img src={playerImageUrl} alt="나"
                                     style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                             ) : (
-                                <span style={{ fontSize: 96, lineHeight: 1 }}>🧍</span>
+                                <span style={{ fontSize: 84, lineHeight: 1 }}>🧍</span>
                             )}
-                            {/* Phase B: 캐릭터 위 floating 데미지 */}
                             {floats.filter(f => f.side === 'player').map(f => (
                                 <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
                             ))}
                         </div>
                     </div>
 
-                    {/* 좌하 — 내 스탯 바 (캐릭터 우측 옆에 정렬) */}
+                    {/* D-180: 캐릭터 아래 "나" 라벨 (시안 따라). 내 스탯 바(❤️🍖)는 BattleStage 외부 모달 헤더로 이동. */}
                     <div style={{
-                        position: 'absolute', bottom: 8, left: 142, right: 8,
-                        background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
-                        borderRadius: '8px', zIndex: 2
-                    }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>나</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                            <span style={{ fontSize: 10, width: 14 }}>❤️</span>
-                            <div style={{ flex: 1, height: 7, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
-                                <div style={{
-                                    width: `${healthPct}%`, height: '100%',
-                                    background: 'linear-gradient(90deg, #c73e4f 0%, #ff7a8a 100%)',
-                                    transition: 'width 0.3s ease'
-                                }} />
-                            </div>
-                            <span style={{ fontSize: 10, color: '#ccc', width: 30, textAlign: 'right' }}>{playerHealth}/{maxHealth}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ fontSize: 10, width: 14 }}>🍖</span>
-                            <div style={{ flex: 1, height: 7, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
-                                <div style={{
-                                    width: `${hungerPct}%`, height: '100%',
-                                    background: 'linear-gradient(90deg, #d2933a 0%, #f5c46d 100%)',
-                                    transition: 'width 0.3s ease'
-                                }} />
-                            </div>
-                            <span style={{ fontSize: 10, color: '#ccc', width: 30, textAlign: 'right' }}>{playerHunger}/{maxHunger}</span>
-                        </div>
-                    </div>
+                        position: 'absolute', bottom: 6, left: 6, width: 110,
+                        textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#ddd',
+                        background: 'rgba(0,0,0,0.4)', borderRadius: 4, padding: '2px 0',
+                        zIndex: 2
+                    }}>나</div>
+
+                    {/* D-180: 슬롯 overlay 등 외부 주입 영역 — HuntCombatModal에서 absolute로 사냥감/내 슬롯 띄움. */}
+                    {children}
                 </div>
             );
         }
@@ -6342,11 +6322,22 @@
                         maxHeight: '92vh',
                         overflowY: 'auto'
                     }}>
-                        {/* D-176 Phase A (2026-04-30 요한 지시): 포켓몬식 대결 구도 패널.
-                            - 좌하: 내 캐릭터(뒷모습 PNG) + health/hunger 바.
-                            - 우상: 사냥감(이모지 또는 imageUrl) + HP 바 + 공격/방어/회피 배지.
-                            - 사냥감 imageUrl이 비어있으면 큰 이모지로 fallback (시트에 imageUrl 컬럼 추가 시 즉시 PNG 교체).
-                            - 카드 손패·슬롯 영역은 그 아래 그대로 유지(Phase A 범위). */}
+                        {/* D-180: 내 스탯 한 줄 — BattleStage 외부 헤더(시안엔 단순 "나" 라벨만 있어 BattleStage 안 통합 X). */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12,
+                            padding: '4px 8px', marginBottom: 8,
+                            fontSize: 11, color: '#ccc',
+                            background: 'rgba(0,0,0,0.25)', borderRadius: 6
+                        }}>
+                            <span style={{ color: '#888' }}>나</span>
+                            <span><span style={{ color: '#ff7a8a' }}>❤️</span> {playerHealth}/{maxHealth}</span>
+                            <span><span style={{ color: '#f5c46d' }}>🍖</span> {playerHunger}/{maxHunger}</span>
+                        </div>
+
+                        {/* D-180 (요한 시안): BattleStage 안에 사냥감 슬롯/내 슬롯 통합.
+                            - 사냥감 슬롯: 사냥감 정보·비주얼 아래(중앙 영역) 가로 4칸.
+                            - 내 슬롯: 캐릭터(좌하) 우측 옆 가로 4칸.
+                            - 슬롯 카드 상세 정보(내구·방어구·분실)는 시각 단순화 위해 슬롯 안에선 단축, 손패에서 확인. */}
                         <BattleStage
                             preyName={preyName}
                             preyEmoji={PREY_EMOJI[prey.preyType] || '🐾'}
@@ -6366,7 +6357,108 @@
                             maxHunger={maxHunger}
                             playerImageUrl={playerImageUrl}
                             activeEvent={activeEvent}
-                        />
+                        >
+                            {/* 사냥감 슬롯 — 정보·비주얼 아래 가로 4칸. 행동 패턴 미리 노출. */}
+                            <div style={{
+                                position: 'absolute', top: 142, left: 8, right: 8,
+                                display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 4,
+                                zIndex: 2
+                            }}>
+                                {Array.from({ length: SLOT_COUNT }, (_, i) => {
+                                    const ev = computedEvades[i] || { base: 0, final: 0 };
+                                    const consumed = !!logs.find(l => l.turn === i + 1);
+                                    const actionDef = slotActions[i] || { name: '?', type: 'peek', damage: 0, accuracy: 0, defense: 0 };
+                                    const type = actionDef.type;
+                                    const preyAtkFallback = Number(prey.attack) || 0;
+                                    const preyDefFallback = Number(prey.defense) || 0;
+                                    const dmg = (actionDef.damage > 0) ? actionDef.damage : preyAtkFallback;
+                                    const def = (actionDef.defense > 0) ? actionDef.defense : preyDefFallback;
+                                    const acc = Number(actionDef.accuracy) || 0;
+                                    return (
+                                        <div key={i} style={{
+                                            padding: '4px 2px',
+                                            background: '#2a2a3e',
+                                            border: '1px solid #444',
+                                            borderRadius: 4,
+                                            fontSize: 10,
+                                            textAlign: 'center',
+                                            opacity: consumed ? 0.4 : 1,
+                                            lineHeight: 1.2
+                                        }}>
+                                            <div style={{ color: '#888', fontSize: 9 }}>T{i + 1}</div>
+                                            <div style={{ color: '#ddd', fontWeight: 600, fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{actionDef.name}</div>
+                                            <div style={{ marginTop: 1, fontSize: 9 }}>
+                                                {type === 'attack' && dmg > 0 && <span style={{ color: '#ff9999' }}>🗡️{dmg}</span>}
+                                                {type === 'attack' && acc > 0 && <span style={{ color: '#8bd17c', marginLeft: 2 }}>🏹{acc}</span>}
+                                                {type === 'defend' && def > 0 && <span style={{ color: '#4db8ff' }}>🛡️{def}</span>}
+                                                {type === 'evade' && <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* 내 슬롯 — 캐릭터(좌하 110x140) 우측 옆 가로 4칸.
+                                좁은 viewport 대응: 슬롯 한 칸 ~50px 간단 박스, 카드 들어가면 이름·att 1줄. */}
+                            <div style={{
+                                position: 'absolute', bottom: 32, left: 124, right: 8,
+                                display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 4,
+                                zIndex: 2
+                            }}>
+                                {Array.from({ length: SLOT_COUNT }, (_, i) => {
+                                    const card = slots[i];
+                                    if (!card) {
+                                        return (
+                                            <div key={i}
+                                                onClick={() => phase === 'select' && handleSlotClick(i)}
+                                                style={{
+                                                    aspectRatio: '1 / 1.2',
+                                                    background: 'rgba(22, 33, 62, 0.6)',
+                                                    border: '1px dashed #555',
+                                                    borderRadius: 6,
+                                                    color: '#666',
+                                                    fontSize: 14,
+                                                    fontWeight: 700,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: phase === 'select' ? 'default' : 'default'
+                                                }}>
+                                                {i + 1}
+                                            </div>
+                                        );
+                                    }
+                                    const att = Number(card.damage) || 0;
+                                    return (
+                                        <div key={i}
+                                            onClick={phase === 'select' ? () => handleSlotClick(i) : undefined}
+                                            style={{
+                                                aspectRatio: '1 / 1.2',
+                                                background: '#3a3a5e',
+                                                border: '1px solid #6a6aaa',
+                                                borderRadius: 6,
+                                                padding: '3px 2px',
+                                                fontSize: 9,
+                                                textAlign: 'center',
+                                                color: '#eee',
+                                                cursor: phase === 'select' ? 'pointer' : 'default',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'space-between',
+                                                lineHeight: 1.1
+                                            }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {card.name}
+                                            </div>
+                                            <div style={{ fontSize: 9, color: '#aaa' }}>
+                                                {att > 0 && <span style={{ color: '#ff9999' }}>⚔{att}</span>}
+                                                {Number(card.defense) > 0 && <span style={{ color: '#9bd6ff', marginLeft: 2 }}>🛡{card.defense}</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </BattleStage>
 
                         {/* D-48: 전투 결과 배너 — phase='done'에서만 노출. */}
                         {phase === 'done' && resultMessage && (
@@ -6384,121 +6476,6 @@
                                 {resultMessage}
                             </div>
                         )}
-
-                        {/* D-48/D-75: 내 슬롯 — L1 3칸 / L2 4칸. D-178: HuntCard 비주얼 통일. */}
-                        <div style={{ marginBottom: '10px' }}>
-                            <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>내 슬롯</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: '8px' }}>
-                                {slots.map((card, i) => {
-                                    if (!card) {
-                                        return (
-                                            <div key={i}
-                                                onClick={() => handleSlotClick(i)}
-                                                style={{
-                                                    aspectRatio: '141 / 210',
-                                                    background: '#16213e',
-                                                    border: '1px dashed #444',
-                                                    borderRadius: '10px',
-                                                    fontSize: '11px',
-                                                    color: '#666',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    cursor: 'default'
-                                                }}>
-                                                비었음
-                                            </div>
-                                        );
-                                    }
-                                    const fl = String(card.full_loss || '').toUpperCase() === 'Y';
-                                    const lc = Number(card.loss_chance) || 0;
-                                    const extraInfo = (
-                                        <>
-                                            {slotWeaponDur[i] && (
-                                                <div style={{ color: '#aaa', fontSize: '9px' }}>
-                                                    내구 {slotWeaponDur[i].before}/{slotWeaponDur[i].after}
-                                                </div>
-                                            )}
-                                            {Number(card.defense) > 0 && slotArmorBefore[i] && slotArmorBefore[i].length > 0 && (
-                                                <div style={{ color: '#88aaff', fontSize: '9px' }}>
-                                                    {slotArmorBefore[i].map(a => (
-                                                        <div key={a.id}>🛡️ {a.name} {Math.max(0, a.left - 1)}/{a.max}</div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {fl && <div style={{ color: '#ff9999', fontSize: '9px' }}>⚠ 100% 분실</div>}
-                                            {!fl && lc > 0 && <div style={{ color: '#ff9999', fontSize: '9px' }}>⚠ {lc}% 분실</div>}
-                                        </>
-                                    );
-                                    return (
-                                        <HuntCard
-                                            key={i}
-                                            card={card}
-                                            selected={true}
-                                            onClick={phase === 'select' ? () => handleSlotClick(i) : undefined}
-                                            extraInfo={extraInfo}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* 적 패턴 슬롯 — D-48/D-75/D-108: 행동 풀 SSOT(사냥감행동 시트) 기반.
-                            slotActions[i]에 actionDef 들어있음 — type별 배지 + 행동명 직접 표시.
-                            D-108 (2026-04-24 요한 지시):
-                              - peek/attack/defend 슬롯엔 회피% 표시하지 않음(어색함 제거).
-                              - evade 슬롯이라도 finalEvade <= 0이면 회피 배지 숨김(회피 1 이상일 때만).
-                              - actionDef.damage/defense 우선, 0이면 prey.attack/defense 폴백.
-                              - 행동명은 actionDef.name (예: 어금니 돌진, 강철 말기). */}
-                        <div style={{ marginBottom: '10px' }}>
-                            <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>적 행동</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: '6px' }}>
-                                {Array.from({ length: SLOT_COUNT }, (_, i) => {
-                                    const ev = computedEvades[i] || { base: 0, final: 0 };
-                                    const consumed = !!logs.find(l => l.turn === i + 1);
-                                    const actionDef = slotActions[i] || { name: '?', type: 'peek', damage: 0, accuracy: 0, defense: 0 };
-                                    const type = actionDef.type;
-                                    const preyAtkFallback = Number(prey.attack) || 0;
-                                    const preyDefFallback = Number(prey.defense) || 0;
-                                    const dmg = (actionDef.damage > 0) ? actionDef.damage : preyAtkFallback;
-                                    const def = (actionDef.defense > 0) ? actionDef.defense : preyDefFallback;
-                                    const acc = Number(actionDef.accuracy) || 0;
-                                    return (
-                                        <div key={i} style={{
-                                            padding: '8px 4px',
-                                            background: '#2a2a3e',
-                                            border: '1px solid #444',
-                                            borderRadius: '6px',
-                                            fontSize: '11px',
-                                            textAlign: 'center',
-                                            opacity: consumed ? 0.5 : 1,
-                                            lineHeight: 1.4
-                                        }}>
-                                            <div style={{ color: '#888', fontSize: '10px' }}>T{i + 1}</div>
-                                            <div style={{ color: '#ddd', fontWeight: 600 }}>{actionDef.name}</div>
-                                            <div style={{ marginTop: '2px', display: 'inline-flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                                {type === 'attack' && dmg > 0 && (
-                                                    <span style={{ color: '#ff9999' }}>🗡️+{dmg}</span>
-                                                )}
-                                                {type === 'attack' && acc > 0 && (
-                                                    <span style={{ color: '#8bd17c' }}>🏹+{acc}</span>
-                                                )}
-                                                {type === 'defend' && def > 0 && (
-                                                    <span style={{ color: '#4db8ff' }}>🛡️+{def}</span>
-                                                )}
-                                                {/* D-111 (요한 지시): evade 행동 슬롯엔 회피 수치 항상 노출.
-                                                    이전 가드 ev.final > 0은 player 카드 acc≥base로 final=0 된 경우
-                                                    회피 0이 숨어 "회피 기술인데 수치가 안 보인다" 문제 발생.
-                                                    회피 행동 = 회피 수치 항상 보이게. attack/defend/peek은 그대로 미노출. */}
-                                                {type === 'evade' && (
-                                                    <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
 
                         {/* D-48: 확정 / 결과 확인 버튼 — phase에 따라 분기.
                             select: 슬롯 모두 채워지면 확정(전투 시작).
@@ -6698,13 +6675,12 @@
                             });
                             const active = cardMeta.filter(m => !m.exhausted);
                             const discarded = cardMeta.filter(m => m.exhausted);
-                            // 부채꼴 transform: N장 가운데 0°, 카드 수 따라 step 자동 조정.
-                            //   step = min(8°, 40°/N) — 5장이면 8°씩, 10장이면 4°씩.
-                            //   xOffset = i_offset * (24px) — 카드끼리 충분히 보이게 겹침.
-                            //   yOffset = abs(i_offset)^1.2 * 6px (parabolic).
+                            // D-180: 부채꼴 각도 완화 — 카드 기울기가 너무 심해 가독성/이쁨 저하.
+                            //   step 8→4° (절반), x 간격은 살짝 늘려 옆으로 더 펴짐(겹침 감소).
+                            //   yOffset도 약하게(parabolic 계수 6→3).
                             const N = active.length;
-                            const step = N > 1 ? Math.min(8, 40 / N) : 0;
-                            const xStep = N > 1 ? Math.min(28, 220 / Math.max(1, N - 1)) : 0;
+                            const step = N > 1 ? Math.min(4, 18 / N) : 0;
+                            const xStep = N > 1 ? Math.min(32, 240 / Math.max(1, N - 1)) : 0;
                             return (
                                 <div>
                                     <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>내 손패</div>
@@ -6719,7 +6695,7 @@
                                                     const off = i - (N - 1) / 2;
                                                     const rot = off * step;
                                                     const xPx = off * xStep;
-                                                    const yPx = Math.pow(Math.abs(off), 1.2) * 6;
+                                                    const yPx = Math.pow(Math.abs(off), 1.2) * 3;
                                                     return (
                                                         <div
                                                             key={m.card.uid}

@@ -3213,3 +3213,66 @@ function HuntCard({ card, exhausted, selected, onClick, cornerBadge, extraInfo }
 
 - `gameStyles.css`: `.hunt-card-stats` flex-column 도입, `.hunt-card-stat` position 변경, `.hunt-hand-fan`/`.hunt-card-fan-slot`/`.hunt-discard-pile`/`.hunt-hand-row` 신설.
 - `index.html`: HuntCard JSX 스탯 wrapper 도입, HuntCombatModal `discardOpen` state + 손패 영역 부채꼴+무덤 교체 + 무덤 모달.
+
+---
+
+## D-180 (2026-04-30 요한 지시): 사냥 BattleStage 시안 레이아웃 정착 + 부채꼴 각도 완화
+
+요한 피드백:
+> 부채꼴 각도가 너무 심해. 그리고 전체 레이아웃이 내가 제안했던 그림과 너무 달라. 그리고 마우스 오버시 가운데로 오게 해버리니까 애가 덜덜거려. UI부터 내가 전달했던 이미지대로 레이아웃을 정리해봐.
+
+### 결정
+
+D-176 Phase A 골격(우상 정보+비주얼 / 좌하 캐릭터+스탯) → 시안 그림 그대로 재구성:
+- **좌상**: 사냥감 정보 박스 (이름·HP·🥩·공격·방어·잔여 행동 dot).
+- **우상**: 사냥감 비주얼 (이미지/이모지).
+- **중앙**: 사냥감 슬롯 가로 4칸 (행동 패턴 미리 노출 — 기존 BattleStage 외부 "적 행동" 영역 통합).
+- **좌하**: 캐릭터 비주얼 (110×140, 살짝 축소).
+- **우하**: 내 슬롯 가로 4칸 (캐릭터 우측 옆).
+- **캐릭터 아래**: "나" 라벨.
+- **내 스탯 바(❤️🍖)**: BattleStage 외부 모달 헤더 한 줄로 분리(시안 단순화 의도 살리되 게임 필수 정보 유지).
+
+부채꼴 각도 완화: step `min(8°, 40°/N)` → `min(4°, 18°/N)` (절반 수준), x 간격 22→32px(약간 펴짐), yOffset parabolic 계수 6→3. 카드 기울기 자연스러움.
+
+hover 효과 제거: `.hunt-card-fan-slot:hover { transform: ... !important }`은 가운데 카드(이미 회전 0°)와 transform 충돌해 인접 카드 덜덜거림 발생. 모바일 1탭 흐름이 주이므로 미리보기 hover 불필요.
+
+### 구현
+
+#### 1) BattleStage 컴포넌트 재구성 (`function BattleStage`, `index.html` ~5789)
+
+- 컨테이너 `height: 230px → 320px`. 슬롯·"나" 라벨 자리.
+- 사냥감 정보 박스 `right: 8 → left: 8` (위치 우상→좌상). `maxWidth: 52%` 그대로.
+- 사냥감 비주얼 그대로 우상.
+- 캐릭터 비주얼 `bottom: 0 → 28`, `width: 130 → 110`, `height: 170 → 140` (슬롯 자리 마련 + 사이즈 균형).
+- 기존 `/* 좌하 — 내 스탯 바 */` 영역 삭제. 대신 `/* 캐릭터 아래 "나" 라벨 */` 단일 박스 (bottom: 6, left: 6, width: 110, 검은 반투명 + 라운드).
+- `children` prop 신규 — HuntCombatModal에서 슬롯 두 영역을 absolute로 주입 (BattleStage 내부 변경 최소화).
+
+#### 2) HuntCombatModal 슬롯 영역 통합 (`index.html` ~6325)
+
+기존 BattleStage 외부의 "내 슬롯"(D-178 HuntCard 비주얼 통일)과 "적 행동"(인라인 div) 두 영역 → BattleStage children으로 absolute 배치:
+- **사냥감 슬롯**: `top: 142, left: 8, right: 8`, grid `repeat(SLOT_COUNT, 1fr) gap 4`. 한 칸: T번호 + 행동명(ellipsis) + 🗡️/🛡️/💨 배지. 소비된 슬롯 opacity 0.4.
+- **내 슬롯**: `bottom: 32, left: 124, right: 8`, grid `repeat(SLOT_COUNT, 1fr) gap 4`. 빈 슬롯은 1/2/3/4 번호 박스(dashed border). 카드 들어가면 이름(ellipsis) + ⚔att/🛡def 배지(작게). 슬롯 카드 상세(내구·방어구·분실)는 손패에서 확인하는 것으로 단축 — 시안 단순화.
+- 슬롯 카드 사이즈 ~50×60px(aspect-ratio `1/1.2`) — 모바일 viewport 375에서 캐릭터 110 + gap + 슬롯 4×~50 = ~330px fit.
+
+#### 3) 외부 헤더 — 내 스탯 한 줄 (`index.html` BattleStage 위)
+
+`<div>` 한 줄: `나 ❤️ 6/8 🍖 8/10`. 검은 반투명, 우측 정렬, 폰트 11px. BattleStage 안으로 통합 안 하는 이유: 시안 단순함 유지 + 슬롯 가독성(작은 슬롯 영역에 스탯까지 넣으면 답답).
+
+#### 4) 부채꼴 각도 완화 (`HuntCombatModal` 손패 영역, `gameStyles.css`)
+
+- JS step: `min(8, 40/N)` → `min(4, 18/N)`.
+- JS xStep: `min(28, 220/(N-1))` → `min(32, 240/(N-1))` (살짝 펴짐).
+- JS yOffset: `^1.2 * 6` → `^1.2 * 3` (낮음).
+- CSS `.hunt-card-fan-slot:hover` 룰 삭제.
+
+### 한계 / 후속
+
+- **시각 검증**: 코드 단계(React mount, BattleStage children 주입, body OK)까지. 실제 사냥 모달 진입 시각은 요한 QA 이관.
+- **슬롯 카드 상세 정보 단축** — 내구도·방어구 인스턴스·분실 안내가 손패에서만 보임. 슬롯에선 카드 이름·att/def만. 향후 슬롯 클릭 시 상세 모달 또는 툴팁 검토.
+- **모바일 viewport 좁은 폭(375)** — 슬롯 4 가로 fit 확인은 코드 측에서 가능했으나 실제 디바이스 검증 필요.
+- **L1(3턴) 사냥감** — `SLOT_COUNT === 3`일 때 슬롯 영역도 3칸 grid (자동 대응).
+
+### 파일
+
+- `index.html`: BattleStage 컨테이너·정보 박스·캐릭터 비주얼 위치/사이즈, "나" 라벨, `children` prop. HuntCombatModal 외부 헤더 스탯 한 줄, BattleStage children에 사냥감 슬롯·내 슬롯 absolute 주입, 기존 "내 슬롯"·"적 행동" 외부 영역 제거. 손패 부채꼴 step/xStep/yOffset 완화.
+- `gameStyles.css`: `.hunt-card-fan-slot:hover` 제거.

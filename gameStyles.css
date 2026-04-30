@@ -879,9 +879,9 @@ button:disabled {
     bottom: 6px;
     width: 96px;
     transform-origin: 50% 110%;
-    transition: transform 0.15s ease-out;
 }
-.hunt-card-fan-slot:hover { transform: translateY(-12px) rotate(0deg) !important; z-index: 100 !important; }
+/* hover 효과 제거 — 가운데 카드는 회전 0이라 인접 카드와 transform 충돌 발생.
+   모바일 1탭 흐름이 주이므로 hover 미리보기 불필요. */
 
 /* 무덤(discard pile) — 비활성 카드들 모아둔 더미. 부채꼴 우측 외곽에 카드 모양 미니어처. */
 .hunt-discard-pile {
