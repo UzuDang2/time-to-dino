@@ -347,7 +347,7 @@
     "사용 효과": "",
     "merge_result": null,
     "merge_enabled": false,
-    "내구도": 3,
+    "내구도": "3",
     "effect": {
       "usable": false,
       "actions": [],
@@ -455,7 +455,7 @@
     "사용 효과": "health+2",
     "merge_result": null,
     "merge_enabled": false,
-    "내구도": 1,
+    "내구도": "1",
     "effect": {
       "usable": true,
       "actions": [

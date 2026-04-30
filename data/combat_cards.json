@@ -8,9 +8,9 @@
     "count": 1,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": "",
-    "evade": "",
-    "loss_chance": ""
+    "defense": null,
+    "evade": null,
+    "loss_chance": null
   },
   {
     "id": "throw_stone",
@@ -21,9 +21,9 @@
     "count": 1,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": "",
-    "evade": "",
-    "loss_chance": ""
+    "defense": null,
+    "evade": null,
+    "loss_chance": null
   },
   {
     "id": "stab_weapon",
@@ -34,9 +34,9 @@
     "count": 1,
     "accuracy": 1,
     "full_loss": "N",
-    "defense": "",
-    "evade": "",
-    "loss_chance": ""
+    "defense": null,
+    "evade": null,
+    "loss_chance": null
   },
   {
     "id": "dodge",
@@ -47,9 +47,9 @@
     "count": 3,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": "",
+    "defense": null,
     "evade": 1,
-    "loss_chance": ""
+    "loss_chance": null
   },
   {
     "id": "run_away",
@@ -60,9 +60,9 @@
     "count": 1,
     "accuracy": 0,
     "full_loss": "N",
-    "defense": "",
-    "evade": "",
-    "loss_chance": ""
+    "defense": null,
+    "evade": null,
+    "loss_chance": null
   },
   {
     "id": "throw_spear",
@@ -73,8 +73,8 @@
     "count": 1,
     "accuracy": 2,
     "full_loss": "N",
-    "defense": "",
-    "evade": "",
+    "defense": null,
+    "evade": null,
     "loss_chance": 50
   },
   {
@@ -86,9 +86,9 @@
     "count": 1,
     "accuracy": 1,
     "full_loss": "N",
-    "defense": "",
-    "evade": "",
-    "loss_chance": ""
+    "defense": null,
+    "evade": null,
+    "loss_chance": null
   },
   {
     "id": "crouch",
@@ -100,8 +100,8 @@
     "accuracy": 0,
     "full_loss": "N",
     "defense": 1,
-    "evade": "",
-    "loss_chance": ""
+    "evade": null,
+    "loss_chance": null
   },
   {
     "id": "shield_block",
@@ -113,8 +113,8 @@
     "accuracy": 0,
     "full_loss": "N",
     "defense": 1,
-    "evade": "",
-    "loss_chance": ""
+    "evade": null,
+    "loss_chance": null
   },
   {
     "id": "chipped_stone_strike",

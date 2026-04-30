@@ -506,12 +506,20 @@ def export_sheets(xlsx_path: Path) -> None:
             continue
         rows = sheet_to_rows(wb[tab_name])
 
-        # 빌딩: cost 파서 + _raw
+        # 빌딩: cost 파서 + _raw + 빈 행 가드.
+        # D-177: 시트에 빈 행이 있으면(예: 향후 추가용 빈 줄) id="" 행이 JSON에 그대로 진입.
+        # BuildingsGrid가 빈 카드를 그릴 위험 — id 비어있는 행 제외.
         if tab_name == "빌딩":
+            kept = []
             for row in rows:
+                bid = (row.get("id") or "").strip()
+                if not bid:
+                    continue
                 raw_cost = row.get("cost", "")
                 row["cost_raw"] = raw_cost
                 row["cost"] = parse_cost(raw_cost or "")
+                kept.append(row)
+            rows = kept
 
         # 몬스터: attack_pattern 파서 + _raw
         if tab_name == "몬스터":

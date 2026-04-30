@@ -5,8 +5,8 @@
     "count": 7,
     "effect": "아이템 획득, 주변 정보",
     "detection": 5,
-    "consume": "",
-    "extra_effect": ""
+    "consume": null,
+    "extra_effect": null
   },
   {
     "id": "listen",
@@ -14,8 +14,8 @@
     "count": 3,
     "effect": "거리별 소리로 보스 감지 · 사냥감 흔적",
     "detection": -5,
-    "consume": "",
-    "extra_effect": ""
+    "consume": null,
+    "extra_effect": null
   },
   {
     "id": "find_food",
@@ -23,8 +23,8 @@
     "count": 1,
     "effect": "음식 획득",
     "detection": 10,
-    "consume": "",
-    "extra_effect": ""
+    "consume": null,
+    "extra_effect": null
   },
   {
     "id": "hide",
@@ -32,8 +32,8 @@
     "count": 1,
     "effect": "은신",
     "detection": -15,
-    "consume": "",
-    "extra_effect": ""
+    "consume": null,
+    "extra_effect": null
   },
   {
     "id": "rest",
@@ -42,6 +42,6 @@
     "effect": "체력/배고픔 소폭 회복, 소음 최소",
     "detection": -5,
     "consume": "category:food;bonus:recover=1",
-    "extra_effect": ""
+    "extra_effect": null
   }
 ]
