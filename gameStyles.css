@@ -860,6 +860,18 @@ button:disabled {
 /* 슬롯 안에 들어간 카드는 살짝 축소 + 외곽 강조 */
 .hunt-card.is-in-slot { box-shadow: 0 0 0 1px #6a6aaa inset; }
 
+/* D-183: hover 큰 카드 preview — 화면 가운데 떠있는 확대 카드.
+   카드 폭이 약 280px이라 폰트 비례 확대 (손패 카드 96px의 ~3배).
+   레퍼 이미지 매칭 — 카드 정보(이름/스탯/일러스트/본문)가 명확하게 읽힘. */
+.hunt-card-preview-large .hunt-card-name { font-size: 22px; top: 5%; }
+.hunt-card-preview-large .hunt-card-body { font-size: 14px; line-height: 1.35; padding: 10px 14px 0; }
+.hunt-card-preview-large .hunt-card-stat { font-size: 22px; }
+.hunt-card-preview-large .hunt-card-stat img { width: 22px; height: 22px; }
+.hunt-card-preview-large .hunt-card-stats { gap: 8px; }
+.hunt-card-preview-large .hunt-card-corner-badge { font-size: 14px; padding: 2px 7px; top: 6px; right: 6px; }
+.hunt-card-preview-large .hunt-card-illust-empty { font-size: 16px; }
+.hunt-card-preview-large .hunt-card { box-shadow: 0 0 0 3px #d4b84a, 0 0 24px rgba(212, 184, 74, 0.5); border-radius: 12px; }
+
 /* D-179: 사냥 손패 부채꼴 스택 — 가운데 카드 위로, 양옆 회전.
    카드 수 동적(N장). transform-origin bottom center로 회전축 자연스러움.
    .hunt-hand-fan 컨테이너는 가로 가운데 정렬, .hunt-card-fan-slot이 부채꼴 내 위치 담당.

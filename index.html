@@ -5829,7 +5829,11 @@
             return (
                 <div style={{
                     position: 'relative',
-                    height: '380px',  // D-182: 320→380. 사냥감 슬롯이 캐릭터 머리·어깨 가리는 문제 해결 — 캐릭터 영역과 사냥감 슬롯 영역 분리.
+                    // D-183: 풀스크린 안에서 BattleStage가 화면 끝까지 시원하게.
+                    //   100dvh - 헤더(28) - 손패 fixed 영역(110) - 패딩/여백(80) ≈ viewport - 220.
+                    //   결과 배너/확정 버튼은 별도 팝업으로 분리되어 BattleStage 다음 stack 안 차지.
+                    height: 'calc(100dvh - 200px)',
+                    minHeight: '380px',
                     marginBottom: '14px',
                     background: 'linear-gradient(180deg, #1f2a3a 0%, #2a2a3e 60%, #3a2f2a 100%)',
                     borderRadius: '10px',
@@ -6053,6 +6057,8 @@
             const [activeEvent, setActiveEvent] = useState(null);
             // D-179: 무덤(비활성 카드) 모달 — 자원 부족·무기 부재로 못 쓰는 카드 보기.
             const [discardOpen, setDiscardOpen] = useState(false);
+            // D-183: 손패 카드 hover preview — uid를 저장. 가운데 큰 카드 노출 + 원본 자리 darkened.
+            const [hoveredCardUid, setHoveredCardUid] = useState(null);
 
             // D-58/D-60/D-96: 슬롯별 최종 회피 계산 (턴별 base 반영).
             //   SSOT: combatDeck.js::resolveHunt 공식과 동일.
@@ -6360,10 +6366,12 @@
                             playerImageUrl={playerImageUrl}
                             activeEvent={activeEvent}
                         >
-                            {/* 사냥감 슬롯 — 정보·비주얼 아래 가로. D-182: top 142→130, 캐릭터(top 160~)와 안 겹치게. */}
+                            {/* 사냥감 슬롯 — D-183: 단순 박스 → HuntCard 비주얼.
+                                actionDef를 card-like 객체로 변환해 HuntCard에 그대로 넘김.
+                                일러스트는 미공급 → "(준비 중)" 빈 자리. 좌상단 스탯은 행동 타입별 양수만. */}
                             <div style={{
                                 position: 'absolute', top: 130, left: 8, right: 8,
-                                display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 4,
+                                display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 6,
                                 zIndex: 2
                             }}>
                                 {Array.from({ length: SLOT_COUNT }, (_, i) => {
@@ -6376,25 +6384,18 @@
                                     const dmg = (actionDef.damage > 0) ? actionDef.damage : preyAtkFallback;
                                     const def = (actionDef.defense > 0) ? actionDef.defense : preyDefFallback;
                                     const acc = Number(actionDef.accuracy) || 0;
+                                    // HuntCard에 넘길 card-like 객체 — id는 type 기반 미니어처 식별용.
+                                    const preyCard = {
+                                        id: `prey_${type}`,
+                                        name: actionDef.name || (type === 'peek' ? '눈치보기' : type),
+                                        damage: type === 'attack' ? dmg : 0,
+                                        accuracy: type === 'attack' ? acc : 0,
+                                        evade: type === 'evade' ? ev.base : 0,
+                                        defense: type === 'defend' ? def : 0,
+                                    };
                                     return (
-                                        <div key={i} style={{
-                                            padding: '4px 2px',
-                                            background: '#2a2a3e',
-                                            border: '1px solid #444',
-                                            borderRadius: 4,
-                                            fontSize: 10,
-                                            textAlign: 'center',
-                                            opacity: consumed ? 0.4 : 1,
-                                            lineHeight: 1.2
-                                        }}>
-                                            <div style={{ color: '#888', fontSize: 9 }}>T{i + 1}</div>
-                                            <div style={{ color: '#ddd', fontWeight: 600, fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{actionDef.name}</div>
-                                            <div style={{ marginTop: 1, fontSize: 9 }}>
-                                                {type === 'attack' && dmg > 0 && <span style={{ color: '#ff9999' }}>🗡️{dmg}</span>}
-                                                {type === 'attack' && acc > 0 && <span style={{ color: '#8bd17c', marginLeft: 2 }}>🏹{acc}</span>}
-                                                {type === 'defend' && def > 0 && <span style={{ color: '#4db8ff' }}>🛡️{def}</span>}
-                                                {type === 'evade' && <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />}
-                                            </div>
+                                        <div key={i} style={{ opacity: consumed ? 0.4 : 1 }}>
+                                            <HuntCard card={preyCard} cornerBadge={`T${i+1}`} />
                                         </div>
                                     );
                                 })}
@@ -6462,53 +6463,66 @@
                             </div>
                         </BattleStage>
 
-                        {/* D-48: 전투 결과 배너 — phase='done'에서만 노출. */}
+                        {/* D-183: 결과 배너 → 별도 팝업(z-index 1800)으로 분리. BattleStage 시원하게 늘릴 자리 확보. */}
                         {phase === 'done' && resultMessage && (
-                            <div style={{
-                                padding: '14px 12px',
-                                marginBottom: '12px',
-                                background: resultTone === 'victory' ? '#1f3a24' : '#3a1f24',
-                                border: `1px solid ${resultTone === 'victory' ? '#4CAF50' : '#b24656'}`,
-                                borderRadius: '8px',
-                                textAlign: 'center',
-                                fontSize: '16px',
-                                fontWeight: 700,
-                                color: resultTone === 'victory' ? '#a5d18f' : '#ff9999'
-                            }}>
-                                {resultMessage}
+                            <div className="modal" style={{ zIndex: 1800 }}>
+                                <div style={{
+                                    background: '#1a1a2e',
+                                    color: '#eee',
+                                    padding: '24px 22px',
+                                    borderRadius: '10px',
+                                    border: `2px solid ${resultTone === 'victory' ? '#4CAF50' : '#b24656'}`,
+                                    maxWidth: '360px',
+                                    width: '90vw',
+                                    textAlign: 'center'
+                                }}>
+                                    <div style={{
+                                        fontSize: '18px',
+                                        fontWeight: 700,
+                                        marginBottom: '14px',
+                                        color: resultTone === 'victory' ? '#a5d18f' : '#ff9999'
+                                    }}>
+                                        {resultMessage}
+                                    </div>
+                                    <button
+                                        onClick={handleCloseResult}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px',
+                                            background: resultTone === 'victory' ? '#4CAF50' : '#b24656',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            fontSize: '14px',
+                                            fontWeight: 700,
+                                            cursor: 'pointer'
+                                        }}>
+                                        결과 확인
+                                    </button>
+                                </div>
                             </div>
                         )}
 
-                        {/* D-48: 확정 / 결과 확인 버튼 — phase에 따라 분기.
-                            select: 슬롯 모두 채워지면 확정(전투 시작).
-                            resolve: 애니메이션 중 비활성.
-                            done:  결과 확인 → onResolve 호출, 모달 닫힘. */}
-                        <button
-                            disabled={
-                                (phase === 'select' && !allFilled)
-                                || phase === 'resolve'
-                            }
-                            onClick={() => {
-                                if (phase === 'select') handleConfirm();
-                                else if (phase === 'done') handleCloseResult();
-                            }}
-                            style={{
-                                width: '100%',
-                                padding: '10px',
-                                marginBottom: '10px',
-                                background: ((phase === 'select' && allFilled) || phase === 'done')
-                                    ? '#4CAF50' : '#444',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                cursor: ((phase === 'select' && allFilled) || phase === 'done')
-                                    ? 'pointer' : 'not-allowed'
-                            }}
-                        >
-                            {phase === 'select' ? '확정' : phase === 'resolve' ? '전투 중...' : '결과 확인'}
-                        </button>
+                        {/* D-48/D-183: 확정 버튼 — phase 'select'에서만 노출. 결과 확인은 별도 팝업 안. */}
+                        {(phase === 'select' || phase === 'resolve') && (
+                            <button
+                                disabled={(phase === 'select' && !allFilled) || phase === 'resolve'}
+                                onClick={() => phase === 'select' && handleConfirm()}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    marginBottom: '10px',
+                                    background: (phase === 'select' && allFilled) ? '#4CAF50' : '#444',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    cursor: (phase === 'select' && allFilled) ? 'pointer' : 'not-allowed'
+                                }}>
+                                {phase === 'select' ? '확정' : '전투 중...'}
+                            </button>
+                        )}
 
                         {/* D-91 (2026-04-25 요한 지시): 턴 로그 직관적 재설계.
                             한 줄 요약 → 2줄(내 행동 / 적 행동) 카드 형식.
@@ -6700,6 +6714,7 @@
                                                     const rot = off * step;
                                                     const xPx = off * xStep;
                                                     const yPx = Math.pow(Math.abs(off), 1.2) * 3;
+                                                    const isHovered = hoveredCardUid === m.card.uid;
                                                     return (
                                                         <div
                                                             key={m.card.uid}
@@ -6707,7 +6722,11 @@
                                                             style={{
                                                                 transform: `translate(${xPx}px, ${yPx}px) rotate(${rot}deg)`,
                                                                 zIndex: N - Math.abs(off),
-                                                            }}>
+                                                                opacity: isHovered ? 0.25 : 1,
+                                                                transition: 'opacity 0.15s',
+                                                            }}
+                                                            onMouseEnter={() => setHoveredCardUid(m.card.uid)}
+                                                            onMouseLeave={() => setHoveredCardUid(null)}>
                                                             <div className="hunt-card-fan-inner">
                                                                 <HuntCard
                                                                     card={m.card}
@@ -6733,6 +6752,30 @@
                                             </div>
                                         </>
                                     )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* D-183: hover 카드 큰 preview — 화면 가운데 떠있는 큰 카드. 손패의 원본은 어두워짐.
+                            pointer-events: none — preview 자체는 마우스 이벤트 받지 않아 손패 hover 유지. */}
+                        {hoveredCardUid && (() => {
+                            const hoveredItem = phase === 'select' && hand
+                                ? hand.find(c => c.uid === hoveredCardUid)
+                                : null;
+                            if (!hoveredItem) return null;
+                            return (
+                                <div style={{
+                                    position: 'fixed',
+                                    top: '50%', left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: 'min(72vw, 280px)',
+                                    zIndex: 1600,
+                                    pointerEvents: 'none',
+                                    filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.7))',
+                                }}>
+                                    <div className="hunt-card-preview-large">
+                                        <HuntCard card={hoveredItem} />
+                                    </div>
                                 </div>
                             );
                         })()}

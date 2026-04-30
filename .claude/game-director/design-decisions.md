@@ -3429,3 +3429,122 @@ JSX:
 
 - `index.html`: BattleStage 컨테이너 380, 캐릭터 130×170 + bottom 50, 사냥감 슬롯 top 130, 내 슬롯 bottom 100/left 144, "나" 라벨 width/bottom 조정. HuntCombatModal 손패 영역 부채꼴 단독 + 무덤 absolute, fan-inner wrapper.
 - `gameStyles.css`: `.hunt-discard-pile` 40×40 원형, `.hunt-discard-pile-count` 빨강 배지, `.hunt-hand-row` relative + 가운데, `.hunt-hand-fixed-bottom` height 175, `.hunt-card-fan-inner` transition + hover translateY.
+
+---
+
+## D-183 (2026-04-30 요한 지시): BattleStage 시원하게 + 결과 팝업 분리 + 사냥감 슬롯 카드화 + 큰 카드 hover preview
+
+요한 피드백 + 레퍼 이미지(Marvel Snap / Slay the Spire 스타일):
+> 여기 높이를 아래까지 시원하게 늘려, 어차피 전투 결과는 텍스트로 나오는거 팝업으로 처리해서 위에 뜨게 해도 되니까.
+> 위쪽 카드슬롯에 카드가 실재로 들어가게 해줘.
+> 마우스 오버하면 화면 가운데에 크게 뜨게 해주고, 클릭하면 슬롯에 들어가게 해줘.
+> 마우스 오버한 그녀석 자체가 커지게하는게 아니라 자리에 있는것은 약간 어둡게 처리해주고, 가운데 뜨는 카드는 사실상 새로 크게 확대된 모습을 새로 보여주는거라고 생각해줘.
+
+### 결정
+
+- **BattleStage 시원**: 고정 380px → `calc(100dvh - 200px)` (헤더 28 + 손패 fixed 110 + 패딩/여백 ≈ 200). minHeight 380 폴백. 풀스크린 모달 안에서 viewport 거의 끝까지 차지.
+- **결과 배너 분리**: BattleStage 다음 stack 배너 + 통합 확정/결과 확인 버튼 → 결과 배너는 z-index 1800 별도 모달, 확정 버튼은 phase 'select'/'resolve'에서만 노출. BattleStage가 시원하게 펴지는 자리 확보.
+- **사냥감 슬롯 카드화**: 단순 박스(T1·이름·뱃지) → `HuntCard` 컴포넌트 재사용. actionDef를 card-like 객체로 변환(`{id: 'prey_<type>', name, damage/accuracy/evade/defense}`) + `cornerBadge: T1/T2/...`. 시각 통일.
+- **큰 카드 hover preview**: 손패 카드 hover 시 화면 가운데에 큰 카드(~280px) 별도 노출. 원본 자리 `opacity: 0.25` darkened, 가운데 카드는 새로 확대된 모습. 카드 자체가 커지는 게 아니라 별도 layer. `pointer-events: none`으로 preview 자체는 마우스 이벤트 안 받아 hover 유지. 클릭은 원본 카드에서.
+
+### 구현
+
+#### 1) BattleStage 높이 (`function BattleStage`, `index.html`)
+
+```jsx
+<div style={{
+  height: 'calc(100dvh - 200px)',
+  minHeight: '380px',
+  ...
+}}>
+```
+
+`100dvh`로 dynamic viewport 사용 — 모바일 키보드 등 viewport 변경 시도 안전. `minHeight 380` 폴백.
+
+#### 2) 결과 배너 모달 분리 (`HuntCombatModal`)
+
+기존 BattleStage 다음 stack 배너 + 확정/결과 확인 통합 버튼 → 분리:
+```jsx
+{phase === 'done' && resultMessage && (
+  <div className="modal" style={{ zIndex: 1800 }}>
+    <div>...결과 메시지 + [결과 확인] 버튼 (handleCloseResult)...</div>
+  </div>
+)}
+{(phase === 'select' || phase === 'resolve') && (
+  <button>...확정 (select 한정 활성)...</button>
+)}
+```
+
+#### 3) 사냥감 슬롯 HuntCard화
+
+```jsx
+const preyCard = {
+  id: `prey_${type}`,
+  name: actionDef.name,
+  damage: type === 'attack' ? dmg : 0,
+  accuracy: type === 'attack' ? acc : 0,
+  evade: type === 'evade' ? ev.base : 0,
+  defense: type === 'defend' ? def : 0,
+};
+<HuntCard card={preyCard} cornerBadge={`T${i+1}`} />
+```
+
+`prey_*` id는 일러스트 매핑 미정 → "(준비 중)" 빈 자리 자동. consumed 슬롯은 wrapper opacity 0.4.
+
+#### 4) Hover preview state + overlay (`HuntCombatModal`)
+
+```jsx
+const [hoveredCardUid, setHoveredCardUid] = useState(null);
+
+<div className="hunt-card-fan-slot"
+     onMouseEnter={() => setHoveredCardUid(m.card.uid)}
+     onMouseLeave={() => setHoveredCardUid(null)}
+     style={{
+       transform: '...',
+       opacity: hoveredCardUid === m.card.uid ? 0.25 : 1,
+       transition: 'opacity 0.15s',
+     }}>
+  ...HuntCard...
+</div>
+
+{hoveredCardUid && (
+  <div style={{
+    position: 'fixed', top: '50%', left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: 'min(72vw, 280px)',
+    zIndex: 1600, pointerEvents: 'none',
+    filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.7))',
+  }}>
+    <div className="hunt-card-preview-large">
+      <HuntCard card={hoveredItem} />
+    </div>
+  </div>
+)}
+```
+
+- hover 카드 자리 `opacity: 0.25` — "어디 카드를 보고 있는지" 위치 단서.
+- 가운데 큰 카드 별도 layer — `pointer-events: none`으로 preview에 hover가 옮겨가지 않음(손패 onMouseLeave 안 트리거).
+- `width: min(72vw, 280px)` — 모바일 viewport 좁아도 비례, 데스크톱 max 280.
+
+#### 5) 큰 카드용 폰트 비례 (`gameStyles.css`)
+
+```css
+.hunt-card-preview-large .hunt-card-name { font-size: 22px; }
+.hunt-card-preview-large .hunt-card-body { font-size: 14px; }
+.hunt-card-preview-large .hunt-card-stat { font-size: 22px; }
+.hunt-card-preview-large .hunt-card-stat img { width: 22px; height: 22px; }
+.hunt-card-preview-large .hunt-card { box-shadow: 0 0 0 3px #d4b84a, 0 0 24px rgba(212, 184, 74, 0.5); }
+```
+
+손패 카드 폰트(12/10/13)의 ~2배. 카드 폭 280px에 맞춰 비례. 노란 외곽 + 글로우로 강조.
+
+### 한계 / 후속
+
+- **모바일 hover 없음** — 모바일은 탭 시 즉시 슬롯 배치(현재 흐름 유지). hover preview는 데스크톱 마우스에서만 동작. 모바일에서 같은 정보 보려면 슬롯 배치 후 슬롯 카드 탭 → preview 패턴 검토(향후).
+- **BattleStage 빈 공간** — 캐릭터·내 슬롯이 절대 위치(bottom 50/100)라 BattleStage 늘어나도 하단 고정. 캐릭터 위 빈 공간이 늘어남. 향후 비례 위치(% 기반) 또는 캐릭터를 가운데 vertical center로 조정.
+- **사냥감 슬롯 카드 좁은 폭** — 모바일 viewport에서 4칸일 때 카드 폭 ~70px → 폰트 작음. hover preview로 큰 정보 노출 가능(향후 사냥감 슬롯에도 hover 적용 검토).
+
+### 파일
+
+- `index.html`: BattleStage `height: calc(100dvh - 200px)`, 사냥감 슬롯 HuntCard 변환, 결과 배너 z-index 1800 모달, 확정 버튼 phase 'select'/'resolve' 한정, `hoveredCardUid` state + 손패 onMouseEnter/Leave + opacity 0.25 + 가운데 fixed preview overlay.
+- `gameStyles.css`: `.hunt-card-preview-large` 자식 폰트 비례 룰 + 외곽 노란 glow.
