@@ -6309,18 +6309,21 @@
             const resultTone = result && result.outcome === 'victory' ? 'victory' : 'fail';
 
             return (
-                // D-176 Phase A 마무리: ActiveQuestHUDPanel(z=1400)이 BattleStage 우상단 사냥감 정보 박스를 가려
-                //   HuntCombatModal 루트 zIndex 1500으로 띄움. D-171 InventoryModal 패턴과 동일.
-                <div className="modal" style={{ zIndex: 1500 }}>
+                // D-181 (요한 지시): 모달 → 풀스크린 화면 전환. 게임 화면을 완전히 대체.
+                //   .modal 기본 align center/justify center → stretch + padding 0.
+                //   자식이 100vw × 100vh 차지, 어두운 게임 배경 색 그대로.
+                <div className="modal" style={{ zIndex: 1500, alignItems: 'stretch', justifyContent: 'stretch', padding: 0 }}>
                     <div style={{
                         background: '#1a1a2e',
                         color: '#eee',
-                        padding: '20px',
-                        borderRadius: '12px',
-                        width: '94%',
-                        maxWidth: '520px',
-                        maxHeight: '92vh',
-                        overflowY: 'auto'
+                        padding: '12px 12px 110px',  // 하단 패딩 — 손패 부채꼴 fixed 영역 확보(카드 절반 viewport 밖이라 ~110).
+                        borderRadius: 0,
+                        width: '100%',
+                        height: '100%',
+                        maxWidth: 'none',
+                        maxHeight: 'none',
+                        overflowY: 'auto',
+                        boxSizing: 'border-box'
                     }}>
                         {/* D-180: 내 스탯 한 줄 — BattleStage 외부 헤더(시안엔 단순 "나" 라벨만 있어 BattleStage 안 통합 X). */}
                         <div style={{
@@ -6681,16 +6684,17 @@
                             const N = active.length;
                             const step = N > 1 ? Math.min(4, 18 / N) : 0;
                             const xStep = N > 1 ? Math.min(32, 240 / Math.max(1, N - 1)) : 0;
+                            // D-181: 손패 viewport 하단 fixed wrapper — 카드 절반 viewport 밖.
+                            //   "내 손패" 라벨 제거(레퍼 이미지 단순함). 빈 상태도 fixed 영역에 안내.
                             return (
-                                <div>
-                                    <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '5px' }}>내 손패</div>
+                                <div className="hunt-hand-fixed-bottom">
                                     {active.length === 0 && discarded.length === 0 ? (
-                                        <div style={{ color: '#666', fontSize: '11px', padding: '10px' }}>
+                                        <div style={{ color: '#666', fontSize: '11px', padding: '20px', background: 'rgba(0,0,0,0.5)', borderRadius: 8 }}>
                                             사용할 수 있는 전투 카드가 없다.
                                         </div>
                                     ) : (
                                         <div className="hunt-hand-row">
-                                            <div className="hunt-hand-fan" style={{ flex: 1, maxWidth: 320 }}>
+                                            <div className="hunt-hand-fan" style={{ flex: 1, maxWidth: 360 }}>
                                                 {active.map((m, i) => {
                                                     const off = i - (N - 1) / 2;
                                                     const rot = off * step;
