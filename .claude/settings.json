@@ -21,7 +21,11 @@
       "Bash",
       "Edit(**)",
       "Write(**)",
-      "Read(**)"
+      "Read(**)",
+      "Edit(.claude/game-director/**)",
+      "Write(.claude/game-director/**)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)"
     ]
   },
   "enabledMcpjsonServers": ["notion"]
