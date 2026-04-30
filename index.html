@@ -3385,27 +3385,43 @@
         //   - active 비어있으면 null 반환 → 패널 자체 미마운트.
         function ActiveQuestHUDPanel({ activeQuests, inventoryItems }) {
             // D-142: 터치로 접기/펼치기 토글. 기본 펼침 상태.
+            // D-177: 단일 active → 다중 active 표시(텐트+빌딩 동시). 상한은 정책상 텐트 1 + 빌딩 6 = 7개.
+            //   각 quest를 아이콘+이름+요구재료 row 묶음으로 노출. 접힘 시 헤더만.
             const [collapsed, setCollapsed] = React.useState(false);
             if (!Array.isArray(activeQuests) || activeQuests.length === 0) return null;
-            const quest = activeQuests[0];
-            // D-168: 단일 TENT_QUEST → tent_N 다단계 퀘스트로 확장. getTentQuestDef로 동적 조회.
-            const def = quest && getTentQuestDef(quest.id);
-            if (!def) return null;
-            const reqs = def.requirements || {};
+
+            // 각 quest id를 통일된 형태로 변환 — 텐트와 빌딩 양쪽 처리.
             const items = Array.isArray(inventoryItems) ? inventoryItems : [];
             const countOfType = (type) => items.filter(it => it && it.type === type).length;
-            const rows = Object.entries(reqs).map(([type, need]) => {
-                const have = Math.min(need, countOfType(type));
-                const dispDef = (typeof InventorySystem !== 'undefined' && InventorySystem.resolveDef)
-                    ? (InventorySystem.resolveDef(type) || {}) : {};
-                return {
-                    type,
-                    name: dispDef.name || type,
-                    have,
-                    need,
-                    ok: have >= need
-                };
-            });
+            const cards = activeQuests.map(quest => {
+                if (!quest || !quest.id) return null;
+                const id = String(quest.id);
+                if (id.startsWith('bld_')) {
+                    const m = id.match(/^bld_([a-z_]+)_(\d+)$/);
+                    if (!m) return null;
+                    const def = getBuildingDef(m[1], Number(m[2]));
+                    if (!def) return null;
+                    const rows = (def.cost || []).map(c => {
+                        const idEn = InventorySystem.findIdByKoreanName(c.material);
+                        const need = Number(c.count) || 0;
+                        const have = idEn ? Math.min(need, countOfType(idEn)) : 0;
+                        return { type: idEn || c.material, name: c.material, have, need, ok: !!idEn && have >= need };
+                    });
+                    return { key: id, icon: BUILDING_ICON[m[1]] || '🏗️', name: `${def.name} Lv.${def.stage}`, rows };
+                }
+                // 텐트(tent_N) 또는 호환 — 기존 getTentQuestDef.
+                const def = getTentQuestDef(id);
+                if (!def) return null;
+                const rows = Object.entries(def.requirements || {}).map(([type, need]) => {
+                    const have = Math.min(need, countOfType(type));
+                    const dispDef = (typeof InventorySystem !== 'undefined' && InventorySystem.resolveDef)
+                        ? (InventorySystem.resolveDef(type) || {}) : {};
+                    return { type, name: dispDef.name || type, have, need, ok: have >= need };
+                });
+                return { key: id, icon: def.icon, name: def.name, rows };
+            }).filter(Boolean);
+            if (cards.length === 0) return null;
+
             return (
                 <div
                     onClick={() => setCollapsed(c => !c)}
@@ -3421,7 +3437,10 @@
                         border: '1px solid rgba(212, 184, 74, 0.45)',
                         borderRadius: '8px',
                         padding: '8px 10px',
-                        minWidth: collapsed ? 0 : '150px',
+                        minWidth: collapsed ? 0 : '160px',
+                        maxWidth: '220px',
+                        maxHeight: collapsed ? 'none' : '60vh',
+                        overflowY: collapsed ? 'visible' : 'auto',
                         color: '#eee',
                         boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
                         // D-142: pointerEvents:'none' 제거 — 탭으로 접기/펼치기.
@@ -3431,23 +3450,31 @@
                         lineHeight: 1.5
                     }}
                 >
-                    <div style={{
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        color: '#d4b84a',
-                        marginBottom: collapsed ? 0 : '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <span>{def.icon} {def.name}</span>
-                        <span style={{ marginLeft: 'auto', color: '#888', fontSize: '10px' }}>
-                            {collapsed ? '▾' : '▴'}
-                        </span>
-                    </div>
-                    {!collapsed && rows.map(r => (
-                        <div key={r.type} style={{ color: r.ok ? '#8bd17c' : '#ddd' }}>
-                            · {r.name} {r.have}/{r.need}
+                    {cards.map((c, i) => (
+                        <div key={c.key} style={{ marginTop: i === 0 ? 0 : (collapsed ? 0 : '6px'),
+                                                  paddingTop: i === 0 ? 0 : (collapsed ? 0 : '6px'),
+                                                  borderTop: i === 0 || collapsed ? 'none' : '1px solid rgba(255,255,255,0.08)' }}>
+                            <div style={{
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                color: '#d4b84a',
+                                marginBottom: collapsed ? 0 : '2px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}>
+                                <span>{c.icon} {c.name}</span>
+                                {i === 0 && (
+                                    <span style={{ marginLeft: 'auto', color: '#888', fontSize: '10px' }}>
+                                        {collapsed ? '▾' : '▴'}
+                                    </span>
+                                )}
+                            </div>
+                            {!collapsed && c.rows.map(r => (
+                                <div key={r.type} style={{ color: r.ok ? '#8bd17c' : '#ddd' }}>
+                                    · {r.name} {r.have}/{r.need}
+                                </div>
+                            ))}
                         </div>
                     ))}
                 </div>
@@ -4327,9 +4354,24 @@
             { id: 'locked_2',   kind: 'locked' }
         ];
 
-        function BuildingsGrid({ campState, onClickBuilding }) {
+        function BuildingsGrid({ campState, activeQuests, onClickBuilding }) {
             const tentLevel = (campState && campState.tentLevel) || 0;
             const buildingLevels = (campState && campState.buildingLevels) || {};
+            // D-177: "수락 가능"(다음 단계 존재 + active 미등록) 빌딩에 빨간 점 — 신규 인지 강화.
+            //   텐트도 동일 규칙으로 표시.
+            const activeIds = new Set((Array.isArray(activeQuests) ? activeQuests : []).map(q => q && q.id).filter(Boolean));
+            const isTakeable = (b) => {
+                if (b.kind === 'tent') {
+                    const next = getNextTentQuest(Number(tentLevel) || 0);
+                    return !!next && !activeIds.has(next.id);
+                }
+                if (b.kind === 'sheet') {
+                    const cur = Number(buildingLevels[b.id]) || 0;
+                    const next = getNextBuildingStage(b.id, cur);
+                    return !!next && !activeIds.has(`bld_${b.id}_${next.stage}`);
+                }
+                return false;
+            };
             return (
                 <div style={{
                     marginBottom: '16px',
@@ -4366,6 +4408,7 @@
                             const dim = b.kind === 'locked' ? true : (stage === 0);
                             const opacity = dim ? 0.3 : 1;
                             const lvColor = b.kind === 'locked' ? '#666' : (stage > 0 ? '#d4b84a' : '#888');
+                            const takeable = isTakeable(b);
                             return (
                                 <button
                                     key={b.id}
@@ -4378,6 +4421,7 @@
                                         cursor: 'pointer',
                                         color: '#eee',
                                         opacity,
+                                        position: 'relative',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
@@ -4385,6 +4429,7 @@
                                         transition: 'opacity 0.2s, transform 0.1s'
                                     }}
                                 >
+                                    {takeable && <span className="building-takeable-dot" />}
                                     <div style={{ fontSize: '30px', lineHeight: 1 }}>{emoji}</div>
                                     <div style={{ fontSize: '11px', fontWeight: 600 }}>{name}</div>
                                     <div style={{ fontSize: '10px', color: lvColor }}>
@@ -4452,6 +4497,12 @@
                 const def0 = getBuildingDef(building.id, Math.max(1, curStage));
                 const headerName = (def0 && def0.name) || building.id;
                 const nextDef = getNextBuildingStage(building.id, curStage);
+                // D-177: 텐트와 동일한 [받기] → [완수] 2단계 흐름 도입.
+                //   active 등록되지 않았으면 시나리오 노출 + [받기] 노출.
+                //   active 등록되면 진행도 + [완수] (재료 충족 시) 노출.
+                //   handleCompleteQuest 빌딩 분기는 active/non-active 양쪽 호환(9541-9546).
+                const buildingQuestId = nextDef ? `bld_${building.id}_${nextDef.stage}` : null;
+                const inActive = nextDef && (activeQuests || []).find(q => q.id === buildingQuestId);
                 const inv = campState && campState.inventory;
                 const countOfId = (idEn) => (inv && Array.isArray(inv.items)) ? inv.items.filter(it => it.type === idEn).length : 0;
                 // cost 행 — 한글 자원명을 영문 id로 매핑해 카운트. 매핑 실패는 not-ok로 표시.
@@ -4461,7 +4512,7 @@
                     const need = Number(c.count) || 0;
                     return { koName: c.material, idEn, have, need, ok: !!idEn && have >= need };
                 }) : [];
-                const canComplete = !!nextDef && costRows.length > 0 && costRows.every(r => r.ok);
+                const canComplete = !!nextDef && !!inActive && costRows.length > 0 && costRows.every(r => r.ok);
                 const passive = nextDef ? parsePassive(nextDef.reward_passive || '') : [];
                 const runStart = nextDef ? parseRewardItems(nextDef.reward_run_start || '') : [];
                 const items = nextDef ? parseRewardItems(nextDef.reward_items || '') : [];
@@ -4503,7 +4554,7 @@
                                     <div style={{ marginTop: '6px' }}>
                                         {costRows.map((r, i) => (
                                             <div key={i} style={{ color: r.ok ? '#8bd17c' : '#ddd' }}>
-                                                · {r.koName} {r.have}/{r.need}{!r.idEn && ' (자원 매핑 실패)'}
+                                                · {r.koName} {inActive ? `${r.have}/${r.need}` : r.need}{!r.idEn && ' (자원 매핑 실패)'}
                                             </div>
                                         ))}
                                     </div>
@@ -4517,10 +4568,28 @@
                             )}
                             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                                 {closeBtn}
-                                {nextDef && (
+                                {/* D-177: active 등록 전 → [받기], 등록 후 → [완수]. 텐트 패턴 동일. */}
+                                {nextDef && !inActive && (
+                                    <button
+                                        onClick={() => { onTakeQuest && onTakeQuest(buildingQuestId); onClose && onClose(); }}
+                                        style={{
+                                            background: '#d4b84a',
+                                            color: '#1a1a2e',
+                                            border: 'none',
+                                            padding: '8px 22px',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '13px',
+                                            fontWeight: 700
+                                        }}
+                                    >
+                                        받기
+                                    </button>
+                                )}
+                                {nextDef && inActive && (
                                     <button
                                         disabled={!canComplete}
-                                        onClick={() => { onCompleteQuest && onCompleteQuest(`bld_${building.id}_${nextDef.stage}`); onClose && onClose(); }}
+                                        onClick={() => { onCompleteQuest && onCompleteQuest(buildingQuestId); onClose && onClose(); }}
                                         style={{
                                             background: canComplete ? '#4CAF50' : '#444',
                                             color: '#fff',
@@ -4810,6 +4879,7 @@
                         {/* D-168/D-174: 베이스캠프 빌딩 그리드 (3x3). 카드 클릭 → 상세 모달. */}
                         <BuildingsGrid
                             campState={campState}
+                            activeQuests={(campState && campState.quests && campState.quests.active) || []}
                             onClickBuilding={(b) => setSelectedBuilding(b)}
                         />
 
@@ -5034,7 +5104,16 @@
                             activeQuests={activeQuests}
                             completedQuests={completedQuests}
                             onClose={() => setSelectedBuilding(null)}
-                            onTakeQuest={(qid) => setOfferQuestId(qid)}
+                            onTakeQuest={(qid) => {
+                                // D-177: 빌딩은 시나리오 텍스트가 effect_raw 한 줄(BuildingDetailModal에 이미 노출)이라
+                                //   TentQuestModal 같은 추가 스토리 단계 없이 직접 active 등재.
+                                //   텐트는 기존 흐름대로 setOfferQuestId → TentQuestModal → [수락] 유지.
+                                if (typeof qid === 'string' && qid.startsWith('bld_')) {
+                                    onTakeQuest && onTakeQuest(qid);
+                                } else {
+                                    setOfferQuestId(qid);
+                                }
+                            }}
                             onCompleteQuest={onCompleteQuest}
                         />
                     )}

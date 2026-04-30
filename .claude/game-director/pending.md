@@ -102,6 +102,37 @@
 
 ---
 
+## D-177 (2026-04-30 요한 지시): 빌딩 텐트 패턴 수락 + 시트 이름 갱신 + 빈 행 가드
+
+설계/구현 상세는 `design-decisions.md` D-177 단락 참조.
+
+### 디렉터 완료 (코드)
+
+- [x] **[디렉터/웹]** ✅ BuildingsGrid 카드 우상단 빨간 점 (수락 가능 시).
+- [x] **[디렉터/웹]** ✅ BuildingDetailModal sheet 분기 [받기]→[완수] 도입(텐트 패턴 정렬, inActive 분기 + canComplete 가드).
+- [x] **[디렉터/웹]** ✅ CampScreen onTakeQuest prefix 라우팅 — `bld_*`는 직접 active 등재, `tent_*`는 TentQuestModal 거침.
+- [x] **[디렉터/웹]** ✅ ActiveQuestHUDPanel 단일 → 다중 active(텐트+빌딩 동시) 카드 묶음 + 자체 스크롤.
+- [x] **[디렉터/웹]** ✅ `.building-takeable-dot` CSS 신규 (8x8 빨강 + 글로우).
+- [x] **[디렉터/웹]** ✅ `scripts/fetch_data.py` 빌딩 빈 행 가드 — id 빈 행 skip.
+- [x] **[디렉터/웹]** ✅ `make data` sync — 빌딩 24→18 rows 정상화 + 시트 이름 4종 반영.
+
+### 요한 사후 작업 (시트)
+
+- [ ] **[요한]** 빌딩 보상 4종(`reward_items`/`reward_passive`/`products`/`reward_one_shot`) 시트 값 정리 — 일부 비정상.
+- [ ] **[요한]** 빈 행 6개 시트에서 직접 제거 (가드는 안전망. 시트 정리가 SSOT).
+
+### 요한 QA 대기 (D-177)
+
+- [ ] **[요한]** 🧪 캠프 빌딩 그리드 — 모든 takeable 빌딩 카드 우상단 빨간 점 노출 (텐트 + clinic/kitchen/workshop/storage/training/watchtower 7종, 잠금 카드 2종은 점 없음).
+- [ ] **[요한]** 🧪 빌딩 카드 클릭 → BuildingDetailModal — 시나리오(effect_raw) + 비용 + 보상 + [받기] 버튼.
+- [ ] **[요한]** 🧪 [받기] 클릭 → 모달 닫힘 + 카드 빨간 점 사라짐 + [퀘스트 목록] 카운트 +1.
+- [ ] **[요한]** 🧪 같은 카드 다시 클릭 → 진행도 `have/need` 표시 + [받기] 자리에 [완수] 노출 (재료 부족이면 disabled).
+- [ ] **[요한]** 🧪 재료 충족 후 [완수] → 빌딩 stage 적용 + 보상 + active → completed 이동.
+- [ ] **[요한]** 🧪 인게임 ActiveQuestHUDPanel — 텐트+빌딩 active 동시 표시(최대 7개), 접기/펼치기 토글, 길어지면 자체 스크롤.
+- [ ] **[요한]** 🧪 빌딩 이름 4종 갱신 확인: 치료소 / 작업대 / 무기 제작소 / 보호구 제작소.
+
+---
+
 ## 13차 세션 — 웹 세션 (2026-04-25, D-98: L1 사냥감 행동 패턴)
 
 ### D-98 (2026-04-25 요한 지시): L1 사냥감 3턴 행동 패턴 (peek≤2 / evade≤1 / defend≤1)

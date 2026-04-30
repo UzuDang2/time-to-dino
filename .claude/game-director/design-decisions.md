@@ -2985,3 +2985,107 @@ Level 2 사냥감 7종은 빈값 — 기존 evade_rate 그대로 사용.
 - `ActiveQuestHUDPanel` `zIndex:1400`이 사냥 모달 우상단 사냥감 정보 박스를 가릴 수 있음. D-171에서 InventoryModal `zIndex:1500`로 띄운 패턴 참고 — 사냥 모달도 동일 처리 또는 HUD를 모달 진입 시 자동 숨김.
 
 **파일**: `index.html` (BattleStage 컴포넌트 신설 + HuntCombatModal에 prop 5종 추가 + 호출부 `playerImageUrl="data/Assets/character/Player.png"` 전달), `data/Assets/character/Player.png` 신규.
+
+---
+
+## D-177 (2026-04-30 요한 지시): 베이스캠프 빌딩 — 텐트 패턴 [받기]→[완수] 도입 + 시트 이름 갱신 + 빈 행 가드
+
+요한 원문: "각 빌딩들의 퀘스트가 사실 수락이 가능한 상태인데, 텐트처럼 시나리오도 없고 수락을 따로 하는 시스템이 아니라서 알아보기 어려워 수정해줘. 그리고 내가 시트에 반영한 빌딩 이름들 있었는데 그거좀 반영해줘"
+
+### 배경
+
+D-174 베이스캠프 빌딩 SSOT 통합 후, 6종 sheet 빌딩(clinic·kitchen·workshop·storage·training·watchtower)은 BuildingDetailModal에서 [완수] 한 단계로 즉시 빌드됐다. "수락"이라는 명시적 단계가 없어 사용자가 "이 빌딩이 지금 받을 수 있는 퀘스트인지" 인지하기 어려움. 텐트(D-168 다단계)는 [받기] → quests.active 등재 → ActiveQuestHUDPanel 진행도 → [완수] 흐름인데 빌딩만 다른 패턴이라 일관성 깨짐.
+
+### 결정
+
+빌딩 sheet 분기를 텐트 패턴과 동일하게 정렬 — 단, 텐트는 별도 스토리 모달(TentQuestModal)을 거치지만 빌딩은 시나리오 텍스트가 시트 `effect_raw` 한 줄뿐이라 BuildingDetailModal 내부에서 직접 active 등재(추가 모달 없음). 시각 효과:
+
+- 빌딩 카드 우상단 **빨간 점** — "수락 가능"(다음 stage 존재 + active 미등록) 신호. 신규 기능/유저 확인 표시 의미. 조합 초록 점·퀘스트 노란 점과 색 구분.
+- BuildingDetailModal sheet 분기에 [받기]/[완수] 분기 도입.
+- ActiveQuestHUDPanel 단일 → 다중 active(텐트 1 + 빌딩 6 동시 가능) 노출.
+
+### 구현 (`index.html`)
+
+#### 1) BuildingsGrid 빨간 점 (`function BuildingsGrid` ~4330)
+
+`activeQuests` prop 신규 수신. `isTakeable(b)` 헬퍼:
+- tent: `getNextTentQuest(tentLevel)`이 있고 그 id가 activeIds에 없으면 takeable.
+- sheet: `getNextBuildingStage(b.id, cur)`가 있고 `bld_${b.id}_${stage}`가 activeIds에 없으면 takeable.
+
+카드 button에 `position:relative` + `<span className="building-takeable-dot" />` 자식. 호출부(CampScreen)에서 `activeQuests={(campState.quests.active) || []}` 전달.
+
+#### 2) BuildingDetailModal sheet 분기 [받기]→[완수] (`function BuildingDetailModal` ~4450)
+
+기존 [완수] 단독 → 텐트 분기 패턴과 동일:
+- `buildingQuestId = bld_${building.id}_${nextDef.stage}`.
+- `inActive = activeQuests.find(q => q.id === buildingQuestId)`.
+- 진행도 표시: `inActive ? `${have}/${need}` : `${need}`` (텐트와 동일).
+- `nextDef && !inActive` → 노란 [받기] 버튼 → `onTakeQuest(buildingQuestId)`.
+- `nextDef && inActive` → [완수] 버튼, `canComplete = costRows.every(r => r.ok)` 조건. 사용자가 active 등재한 후에만 활성화.
+- `canComplete`에 `!!inActive` 가드 추가 — active 안 됐으면 [완수] 절대 활성화 안 됨.
+
+#### 3) onTakeQuest 분기 (CampScreen ~5101)
+
+```js
+onTakeQuest={(qid) => {
+  if (qid.startsWith('bld_')) {
+    onTakeQuest && onTakeQuest(qid);  // 부모(App)의 setCampState로 직접 active 등재.
+  } else {
+    setOfferQuestId(qid);             // 텐트 → TentQuestModal 흐름 유지.
+  }
+}}
+```
+
+빌딩은 BuildingDetailModal에 이미 시나리오/비용/보상 정보 노출되어 있어 별도 스토리 모달 불필요. 텐트는 TentQuestModal(스토리 + [수락]) 단계 보존.
+
+#### 4) ActiveQuestHUDPanel 다중 active (`function ActiveQuestHUDPanel` ~3386)
+
+기존 `activeQuests[0]` 단독 → 전체 순회로 카드 묶음 노출:
+- 각 quest id를 prefix로 분기 — `bld_<id>_<stage>` → `getBuildingDef`, 그 외 → `getTentQuestDef`.
+- 통일 형식 `{ icon, name, rows }`로 변환해 동일한 row 렌더 코드 재사용.
+- `maxHeight: 60vh` + `overflowY: auto` — 동시 6개+ 등재 시 자체 스크롤. 접힘은 한 번에 모두 토글(헤더 화살표는 첫 카드에만).
+- 카드 사이 `borderTop: 1px solid rgba(255,255,255,0.08)` 분리.
+
+#### 5) handleCompleteQuest 빌딩 호환성 (이미 있음, 9541-9546)
+
+기존 코드가 quests.active에서 questId 찾아 completed로 이동 시도하므로, [받기] 후 [완수]로 진행하면 자연스럽게 active → completed로 이동. 추가 변경 불필요.
+
+### 시트 → JSON 갱신 (`make data` 실행)
+
+요한이 시트에서 빌딩 이름 4종 갱신:
+- 응급치료소 → **치료소**
+- 공방 → **작업대**
+- 저장고 → **무기 제작소** (id `storage` 그대로지만 컨셉 변경)
+- 사냥꾼 막사 → **보호구 제작소** (id `training` 그대로지만 컨셉 변경)
+
+화덕·감시탑은 그대로. 추가로 prey/combat_cards 등 다른 시트도 사용자 의도 변경 다수.
+
+### 빈 행 가드 (`scripts/fetch_data.py` ~510)
+
+시트에 빌딩 빈 행 6개가 있어 fetch_data가 그대로 24 rows로 가져왔음(원래 6×3=18). BuildingsGrid가 빈 카드를 그릴 위험. 가드:
+
+```python
+if tab_name == "빌딩":
+    kept = []
+    for row in rows:
+        bid = (row.get("id") or "").strip()
+        if not bid:
+            continue
+        # 기존 cost 파서 + _raw
+        kept.append(row)
+    rows = kept
+```
+
+검증: 가드 추가 후 `make data` → 빌딩 18 rows 정상화.
+
+### 한계 / 후속
+
+- **빌딩 보상 4종(`reward_items`/`reward_passive`/`products`/`reward_one_shot`) 시트 값이 현재 일부 비정상** — 요한이 직접 시트에서 정리 예정. 다음 세션 `make data` sync에서 갱신 반영.
+- 캠프 화면에선 ActiveQuestHUDPanel이 마운트되지 않음(인게임 GameScreen에서만). 캠프 빌딩 active 진행도는 빌딩 카드 자체(클릭 → BuildingDetailModal `have/need` 표시) + [퀘스트 목록] 모달(D-154)에서 확인 가능. 사용자 결정으로 동시 6개 노출은 인게임 HUD 기준.
+
+### 파일
+
+- `index.html`: BuildingsGrid `activeQuests` prop + `isTakeable` + 빨간 점 자식, BuildingDetailModal sheet 분기 [받기]/[완수] + `inActive` + 진행도 분기, CampScreen onTakeQuest prefix 라우팅, ActiveQuestHUDPanel 다중 active 카드 묶음.
+- `gameStyles.css`: `.building-takeable-dot` 신규 (8x8 빨강 + 글로우, 우상단 absolute).
+- `scripts/fetch_data.py`: 빌딩 탭 빈 행 가드.
+- `data/buildings.json` 외 다수 시트 sync (별도 `chore(data)` 커밋).
