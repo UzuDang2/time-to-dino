@@ -2922,3 +2922,22 @@ Level 2 사냥감 7종은 빈값 — 기존 evade_rate 그대로 사용.
 - 결과: viewport 375 → modal 332, slot 316, grid 300, 좌우 여유 8px씩.
 
 **검증**: getComputedStyle 확인 후 좌우 `padding: 8px` 적용 + 마지막 열 셀·아이템 모두 시각적으로 안에 들어옴.
+
+---
+
+## D-175 (2026-04-30 요한 지시): 뗀석기 내구도 3 → 6
+
+**경위**: 요한 1차 지시는 "내구도 0"이었으나 오타. 즉시 정정 지시 "내구도 6". 시트 0으로 갱신했다가 6으로 재갱신.
+
+**결정**: `chipped_stone` 무기 내구도를 3에서 6으로 상향. 치기(N) 6회 또는 던지기(Y, full_loss) 1회까지 사용 가능. 시트 SSOT 두 탭(`무기`, `아이템마스터`) 동시 동기화.
+
+**구현**:
+- 시트 `무기` 탭 `chipped_stone` 행 `durability` = 6 (`--sheet-op=update-cell --tab=무기 --match-col=id --match-val=chipped_stone --set-col=durability --set-val=6`).
+- 시트 `아이템마스터` 탭 `chipped_stone` 행 `durability` = 6 (동일 패턴).
+- `make data` → `data/weapons.json`, `data/items.json`, `data/data.js` 재생성. 두 JSON `"내구도": 6` 반영 확인.
+
+**부수 — D-99 시트 동기화 완료 확인**: D-99(2026-04-25) 미완료 항목 4종(무기/아이템마스터/조합레시피/전투카드)을 시트에서 직접 조회 → 모두 이미 행 존재. 추가 행 신규 작업 불필요. pending.md D-99 4 항목 체크 마감.
+
+**노트 — 시트 컬럼명**: `update-cell` 인자는 영문 헤더(`durability`)를 써야 매칭. JSON 키(`내구도`)는 fetch_data 내부 매핑 후 산출물에만 등장. 시트 raw 헤더 확인 후 명령 실행 (`scripts/fetch_data.py:472`에서 컬럼 누락 에러 던짐).
+
+**파일**: 시트 `무기`/`아이템마스터`, 산출물 `data/weapons.json` `data/items.json` `data/data.js`.

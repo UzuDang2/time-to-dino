@@ -725,7 +725,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
-      "reward_items": "붕대 x2, 약초 x1",
+      "reward_items": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
       "reward_passive": "health_max+2",
       "reward_run_start": "붕대 x2, 약초 x1",
       "reward_one_shot": "",
@@ -1217,7 +1217,7 @@ window.TTD_DATA = {
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
-      "내구도": 3,
+      "내구도": 6,
       "effect": {
         "usable": false,
         "actions": [],
@@ -2191,7 +2191,7 @@ window.TTD_DATA = {
       "카테고리": "무기",
       "가방칸수": "2x1",
       "아이템 등급": "1단계",
-      "내구도": 3,
+      "내구도": 6,
       "설명 텍스트": "돌을 깨뜨려 날을 세운 가장 원시적인 도구. 치기·던지기 카드 사용.",
       "효과 요약": "뗀석기로 치기 / 뗀석기 던지기 카드 소지 조건."
     }

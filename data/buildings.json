@@ -43,7 +43,7 @@
       }
     ],
     "effect_raw": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
-    "reward_items": "붕대 x2, 약초 x1",
+    "reward_items": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
     "reward_passive": "health_max+2",
     "reward_run_start": "붕대 x2, 약초 x1",
     "reward_one_shot": "",
