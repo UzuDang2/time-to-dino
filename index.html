@@ -5793,7 +5793,8 @@
             playerHealth, playerHunger, maxHealth, maxHunger,
             playerImageUrl,
             activeEvent,
-            children,  // D-180: 슬롯 overlay 등 외부 주입 — HuntCombatModal에서 사냥감 슬롯/내 슬롯을 absolute로 띄움.
+            // D-188 (요한 시안 v2): 사냥감 슬롯=상단, 내 슬롯=하단, 확정 버튼=우 col 안.
+            SLOT_COUNT, slots, phase, handleSlotClick, allFilled, onConfirm,
         }) {
             const healthPct = Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100));
             const hungerPct = Math.max(0, Math.min(100, (playerHunger / Math.max(1, maxHunger)) * 100));
@@ -5829,126 +5830,229 @@
             return (
                 <div style={{
                     position: 'relative',
-                    // D-183: 풀스크린 안에서 BattleStage가 화면 끝까지 시원하게.
-                    //   100dvh - 헤더(28) - 손패 fixed 영역(110) - 패딩/여백(80) ≈ viewport - 220.
-                    //   결과 배너/확정 버튼은 별도 팝업으로 분리되어 BattleStage 다음 stack 안 차지.
+                    // D-188 (요한 시안 v2): 3-block 구조 — 사냥감 슬롯(top) / 메인 row(좌:스탯+캐릭터, 우:머리+확정+나) / 내 슬롯(bottom).
+                    //   outer flex column + space-between → 컨테이너 길어질수록 block 사이 빈 공간 자동 분배.
+                    //   확정 버튼은 외부 모달 → BattleStage 우 col 내부로 이관(나 박스 위).
+                    //   손패·무덤 버튼은 BattleStage 외부 fixed-bottom 유지.
                     height: 'calc(100dvh - 200px)',
-                    minHeight: '380px',
+                    minHeight: '520px',
                     marginBottom: '14px',
                     background: 'linear-gradient(180deg, #1f2a3a 0%, #2a2a3e 60%, #3a2f2a 100%)',
                     borderRadius: '10px',
                     border: '1px solid #444',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    display: 'flex', flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '8px',
+                    boxSizing: 'border-box',
+                    gap: 8
                 }}>
-                    {/* D-186: 사냥감 띠 — 정보박스(flex:1) + 머리(88x88) 가로 한 줄. 거울 대칭 메타포 시작점.
-                        잔여 행동 dot은 사냥감 슬롯이 대체하므로 제거. */}
+                    {/* block 1 (top): 사냥감 슬롯 1234 — 시안에서 사냥감 머리 위로 이동(이전 D-187: 사냥감 띠 아래). */}
                     <div style={{
-                        position: 'absolute', top: 8, left: 8, right: 8,
-                        display: 'flex', alignItems: 'flex-start', gap: 8, zIndex: 2
+                        display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 6
                     }}>
-                        <div style={{
-                            flex: 1,
-                            background: 'rgba(0,0,0,0.6)', padding: '8px 10px',
-                            borderRadius: '8px', boxSizing: 'border-box',
-                            alignSelf: 'center'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 }}>
-                                <span style={{ fontSize: 13, fontWeight: 600 }}>{preyName}</span>
-                                <span style={{ fontSize: 11, color: '#ffd58a' }}>🥩×{preyMeat}</span>
-                            </div>
-                            <div style={{ height: 8, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
-                                <div style={{
-                                    width: `${hpDisplayPct}%`, height: '100%',
-                                    background: 'linear-gradient(90deg, #b24656 0%, #e2718a 100%)',
-                                    transition: 'width 0.3s ease'
-                                }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: 10, color: '#ccc', flexWrap: 'wrap' }}>
-                                <span>HP {hpCurrent}/{hpMax}</span>
-                                {preyAttack > 0 && <span style={{ color: '#ff9999' }}>🗡️{preyAttack}</span>}
-                                {preyDefense > 0 && <span style={{ color: '#9bd6ff' }}>🛡️{preyDefense}</span>}
-                            </div>
-                        </div>
-                        {/* 사냥감 머리 — 박스보다 살짝 큰 정사각.
-                            Phase B: 회피=shake / 피격=flash. activeEvent.id로 wrapper key 갱신해 매 턴 애니 재시작. */}
-                        <div style={{
-                            width: 88, height: 88, flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))',
-                            pointerEvents: 'none'
-                        }}>
-                            <div
-                                key={`prey-anim-${eventId || 'idle'}`}
-                                className={`${preyShakeClass} ${preyFlashClass}`.trim()}
-                                style={{ width: '100%', height: '100%', position: 'relative',
-                                         display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {preyImageUrl ? (
-                                    <img src={preyImageUrl} alt={preyName}
-                                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                ) : (
-                                    <span style={{ fontSize: 72, lineHeight: 1 }}>{preyEmoji}</span>
-                                )}
-                                {floats.filter(f => f.side === 'prey').map(f => (
-                                    <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
-                                ))}
-                            </div>
-                        </div>
+                        {Array.from({ length: SLOT_COUNT }, (_, i) => {
+                            const ev = computedEvades[i] || { base: 0, final: 0 };
+                            const consumed = !!slotsConsumed[i];
+                            const actionDef = slotActions[i] || { name: '?', type: 'peek', damage: 0, accuracy: 0, defense: 0 };
+                            const type = actionDef.type;
+                            const dmg = (actionDef.damage > 0) ? actionDef.damage : (preyAttack || 0);
+                            const def = (actionDef.defense > 0) ? actionDef.defense : (preyDefense || 0);
+                            const acc = Number(actionDef.accuracy) || 0;
+                            return (
+                                <div key={i} style={{
+                                    padding: '6px 4px',
+                                    background: '#2a2a3e',
+                                    border: '1px solid #444',
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    textAlign: 'center',
+                                    opacity: consumed ? 0.4 : 1,
+                                    lineHeight: 1.3
+                                }}>
+                                    <div style={{ color: '#888', fontSize: 10 }}>T{i + 1}</div>
+                                    <div style={{ color: '#ddd', fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{actionDef.name}</div>
+                                    <div style={{ marginTop: 2, fontSize: 10, display: 'inline-flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                        {type === 'attack' && dmg > 0 && <span style={{ color: '#ff9999' }}>🗡️{dmg}</span>}
+                                        {type === 'attack' && acc > 0 && <span style={{ color: '#8bd17c' }}>🏹{acc}</span>}
+                                        {type === 'defend' && def > 0 && <span style={{ color: '#4db8ff' }}>🛡️{def}</span>}
+                                        {type === 'evade' && <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
 
-                    {/* 좌하 — 캐릭터 비주얼 (D-182: 110x140 → 130x170 사이즈 회복 + bottom 50으로 위치 — 사냥감 슬롯 영역(130~190)과 캐릭터(top 160~330) 안 겹침). */}
-                    <div
-                        key={`player-push-${eventId || 'idle'}`}
-                        className={playerAttackClass}
-                        style={{
-                            position: 'absolute', bottom: 50, left: 6,
-                            width: 130, height: 170,
-                            zIndex: 1, pointerEvents: 'none'
-                        }}>
-                        <div
-                            key={`player-hit-${eventId || 'idle'}`}
-                            className={playerHitClass}
-                            style={{
-                                width: '100%', height: '100%', position: 'relative',
-                                display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-                                filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))'
-                            }}>
-                            {playerImageUrl ? (
-                                <img src={playerImageUrl} alt="나"
-                                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                            ) : (
-                                <span style={{ fontSize: 84, lineHeight: 1 }}>🧍</span>
-                            )}
-                            {floats.filter(f => f.side === 'player').map(f => (
-                                <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* D-186: "나" 정보 박스 — 사냥감 정보 박스 거울 대칭. 캐릭터 우측 옆 가로 길게.
-                        외부 모달 헤더 박스(D-184) 대체. HP 게이지 + 🍖 N/M 메타포 동일. */}
+                    {/* block 2 (middle): 메인 row — 좌(스탯+캐릭터) / 우(머리+확정+나 박스).
+                        flex 1 + minHeight 0으로 outer space-between 늘어남에 따라 자동 stretch.
+                        좌·우 col 각각 안에서 space-between으로 위/아래 분배. */}
                     <div style={{
-                        position: 'absolute', bottom: 14, left: 148, right: 8,
-                        background: 'rgba(0,0,0,0.6)', padding: '8px 10px',
-                        borderRadius: '8px', boxSizing: 'border-box', zIndex: 2
+                        display: 'flex', gap: 8, alignItems: 'stretch', flex: 1, minHeight: 0
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600 }}>나</span>
-                            <span style={{ fontSize: 11, color: '#f5c46d' }}>🍖 {playerHunger}/{maxHunger}</span>
-                        </div>
-                        <div style={{ height: 8, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
+                        {/* 좌 col: 사냥감 스탯박스(top) + 캐릭터(bottom). */}
+                        <div style={{
+                            flex: 1, minWidth: 0,
+                            display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8
+                        }}>
+                            {/* 사냥감 스탯박스 */}
                             <div style={{
-                                width: `${healthPct}%`, height: '100%',
-                                background: 'linear-gradient(90deg, #c73e4f 0%, #ff7a8a 100%)',
-                                transition: 'width 0.3s ease'
-                            }} />
+                                background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
+                                borderRadius: '8px', boxSizing: 'border-box'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, gap: 8 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 600 }}>{preyName}</span>
+                                    <span style={{ fontSize: 11, color: '#ffd58a' }}>🥩×{preyMeat}</span>
+                                </div>
+                                <div style={{ height: 6, background: '#222', borderRadius: 3, overflow: 'hidden' }}>
+                                    <div style={{
+                                        width: `${hpDisplayPct}%`, height: '100%',
+                                        background: 'linear-gradient(90deg, #b24656 0%, #e2718a 100%)',
+                                        transition: 'width 0.3s ease'
+                                    }} />
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10, color: '#ccc', flexWrap: 'wrap' }}>
+                                    <span>HP {hpCurrent}/{hpMax}</span>
+                                    {preyAttack > 0 && <span style={{ color: '#ff9999' }}>🗡️{preyAttack}</span>}
+                                    {preyDefense > 0 && <span style={{ color: '#9bd6ff' }}>🛡️{preyDefense}</span>}
+                                </div>
+                            </div>
+                            {/* 캐릭터 비주얼 (160×210). 좌 col bottom 정렬. */}
+                            <div
+                                key={`player-push-${eventId || 'idle'}`}
+                                className={playerAttackClass}
+                                style={{
+                                    width: 160, height: 210, flexShrink: 0,
+                                    alignSelf: 'flex-start',
+                                    pointerEvents: 'none'
+                                }}>
+                                <div
+                                    key={`player-hit-${eventId || 'idle'}`}
+                                    className={playerHitClass}
+                                    style={{
+                                        width: '100%', height: '100%', position: 'relative',
+                                        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                                        filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))'
+                                    }}>
+                                    {playerImageUrl ? (
+                                        <img src={playerImageUrl} alt="나"
+                                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                    ) : (
+                                        <span style={{ fontSize: 108, lineHeight: 1 }}>🧍</span>
+                                    )}
+                                    {floats.filter(f => f.side === 'player').map(f => (
+                                        <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: 10, color: '#ccc' }}>
-                            <span>HP {playerHealth}/{maxHealth}</span>
+                        {/* 우 col: 사냥감 머리(top, 160×160 — 캐릭터 width 동등) + 확정+나 박스 묶음(bottom). */}
+                        <div style={{
+                            width: 160, flexShrink: 0,
+                            display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8
+                        }}>
+                            {/* 사냥감 머리 (D-188: 120 → 160, 캐릭터 width와 동등). */}
+                            <div style={{
+                                width: 160, height: 160, flexShrink: 0,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))',
+                                pointerEvents: 'none'
+                            }}>
+                                <div
+                                    key={`prey-anim-${eventId || 'idle'}`}
+                                    className={`${preyShakeClass} ${preyFlashClass}`.trim()}
+                                    style={{ width: '100%', height: '100%', position: 'relative',
+                                             display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {preyImageUrl ? (
+                                        <img src={preyImageUrl} alt={preyName}
+                                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                    ) : (
+                                        <span style={{ fontSize: 128, lineHeight: 1 }}>{preyEmoji}</span>
+                                    )}
+                                    {floats.filter(f => f.side === 'prey').map(f => (
+                                        <span key={f.id} className={`battle-float-text kind-${f.kind}`}>{f.text}</span>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* 확정 + 나 박스 묶음 (bottom). */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {/* D-188: 확정 버튼 — 외부 모달 → BattleStage 우 col 안 나 박스 위로 이관. */}
+                                {(phase === 'select' || phase === 'resolve') && (
+                                    <button
+                                        disabled={(phase === 'select' && !allFilled) || phase === 'resolve'}
+                                        onClick={() => phase === 'select' && onConfirm && onConfirm()}
+                                        style={{
+                                            padding: '8px 10px',
+                                            background: (phase === 'select' && allFilled) ? '#4CAF50' : '#444',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            fontSize: 13,
+                                            fontWeight: 700,
+                                            cursor: (phase === 'select' && allFilled) ? 'pointer' : 'not-allowed'
+                                        }}>
+                                        {phase === 'select' ? '확정' : '전투 중...'}
+                                    </button>
+                                )}
+                                {/* "나" 박스 — 사냥감 스탯박스 거울 대칭(HP + 🍖 N/M). */}
+                                <div style={{
+                                    background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
+                                    borderRadius: '8px', boxSizing: 'border-box'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, gap: 8 }}>
+                                        <span style={{ fontSize: 13, fontWeight: 600 }}>나</span>
+                                        <span style={{ fontSize: 11, color: '#f5c46d' }}>🍖 {playerHunger}/{maxHunger}</span>
+                                    </div>
+                                    <div style={{ height: 6, background: '#222', borderRadius: 3, overflow: 'hidden' }}>
+                                        <div style={{
+                                            width: `${healthPct}%`, height: '100%',
+                                            background: 'linear-gradient(90deg, #c73e4f 0%, #ff7a8a 100%)',
+                                            transition: 'width 0.3s ease'
+                                        }} />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10, color: '#ccc' }}>
+                                        <span>HP {playerHealth}/{maxHealth}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* D-180: 슬롯 overlay 등 외부 주입 영역 — HuntCombatModal에서 absolute로 사냥감/내 슬롯 띄움. */}
-                    {children}
+                    {/* block 3 (bottom): 내 슬롯 1234 — 캐릭터 그룹 아래 가로 가득. */}
+                    <div style={{
+                        display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 6
+                    }}>
+                        {Array.from({ length: SLOT_COUNT }, (_, i) => {
+                            const card = slots[i];
+                            if (!card) {
+                                return (
+                                    <div key={i}
+                                        onClick={() => phase === 'select' && handleSlotClick(i)}
+                                        style={{
+                                            aspectRatio: '141 / 210',
+                                            background: 'rgba(22, 33, 62, 0.6)',
+                                            border: '1px dashed #555',
+                                            borderRadius: 10,
+                                            color: '#666',
+                                            fontSize: 14,
+                                            fontWeight: 700,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                        {i + 1}
+                                    </div>
+                                );
+                            }
+                            return (
+                                <HuntCard
+                                    key={i}
+                                    card={card}
+                                    selected={true}
+                                    onClick={phase === 'select' ? () => handleSlotClick(i) : undefined}
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
             );
         }
@@ -6322,7 +6426,7 @@
                     <div style={{
                         background: '#1a1a2e',
                         color: '#eee',
-                        padding: '12px 12px 110px',  // 하단 패딩 — 손패 부채꼴 fixed 영역 확보(카드 절반 viewport 밖이라 ~110).
+                        padding: '12px 12px 130px',  // 하단 패딩 — 손패 부채꼴 fixed 영역 확보(D-188: 110→130, 카드 96→120 키움 반영).
                         borderRadius: 0,
                         width: '100%',
                         height: '100%',
@@ -6356,93 +6460,13 @@
                             maxHunger={maxHunger}
                             playerImageUrl={playerImageUrl}
                             activeEvent={activeEvent}
-                        >
-                            {/* 사냥감 슬롯 — D-185 단순 박스. T1/T2/.. + 행동명 + ⚔/💨/🛡 배지.
-                                D-186: 사냥감 띠가 ~96px 차지 → top:120. 내 슬롯과 같은 left/right/grid로 컬럼 정렬. */}
-                            <div style={{
-                                position: 'absolute', top: 120, left: 8, right: 8,
-                                display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 6,
-                                zIndex: 2
-                            }}>
-                                {Array.from({ length: SLOT_COUNT }, (_, i) => {
-                                    const ev = computedEvades[i] || { base: 0, final: 0 };
-                                    const consumed = !!logs.find(l => l.turn === i + 1);
-                                    const actionDef = slotActions[i] || { name: '?', type: 'peek', damage: 0, accuracy: 0, defense: 0 };
-                                    const type = actionDef.type;
-                                    const preyAtkFallback = Number(prey.attack) || 0;
-                                    const preyDefFallback = Number(prey.defense) || 0;
-                                    const dmg = (actionDef.damage > 0) ? actionDef.damage : preyAtkFallback;
-                                    const def = (actionDef.defense > 0) ? actionDef.defense : preyDefFallback;
-                                    const acc = Number(actionDef.accuracy) || 0;
-                                    return (
-                                        <div key={i} style={{
-                                            padding: '6px 4px',
-                                            background: '#2a2a3e',
-                                            border: '1px solid #444',
-                                            borderRadius: 6,
-                                            fontSize: 11,
-                                            textAlign: 'center',
-                                            opacity: consumed ? 0.4 : 1,
-                                            lineHeight: 1.3
-                                        }}>
-                                            <div style={{ color: '#888', fontSize: 10 }}>T{i + 1}</div>
-                                            <div style={{ color: '#ddd', fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{actionDef.name}</div>
-                                            <div style={{ marginTop: 2, fontSize: 10, display: 'inline-flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
-                                                {type === 'attack' && dmg > 0 && <span style={{ color: '#ff9999' }}>🗡️{dmg}</span>}
-                                                {type === 'attack' && acc > 0 && <span style={{ color: '#8bd17c' }}>🏹{acc}</span>}
-                                                {type === 'defend' && def > 0 && <span style={{ color: '#4db8ff' }}>🛡️{def}</span>}
-                                                {type === 'evade' && <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* 내 슬롯 — D-186: 사냥감 슬롯 바로 아래에 동일 left/right + 동일 grid로 배치 → 컬럼 정렬.
-                                위에 "내카드" 라벨. 빈 슬롯 1/2/3/4 번호, 채워진 슬롯 HuntCard. */}
-                            <div style={{
-                                position: 'absolute', top: 198, left: 8, right: 8,
-                                fontSize: 10, color: '#9aa5c0', fontWeight: 600,
-                                letterSpacing: 0.5, zIndex: 2, paddingLeft: 2
-                            }}>내카드</div>
-                            <div style={{
-                                position: 'absolute', top: 215, left: 8, right: 8,
-                                display: 'grid', gridTemplateColumns: `repeat(${SLOT_COUNT}, 1fr)`, gap: 6,
-                                zIndex: 2
-                            }}>
-                                {Array.from({ length: SLOT_COUNT }, (_, i) => {
-                                    const card = slots[i];
-                                    if (!card) {
-                                        return (
-                                            <div key={i}
-                                                onClick={() => phase === 'select' && handleSlotClick(i)}
-                                                style={{
-                                                    aspectRatio: '141 / 210',
-                                                    background: 'rgba(22, 33, 62, 0.6)',
-                                                    border: '1px dashed #555',
-                                                    borderRadius: 10,
-                                                    color: '#666',
-                                                    fontSize: 14,
-                                                    fontWeight: 700,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center'
-                                                }}>
-                                                {i + 1}
-                                            </div>
-                                        );
-                                    }
-                                    return (
-                                        <HuntCard
-                                            key={i}
-                                            card={card}
-                                            selected={true}
-                                            onClick={phase === 'select' ? () => handleSlotClick(i) : undefined}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </BattleStage>
+                            SLOT_COUNT={SLOT_COUNT}
+                            slots={slots}
+                            phase={phase}
+                            handleSlotClick={handleSlotClick}
+                            allFilled={allFilled}
+                            onConfirm={handleConfirm}
+                        />
 
                         {/* D-183: 결과 배너 → 별도 팝업(z-index 1800)으로 분리. BattleStage 시원하게 늘릴 자리 확보. */}
                         {phase === 'done' && resultMessage && (
@@ -6484,26 +6508,7 @@
                             </div>
                         )}
 
-                        {/* D-48/D-183: 확정 버튼 — phase 'select'에서만 노출. 결과 확인은 별도 팝업 안. */}
-                        {(phase === 'select' || phase === 'resolve') && (
-                            <button
-                                disabled={(phase === 'select' && !allFilled) || phase === 'resolve'}
-                                onClick={() => phase === 'select' && handleConfirm()}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px',
-                                    marginBottom: '10px',
-                                    background: (phase === 'select' && allFilled) ? '#4CAF50' : '#444',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    cursor: (phase === 'select' && allFilled) ? 'pointer' : 'not-allowed'
-                                }}>
-                                {phase === 'select' ? '확정' : '전투 중...'}
-                            </button>
-                        )}
+                        {/* D-188: 확정 버튼 — BattleStage 내부 우 col로 이관(나 박스 위). 외부 위치 제거. */}
 
                         {/* D-91 (2026-04-25 요한 지시): 턴 로그 직관적 재설계.
                             한 줄 요약 → 2줄(내 행동 / 적 행동) 카드 형식.
@@ -6677,7 +6682,8 @@
                             //   yOffset도 약하게(parabolic 계수 6→3).
                             const N = active.length;
                             const step = N > 1 ? Math.min(4, 18 / N) : 0;
-                            const xStep = N > 1 ? Math.min(32, 240 / Math.max(1, N - 1)) : 0;
+                            // D-188: 카드 사이즈 96→120 키운 만큼 xStep도 키움(32→40, 240→320). 카드 사이 간격 더 펴짐.
+                            const xStep = N > 1 ? Math.min(40, 320 / Math.max(1, N - 1)) : 0;
                             // D-181: 손패 viewport 하단 fixed wrapper — 카드 절반 viewport 밖.
                             //   "내 손패" 라벨 제거(레퍼 이미지 단순함). 빈 상태도 fixed 영역에 안내.
                             return (
@@ -6689,34 +6695,30 @@
                                     ) : (
                                         <>
                                             {/* D-182: 부채꼴 가운데 정렬 — 무덤은 우측 absolute로 분리해 부채꼴 무게에 영향 X. */}
-                                            <div className="hunt-hand-fan" style={{ width: '100%', maxWidth: 360 }}>
+                                            <div className="hunt-hand-fan" style={{ width: '100%', maxWidth: 480 }}>
                                                 {active.map((m, i) => {
                                                     const off = i - (N - 1) / 2;
                                                     const rot = off * step;
                                                     const xPx = off * xStep;
                                                     const yPx = Math.pow(Math.abs(off), 1.2) * 3;
-                                                    const isHovered = hoveredCardUid === m.card.uid;
+                                                    const isExpanded = hoveredCardUid === m.card.uid;
+                                                    // D-188: hover 제거. 클릭=확대 preview 띄우기(슬롯 X). preview 다시 클릭 시 좌측 첫 빈 슬롯 자동 배치.
+                                                    //   z-index는 부채꼴 자연 정렬 그대로(N - |off|) — 클릭해도 안 올림(어차피 가운데 큰 preview 뜸).
                                                     return (
                                                         <div
                                                             key={m.card.uid}
                                                             className="hunt-card-fan-slot"
+                                                            onClick={() => setHoveredCardUid(m.card.uid)}
                                                             style={{
                                                                 transform: `translate(${xPx}px, ${yPx}px) rotate(${rot}deg)`,
                                                                 zIndex: N - Math.abs(off),
-                                                                // D-185: hover 시 투명(opacity)→어두움(filter brightness). 뒤가 비치지 않음.
-                                                                filter: isHovered ? 'brightness(0.35)' : 'none',
+                                                                filter: isExpanded ? 'brightness(0.35)' : 'none',
                                                                 transition: 'filter 0.15s',
-                                                            }}
-                                                            onMouseEnter={() => setHoveredCardUid(m.card.uid)}
-                                                            onMouseLeave={() => setHoveredCardUid(null)}>
+                                                                cursor: 'pointer',
+                                                            }}>
                                                             <div className="hunt-card-fan-inner">
                                                                 <HuntCard
                                                                     card={m.card}
-                                                                    onClick={() => {
-                                                                        // D-185: 클릭 시 preview 사라짐. 무한 카드면 새 카드 mouseEnter 시 자동 재등장.
-                                                                        setHoveredCardUid(null);
-                                                                        handleHandClick(m.card);
-                                                                    }}
                                                                     cornerBadge={m.cornerBadge}
                                                                     extraInfo={m.extraInfo}
                                                                 />
@@ -6742,27 +6744,42 @@
                             );
                         })()}
 
-                        {/* D-183: hover 카드 큰 preview — 화면 가운데 떠있는 큰 카드. 손패의 원본은 어두워짐.
-                            pointer-events: none — preview 자체는 마우스 이벤트 받지 않아 손패 hover 유지. */}
+                        {/* D-188: 확대 카드 preview — 손패 클릭 시 화면 가운데 큰 카드.
+                            backdrop 클릭 시 preview 닫힘. 큰 카드 클릭 시 좌측 첫 빈 슬롯에 자동 배치. */}
                         {hoveredCardUid && (() => {
-                            const hoveredItem = phase === 'select' && hand
+                            const expandedItem = phase === 'select' && hand
                                 ? hand.find(c => c.uid === hoveredCardUid)
                                 : null;
-                            if (!hoveredItem) return null;
+                            if (!expandedItem) return null;
                             return (
-                                <div style={{
-                                    position: 'fixed',
-                                    top: '50%', left: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    width: 'min(72vw, 280px)',
-                                    zIndex: 1600,
-                                    pointerEvents: 'none',
-                                    filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.7))',
-                                }}>
-                                    <div className="hunt-card-preview-large">
-                                        <HuntCard card={hoveredItem} />
+                                <>
+                                    <div
+                                        onClick={() => setHoveredCardUid(null)}
+                                        style={{
+                                            position: 'fixed', inset: 0,
+                                            background: 'rgba(0, 0, 0, 0.45)',
+                                            zIndex: 1599,
+                                        }}
+                                    />
+                                    <div
+                                        onClick={() => {
+                                            handleHandClick(expandedItem);
+                                            setHoveredCardUid(null);
+                                        }}
+                                        style={{
+                                            position: 'fixed',
+                                            top: '50%', left: '50%',
+                                            transform: 'translate(-50%, -50%)',
+                                            width: 'min(72vw, 280px)',
+                                            zIndex: 1600,
+                                            cursor: 'pointer',
+                                            filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.7))',
+                                        }}>
+                                        <div className="hunt-card-preview-large">
+                                            <HuntCard card={expandedItem} />
+                                        </div>
                                     </div>
-                                </div>
+                                </>
                             );
                         })()}
 

@@ -1,5 +1,18 @@
 # project-state.md
 
+마지막 검증: 2026-04-30 (**D-188, 시안 v2 — 사냥감 슬롯 위 / 캐릭터·사냥감 동등 사이즈 / 확정 위치 이관 / 손패 클릭 expand**).
+D-188 변경 5건 (요한 시안 v2):
+- BattleStage 3-block 재배치: ① 사냥감 슬롯 1234 (top) → ② 메인 row [좌:사냥감 스탯박스↑/캐릭터(160×210)↓ space-between | 우:사냥감 머리(160×160)↑/확정 버튼+나 박스↓ space-between] → ③ 내 슬롯 1234 (bottom). outer flex column space-between → 컨테이너 길어질수록 block 사이 빈 공간 자동 분배.
+- 사냥감 머리 120 → 160 (캐릭터 width 동등). emoji fontSize 96→128.
+- 확정 버튼 외부 모달(손패 위, width:100% padding:10px) → BattleStage 우 col 안 나 박스 위로 이관 (padding 8/10, fontSize 13). 외부 위치 코드 제거.
+- 손패 hover 전면 제거(모바일 통일). 클릭=확대 preview만 띄움(슬롯 X), 큰 preview 다시 클릭=좌측 첫 빈 슬롯 자동 배치(`handleHandClick`이 이미 `findIndex(s===null)` 사용). backdrop 추가(외부 클릭 시 preview 닫기). z-index는 부채꼴 자연 정렬(N-|off|), 클릭으로 안 올림.
+- 손패 사이즈/간격: 카드 width 96→120, container/fixed-bottom height 175→210, fixed-bottom translateY 85→105, xStep 32/240→40/320, maxWidth 360→480, 모달 하단 padding 110→130. CSS `:hover` 룰 3개 모두 제거(z-index 200 / inner translateY -30 / box-shadow).
+- 큰 preview 카드 이름 가로 가운데 보정: `.hunt-card-preview-large .hunt-card-name { left: 4%; right: 4% }` (일반 카드는 left:28.37% 비대칭 유지 — 좌측 스탯 배지 보호).
+- BattleStage prop 시그니처 확장: `SLOT_COUNT, slots, phase, handleSlotClick, allFilled, onConfirm` (children polyfill 폐기는 D-187에서 이미).
+- 검증: 페이지 정상 마운트, 콘솔 SyntaxError 없음(Babel deopt 노이즈만), 캠프 정상. 픽셀 단위 사냥 모달 시각 검증은 요한 QA에 위임 — 모달 트리거가 RNG 기반이라 자동화 부적합.
+
+마지막 검증: 2026-04-30 (**D-187, intermediate — 사이즈 키움 + 슬롯 그룹 세로 중앙**) — D-188로 흡수, 별도 항목 보류.
+
 마지막 검증: 2026-04-30 (**D-186, 전투화면 5존 정렬 — 사냥감띠 / 사냥감슬롯 / 내카드+내슬롯 / 캐릭터+나박스 / 손패**).
 D-186 목업 구조 정착:
 - BattleStage 사냥감 정보박스(좌, flex:1) + 머리 비주얼(우 88x88) 가로 띠 한 줄로 통합 (top:8, display:flex). 잔여 행동 dot 제거(슬롯 대체).

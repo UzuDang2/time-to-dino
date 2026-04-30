@@ -863,7 +863,8 @@ button:disabled {
 /* D-183: hover 큰 카드 preview — 화면 가운데 떠있는 확대 카드.
    카드 폭이 약 280px이라 폰트 비례 확대 (손패 카드 96px의 ~3배).
    레퍼 이미지 매칭 — 카드 정보(이름/스탯/일러스트/본문)가 명확하게 읽힘. */
-.hunt-card-preview-large .hunt-card-name { font-size: 22px; top: 5%; }
+/* D-188: 큰 preview에선 이름을 카드 가로 가운데(좌우 대칭). 일반 카드는 좌측 스탯 배지 영역(28%) 피하느라 비대칭이지만, preview는 배지가 작아 가운데가 자연스럽다. */
+.hunt-card-preview-large .hunt-card-name { font-size: 22px; top: 5%; left: 4%; right: 4%; }
 .hunt-card-preview-large .hunt-card-body { font-size: 14px; line-height: 1.35; padding: 10px 14px 0; }
 .hunt-card-preview-large .hunt-card-stat { font-size: 22px; }
 .hunt-card-preview-large .hunt-card-stat img { width: 22px; height: 22px; }
@@ -874,14 +875,14 @@ button:disabled {
 
 /* D-179: 사냥 손패 부채꼴 스택 — 가운데 카드 위로, 양옆 회전.
    카드 수 동적(N장). transform-origin bottom center로 회전축 자연스러움.
-   .hunt-hand-fan 컨테이너는 가로 가운데 정렬, .hunt-card-fan-slot이 부채꼴 내 위치 담당.
-   .is-active 클릭 hover 시 살짝 위로(데스크톱) — 모바일은 no-op. */
+   D-188: hover 효과 전면 제거(모바일 통일). 카드 사이즈 96→120, 컨테이너 175→210.
+   클릭 시 z 안 올림 — 가운데 큰 preview가 뜨므로 부채꼴 안에서 z 조작 불필요. */
 .hunt-hand-fan {
     position: relative;
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    height: 175px;
+    height: 210px;
     margin: 0 auto;
     padding-top: 30px;
     padding-bottom: 6px;
@@ -889,21 +890,8 @@ button:disabled {
 .hunt-card-fan-slot {
     position: absolute;
     bottom: 6px;
-    width: 96px;
+    width: 120px;
     transform-origin: 50% 110%;
-}
-/* D-182: hover 시 외곽 wrapper transform(회전·xOffset·yOffset) 보존 + 내곽 wrapper translateY로 위로.
-   inner는 hover 외 transform 없어 덜덜거림 없이 추가됨. z-index 200으로 다른 카드 위에. */
-.hunt-card-fan-inner {
-    transition: transform 0.15s ease-out;
-}
-.hunt-card-fan-slot:hover { z-index: 200 !important; }
-.hunt-card-fan-slot:hover .hunt-card-fan-inner {
-    transform: translateY(-30px);
-}
-.hunt-card-fan-slot:hover .hunt-card {
-    box-shadow: 0 0 0 2px #d4b84a, 0 0 18px rgba(212, 184, 74, 0.7);
-    border-radius: 10px;
 }
 
 /* D-182: 무덤 — 카드 미니어처 → 작은 원형 버튼. 우측 absolute로 부채꼴과 분리해 부채꼴 가운데 정렬 살림.
@@ -961,12 +949,12 @@ button:disabled {
     z-index: 10;
     padding: 0 8px 8px;
     pointer-events: none;
-    /* D-182: 무덤 absolute right 기준점. */
-    height: 175px;
+    /* D-182: 무덤 absolute right 기준점. D-188: 175→210 (카드 96→120 키운 만큼). */
+    height: 210px;
 }
 .hunt-hand-fixed-bottom > * { pointer-events: auto; }
 .hunt-hand-fixed-bottom .hunt-hand-fan {
-    transform: translateY(85px);
+    transform: translateY(105px);
 }
 .hunt-hand-fixed-bottom .hunt-discard-pile {
     margin-bottom: 4px;

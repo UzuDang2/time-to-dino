@@ -3725,3 +3725,108 @@ onClick={() => {
 - `preview_start`로 띄워 viewport 375 모바일 기준 5존 정렬 확인.
 - 사냥감 슬롯·내 슬롯의 컬럼 4개가 서로 X축 정렬되는지 (1↑·1↓ / 2↑·2↓ / ...).
 - "나" 박스가 사냥감 정보박스 거울 대칭으로 보이는지 (양쪽 다 가로 길고 라운드).
+
+---
+
+## D-187 (2026-04-30 요한 지시): 사이즈 키움 + 슬롯 그룹 세로 중앙 — intermediate
+
+### 의사결정
+
+D-186 5존 구조 위에서 요한 1차 지시: "캐릭터·사냥감 사이즈 키워줘, 체력바 줄여도 OK + 슬롯 영역이 컨테이너 상하 중앙에 있음 좋겠어." 이를 받아 사이즈 + 정렬 변경.
+
+- 사냥감 머리 88→120, 캐릭터 130×170→160×210.
+- 정보박스 padding 8→6, HP 게이지 height 8→6 (체력바 슬림).
+- 사냥감 슬롯 + 내카드 라벨 + 내 슬롯을 wrapper로 묶어 `top:50% transform translateY(-50%)`로 컨테이너 세로 중앙 정렬.
+- BattleStage outer는 `position:relative` 절대 좌표 그대로 유지(이때까진 children prop 살아있음).
+- minHeight 380→520.
+
+### 한계
+
+이 결정은 **즉시 D-188 시안 v2로 대체됨**. 사용자가 곧바로 더 명확한 시안을 줘서 wrapper 구조 자체가 폐기됨. D-187 코드는 D-188에 흡수되어 단독 commit 안 됨. 이력 기록용으로만 남김.
+
+### 검증 (생략)
+
+D-188 시안 도착 시점에 미진입 상태 — 다음 단계로 넘어감.
+
+---
+
+## D-188 (2026-04-30 요한 지시): 시안 v2 — 3-block 재배치 + 손패 인터랙션 모바일 통일
+
+### 의사결정
+
+요한이 새 BattleStage 시안 2장(일반/길어진 케이스) + 5개 명시 요구를 줌. 핵심:
+1. 사냥감과 유저 캐릭터의 총 사이즈는 같다.
+2. 사냥감 턴 표시 위치 = 사냥감 머리 위, 유저 턴 표시 위치 = 캐릭터 그룹 아래(시안 의도: 슬롯이 각 액터에 붙어 있음).
+3. 확정 버튼을 유저의 스탯표(나 박스) 위쪽에 배치.
+4. 마우스 오버 제거(모바일에 없는 기능). 클릭하면 확대된 카드, 확대된 카드를 한 번 더 터치하면 좌측 첫 빈 슬롯에 자동.
+5. 하단 부채꼴 카드 간격 늘리고 사이즈 키움. 클릭해도 z 안 올림(어차피 가운데 큰 preview 뜸).
+
+### 구조
+
+```
+BattleStage (flex column, justify-content: space-between, padding: 8, gap: 8)
+  block 1 (top):    사냥감 슬롯 1234 (grid)
+  block 2 (middle, flex 1, alignItems stretch):
+    좌 col (flex column, space-between, flex 1, minWidth 0):
+      - 사냥감 스탯박스 (top, padding 6/10 슬림, HP 게이지 6px)
+      - 캐릭터 비주얼 (160×210, alignSelf flex-start)
+    우 col (flex column, space-between, width 160 고정):
+      - 사냥감 머리 (160×160, emoji 128px)
+      - 확정+나 박스 묶음 (column gap 4):
+        - 확정 버튼 (phase select|resolve일 때만)
+        - 나 박스 (HP 게이지 + 🍖 N/M)
+  block 3 (bottom): 내 슬롯 1234 (grid)
+```
+
+### 손패 인터랙션 (모바일 통일)
+
+- `onMouseEnter/Leave` 제거. 카드 fan-slot div 자체 onClick → `setHoveredCardUid(uid)` (이름은 hover에서 의미 변경: "확대된 카드"). filter brightness 0.35 적용은 그대로(어두움 표시).
+- 확대 preview는 fixed top:50% left:50% transform translate(-50%,-50%) z-index 1600. 이전 `pointer-events:none` → `auto`. onClick 시 `handleHandClick(card) + setHoveredCardUid(null)` → 좌측 첫 빈 슬롯 자동(`handleHandClick`이 `slots.findIndex(s===null)` 사용).
+- backdrop 추가 (fixed inset 0, z-index 1599, 검은 반투명 0.45). onClick 시 `setHoveredCardUid(null)` → preview 닫기.
+- z-index는 부채꼴 자연 정렬(N - |off|) 그대로. 클릭해도 안 올림. CSS `.hunt-card-fan-slot:hover { z-index: 200 !important }` 룰 제거.
+
+### 손패 시각 (사이즈/간격 ↑)
+
+- `.hunt-card-fan-slot` width 96 → 120 (CSS).
+- `.hunt-hand-fan` height 175 → 210.
+- `.hunt-hand-fixed-bottom` height 175 → 210, `.hunt-hand-fan` translateY 85 → 105 (절반 viewport 밖 유지).
+- JSX xStep `Math.min(32, 240/(N-1))` → `Math.min(40, 320/(N-1))` (간격 펴짐).
+- 부채꼴 maxWidth 360 → 480.
+- 외부 모달 padding 하단 110 → 130 (카드 키운 만큼 공간 확보).
+- CSS `:hover` 룰 3개 전부 제거: `.hunt-card-fan-slot:hover`, `.hunt-card-fan-slot:hover .hunt-card-fan-inner`, `.hunt-card-fan-slot:hover .hunt-card`. `.hunt-card-fan-inner` transition도 제거(사용 안 함).
+
+### 확정 버튼 이관
+
+- 외부 모달(`HuntCombatModal` 내부, BattleStage 다음)에 있던 width:100% / padding:10 / marginBottom:10 큰 버튼 제거.
+- BattleStage 우 col 안 "확정+나 박스 묶음"에 padding:8/10, fontSize 13, fontWeight 700, borderRadius 8로 압축 배치.
+- BattleStage prop 시그니처 확장: `allFilled, onConfirm` 추가. 호출부에서 `allFilled={allFilled}` `onConfirm={handleConfirm}` 전달.
+
+### 큰 preview 카드 이름 가운데 정렬
+
+- 일반 부채꼴 카드의 `.hunt-card-name`은 `left: 28.37%` `right: 4%` 비대칭 — 좌측 스탯 배지(att/acc/eva/def 4개 세로) 영역 피하기 위함. 그래서 글자가 우측 쏠림.
+- 큰 preview에선 카드가 확대돼 텍스트가 더 두드러져 비대칭이 거슬림. preview 한정 `left: 4%` 추가해 좌우 대칭 가운데로. 일반 카드 룰은 그대로(스탯 배지 보호).
+
+### 사이즈 동등화의 의미
+
+요한 시안 1: 사냥감 머리(돼지) ≈ 캐릭터 width. 즉 시각적 무게감 동등. 캐릭터는 세로로 길어도 OK. 머리 120→160으로 캐릭터 width(160)와 매치. 우 col width 160 고정으로 정착.
+
+### 파일
+
+- `index.html`:
+  - `BattleStage` 시그니처 + 본체 통째 재작성 (5829~6027 영역, ~200줄).
+  - 호출부 (6444~) `BattleStage` prop 4개 추가, 외부 확정 버튼 (6511~) 코드 제거.
+  - 손패 부채꼴 카드 (6698~) onMouseEnter/Leave 제거, fan-slot onClick 추가, HuntCard onClick 제거.
+  - 큰 preview (6752~) backdrop + onClick 추가, pointerEvents auto, cursor pointer.
+  - xStep 32/240 → 40/320, maxWidth 360 → 480, 모달 padding 110 → 130.
+- `gameStyles.css`:
+  - `.hunt-hand-fan` height 175 → 210.
+  - `.hunt-card-fan-slot` width 96 → 120.
+  - `.hunt-hand-fixed-bottom` height 175 → 210, translateY 85 → 105.
+  - `:hover` 룰 3개 제거, `.hunt-card-fan-inner` transition 제거.
+  - `.hunt-card-preview-large .hunt-card-name { left: 4%; right: 4% }` 추가.
+
+### 검증
+
+- React 마운트 정상, 콘솔 SyntaxError 없음(Babel deopt 노이즈만 — 정상).
+- 사냥 모달은 RNG 기반이라 자율 진입 불가. 픽셀 단위 시각 검증은 요한 QA에 위임.
+- 모바일 viewport 375 fit: 좌 col flex 1 + 우 col 160 고정 + padding 16 + gap 8 = 184 + 좌col(191). 캐릭터 160 fit. 확인 포인트.
