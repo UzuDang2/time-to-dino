@@ -3594,3 +3594,79 @@ const [hoveredCardUid, setHoveredCardUid] = useState(null);
 ### 파일
 
 - `index.html`: HuntCombatModal 외부 헤더 한 줄 → 사냥감 박스 톤 다층 박스.
+
+---
+
+## D-185 (2026-04-30 요한 지시): hover 어두움(filter) + 클릭 preview 초기화 + 슬롯 디자인 스왑
+
+요한 피드백:
+> 카드 선택을 하면 어두워지는게 투명해지는 처리하면 안되고, 어두워져야해.
+> 클릭해서 목록에 올라갔다면 내가 마우스 호버중인거는 없어져야지, 만약 계속 무한카드라면
+> 중앙에 보이는 확대 카드가 판으로 올려졌다가 손에 있는게 다시 올라오는거니까 그런 전환 애니메이션도 필요하고.
+> 사냥감의 턴 정보슬롯은 이전꺼가 맞고, 현재 사냥감 턴 정보슬롯으로 표현된 방식이 내 턴슬롯카드가 그방식으로 보여야해.
+
+### 결정
+
+- **hover darkening**: `opacity: 0.25` → `filter: brightness(0.35)`. opacity는 카드를 투명하게 만들어 뒤가 비침. filter brightness는 진짜 어두워짐 + 자식 모두 비례 적용.
+- **클릭 시 preview 초기화**: `onClick`에서 `setHoveredCardUid(null)` 먼저 호출 후 `handleHandClick`. 무한 카드(주먹 등)는 손패에 즉시 새 카드 등장 → mouseEnter 자동 트리거되며 새 preview 자연 등장. 별도 전환 애니메이션 없이 자연 흐름.
+- **사냥감 ↔ 내 슬롯 디자인 스왑** (D-183 잘못 적용 정정):
+  - 사냥감 슬롯: HuntCard 비주얼(D-183) → **D-180 단순 박스** (T1/T2 + 행동명 + 🗡️/💨/🛡 배지). 행동 패턴 정보 노출 목적이라 카드 비주얼이 무거웠음.
+  - 내 슬롯: 단순 박스(D-182) → **HuntCard 비주얼**. 빈 슬롯은 1/2/3/4 번호 박스(aspect 141/210 + dashed border). 카드 들어가면 HuntCard `selected={true}`.
+
+### 구현
+
+#### 1) hover filter brightness (`HuntCombatModal` 손패)
+
+```jsx
+style={{
+  transform: '...',
+  filter: isHovered ? 'brightness(0.35)' : 'none',
+  transition: 'filter 0.15s',
+}}
+```
+
+#### 2) 클릭 시 preview 초기화
+
+```jsx
+onClick={() => {
+  setHoveredCardUid(null);
+  handleHandClick(m.card);
+}}
+```
+
+`handleHandClick`이 손패에서 카드 빼고 슬롯에 추가. 무한 카드면 `buildHuntDeck`에서 새 카드가 즉시 보충되고 마우스 위치에 카드 다시 등장 → mouseEnter 자연 발화 → 새 preview.
+
+#### 3) 사냥감 슬롯 단순 박스 (D-180 패턴 회복)
+
+```jsx
+{Array.from({ length: SLOT_COUNT }, (_, i) => {
+  const actionDef = slotActions[i] || {...};
+  return (
+    <div style={{ background: '#2a2a3e', border: '1px solid #444', borderRadius: 6, ... }}>
+      <div>T{i+1}</div>
+      <div>{actionDef.name}</div>
+      <div>{type === 'attack' && <span>🗡️{dmg}</span>} {/* 등 */}</div>
+    </div>
+  );
+})}
+```
+
+#### 4) 내 슬롯 HuntCard 비주얼
+
+```jsx
+{slots[i] === null
+  ? <div style={{ aspectRatio: '141/210', dashed border, 1/2/3/4 }}>
+  : <HuntCard card={slots[i]} selected={true} onClick={...} />
+}
+```
+
+빈 슬롯 aspect 141/210 + dashed = 카드 자리 명확. 채워지면 HuntCard 작은 사이즈(grid 자동).
+
+### 한계 / 후속
+
+- **슬롯 카드 상세 정보** — extraInfo(내구·방어구·분실) 손패에서만 확인. 슬롯에선 카드 이름/스탯 배지만. hover preview 도입 검토(향후).
+- **전환 애니메이션 별도 없음** — 무한 카드 보충 시 mouseEnter 자연 트리거. fade in/out 구현은 향후. 현재 흐름이 충분히 자연스러움.
+
+### 파일
+
+- `index.html`: HuntCombatModal 손패 hover opacity→filter brightness, onClick에 setHoveredCardUid(null), 사냥감 슬롯 D-180 단순 박스 회복, 내 슬롯 HuntCard 비주얼 적용 + 빈 슬롯 dashed 카드 모양.
