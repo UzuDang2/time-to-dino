@@ -6330,16 +6330,27 @@
                         overflowY: 'auto',
                         boxSizing: 'border-box'
                     }}>
-                        {/* D-180: 내 스탯 한 줄 — BattleStage 외부 헤더(시안엔 단순 "나" 라벨만 있어 BattleStage 안 통합 X). */}
+                        {/* D-184: 내 정보 박스 — 사냥감 정보 박스와 동일 메타포(체력=게이지, 나머지=아이콘+숫자).
+                            BattleStage 외부 헤더 위치 유지. 디자인 톤은 사냥감 박스(검은 반투명, 라운드, 다층) 동일. */}
                         <div style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12,
-                            padding: '4px 8px', marginBottom: 8,
-                            fontSize: 11, color: '#ccc',
-                            background: 'rgba(0,0,0,0.25)', borderRadius: 6
+                            background: 'rgba(0,0,0,0.6)', padding: '6px 10px',
+                            borderRadius: 8, marginBottom: 8, boxSizing: 'border-box'
                         }}>
-                            <span style={{ color: '#888' }}>나</span>
-                            <span><span style={{ color: '#ff7a8a' }}>❤️</span> {playerHealth}/{maxHealth}</span>
-                            <span><span style={{ color: '#f5c46d' }}>🍖</span> {playerHunger}/{maxHunger}</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, gap: 8 }}>
+                                <span style={{ fontSize: 13, fontWeight: 600 }}>나</span>
+                                <span style={{ fontSize: 11, color: '#f5c46d' }}>🍖 {playerHunger}/{maxHunger}</span>
+                            </div>
+                            <div style={{ height: 8, background: '#222', borderRadius: 4, overflow: 'hidden' }}>
+                                <div style={{
+                                    width: `${Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100))}%`,
+                                    height: '100%',
+                                    background: 'linear-gradient(90deg, #c73e4f 0%, #ff7a8a 100%)',
+                                    transition: 'width 0.3s ease'
+                                }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10, color: '#ccc' }}>
+                                <span>HP {playerHealth}/{maxHealth}</span>
+                            </div>
                         </div>
 
                         {/* D-180 (요한 시안): BattleStage 안에 사냥감 슬롯/내 슬롯 통합.

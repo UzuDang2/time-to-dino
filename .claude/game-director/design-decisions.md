@@ -3548,3 +3548,49 @@ const [hoveredCardUid, setHoveredCardUid] = useState(null);
 
 - `index.html`: BattleStage `height: calc(100dvh - 200px)`, 사냥감 슬롯 HuntCard 변환, 결과 배너 z-index 1800 모달, 확정 버튼 phase 'select'/'resolve' 한정, `hoveredCardUid` state + 손패 onMouseEnter/Leave + opacity 0.25 + 가운데 fixed preview overlay.
 - `gameStyles.css`: `.hunt-card-preview-large` 자식 폰트 비례 룰 + 외곽 노란 glow.
+
+---
+
+## D-184 (2026-04-30 요한 지시): 내 정보 박스 — 사냥감 박스 메타포 통일
+
+요한 원문: "내 체력도 이런 메타포를 유지해서 만들어주면 좋겠어. 체력만 게이지로 표시해주고, 나머지는 아이콘과 숫자로 표시해주고.."
+
+### 결정
+
+기존 외부 헤더 한 줄(`나 ❤️ 6/6 🍖 8/10`) → 사냥감 정보 박스와 **동일 메타포 + 동일 디자인 톤**의 박스로 변환:
+- 검은 반투명 배경(`rgba(0,0,0,0.6)`) + 라운드 8px (사냥감 박스 동일).
+- 다층 stack: 헤더(이름 + 보조 아이콘+숫자) → 게이지 → 텍스트.
+- **체력만 게이지** (사냥감 HP 바와 같은 빨강 그라디언트 `#c73e4f → #ff7a8a`).
+- **허기는 아이콘+숫자** (`🍖 N/M`) — 사냥감 박스의 `🥩×N` 위치(우상단)와 미러.
+
+위치는 기존 모달 헤더(BattleStage 외부 위) 그대로. BattleStage 내부 통합은 캐릭터 위치/슬롯 영역과 충돌 가능성 있어 외부 유지.
+
+### 구현 (`index.html` HuntCombatModal)
+
+```jsx
+<div style={{ background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: 8, marginBottom: 8 }}>
+  <div style={{ display: 'flex', justifyContent: 'space-between', ... }}>
+    <span>나</span>
+    <span style={{ color: '#f5c46d' }}>🍖 {playerHunger}/{maxHunger}</span>
+  </div>
+  <div style={{ height: 8, background: '#222', borderRadius: 4 }}>
+    <div style={{
+      width: `${(playerHealth / maxHealth) * 100}%`,
+      background: 'linear-gradient(90deg, #c73e4f 0%, #ff7a8a 100%)',
+      transition: 'width 0.3s ease'
+    }} />
+  </div>
+  <div style={{ fontSize: 10, color: '#ccc' }}>HP {playerHealth}/{maxHealth}</div>
+</div>
+```
+
+사냥감 정보 박스(BattleStage 좌상)와 거의 동일한 구조 — 사용자 시각 메타포 통일.
+
+### 한계 / 후속
+
+- **위치**: BattleStage 외부 유지. 사용자가 "모달 헤더에 사냥감 박스 같은 디자인이 떠 있다" 인지. 향후 BattleStage 내부 우상 또는 좌하 미러 배치 검토 가능.
+- **체력 변동 트랜지션**: width transition 0.3s — D-176 Phase B 사냥감 HP와 동일한 자연스러운 게이지 변화.
+
+### 파일
+
+- `index.html`: HuntCombatModal 외부 헤더 한 줄 → 사냥감 박스 톤 다층 박스.
