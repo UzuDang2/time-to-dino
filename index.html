@@ -6459,6 +6459,11 @@
                 //   D-205: TURN_DELAY_MS 1800→2200 (+400ms) — 사용자 피드백 "사냥감 공격 후 턴 바뀔 때 여유 부족".
                 //          step4(t+1200) 직후 다음 턴 t+0까지 600ms→1000ms breathing. 피격 반응의 잔향이 다음 턴 시작 전 충분히 가라앉도록.
                 //   D-205: tail 1200→1400 (+200ms) — 마지막 턴 step4 hit shake/flash(0.6s) + 회피로 끝나는 경우 evade 애니(1.0s) 잔존 여유.
+                //   D-206: tail 1400→800 (-600ms) — 사용자 피드백 "마지막 턴 후 결과 모달까지 너무 길다".
+                //          hit shake 0.6s는 step4 시작 후 600ms에 끝 → tail 800ms면 200ms 더 잔존 후 done 충분.
+                //          회피 카드 1.0s는 step1(t+0)부터 → step4(t+1200) 시점엔 이미 끝, 보호 불필요.
+                //          prey evade 1.0s는 step2(t+200)부터 → step4(t+1200) 시점엔 이미 끝.
+                //          float 2.0s 잔존은 결과 모달(z=1800)이 위에서 cover하니 시각상 자연 cut.
                 //   설계 의도: 공격 신호와 피격 반응 사이 정확히 200ms 텀 (양쪽 다). 인과의 시각적 명료성.
                 const TURN_DELAY_MS = 2200;
                 const STEP_OFFSETS = { user: 0, preyHit: 200, preyAttack: 1000, userHit: 1200 };
@@ -6543,10 +6548,13 @@
                 // 마지막 step4 hit shake + float + 말풍선이 충분히 잔존 후 결과 페이즈 전환.
                 // D-202: tail 1000→1200 — step4가 step3보다 200ms 늦으니 마지막 턴 끝부분도 200ms 추가.
                 // D-205: tail 1200→1400 (+200ms) — 마지막 턴이 회피(evade 1.0s)로 끝나도 모션 잔존 후 done 전환.
+                // D-206: tail 1400→800 (-600ms) — 마지막 턴 step4 시작 후 done까지 = 2200-1200+800 = 1800ms (기존 2400ms).
+                //   회피/prey evade 1.0s는 step1·step2부터 → step4 시점엔 이미 종료, 보호 불필요.
+                //   hit shake 0.6s는 step4+600ms 끝 → tail 800ms면 200ms 잔존 여유 후 done.
                 setTimeout(() => {
                     setPhase('done');
                     setActiveEvent(null);
-                }, TURN_DELAY_MS * res.turns.length + 1400);
+                }, TURN_DELAY_MS * res.turns.length + 800);
             };
 
             // D-48: '결과 확인' 버튼 — 유저가 결과를 읽고 수동으로 닫을 때 onResolve 호출.
