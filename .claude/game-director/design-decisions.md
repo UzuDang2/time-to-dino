@@ -3432,6 +3432,50 @@ D-199 이후 사냥 시각 시퀀스를 한 턴=4-step으로 확장하며 핀포
 
 **검증**: preview reload — 페이지 정상 부팅(`document.title` "🦖 타임투다이노"), 콘솔 에러 없음(BABEL deopt 경고만, 무해). 사냥 한 라운드 끝~결과 모달 사이 체감 단축은 사용자.
 
+## D-207. 비공격 카드 모션 — 회피 식별 버그픽스 + 방어 자세 신설 (2026-05-01)
+
+**요한 지시**: "회피·웅크리기 같은 비공격 카드 사용 시 (1) 모션 (2) 머리 위 기술명 텍스트가 사냥감 반응 없이 나오게."
+
+**현황 (D-206 직후)**:
+- 공격 카드: `playerAttack` push (앞으로 ±12px) ✓
+- 회피 카드: D-204에서 `playerEvade` 슬라이드(우측 30px + 정지 + 복귀, 1.0s) 도입 — 그러나 식별 기준 `card.type === 'evade'`가 데이터에 type 필드 부재로 **항상 false** → 모션 사문(死文) 상태였음.
+- 방어 카드(crouch / shield_block, defense > 0): 모션 없음.
+- cardName float: step1에 `card && card.name`으로 카드 종류 무관 일괄 push → 정상.
+
+**버그 발견**:
+- D-204에서 `card.type === 'evade'`를 회피 식별 기준으로 박았으나 `data/combat_cards.json`을 비롯한 모든 카드 JSON에 `type` 필드가 없음. combatDeck.js에서도 카드 객체에 type을 부여하지 않음(parseTokens은 prey action용).
+- 결과: D-204·D-205 회피 모션 도입·튜닝(18→30px)은 코드상 존재했으나 **사용자가 한 번도 본 적이 없는 모션**. 사용자 보고 "회피 카드 시 cardName 안 나온다"는 모션이 안 나왔다는 인지였을 가능성.
+
+**수정**:
+1. **회피 식별 교정** (`index.html:6479~6485`): `card.evade > 0 || card.id === 'dodge'`. 데이터의 실제 필드(`evade: 1`)와 id 양쪽 OR — 향후 회피 카드 추가 시 evade 수치만 박아도 자동 인식.
+2. **방어 모션 신설** (`gameStyles.css:728~738`, `:771`):
+   - keyframe `battle-player-defend`: `translateY(0) scaleY(1)` → 25%/75% `translateY(6px) scaleY(0.92)` → 100% `translateY(0) scaleY(1)`. 0.8s ease-in-out.
+   - 굽히기 0.2s(0→25%) → 정지 0.4s(25→75%) → 복귀 0.2s(75→100%).
+   - `transform-origin: 50% 100%` (발 기준) — 머리만 내려가고 발 고정 = "자세 낮춤" 시각.
+   - 변위 +6px + scaleY 0.92(약 17% 압축) — 공격 push(±12px)·회피 슬라이드(30px)와 진폭 차등.
+3. **playerDefend flag 신설** (`index.html`):
+   - step1에서 `isPlayerDefend = card.defense > 0`로 산출, `setActiveEvent({..., playerDefend: isPlayerDefend, ...})`.
+   - step2/3/4에 `playerDefend: false` 일관 reset (다른 step의 wrapper key 변경 시 모션 잔존 방지).
+   - BattleStage에서 `playerDefendClass = activeEvent.playerDefend ? 'battle-anim-player-defend' : ''`.
+   - wrapper className 합성: `${playerAttackClass} ${playerEvadeClass} ${playerDefendClass}` — 공격/회피/방어가 동시 발동 불가(상호 배타: 카드별 단일 종류) 하므로 합성에 충돌 없음.
+
+**시각 의미 차등화**:
+- 공격(앞으로 push, ±12px, 0.3s) — 능동·공격성.
+- 회피(옆으로 슬라이드 + 정지, +30px, 1.0s) — 회피선 이탈.
+- 방어(아래로 움츠림 + 압축, +6px Y / 0.92 scaleY, 0.8s) — 수동·견딤.
+- 도망(run_away)·휴식(rest) 등 기타 비공격 카드: 별도 모션 미신설(공격 sequence가 아닌 카드들은 cardName float만으로 충분 — 방어처럼 사냥감 공격 흐름 안에 들어가는 카드와 분리). 향후 사용자 피드백 시 추가 가능.
+
+**근거**:
+- 사용자 의도 핵심: "비공격 카드 = 사냥감 반응 없이도 캐릭터 측 신호가 분명해야". 모션 + cardName 2종 신호.
+- 방어 모션을 '아래로'로 정한 이유: 공격(앞 push) / 회피(옆 슬라이드) / 방어(아래) 3축 분리 = 시각적으로 가장 뚜렷한 의미 차등. 같은 X축 모션 변형(흔들림·진동)은 피격(damped sine)과 시각 충돌.
+- transform-origin 발 기준: 캐릭터가 "쪼그려 앉기" 인상을 주려면 머리만 낮아져야 함. center 변환은 캐릭터 전체가 위아래로 들썩이는 시각 → 자세 변화가 아닌 진동으로 인지.
+
+**파일**:
+- `gameStyles.css:728~738` (keyframe `battle-player-defend`), `:771` (적용 클래스).
+- `index.html:5872~5878` (playerDefendClass 산출 + 주석), `:5990` (className 합성), `:6477~6491` (step1 isPlayerDefend + setActiveEvent), `:6499/6515/6535` (step2/3/4 playerDefend false reset).
+
+**검증**: preview reload — React 정상 mount(베이스캠프 텍스트 정상 렌더), CSS 등록 확인(`document.styleSheets`에 `battle-anim-player-defend`/`battle-player-defend` 둘 다 존재), 콘솔 에러 없음(BABEL deopt 경고만, 무해). 실제 사냥 시 모션은 사용자 시각 검증.
+
 ## 권한·운영 chore (D-169~D-194 기간 중)
 
 `.claude/settings.json` 3중 보장(글로벌 + 메인 리포 + 워크트리) 패턴이 이 구간에서 정착. 주요 마일스톤:

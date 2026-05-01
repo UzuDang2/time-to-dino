@@ -731,6 +731,17 @@ button:disabled {
     75%  { transform: translateX(30px); }
     100% { transform: translateX(0); }
 }
+/* D-207: 방어/웅크리기 모션 — 자세를 낮춰 공격을 견디는 시각.
+   공격(앞으로 push)·회피(옆으로 슬라이드)와 시각적 의미 차등화: 위→아래(낮춤) + 살짝 압축(움츠림).
+   타이밍 0.8s: 굽히기 0.2s(0→25%) → 정지 0.4s(25→75%) → 복귀 0.2s(75→100%).
+   transform-origin 발(중앙 하단) 기준 — 머리만 내려가고 발은 고정 = "자세 낮춤" 시각.
+   translateY +6px + scaleY 0.92 = 약 17% 압축 효과. 방어 카드의 수동성·견딤을 표현. */
+@keyframes battle-player-defend {
+    0%   { transform: translateY(0) scaleY(1); }
+    25%  { transform: translateY(6px) scaleY(0.92); }
+    75%  { transform: translateY(6px) scaleY(0.92); }
+    100% { transform: translateY(0) scaleY(1); }
+}
 /* D-199: damped sine wave — 처음에 강하게 ±10 튕기고 점진적으로 진폭이 줄어들며 0으로 정착.
    사냥감/캐릭터 피격 공용. duration 0.6s, ease-out으로 초반 가속·후반 감속.
    keyframe 비율은 (10, -8, 6, -4, 3, -2, 1, 0) damped envelope. */
@@ -769,6 +780,10 @@ button:disabled {
    D-205: 변위 18px→30px — keyframe 본체 참조. */
 .battle-anim-prey-evade { animation: battle-prey-evade 1.0s ease-in-out; }
 .battle-anim-player-evade { animation: battle-player-evade 1.0s ease-in-out; }
+/* D-207: 방어/웅크리기 — 0.8s ease-in-out. transform-origin은 inline style로 .battle-anim-player-defend 적용 wrapper에서
+   바닥 기준(center bottom)으로 박을 수도 있으나, 캐릭터 wrapper가 align-items:flex-end 컨테이너 안에 있으므로
+   기본 50% 50% 변환으로도 발이 거의 고정되어 보임 — 단순화. 필요 시 wrapper에 transform-origin 추가. */
+.battle-anim-player-defend { animation: battle-player-defend 0.8s ease-in-out; transform-origin: 50% 100%; }
 /* D-203: 사냥감 공격 push — 캐릭터 attack-push와 동일한 0.3s ease-out, 방향만 반대(좌측). */
 .battle-anim-prey-attack-push { animation: battle-prey-attack-push 0.3s ease-out; }
 /* D-199: 사냥감 피격은 강한 damped 흔들림 + 빨강 플래시 동시.
