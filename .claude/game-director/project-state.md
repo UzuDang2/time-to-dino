@@ -702,3 +702,15 @@ SQLite-like 타입:
    - `moveTo` 일반 모드 인라인 랜덤 이동 → `boss.moveRandom()` 위임.
 
 **브라우저 검증**: 미실행. Node 단위 스모크 테스트만 수행 (resolveHunt 수식, 맵 생성 스케일, 보스 미방문 우선). 요한 수동 QA — pending.md D-60/D-61/D-62 체크리스트 참조.
+
+## 2026-05-01 19차 세션 hotfix — D-197 (cardname float jumping)
+
+D-196 후속. 사용자 "한 턴 '주먹으로 치기' 3번 등장" 버그 리포트.
+
+**진단**: D-195 B 즉시 교체 정책은 React state 레벨 정상이지만 D-196 TURN_DELAY 단축(2000→1400) 후 같은 cardname의 fade 진행 중 강제 제거+신규 인스턴스가 시각적으로 같은 텍스트 jumping 인공물 생성 → 사용자 시각엔 3번 등장으로 인지.
+
+**수정**: `BattleStage` `floats useEffect`에 `lastCardNameRef` 추가 — 직전 cardName과 같으면 push skip. activeEvent=null 시 ref reset. damage/miss는 그대로(짧고 굵은 텍스트라 jumping 영향 적음).
+
+**파일**: `index.html` 5820~5853.
+
+**브라우저 검증**: preview reload + D-197 주석 반영 확인. 사냥 라이브 검증은 요한 QA — pending.md D-197 체크리스트 참조.

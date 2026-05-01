@@ -5818,21 +5818,31 @@
             //   - 데미지 숫자 / MISS 텍스트는 useEffect로 floats 큐에 추가하고 0.7s 후 제거.
             //   - 회피=흔들림 / 피격=플래시 분리 (gameStyles.css 동일 정책).
             const floatCounterRef = React.useRef(0);
+            // D-197: 직전 cardName 추적 — 같은 카드 연속 사용 시 cardname float 1번만(jumping 시각 버그 방지).
+            //   D-196에서 TURN_DELAY 2000→1400으로 단축되며, 같은 카드명 fade(2.0s) 중에 다음 turn이 띄워
+            //   '즉시 교체'(D-195 B)는 작동하지만 같은 텍스트가 화면 중앙에서 갑자기 사라지고 다시 처음 위치에서
+            //   솟구침 → 사용자 시각엔 "한 턴에 같은 텍스트 3번 등장"으로 인지.
+            //   수정: 직전 turn cardName과 같으면 새로 push X (잔존 float가 자연 fade 완료).
+            const lastCardNameRef = React.useRef(null);
             const [floats, setFloats] = useState([]);
             useEffect(() => {
                 if (!activeEvent) {
                     setFloats([]);
+                    lastCardNameRef.current = null;
                     return;
                 }
                 const newOnes = [];
                 // D-196: cardname '!' 제거(분위기 원칙). preyActionName 제거(사냥감 슬롯=D-186과 중복 → 시각 노이즈).
-                if (activeEvent.cardName) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'cardname', text: `${activeEvent.cardName}` });
+                // D-197: 직전 cardName과 동일하면 push X — fade 안 끝난 잔존 텍스트 그대로 유지.
+                if (activeEvent.cardName && activeEvent.cardName !== lastCardNameRef.current) {
+                    newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'cardname', text: `${activeEvent.cardName}` });
+                    lastCardNameRef.current = activeEvent.cardName;
+                }
                 if (activeEvent.preyDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'damage', text: `❤️-${activeEvent.preyDamage}` });
                 if (activeEvent.playerDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'damage', text: `❤️-${activeEvent.playerDamage}` });
                 if (activeEvent.preyEvaded) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'miss', text: '회피!' });
-                // 같은 종류(side+kind)는 즉시 교체, 다른 종류는 누적 — 같은 텍스트 중복 방지.
-                //   ex) 두 턴 연속 같은 카드 사용해도 'player+cardname'은 한 시점 1개만.
-                //   damage / miss / cardname 등 다른 종류는 동시 떠 있을 수 있음.
+                // D-195 B (D-197 보정): 같은 종류(side+kind)는 즉시 교체. cardname은 위 ref 가드로 이미 다른 텍스트일 때만 push됨.
+                //   damage / miss는 매 turn 매번 발동 — 숫자가 다르므로 즉시 교체로 jumping 영향 적음(짧고 굵은 텍스트).
                 if (newOnes.length === 0) return;
                 const newKeys = new Set(newOnes.map(f => f.side + ':' + f.kind));
                 setFloats(prev => [...prev.filter(f => !newKeys.has(f.side + ':' + f.kind)), ...newOnes]);

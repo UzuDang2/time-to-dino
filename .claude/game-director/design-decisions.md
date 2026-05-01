@@ -4210,3 +4210,39 @@ setTimeout(() => setFloats(prev => prev.filter(f => !expireIds.includes(f.id))),
 
 - `index.html`: BattleStage `floats useEffect` (preyActionName 분기 제거 + cardname '!' 제거), HuntCombatModal step setTimeout 블록 (4→3), `STEP_OFFSETS`·`TURN_DELAY_MS` 상수.
 - `gameStyles.css`: 변경 없음.
+
+---
+
+## D-197 (2026-05-01 요한 버그 리포트 hotfix): cardname float "한 턴 3번 등장" 시각 버그
+
+**증상**: 사냥 한 라운드(4 turn) 진행 중 "주먹으로 치기" 텍스트가 같은 사냥에서 3번 반복 등장 — 직전 D-196(`8f3a110`) `TURN_DELAY_MS 2000→1400` 단축 후 발생.
+
+**진단**:
+
+D-195 B의 같은 (side+kind) 즉시 교체 정책은 React state 레벨에선 정상 동작 — turn2 step1에서 turn1 cardname을 setFloats prev filter로 제거함. 그러나 시각적으로:
+
+- t=0: turn1 "주먹으로 치기" cardname float 등장(2.0s fade 시작).
+- t=1400: turn2 step1 — fade 진행 중(약 70%, 화면 중앙 위치)인 turn1 float가 갑자기 사라지고, **같은 텍스트의 turn2 float가 처음 위치(bottom 78%)에서 다시 솟구침**.
+- t=2800: turn3에서 또 반복.
+
+사용자 시각엔 "같은 텍스트가 화면 위에서 jumping해 3번 등장"으로 인지. D-196 전(TURN_DELAY=2000)에는 fade가 거의 끝난 뒤 다음 등장이라 문제 없었음.
+
+근본 원인: 즉시 교체(D-195 B)는 다른 텍스트(damage 숫자 변동) 간엔 정상이지만, **같은 cardname 연속**일 땐 "이전 fade 진행 중인 동일 텍스트 강제 제거 + 동일 텍스트 신규 인스턴스" 패턴이 시각적으로 '같은 글자가 솟구치다 갑자기 점프해 다시 솟구치는' 인공물을 만듦.
+
+**수정**:
+
+`BattleStage` `floats useEffect`에 `lastCardNameRef` (useRef) 추가 — 직전 turn cardName과 같으면 cardname float push 자체를 skip. 결과: 잔존 turn1 float가 자연 fade 끝까지 표시, turn2/3에선 새 cardname 인스턴스 안 띄움. activeEvent=null로 사냥 종료 시 ref도 null reset(다음 사냥에 영향 없음).
+
+damage / miss 종류는 그대로 유지 — 매 턴 숫자 다를 수 있어 즉시 교체로 jumping 영향 적음(짧고 굵은 텍스트, 시선 이동 부담 X).
+
+**파일**: `index.html` 5820~5853 (`floats useEffect` + `lastCardNameRef` 도입).
+
+**검증**: `mcp__Claude_Preview__preview_eval`로 reload 후 D-197 주석 반영 확인. 게임 진입 베이스캠프 정상. 사냥 진입은 사용자 라이브 검증 필요(자동 시뮬레이션 무거움). 코드 정합성 OK.
+
+**재발 방지 가드**:
+
+- `lastCardNameRef` 도입으로 같은 cardname 연속 push 자체 차단.
+- activeEvent=null branch에서 ref reset — 사냥 간 stale 방지.
+- 주석에 D-196→D-197 인과(TURN_DELAY 단축이 가져온 부수 효과) 명시 — 향후 TURN_DELAY 변경 시 이 가드 의존성 잊지 않게.
+
+**후속**: 사용자 라이브 사냥 1라운드 시각 검증. cardname "주먹으로 치기" 한 사냥 1번만 등장 / damage·miss 정상 / fade 끝까지 자연감 확인.
