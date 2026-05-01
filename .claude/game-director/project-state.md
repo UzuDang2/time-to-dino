@@ -1,5 +1,12 @@
 # project-state.md
 
+마지막 검증: 2026-04-30 (**D-192, 사냥 중 캐릭터 HP 게이지 즉시 반영 hotfix**).
+D-192 변경:
+- `HuntCombatModal`에 자체 `displayHealth` state(`useState(playerHealth)`) 추가. 사냥감 `hpCurrent` 패턴 대칭.
+- 매 턴 `setTimeout` 안에서 `setDisplayHealth(prev - turn.playerDamage)` 즉시 차감.
+- BattleStage prop `playerHealth={displayHealth}` 교체.
+- 부모 game state 일괄 갱신(`onResolve`의 `result.playerDamageTaken`) 그대로 — 회귀 0.
+
 마지막 검증: 2026-04-30 (**D-191, 단일 카드 max 0.8배** — `.hunt-card-fan-slot { width: 108→86 }`. 슬롯/간격은 D-190 유지).
 
 마지막 검증: 2026-04-30 (**D-190, 손패 카드 4-건 폴리시 — 이름 가운데 / 부채꼴 평평 / 간격 ↑ / 사이즈 ↓**).

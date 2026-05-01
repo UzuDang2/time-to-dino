@@ -3931,5 +3931,55 @@ D-190 결과(슬롯 넓이/카드 간격)는 유지. **단일 카드 한 장의 
 
 - 콘솔 무에러. 시각 확인은 요한 QA.
 
+---
+
+## D-192 (2026-04-30 요한 버그 리포트): 사냥 중 캐릭터 HP 게이지 즉시 반영 hotfix
+
+### 증상
+
+사냥 진행 중 캐릭터(나) 측 HP 게이지/수치가 턴별로 즉시 갱신 안 됨. 사냥 끝나야 한꺼번에 반영. 사냥감 측은 정상.
+
+### 원인
+
+`HuntCombatModal`이 `playerHealth`를 부모(Game)에서 prop으로 받기만 함. 부모 game state는 `onResolve(result)` 후 `result.playerDamageTaken`을 health에 일괄 차감 (line 7247). 즉 사냥 도중엔 모달 자체가 player HP를 모르고 prop도 안 변하니 BattleStage 게이지가 멈춰 보임.
+
+사냥감 측은 이미 자체 `hpCurrent` state를 두고 매 턴 `setHpCurrent(turn.preyHpAfter)`로 갱신 → 정상. **대칭 누락**.
+
+### 픽스
+
+`HuntCombatModal` 자체 `displayHealth` state 추가. 사냥감의 `hpCurrent`와 대칭 패턴.
+
+```js
+const [displayHealth, setDisplayHealth] = useState(playerHealth);
+// ...
+res.turns.forEach((turn, idx) => {
+    setTimeout(() => {
+        ...
+        const playerDmg = Number(turn.playerDamage) || 0;
+        if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
+        ...
+    }, TURN_DELAY_MS * (idx + 1));
+});
+// BattleStage prop:
+playerHealth={displayHealth}
+```
+
+배고픔(`playerHunger`)은 사냥 도중 변동 없으므로 별도 displayHunger 도입 불필요. 향후 사냥 중 배고픔 변동 카드/효과 도입 시 같은 패턴으로 추가.
+
+### 영향 범위
+
+- 사냥 끝(`onResolve`)에서 부모 game state는 여전히 `result.playerDamageTaken`으로 일괄 갱신. 모달 displayHealth는 표시용일 뿐 부모 state 안 건드림 → 회귀 0.
+- 모달 닫힐 때 displayHealth state도 unmount로 사라짐.
+- 사냥 다시 진입 시 useState(playerHealth) 초기값이 그 시점 부모 health 값으로 정상 설정.
+
+### 파일
+
+- `index.html`: `HuntCombatModal`에 `displayHealth` state, 매 턴 차감, BattleStage `playerHealth={displayHealth}` 전달.
+
+### 검증
+
+- 콘솔 무에러. 시각 확인은 요한 QA — 사냥 중 캐릭터 hit 모션 + float "-N" + HP 게이지/수치 즉시 갱신 일관성.
+
+
 
 

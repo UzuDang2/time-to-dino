@@ -343,6 +343,25 @@
 
 ---
 
+## D-192 (2026-04-30 요한 버그 리포트): 사냥 중 캐릭터 HP 게이지 즉시 반영 hotfix
+
+설계/구현 상세는 `design-decisions.md` D-192 단락 참조.
+
+### 디렉터 완료
+
+- [x] **[디렉터/웹]** ✅ `HuntCombatModal` `displayHealth` state 추가. 사냥감 `hpCurrent` 대칭 패턴.
+- [x] **[디렉터/웹]** ✅ 매 턴 `setDisplayHealth(prev - turn.playerDamage)` 즉시 차감.
+- [x] **[디렉터/웹]** ✅ BattleStage `playerHealth={displayHealth}` 교체.
+- [x] **[디렉터/웹]** ✅ 부모 game state는 onResolve에서 일괄 갱신 그대로 — 회귀 0.
+
+### 요한 QA 대기 (D-192)
+
+- [ ] **[요한]** 🧪 사냥 중 매 턴 캐릭터 hit 모션 + 데미지 float "-N" + HP 게이지·수치 즉시 갱신 일관성.
+- [ ] **[요한]** 🧪 사냥 끝 시점 displayHealth와 부모 health(onResolve 후) 값 동일 — 누적 일치.
+- [ ] **[요한]** 🧪 다음 사냥 진입 시 displayHealth 초기값이 그 시점 부모 health로 정확.
+
+---
+
 ## D-191 (2026-04-30 요한 지시): 단일 카드 max 0.8배
 
 설계/구현 상세는 `design-decisions.md` D-191 단락 참조.

@@ -6199,6 +6199,10 @@
             const hpPct = Math.max(0, Math.min(100, ((prey.hp - (prey.hp - (prey.hpCurrent ?? prey.hp))) / prey.hp) * 100));
             // 전투 시작 시 hpCurrent = prey.hp. 이후 표시용으로만 사용.
             const [hpCurrent, setHpCurrent] = useState(prey.hp);
+            // D-192: 캐릭터 측 표시용 HP — 사냥 도중 턴별 차감 즉시 반영.
+            //   부모 game state는 사냥 끝(onResolve) 후 일괄 갱신이라 사냥 중엔 안 변함 → 게이지 멈춰 보이는 버그.
+            //   사냥감 측 hpCurrent와 대칭 패턴.
+            const [displayHealth, setDisplayHealth] = useState(playerHealth);
 
             const allFilled = slots.every(s => s !== null);
 
@@ -6376,6 +6380,9 @@
                     setTimeout(() => {
                         setLogs(prev => [...prev, turn]);
                         if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
+                        // D-192: 캐릭터 HP도 매 턴 차감 즉시 반영.
+                        const playerDmg = Number(turn.playerDamage) || 0;
+                        if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
                         const card = turn.userCard;
                         const cardDamage = Number(card && card.damage) || 0;
                         setActiveEvent({
@@ -6457,7 +6464,7 @@
                             slotActions={slotActions}
                             computedEvades={computedEvades}
                             slotsConsumed={slots.map((_, i) => !!logs.find(l => l.turn === i + 1))}
-                            playerHealth={playerHealth}
+                            playerHealth={displayHealth}
                             playerHunger={playerHunger}
                             maxHealth={maxHealth}
                             maxHunger={maxHunger}
