@@ -785,7 +785,9 @@ button:disabled {
 .hunt-card-name {
     position: absolute;
     top: 4.76%;
-    left: 28.37%;
+    /* D-190: 좌측 스탯 배지 영역(28.37%) 피하던 비대칭 → 좌우 대칭 가운데 정렬.
+       배지는 카드 상단의 행과 작은 영역만 차지(att 1~2px width)이라 1~2글자 겹침 허용. */
+    left: 4%;
     right: 4%;
     text-align: center;
     font-size: 12px;
@@ -891,7 +893,8 @@ button:disabled {
 .hunt-card-fan-slot {
     position: absolute;
     bottom: 6px;
-    width: 120px;
+    /* D-190: 카드 사이즈 120 → 108 (조금 줄임 — 선택 시 어차피 큰 preview 뜸). */
+    width: 108px;
     transform-origin: 50% 110%;
 }
 

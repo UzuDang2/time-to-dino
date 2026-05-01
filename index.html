@@ -6684,14 +6684,15 @@
                             //   step 8→4° (절반), x 간격은 살짝 늘려 옆으로 더 펴짐(겹침 감소).
                             //   yOffset도 약하게(parabolic 계수 6→3).
                             const N = active.length;
-                            const step = N > 1 ? Math.min(4, 18 / N) : 0;
-                            // D-189: xStep 동적 — 카드 적을 땐 좌우로 더 펼치고, 카드 늘면 viewport에 맞춰 자동 좁힘.
-                            //   container = min(viewport-24, 520). 카드 폭 120 + 회전 여유 ~24 = 144 base.
-                            //   max 펼침 64px(여유 있을 때), min 8px(매우 많을 때 잘림 방지).
+                            // D-190: 부채꼴 각도 살짝 덜 둥글게 — step 4°→3°, max angular range 14/N.
+                            //   N=4: 양 끝 ±4.5° (전: ±6°). N=5: ±6° (전: ±7.2°). 좀 더 평평한 부채.
+                            const step = N > 1 ? Math.min(3, 14 / N) : 0;
+                            // D-189/D-190: xStep 동적. 카드 사이즈 120→108로 줄어 base 144→132.
+                            //   max 펼침 64→76 (간격 더 넓힘). min 8 floor 그대로.
                             const fanContainerWidth = (typeof window !== 'undefined')
                                 ? Math.min(window.innerWidth - 24, 520) : 480;
                             const xStep = N > 1
-                                ? Math.min(64, Math.max(8, (fanContainerWidth - 144) / (N - 1)))
+                                ? Math.min(76, Math.max(8, (fanContainerWidth - 132) / (N - 1)))
                                 : 0;
                             // D-181: 손패 viewport 하단 fixed wrapper — 카드 절반 viewport 밖.
                             //   "내 손패" 라벨 제거(레퍼 이미지 단순함). 빈 상태도 fixed 영역에 안내.

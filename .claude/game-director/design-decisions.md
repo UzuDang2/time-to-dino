@@ -3886,3 +3886,30 @@ D-188 위에서 요한 3건 + 1 hotfix:
 - 단위 테스트(브라우저 콘솔 InventorySystem 직접 호출): stone × 2 → confirmPlacement → `{ ok: true, action: 'merge', resultType: 'stone_block' }`, stone_block 1개 인벤 등장(좌표 정상), stoneCount 0.
 - 시각 검증(손패/타이밍): 요한 QA — 사냥 모달 진입 후 카드 펼침·턴 간격·float fade 확인.
 
+---
+
+## D-190 (2026-04-30 요한 지시): 손패 카드 4-건 폴리시
+
+### 의사결정
+
+D-189 위에서 요한 4-건 폴리시:
+
+1. **카드 이름 가운데 정렬** — `.hunt-card-name` `left:28.37% right:4%` (D-178에서 좌측 스탯 배지 영역 피한 비대칭) → `left:4% right:4%` 좌우 대칭. 시각적으로 우측 쏠림 사라짐. 배지(att/acc/eva/def)는 작은 영역만 차지해 1~2글자 겹침 허용 — 가독성 우선. 큰 preview는 D-188에서 이미 가운데로 옮긴 것과 동일 정책.
+
+2. **부채꼴 각도 ↓** — `step` `min(4, 18/N)` → `min(3, 14/N)`. N=4 양 끝 회전 ±6°→±4.5°, N=5 ±7.2°→±6°. 좀 더 평평한 부채.
+
+3. **카드 기본 간격 ↑** — xStep max `64 → 76`. 카드 적을 때 더 펼침. 동적 식 베이스(144 → 132)는 카드 사이즈 줄어든 만큼 자동 보정.
+
+4. **카드 사이즈 ↓** — `.hunt-card-fan-slot { width: 120 → 108 }`. 부채꼴 안에서는 작아도 OK — 선택 시 어차피 가운데 큰 preview(min(72vw, 280px))로 확대.
+
+### 파일
+
+- `gameStyles.css`: `.hunt-card-name` left:4% (28.37→4) — 부채꼴·preview 양쪽에 적용. `.hunt-card-fan-slot` width 120→108.
+- `index.html`: `step` min 4→3, `xStep` max 64→76 + base 144→132 (카드 width 보정).
+
+### 검증
+
+- 콘솔 무에러. 시각 확인은 요한 QA.
+
+
+
