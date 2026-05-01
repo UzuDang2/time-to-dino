@@ -8180,7 +8180,11 @@
                             // D-71: prey 전용 드롭 아이템 id. 시트 `사냥감.drop_item` 컬럼.
                             //   빈값이면 handleHuntResolve에서 'meat' 폴백.
                             drop_item: preyDef.drop_item || '',
-                            evade_rate: preyDef.evade_rate || 20,
+                            // D-215 hotfix (2026-05-02): 시트 컬럼은 'evade'(정수, 예 "1") — 'evade_rate' 필드는 존재 X였음.
+                            //   기존 `preyDef.evade_rate || 20`은 항상 undefined → 폴백 20이 박혀 모든 prey 회피가 +20으로 표시되는 버그.
+                            //   D-96에서 회피 시스템 `% → 정수`로 변경 시 폴백도 1로 내렸어야 했으나(combatDeck.js parseEvadesByTurn 폴백은 1)
+                            //   여기 매핑이 D-96 이전 잔재로 20 그대로. 시트 컬럼 매핑 + 폴백 1 둘 다 정정.
+                            evade_rate: Number(preyDef.evade ?? preyDef.evade_rate) || 1,
                             // D-60: 턴별 회피율 CSV ("30,30,20") — 빈값이면 resolveHunt/UI에서 evade_rate로 폴백.
                             evade_per_turn: preyDef.evade_per_turn || '',
                             // D-60: 이 prey 개체가 그동안 몇 번 도망쳤는지 — 턴별 회피율에서 *10 차감.
