@@ -1,5 +1,11 @@
 # project-state.md
 
+마지막 검증: 2026-04-30 (**D-194, HP=❤️ 통일 + 턴 진행 시각화 (selected/dim/normal 3-state)**).
+D-194 변경:
+- BattleStage 사냥감·나 정보박스 HP 텍스트 → ❤️ 이모지 통일.
+- 턴 진행 시각화: `isCurrent = activeEvent && slotIdx===i` (셀렉트 골드 outline+glow), `isDone = consumed && !isCurrent` (딤드 opacity 0.4), 그 외 노말.
+- 사냥감 슬롯·내 슬롯 동시 동기 (둘 다 activeEvent 참조). 내 슬롯은 wrapper div로 HuntCard 감싸 비침투.
+
 마지막 검증: 2026-04-30 (**D-193, 카드 = 단일 컴포넌트 + 균일 스케일 인스턴스**).
 D-193 변경:
 - `.hunt-card`에 `container-type: inline-size` + 자식 룰 9건 픽셀→cqw 변환(7.86cqw/5cqw 등 280px 기준).

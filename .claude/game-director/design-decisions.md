@@ -4033,6 +4033,50 @@ playerHealth={displayHealth}
 - `cqw` 브라우저 지원: Chrome 105+, Safari 16+, Firefox 110+. 게임 타깃 모바일·데스크톱 최신 브라우저라 호환 OK.
 - 손패 카드 폰트 6.76px가 가독성 낮으면 후속에 카드 폭 86 → 100~ 조정(또는 base 280 줄임) 검토.
 
+---
+
+## D-194 (2026-04-30 요한 지시): HP 메타포 통일 + 턴 진행 시각화
+
+### 1. HP = ❤️ 메타포 통일
+
+게임 전반에서 생명력 = ❤️ 사용. 전투모드에서는 텍스트 "HP X/Y"로만 표시되어 있어 비일관. 두 곳 변경:
+- BattleStage 사냥감 정보박스 `<span>HP {hpCurrent}/{hpMax}</span>` → `<span>❤️ {hpCurrent}/{hpMax}</span>`
+- BattleStage 나 박스 `<span>HP {playerHealth}/{maxHealth}</span>` → `<span>❤️ {playerHealth}/{maxHealth}</span>`
+
+### 2. 턴 진행 상태 시각화
+
+기존: 사냥감 슬롯만 `consumed ? opacity 0.4 : 1`로 끝난 턴 dim. 현재 진행 턴은 dim과 같이 처리되어 분리 안 됨. 내 슬롯은 시각 변화 없음.
+
+새 정책 (3-state):
+- **현재 진행 턴**: 셀렉트 강조 (border 골드 #d4b84a 2px + glow box-shadow 0 0 10~12px rgba(212,184,74,0.55))
+- **끝난 턴**: 딤드 (opacity 0.4)
+- **대기 턴**: 노말 (border 1px #444, opacity 1)
+
+판별 로직:
+```js
+const isCurrent = !!(activeEvent && activeEvent.slotIdx === i);
+const isDone = consumed && !isCurrent;  // selected 우선 — 같은 턴이 dim과 selected 동시 매치되면 selected 표시
+```
+
+`activeEvent.slotIdx`는 매 턴 setTimeout 콜백에서 set. `slotsConsumed[i]`도 같은 시점 logs 추가로 true. 즉 현재 턴은 둘 다 true 상태인데 isCurrent를 우선 처리해 selected로 표시. 다음 턴 진입 시 activeEvent.slotIdx 갱신 → 이전 턴 isCurrent=false, consumed=true → dim. 새 턴 selected.
+
+`phase === 'done'`에서 activeEvent=null로 cleanup → 모든 consumed가 dim.
+
+사냥감 슬롯과 내 슬롯이 같은 idx에서 동시 표시 — activeEvent를 둘 다 참조해 동기.
+
+### 적용
+
+- 사냥감 슬롯 (block 1, BattleStage 안): inline style border/boxShadow/opacity 분기.
+- 내 슬롯 (block 3, BattleStage 안): wrapper div 추가 — outline + boxShadow + opacity 적용. HuntCard 컴포넌트 자체는 안 건드림(비침투적).
+
+### 파일
+
+- `index.html`: 사냥감 정보박스 HP→❤️, 나 박스 HP→❤️, 사냥감 슬롯 isCurrent/isDone 분기, 내 슬롯 wrapper 추가.
+
+### 검증
+
+- 콘솔 무에러. 시각 검증 요한 QA — 사냥 모달 진입 → 카드 끼우고 확정 → 턴별 사냥감·내 슬롯 동시 강조·딤 일관성.
+
 
 
 
