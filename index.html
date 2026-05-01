@@ -5862,11 +5862,17 @@
             const eventId = activeEvent && activeEvent.id;
             const playerAttackClass = activeEvent && activeEvent.playerAttack ? 'battle-anim-attack-push' : '';
             const playerHitClass = activeEvent && activeEvent.playerDamage > 0 ? 'battle-anim-player-hit' : '';
-            const preyShakeClass = activeEvent && activeEvent.preyEvaded ? 'battle-anim-prey-shake' : '';
+            // D-204: 사냥감 회피 모션 재정의 — 좌측 18px 슬라이드 + 0.6s 정지 + 복귀(총 1.0s).
+            //   기존 prey-shake(좌우 흔들림)는 보존하되 회피 trigger에서 분리. preyEvade flag로 분기.
+            const preyEvadeClass = activeEvent && activeEvent.preyEvaded ? 'battle-anim-prey-evade' : '';
             const preyFlashClass = activeEvent && activeEvent.preyDamage > 0 ? 'battle-anim-prey-flash' : '';
             // D-203: 사냥감 공격 push — step3 시점(preyAttackName 표시)에 사냥감이 좌측(유저 방향)으로 한 번 팍 미는 모션.
-            //   step2(prey-shake/flash, 피격)와 step4(유저 hit) 모두 사이 시점이 분리되어 클래스 충돌 X.
+            //   step2(prey-evade/flash, 피격)와 step4(유저 hit) 모두 사이 시점이 분리되어 클래스 충돌 X.
             const preyAttackPushClass = activeEvent && activeEvent.preyAttack ? 'battle-anim-prey-attack-push' : '';
+            // D-204: 유저 회피 모션 — 회피 카드(card.type === 'evade') 사용 시 우측 18px 슬라이드 + 정지 + 복귀.
+            //   step1(유저 카드 발동) 시점에 trigger. playerEvade flag로 분기. 카드 type은 step1에서만 의미가 있으므로
+            //   다른 step에서는 false로 설정됨(즉시 새 id로 wrapper remount 되어 회피 모션이 끝나지 않은 상태로 다음 모션 진입 가능 → 의도적 컷).
+            const playerEvadeClass = activeEvent && activeEvent.playerEvade ? 'battle-anim-player-evade' : '';
             return (
                 <div style={{
                     position: 'relative',
@@ -5977,7 +5983,7 @@
                             }}>
                                 <div
                                     key={`player-push-${eventId || 'idle'}`}
-                                    className={playerAttackClass}
+                                    className={`${playerAttackClass} ${playerEvadeClass}`.trim()}
                                     style={{ width: '100%', height: '100%' }}>
                                     <div
                                         key={`player-hit-${eventId || 'idle'}`}
@@ -6015,7 +6021,7 @@
                             }}>
                                 <div
                                     key={`prey-anim-${eventId || 'idle'}`}
-                                    className={`${preyShakeClass} ${preyFlashClass} ${preyAttackPushClass}`.trim()}
+                                    className={`${preyEvadeClass} ${preyFlashClass} ${preyAttackPushClass}`.trim()}
                                     style={{ width: '100%', height: '100%',
                                              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     {preyImageUrl ? (
@@ -6462,12 +6468,16 @@
                     const baseId = (idx + 1) * 100;
 
                     // Step 1: 유저 카드 발동 — 카드 이름 + 캐릭터 공격 push 모션
+                    // D-204: card.type === 'evade'면 회피 카드 → playerEvade trigger (우측 슬라이드 + 정지 + 복귀, 1.0s).
+                    //   회피 카드는 damage 0 / type 'evade' — 공격 push와 동시 발동 불가하니 같은 wrapper에서 클래스 합쳐도 충돌 X.
+                    const isPlayerEvade = !!(card && card.type === 'evade');
                     setTimeout(() => {
                         setLogs(prev => [...prev, turn]);
                         setActiveEvent({
                             id: baseId + 1,
                             slotIdx: idx,
                             playerAttack: !!(turn.hit && cardDamage > 0),
+                            playerEvade: isPlayerEvade,
                             preyEvaded: false,
                             preyDamage: 0,
                             playerDamage: 0,
@@ -6475,13 +6485,14 @@
                         });
                     }, baseTime + STEP_OFFSETS.user);
 
-                    // Step 2: 사냥감 적중 또는 회피 — preyDamage / preyEvaded float + prey shake/flash (공격 200ms 후)
+                    // Step 2: 사냥감 적중 또는 회피 — preyDamage / preyEvaded float + prey evade/flash (공격 200ms 후)
                     setTimeout(() => {
                         if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
                         setActiveEvent({
                             id: baseId + 2,
                             slotIdx: idx,
                             playerAttack: false,
+                            playerEvade: false,
                             preyEvaded: !!turn.preyEvaded,
                             preyDamage: Number(turn.damage) || 0,
                             playerDamage: 0,
@@ -6498,6 +6509,7 @@
                             id: baseId + 3,
                             slotIdx: idx,
                             playerAttack: false,
+                            playerEvade: false,
                             preyAttack: showPreyAction,
                             preyEvaded: false,
                             preyDamage: 0,
@@ -6518,6 +6530,7 @@
                             id: baseId + 4,
                             slotIdx: idx,
                             playerAttack: false,
+                            playerEvade: false,
                             preyEvaded: false,
                             preyDamage: 0,
                             playerDamage: playerDmg,

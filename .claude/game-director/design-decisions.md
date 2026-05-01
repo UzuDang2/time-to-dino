@@ -4541,3 +4541,54 @@ prey wrapper className 합성: `${preyShakeClass} ${preyFlashClass} ${preyAttack
 - React 런타임 에러 없음 (Babel deopt 경고는 기존 noise).
 
 **대기 검증**: 사용자 라이브 사냥 1턴 — (1) 사냥감 공격 시점에 좌측으로 한 번 팍 미는 모션 발동. (2) 말풍선 텍스트가 대괄호 없이 깔끔하게 표시. (3) 데미지/회피 float이 한 번에 위로 솟구치며 부드럽게 감속 정착(이전엔 두 번 끊김).
+
+---
+
+## D-204. 회피 모션 재정의 — 공격선에서 멀어지는 슬라이드 + 정지 + 복귀 (2026-05-01, `index.html`, `gameStyles.css`)
+
+### 배경
+
+D-176/D-199 회피 시각화는 좌우로 4번 흔드는 `prey-shake`(±6/4px, 0.4s) 였음. "흔들림"은 회피 의미를 직관적으로 전달 못함 — 상대 공격선 자체에서 비키는 "방향성 이동"이 회피의 본질. 또한 유저 회피는 시각화 자체가 없었음(전투 매트 좌하 → 우측이 공격선 회피 방향).
+
+### 결정 (요한 지시)
+
+회피 모션을 **단방향 슬라이드 + 긴장된 정지 + 복귀** 1.0s 패턴으로 재정의. 양쪽 캐릭터 공통:
+
+- **사냥감(우상)**: 좌측 18px 슬라이드 → 0.6s 대기 → 제자리 (총 1.0s).
+- **유저(좌하)**: 우측 18px 슬라이드 → 0.6s 대기 → 제자리 (총 1.0s).
+
+방향 의미: 둘 다 서로의 공격선에서 멀어지는 방향. "쑉" 빠르게 비킨 후 공격이 빗나갔는지 긴장된 정지로 잠깐 머물고 자연스럽게 복귀.
+
+### 타이밍 / px
+
+- 슬라이드: 0.15s, 18px (사냥감 wrapper 160px의 ~11%, 유저 wrapper 130×170의 ~14% — 시인성 충분).
+- 대기: 0.6s (사용자 명시).
+- 복귀: 0.25s.
+- 총: 1.0s.
+- ease: 단일 `ease-in-out` 적용. keyframe %는 절대시간 1000ms 정규화 — 0% / 15% / 75% / 100%. 15→75% 구간은 같은 값 두 keypoint로 정지 구현(이 구간엔 보간 없음 → 진짜 멈춤).
+
+### 트리거
+
+- **사냥감 회피**: `activeEvent.preyEvaded` true 시 prey wrapper에 `.battle-anim-prey-evade` 적용. step2(t+200) 시점.
+- **유저 회피**: `card.type === 'evade'`인 카드 사용 시 step1(t+0) 시점에 `playerEvade: true` flag → player wrapper에 `.battle-anim-player-evade` 적용. 회피 카드는 damage 0 / type 'evade'이라 공격 push와 충돌 없음 → 같은 outer wrapper에 클래스 합성.
+
+### 기존 prey-shake 처리
+
+폐기 안 함. `@keyframes battle-prey-shake` + `.battle-anim-prey-shake` 모두 그대로 두고, 회피 trigger에서만 분리 — 다른 용도(피격 약진 등)로 재활용 여지를 남김.
+
+### 구현 (파일·위치)
+
+- `gameStyles.css:716-734`: `@keyframes battle-prey-evade` / `@keyframes battle-player-evade` 신설 — 0/15/75/100% 4-stop, 18px 슬라이드.
+- `gameStyles.css:768-771`: `.battle-anim-prey-evade` / `.battle-anim-player-evade` 클래스 정의 — 1.0s ease-in-out.
+- `index.html:5865`: `preyShakeClass` → `preyEvadeClass`로 교체 (회피 trigger).
+- `index.html:5874-5876`: `playerEvadeClass` 분기 신설.
+- `index.html:5980`: player outer wrapper className에 `${playerAttackClass} ${playerEvadeClass}` 합성.
+- `index.html:6018`: prey wrapper className에 `${preyEvadeClass}` (preyShakeClass 자리) 교체.
+- `index.html:6478-6481`: step1에서 `card.type === 'evade'` 판정 → `playerEvade: isPlayerEvade` flag 추가. step2/3/4에는 `playerEvade: false` 명시.
+
+### 검증
+
+- Preview reload 후 `battle-prey-evade` / `battle-player-evade` 두 keyframe 모두 stylesheet에 inject 확인.
+- React 런타임 에러 없음 (Babel deopt 경고는 기존 noise).
+
+**대기 검증**: 사용자 라이브 사냥 — (1) 사냥감 회피 시 좌측으로 쑉 미끄러진 뒤 잠깐 멈췄다가 돌아옴. (2) 회피 카드(있다면) 사용 시 캐릭터가 우측으로 같은 패턴으로 쑉 비킴. (3) 18px 진폭이 적절한지 미세조정 의견(+/- 4px 단위 권장).
