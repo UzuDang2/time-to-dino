@@ -893,8 +893,8 @@ button:disabled {
 .hunt-card-fan-slot {
     position: absolute;
     bottom: 6px;
-    /* D-190: 카드 사이즈 120 → 108 (조금 줄임 — 선택 시 어차피 큰 preview 뜸). */
-    width: 108px;
+    /* D-191: 단일 카드 max 사이즈만 0.8배 — 108→86 (slot 넓이·xStep은 D-190 유지). */
+    width: 86px;
     transform-origin: 50% 110%;
 }
 
