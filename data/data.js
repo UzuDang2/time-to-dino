@@ -1089,77 +1089,81 @@ window.TTD_DATA = {
     },
     {
       "id": "watchtower",
-      "name": "감시탑",
+      "name": "도구작업대",
       "stage": 1,
       "cost": [
         {
-          "material": "목재",
+          "material": "나뭇가지",
+          "count": 6
+        },
+        {
+          "material": "돌맹이",
+          "count": 4
+        }
+      ],
+      "effect_raw": "\"손에 익숙한 도구가 늘어난다. 작은 가방이 가벼워진다.\"",
+      "설명": null,
+      "reward_items": null,
+      "reward_passive": "pack+1",
+      "products": null,
+      "reward_one_shot": null,
+      "cost_raw": "나뭇가지 x6, 돌맹이 x4"
+    },
+    {
+      "id": "watchtower",
+      "name": "도구작업대",
+      "stage": 2,
+      "cost": [
+        {
+          "material": "나뭇가지",
+          "count": 10
+        },
+        {
+          "material": "돌맹이",
+          "count": 8
+        },
+        {
+          "material": "깨끗한 천",
+          "count": 4
+        }
+      ],
+      "effect_raw": "\"선반이 깔리고 손이 빨라진다. 더 챙길 자리가 생긴다.\"",
+      "설명": null,
+      "reward_items": null,
+      "reward_passive": "pack+1",
+      "products": null,
+      "reward_one_shot": null,
+      "cost_raw": "나뭇가지 x10, 돌맹이 x8, 깨끗한 천 x4"
+    },
+    {
+      "id": "watchtower",
+      "name": "도구작업대",
+      "stage": 3,
+      "cost": [
+        {
+          "material": "나뭇가지",
           "count": 15
         },
         {
           "material": "돌맹이",
-          "count": 15
-        }
-      ],
-      "effect_raw": "\"높은 발판에서 멀리 본다. 숲의 들썩임이 먼저 들린다.\"",
-      "설명": null,
-      "reward_items": null,
-      "reward_passive": "detection-1",
-      "products": null,
-      "reward_one_shot": null,
-      "cost_raw": "목재 x15, 돌맹이 x15"
-    },
-    {
-      "id": "watchtower",
-      "name": "감시탑",
-      "stage": 2,
-      "cost": [
-        {
-          "material": "목재",
-          "count": 25
+          "count": 12
         },
         {
-          "material": "석재",
-          "count": 15
-        },
-        {
-          "material": "금속",
-          "count": 3
-        }
-      ],
-      "effect_raw": "\"바람의 방향이 보인다. 내일의 하늘을 미리 짚을 수 있다.\"",
-      "설명": null,
-      "reward_items": null,
-      "reward_passive": "detection-1",
-      "products": null,
-      "reward_one_shot": "weather_forecast+1",
-      "cost_raw": "목재 x25, 석재 x15, 금속 x3"
-    },
-    {
-      "id": "watchtower",
-      "name": "감시탑",
-      "stage": 3,
-      "cost": [
-        {
-          "material": "석재",
-          "count": 30
-        },
-        {
-          "material": "금속",
-          "count": 10
+          "material": "깨끗한 천",
+          "count": 6
         },
         {
           "material": "가죽",
-          "count": 10
+          "count": 4
         }
       ],
-      "effect_raw": "\"탑 꼭대기에서 보면 그놈의 자리가 보인다. 한 발만 비껴서면 된다.\"",
+      "effect_raw": "\"벽 가득 도구가 걸린다. 짐을 두고 갈 일이 줄어든다.\"",
       "설명": null,
       "reward_items": null,
-      "reward_passive": "detection-2",
+      "reward_passive": "pack+1",
       "products": null,
-      "reward_one_shot": "safe_move+1",
-      "cost_raw": "석재 x30, 금속 x10, 가죽 x10"
+      "reward_one_shot": null,
+      "cost_raw": "나뭇가지 x15, 돌맹이 x12, 깨끗한 천 x6, 가죽 x4"
     }
   ],
   "ITEMS": [

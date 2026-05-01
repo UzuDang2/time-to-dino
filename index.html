@@ -3213,6 +3213,7 @@
         //
         // 시트 산출 `data/buildings.json` (window.TTD_DATA.BUILDINGS) 18행을 코드에서 소비.
         // 빌딩 6종(clinic/kitchen/workshop/storage/training/watchtower) × 3단계 + 텐트(id='tent') × 10단계.
+        // D-212: id 'watchtower'는 영속화 호환 위해 보존하되 시트상 name='도구작업대', icon=🛠️로 전면 개편(보상 가방 +1 통일).
 
         // 빌딩 id → 카드 아이콘 매핑.
         const BUILDING_ICON = {
@@ -3222,7 +3223,7 @@
             workshop: '🛠️',
             storage: '🏚️',
             training: '🏹',
-            watchtower: '🗼'
+            watchtower: '🛠️'
         };
 
         // 보상 패시브 키 화이트리스트 (9종). parsePassive에서 사용.
