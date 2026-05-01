@@ -6448,7 +6448,7 @@
                 setResult(res);
                 setPhase('resolve');
 
-                // D-196 / D-201 / D-202: 한 턴 = 4 step (D-202: step3을 preyAttack/userHit로 분리).
+                // D-196 / D-201 / D-202 / D-205: 한 턴 = 4 step (D-202: step3을 preyAttack/userHit로 분리).
                 //   step 1 user       (t+0):    유저 카드 발동 + 캐릭터 공격 push 모션. cardName 'player' float.
                 //   step 2 preyHit    (t+200):  사냥감 적중/회피. preyDamage 'prey' float 또는 '회피!' + prey shake/flash.
                 //                              ← 유저 공격(t+0) → 피격 반응(t+200) = 200ms (D-202 사용자 지시).
@@ -6456,10 +6456,11 @@
                 //                              ← step2(t+200) → step3(t+1000) = 800ms (D-201 호흡 유지: 내 결과 인지 후 여우 공격 시작 전 여유).
                 //   step 4 userHit    (t+1200): 캐릭터 hit shake + flash + playerDamage float.
                 //                              ← 사냥감 공격(t+1000) → 피격 반응(t+1200) = 200ms (D-202 사용자 지시).
-                //   TURN_DELAY_MS 1800 유지 — 다음 턴 t+0까지 step4(t+1200) 직후 600ms breathing.
-                //   tail 1000→1200 — 마지막 턴 step4 hit shake/float가 충분히 잔존 후 결과 페이즈 전환.
+                //   D-205: TURN_DELAY_MS 1800→2200 (+400ms) — 사용자 피드백 "사냥감 공격 후 턴 바뀔 때 여유 부족".
+                //          step4(t+1200) 직후 다음 턴 t+0까지 600ms→1000ms breathing. 피격 반응의 잔향이 다음 턴 시작 전 충분히 가라앉도록.
+                //   D-205: tail 1200→1400 (+200ms) — 마지막 턴 step4 hit shake/flash(0.6s) + 회피로 끝나는 경우 evade 애니(1.0s) 잔존 여유.
                 //   설계 의도: 공격 신호와 피격 반응 사이 정확히 200ms 텀 (양쪽 다). 인과의 시각적 명료성.
-                const TURN_DELAY_MS = 1800;
+                const TURN_DELAY_MS = 2200;
                 const STEP_OFFSETS = { user: 0, preyHit: 200, preyAttack: 1000, userHit: 1200 };
                 res.turns.forEach((turn, idx) => {
                     const card = turn.userCard;
@@ -6541,10 +6542,11 @@
                 });
                 // 마지막 step4 hit shake + float + 말풍선이 충분히 잔존 후 결과 페이즈 전환.
                 // D-202: tail 1000→1200 — step4가 step3보다 200ms 늦으니 마지막 턴 끝부분도 200ms 추가.
+                // D-205: tail 1200→1400 (+200ms) — 마지막 턴이 회피(evade 1.0s)로 끝나도 모션 잔존 후 done 전환.
                 setTimeout(() => {
                     setPhase('done');
                     setActiveEvent(null);
-                }, TURN_DELAY_MS * res.turns.length + 1200);
+                }, TURN_DELAY_MS * res.turns.length + 1400);
             };
 
             // D-48: '결과 확인' 버튼 — 유저가 결과를 읽고 수동으로 닫을 때 onResolve 호출.

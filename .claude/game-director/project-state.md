@@ -1,87 +1,75 @@
 # project-state.md
 
-마지막 검증: 2026-05-01 (**D-199, 피격 모션 강화 — damped sine wave 좌우 흔들림**).
-19th 세션 후속 (D-196 → D-197 → D-198 → D-199):
-- **D-196**: 4 step → 3 step + cardname `'!'` 제거 + TURN_DELAY_MS 2000→1400.
-- **D-197 [PARTIAL]**: cardname float jumping 1차 진단·`lastCardNameRef` 가드 — 직전 turn cardName 같으면 push X. 다만 root cause는 더 위층이라 일부만 해결.
-- **D-198 (root fix)**: floats `<span>`이 `key={...${eventId}...}` wrapper 자식이라 매 step(101→102→103) remount → CSS animation 처음부터 재시작 → "loop처럼 솟아오름 ×3" 시각 인공물. 수정: outer 박스에 `position:relative` 박고 floats span을 motion wrapper의 형제로 분리. 캐릭터 push/shake/flash·prey shake/flash 모션은 그대로, floats는 안정 mount.
-- **D-197 ref 가드는 유지** — 같은 카드 두 turn 연속 깜빡임 방지에 여전히 유익. D-198은 그 위층의 root cause를 잡음.
-- **D-199 (피격 모션 강화)**: 새 keyframes `battle-hit-shake` (0.6s ease-out, damped sine wave envelope ±10→0). 사냥감 피격(`battle-anim-prey-flash`) = 기존 플래시만 → hit-shake + flash 동시. 캐릭터 피격(`battle-anim-player-hit`) = 약한 ±3px → 같은 강한 envelope. 회피(`battle-anim-prey-shake`)는 기존 ±6px·0.4s 유지 → 진폭·duration 차이로 피격과 시각 분리. 런타임 transform sampling으로 envelope 검증(t=58ms -9.99 / t=116ms +7.89 / t=193ms -6.00 / t=601ms 0).
+마지막 검증: 2026-05-01 (**D-205, 턴 호흡 +400ms + 회피 변위 18→30px**).
+19th 세션 후속 (D-195~D-205, 모두 main에 push 완료):
+- D-195: 사냥 시각 시스템 정착 + 카메라 추적 sync (4-step 시퀀스 + floats 정책 + 결과 모달 로그 + battle-float-up 2.0s + 카메라 raf 800ms ease-out + .map-container overflow-anchor:none).
+- D-196: D-195 사용자 검증 후 정제 — `preyActionName` step 제거(사냥감 슬롯=D-186 중복), cardname `!` 제거(분위기 톤), 4 step→3 step (`STEP_OFFSETS = { user: 0, preyHit: 500, userHit: 1000 }`), `TURN_DELAY_MS` 2000→1400 (옵션 5 변형: float duration 유지, 다음 턴 시작만 단축). 4 turn 사냥 8s→5.6s.
+- D-197 [PARTIAL]: cardname float jumping 1차 진단·가드 — `lastCardNameRef`로 직전 turn cardName 같으면 push X. 잔존 float가 자연 fade. 다만 **실제 root cause는 이 위층**이라 일부만 해결.
+- D-198: 근본 수정 — floats span이 `key={...${eventId}...}` wrapper(player-hit/prey-anim) 자식이라 매 step(101→102→103)마다 React unmount/remount → CSS animation 처음부터 재시작 → 사용자 시각 "한 텍스트가 처음 위치로 reset되어 또 솟구침 ×3 loop". 수정: outer 박스에 `position:relative` 박고 floats span을 motion wrapper의 형제로 분리. 캐릭터 push/shake/flash·prey shake/flash 모션은 그대로, floats는 안정 mount.
+- D-199: 피격 모션 강화 — 새 keyframes `battle-hit-shake` (damped sine wave envelope, 0/-10/+8/-6/+4/-3/+2/-1/0, 0.6s ease-out). 사냥감 피격(`.battle-anim-prey-flash`) = 기존 플래시만 → hit-shake + flash 동시. 캐릭터 피격(`.battle-anim-player-hit`) = 약한 ±3px shake → 같은 강한 envelope. 회피(`.battle-anim-prey-shake`)는 기존 약한 ±6px·0.4s 유지 → 진폭·duration 차이로 피격과 시각 분리. 런타임 transform sampling으로 envelope 검증(t=58ms -9.99 / t=116ms +7.89 / t=193ms -6.00 / t=601ms 0).
+- D-200~D-204: 한 턴 4-step 시퀀스 정제 — 사냥감 공격 행동명 말풍선 부활(D-200), step2→step3 호흡 500→800ms(D-201), step3을 preyAttack/userHit로 분리해 양쪽 공격→피격 200ms 텀(D-202, `STEP_OFFSETS = { user:0, preyHit:200, preyAttack:1000, userHit:1200 }`), 사냥감 push 모션 부활 + float 단일 ease(D-203), 회피 모션 재정의(D-204, 좌우 흔들림→공격선 멀어지는 슬라이드 18px + 정지 + 복귀 1.0s).
+- D-205: 턴 호흡 +400ms + 회피 변위 30px — `TURN_DELAY_MS` 1800→**2200** (step4 직후 다음 턴까지 600→1000ms breathing), tail 1200→**1400** (마지막 턴 evade 1.0s 잔존 보호), 회피 keyframes(`battle-prey-evade`/`battle-player-evade`) 변위 18→30px. 사용자 피드백 "사냥감 공격 후 턴 바뀔 때 여유 부족" + "회피 변위가 작아 주춤으로 보임" 정정.
 
-이전 검증: 2026-05-01 (**D-195, 사냥 시각 시스템 정착 + 카메라 추적 sync — 19th 세션**).
-19th 세션 변경 요약 (D-195, 단일 PR 분량):
-- **사냥 4-step 시퀀스**: 한 턴을 user(t+0) → preyHit(t+250) → preyAct(t+1000) → userHit(t+1250) 4 step. `TURN_DELAY_MS=2000`. setHpCurrent 사냥감은 step 2, setDisplayHealth 캐릭터는 step 4. 인과 시각 분리.
-- **floats 정책**: 같은 (side, kind) 즉시 교체, 다른 종류 누적. expire 2.1s. cleanup에서 clearTimeout 안 함 (각 batch 독립). 5종 한 시점 최대 5개 동시.
-- **CSS battle-float-up 2.0s**: 등장 0.2s + 정점 0.8s + fade 1s 동안 -20→-70px 상승. `❤️-N`(데미지) / `회피!`(미스, 한국어) / `${cardName}!`(player·prey 양쪽). `white-space: nowrap`로 줄바꿈 차단.
-- **전투 로그 → 결과 모달 안 이관**: BattleStage 다음 외부 위치 122줄 통째 결과 모달(z 1800) 안으로. `maxHeight 240px`, `textAlign:left`. 전투 중 미노출(시선 분산 차단).
-- **카메라 추적 재설계 (D-135)**: D-47 useLayoutEffect 제거 → D-135 첫 호출 instant set. 세로 중심 `el.clientHeight/2` → `window.innerHeight/2 - 200` (device 좌표 기준). raf 500→800ms ease-out quintic. `.piece` SVG transition 0.25s → 0.8s sync. 200ms 텀. `<GameMap key="game-map-stable">` + `.map-container { overflow-anchor: none }` (brower scroll anchoring 차단 — y축 instant jump 결정타).
-- **손패 폴리시**: 내 슬롯 카드 max 80px + 가운데. zIndex 좌→우 단조 증가. 같은 카드 재클릭 = 확정. `.hunt-hand-fixed-bottom` z 1700(backdrop+preview 위로). `.hunt-card-fan-slot.is-focused .hunt-card` 노란 outline+glow (이전 dim 0.35 대신).
+이전 검증: 2026-05-01 (**D-194, HP=❤️ 통일 + 턴 진행 시각화 selected/dim/normal**).
+18th~19th 세션 변경 요약 (D-169~D-194, 모두 main에 push 완료, `2372f4e..1b53a75`):
+- D-169: `CLAUDE.md` 신설 — 새 세션 자동 로드 정적 가이드(SSOT/위임 트리/메모리 규칙/함정). `ttd-brief`/`ttd-commit-push` 스킬 강화. **1 D = 1 commit** 분할 규칙 명시.
+- D-170: 회복 효과 동적 MAX 재-clamp — D-168 텐트 동적 cap을 setStat 콜백 진입점에서 재-clamp. effectParser 정적 STAT_BOUNDS는 유지(공용 한도).
+- D-171: CampScreen 하단 버튼 인라인화(position:fixed 폐기) + 인벤 머지 점 좌상단/퀘스트 마커 우상단 분리 + `InventoryModal` zIndex 1500 (HUD 1400 위).
+- D-172: 인벤 마커 픽셀 폴리시 7회 hotfix → 머지 6px 좌상단 초록 점 / 퀘스트 6px 우상단 노란 원+! 정착.
+- D-173: 자산 URL `?v=` 전파 — `<head>` 정적 link/script를 인라인 로더로 교체해 `?v=` 추출 후 모든 로컬 자산에 전파. D-166 [최신버전 업데이트]가 진짜 캐시 무효화.
+- D-174: 베이스캠프 빌딩 SSOT 통합 (Phase A 시트 + Phase B 코드 + v3~v6 폴리시). 빌딩 6종(치료소/작업대/무기 제작소/보호구 제작소/감시탑/보관함) × stage 1~3 + 텐트 v2 `camp_storage+7` × 10단계. 그리드 7x20, 풀 텐트 시 활성 140칸. 직렬화 v4(`buildingLevels`/`oneShotInventory`).
+- D-175: 뗀석기 내구도 3→6 시트 동기 + 빌딩 보상 서사 텍스트.
+- D-176: BattleStage Phase A(포켓몬식 대결 구도, 캐릭터 좌하/사냥감 우상, Player.png 요한 스케치) + Phase B(액션 시네마틱 트랜지션 5종 + outer/inner 2겹 분리).
+- D-177: 빌딩 [받기]→[완수] 통합 + 다중 ActiveQuestHUD(텐트 1 + 빌딩 6) + 수락 가능 빨간 점 + dim 분리(아이콘만 0.45). 시트 빌딩 이름 4종 갱신 + `fetch_data.py` 빈 행 가드.
+- D-178: Figma 카드 비주얼 정착 — 141:210 aspect, 좌측 4 스탯 배지(att/acc/eva/def 색별), 일러스트 자리 + "(준비 중)". punch 일러스트만 시작.
+- D-179: 손패 부채꼴(±step°) + 무덤 분리(소진 카드는 별도 UI) + 스탯 좌상단 양수만 stack.
+- D-180: BattleStage 시안 v1 정착(좌상 사냥감 박스 / 우상 사냥감 비주얼 / 중앙 4슬롯) + 부채꼴 절반 완화 + hover 룰 제거(덜덜거림).
+- D-181: 사냥 풀스크린 전환(borderRadius 0) + 카드 반절 노출(translateY 85px) + hover transform 변경 X (z만 200, glow).
+- D-182: 캐릭터 가림 해결(BattleStage 380px) + 부채꼴 가운데 + 무덤 40x40 원형 버튼 + hover 외곽 transform 보존 + 내곽 -30px (회전 보존).
+- D-183: BattleStage 시원(`calc(100dvh-200px)`) + 결과 팝업 분리(z 1800) + 사냥감 슬롯 카드화 + hover preview(가운데 fixed overlay, pointer-events:none).
+- D-184: 내 정보 박스 — 사냥감 박스 메타포 통일(검은 반투명 + 라운드 8px + 체력 게이지 빨강 그라디언트 + 허기 아이콘).
+- D-185: hover 어두움(filter brightness 0.35) + 클릭 preview 초기화 + 사냥감↔내 슬롯 디자인 스왑.
+- D-186: 5존 정렬(사냥감띠 / 사냥감 슬롯 / 내 슬롯 / 캐릭터+나 박스 / 손패) + 외부 헤더 "나" 박스 → BattleStage 내부 우하 이관.
+- D-188 (D-187 결번): BattleStage 시안 v2 — 3-block flex column space-between 재배치, 손패 hover 전면 제거(모바일 통일), 카드 클릭 → 가운데 큰 preview → 다시 클릭 → 좌측 첫 빈 슬롯.
+- D-189: 손패 xStep 동적(viewport 폭) + 위로 더 올라옴(translateY 30) + 전투 시네마틱 타이밍 600→1300ms (`TURN_DELAY_MS`). **stone_block 머지 인벤 소멸 hotfix**: `inventory.js` static `ITEMS`에 `stone_block` 추가 + `_placeDerivedItem` `resolveDef` 폴백.
+- D-190: 카드 이름 좌우 대칭(left 4) + 부채꼴 평평(step max 3°) + 카드 폭 108.
+- D-191: 손패 카드 폭 86 (0.8배). 큰 preview로 보면 되니까.
+- D-192: 사냥 중 캐릭터 HP 게이지 즉시 반영 hotfix — `HuntCombatModal`에 `displayHealth` state(useState(playerHealth)) + 매 턴 즉시 차감. 사냥감 측 hpCurrent 패턴 대칭.
+- D-193: 카드 = 단일 컴포넌트 + 균일 스케일 (`container-type: inline-size` + cqw 단위). preview 오버라이드 7건 모두 제거. 손패 86px ↔ preview 280px 자동 비례.
+- D-194: BattleStage HP "X/Y" → "❤️ X/Y". 턴 진행 selected(현재 골드 outline+glow) / dim(끝난 턴 0.4) / normal(대기) 3-state. 사냥감·내 슬롯 동기.
 
-D-195 핵심 디테일:
-- 카메라 진단 사이클: 좌우/상하 비대칭 단서 → layout 변동 축 = 영향 축 → brower scroll anchoring 의심 → `overflow-anchor:none`로 1줄 해결. GameMap remount 8번은 별도 미진단 이슈(우회 처방으로 충분).
-- floats trade-off: replace(한 시점 한 효과)면 fade 안 보임, 누적이면 같은 텍스트 중복. 절충 — 같은 (side+kind) 교체.
-- 4-step 인과: 250ms(공격→피격) + 750ms(사냥감 행동 텀) + 250ms(행동→피격) — 짧은 gap은 타격감, 긴 gap은 사냥감 행동 인지.
-- **사용자 위임 결정(2026-05-01)**: 시각 회귀·UX 다듬기는 game-director가 맡는다. 다음 세션부터 위임.
+D-194 핵심 디테일:
+- BattleStage 정착: 5존 + 3-block + cqw 균일 카드 + selected/dim/normal 턴 시각화 + ❤️ 통일.
+- 사냥 시네마틱 타이밍 1300ms × n + 800ms 마지막 페이즈.
+- 시트 SSOT 정책 정착 (D-174): 디렉터/시트봇이 `--sheet-op`으로 직접 입력, TSV 우회·요한 떠넘기기 금지. 워크트리 `.secrets` 심링크 안내 명문화 (CLAUDE.md).
+- 권한 정책 3중 보장 (글로벌 + 메인 + 워크트리, 풀세트 동기) — `bypassPermissions` defaultMode + 명시 도구 allow + Bash 와일드카드 + mcp__* 풀세트.
 
-이전 검증: 2026-04-30 (**D-194, HP=❤️ 통일 + 턴 진행 시각화 (selected/dim/normal 3-state)**).
-D-194 변경:
-- BattleStage 사냥감·나 정보박스 HP 텍스트 → ❤️ 이모지 통일.
-- 턴 진행 시각화: `isCurrent = activeEvent && slotIdx===i` (셀렉트 골드 outline+glow), `isDone = consumed && !isCurrent` (딤드 opacity 0.4), 그 외 노말.
-- 사냥감 슬롯·내 슬롯 동시 동기 (둘 다 activeEvent 참조). 내 슬롯은 wrapper div로 HuntCard 감싸 비침투.
+이전 검증: 2026-04-29 (**D-168, 텐트 1~10 레벨 시스템 + 베이스캠프 빌딩 그리드 + 베이스 너프**).
+17th 세션 변경 요약 (D-162~D-168, 모두 main에 push 완료, `1cacd17..d03a66f`):
+- D-162: MessageText 한 글자 한국어 아이템명("게")이 어미·의존명사에서 잘못 강조되는 버그 수정.
+- D-163: campState localStorage 백업 슬롯 + 텐트 보상 즉시 pack 인스턴스 교체.
+- D-164: 데이터 밸런스 — 2등급 사냥감 일반 공격 명중 1, 돌 던지기 100%·명중 +1, 새총 데미지 3·내구 5, 뗀석기 내구 6 (시트 SSOT 별도 동기화 필요).
+- D-165: 보스 거리별 메시지 카드 테두리 단계화 + 포식 보스 흔적 유지.
+- D-166: 캠프 좌하단 [최신버전 업데이트] 버튼 + document.lastModified 빌드 시각.
+- D-167: 회피 수치 메타포 통일 `회피 N` → `💨+N`.
+- D-168: 텐트 Lv.1~10 다단계, 보상 3주기 교차(가방/생명력/배고픔). `tentBuilt:bool → tentLevel:0..10` 마이그레이션, 직렬화 v3. 베이스 max 너프(생명력 8→6, 배고픔 12→10) + 텐트 보너스 누적. `stone+stone → stone_block`(2단계 재료) 신규. 베이스캠프 3x3 빌딩 그리드 UI(텐트 활성, 8 placeholder).
 
-마지막 검증: 2026-04-30 (**D-193, 카드 = 단일 컴포넌트 + 균일 스케일 인스턴스**).
-D-193 변경:
-- `.hunt-card`에 `container-type: inline-size` + 자식 룰 9건 픽셀→cqw 변환(7.86cqw/5cqw 등 280px 기준).
-- `.hunt-card-preview-large .hunt-card-*` 자식 오버라이드 7건 제거 — 자동 비례.
-- 손패(86px) ↔ preview(280px) 폰트·패딩·아이콘 동일 비율, 다른 사이즈.
-- 박스 그림자/외곽선 강조만 `.hunt-card-preview-large .hunt-card` 유지.
+D-168 핵심 디테일:
+- `getMaxHealth(tentLevel)` / `getMaxHunger(tentLevel)` / `getPackBonusSlots(tentLevel)` 동적 helpers — 모든 cap·max·pack 보너스가 이걸 거친다. 새 코드는 `tentLevel`만 신뢰(tentBuilt는 호환용으로만 잔존).
+- StatPanel `maxHealth/maxHunger` props로 동적. Game `(tentLevel)` prop 받아 useState 초기값/cap 동적.
+- 직렬화 v3 — `tentLevel` + `tentBuilt` 둘 다 저장으로 다운그레이드 호환. deserialize는 tentLevel 우선, 없으면 tentBuilt → 1/0 변환.
+- 빌딩 그리드 카드 클릭 → BuildingDetailModal. tent: 다음 레벨 퀘스트 [받기]/[완수], placeholder: "추후 공개".
 
-마지막 검증: 2026-04-30 (**D-192, 사냥 중 캐릭터 HP 게이지 즉시 반영 hotfix**).
-D-192 변경:
-- `HuntCombatModal`에 자체 `displayHealth` state(`useState(playerHealth)`) 추가. 사냥감 `hpCurrent` 패턴 대칭.
-- 매 턴 `setTimeout` 안에서 `setDisplayHealth(prev - turn.playerDamage)` 즉시 차감.
-- BattleStage prop `playerHealth={displayHealth}` 교체.
-- 부모 game state 일괄 갱신(`onResolve`의 `result.playerDamageTaken`) 그대로 — 회귀 0.
-
-마지막 검증: 2026-04-30 (**D-191, 단일 카드 max 0.8배** — `.hunt-card-fan-slot { width: 108→86 }`. 슬롯/간격은 D-190 유지).
-
-마지막 검증: 2026-04-30 (**D-190, 손패 카드 4-건 폴리시 — 이름 가운데 / 부채꼴 평평 / 간격 ↑ / 사이즈 ↓**).
-D-190 변경:
-- `.hunt-card-name` left:28.37%→4% (좌우 대칭 가운데). 부채꼴·preview 양쪽 적용.
-- 부채꼴 step min `4→3`, max range `18/N→14/N`. N=4 양 끝 ±6°→±4.5° (좀 더 평평).
-- xStep max `64→76` (간격 ↑). 동적 베이스 `144→132` (카드 사이즈 줄어든 보정).
-- `.hunt-card-fan-slot` width `120→108` (조금 줄임 — 선택 시 큰 preview로 확대).
-
-마지막 검증: 2026-04-30 (**D-189, 손패 폴리시 + 전투 타이밍 + stone_block 머지 hotfix**).
-D-189 변경:
-- 손패 xStep 동적: viewport 폭 기반 `min(64, max(8, (cw-144)/(N-1)))`, maxWidth 480→520. 카드 적을 땐 펼침, 많을 땐 자동 fit.
-- 손패 위로 더 올라옴: `.hunt-hand-fixed-bottom .hunt-hand-fan { translateY: 105 → 30 }` (무덤 anchor 영향 X).
-- 모달 하단 padding 130 → 210.
-- 전투 타이밍: 턴 간격 600 → 1300ms (`TURN_DELAY_MS`), float CSS 0.7s → 1.0s, React expire 750 → 1100ms, 마지막 페이즈 전환 `1300*n + 800`. 모션 자체는 그대로.
-- 큰 preview 카드 이름 가로 가운데(D-188 후속): `.hunt-card-preview-large .hunt-card-name { left:4%; right:4% }`.
-- **stone_block 머지 hotfix**: `inventory.js` static ITEMS에 stone_block 누락 → stone×2 머지 시 silent fail로 인벤 소멸. (A) static 추가 (B) `_placeDerivedItem` resolveDef 폴백 + shape `[[1]]` 기본값. 단위 테스트 통과.
-
-마지막 검증: 2026-04-30 (**D-188, 시안 v2 — 사냥감 슬롯 위 / 캐릭터·사냥감 동등 사이즈 / 확정 위치 이관 / 손패 클릭 expand**).
-D-188 변경 5건 (요한 시안 v2):
-- BattleStage 3-block 재배치: ① 사냥감 슬롯 1234 (top) → ② 메인 row [좌:사냥감 스탯박스↑/캐릭터(160×210)↓ space-between | 우:사냥감 머리(160×160)↑/확정 버튼+나 박스↓ space-between] → ③ 내 슬롯 1234 (bottom). outer flex column space-between → 컨테이너 길어질수록 block 사이 빈 공간 자동 분배.
-- 사냥감 머리 120 → 160 (캐릭터 width 동등). emoji fontSize 96→128.
-- 확정 버튼 외부 모달(손패 위, width:100% padding:10px) → BattleStage 우 col 안 나 박스 위로 이관 (padding 8/10, fontSize 13). 외부 위치 코드 제거.
-- 손패 hover 전면 제거(모바일 통일). 클릭=확대 preview만 띄움(슬롯 X), 큰 preview 다시 클릭=좌측 첫 빈 슬롯 자동 배치(`handleHandClick`이 이미 `findIndex(s===null)` 사용). backdrop 추가(외부 클릭 시 preview 닫기). z-index는 부채꼴 자연 정렬(N-|off|), 클릭으로 안 올림.
-- 손패 사이즈/간격: 카드 width 96→120, container/fixed-bottom height 175→210, fixed-bottom translateY 85→105, xStep 32/240→40/320, maxWidth 360→480, 모달 하단 padding 110→130. CSS `:hover` 룰 3개 모두 제거(z-index 200 / inner translateY -30 / box-shadow).
-- 큰 preview 카드 이름 가로 가운데 보정: `.hunt-card-preview-large .hunt-card-name { left: 4%; right: 4% }` (일반 카드는 left:28.37% 비대칭 유지 — 좌측 스탯 배지 보호).
-- BattleStage prop 시그니처 확장: `SLOT_COUNT, slots, phase, handleSlotClick, allFilled, onConfirm` (children polyfill 폐기는 D-187에서 이미).
-- 검증: 페이지 정상 마운트, 콘솔 SyntaxError 없음(Babel deopt 노이즈만), 캠프 정상. 픽셀 단위 사냥 모달 시각 검증은 요한 QA에 위임 — 모달 트리거가 RNG 기반이라 자동화 부적합.
-
-마지막 검증: 2026-04-30 (**D-187, intermediate — 사이즈 키움 + 슬롯 그룹 세로 중앙**) — D-188로 흡수, 별도 항목 보류.
-
-마지막 검증: 2026-04-30 (**D-186, 전투화면 5존 정렬 — 사냥감띠 / 사냥감슬롯 / 내카드+내슬롯 / 캐릭터+나박스 / 손패**).
-D-186 목업 구조 정착:
-- BattleStage 사냥감 정보박스(좌, flex:1) + 머리 비주얼(우 88x88) 가로 띠 한 줄로 통합 (top:8, display:flex). 잔여 행동 dot 제거(슬롯 대체).
-- 외부 모달 헤더 "나" 박스(D-184) 제거 → BattleStage 내부 우하 "나" 정보박스로 이관 (bottom:14, left:148, right:8). 사냥감 박스 거울 대칭 메타포 — 검은 반투명, HP 게이지 + 🍖 N/M 우측. 캐릭터 아래 작은 "나" 라벨(D-180/D-182) 제거.
-- 사냥감 슬롯 top:130→top:120, gap 4→6. 내 슬롯 left:144/bottom:100 → left:8/right:8/top:215, gap:6 — **사냥감 슬롯과 같은 left/right + 같은 4-컬럼 grid → 카드 가운데 X좌표 자동 정렬**.
-- "내카드" 라벨 신설 (top:198, fontSize 10, 좌상 #9aa5c0).
-- 5존 위→아래: ① 사냥감 띠(top 8~96) ② 사냥감 슬롯(top 120~190) ③ 내카드 라벨+내 슬롯(top 198~310 추정) ④ 캐릭터(좌하 bottom:14, 130×170) + "나" 박스(bottom:14, 캐릭터 우측) ⑤ 손패(외부 fixed-bottom 부채꼴).
-- 검증: 페이지 정상 마운트(React mount OK), 콘솔 SyntaxError 없음(Babel deopt 노이즈만), 캠프→탐험 동작 확인. 픽셀 단위 사냥 모달 시각 검증은 요한 QA에 위임 — 모달 트리거가 RNG 기반이라 자동화 부적합.
+이전 검증: 2026-04-29 (**D-161, 메시지 UI 개편 — 내레이션 바 단일화**).
+D-161 메시지 합성:
+- LootToast / TileEventToast 두 컴포넌트 정의 + state(`lootToast`/`tileEventToast`) + 발사 헬퍼(`showLootToast`/`showTileEventToast`) + GameMap prop drilling 모두 제거.
+- 모든 발견·획득·이벤트 결과를 하단 "내레이션 바"(state: `message`)에 합성. 이모지·색상은 메시지 안에 인라인.
+- 합성 함수 `composeNarration([부분, …])` — 빈 조각 스킵, 마침표 자동 보강, 공백 합침.
+- 지역 인트로 / 재방문 폴백 분리: `REGION_INTRO_NARRATIVE` / `REGION_REVISIT_NARRATIVE` (5종 × 2). 첫방문 판정은 `prevTile.visited === false`.
+- 임계치 경고 (HUD 게이지바 warning과 동일 임계): `health ≤ 2` / `hunger ≤ 3`. 진입 1회 강한 라인 + `STAT_WARN_REMIND_TURNS=4` 마다 리마인드. `statWarnRef = { inHealth, inHunger, sinceHealth, sinceHunger }` + useEffect.
+- 흡수된 토스트 8군데: handleHuntResolve victory / search 단일·다중 / find_food / lootPickup confirm / lure / placeSnare / 보스 덫 발동 / wood_shard / detection delta / listen 4단계 / 풍족한땅 / 사냥감 발견 / 사체 첫 도착 / 보스 조우 / 보스 포식 안전.
+- D·E 항목(이벤트 모달 종료 토스트, 함정/이벤트 결과 토스트)도 디렉터 판단으로 함께 흡수 — "토스트 컴포넌트 자체 폐기" 일관성. EventResultModal이 lines 직접 노출하므로 토스트 중복은 노이즈.
+- 검증: @babel/standalone transform PASS (437358→311319 chars). composeNarration 5케이스 시뮬 PASS.
 
 마지막 검증: 2026-04-24 (**D-113, 베이스캠프 화면 재구성 + 가방(탐험용 인벤) + 보관함 팝업 + transfer + 전투 % 정리**).
 D-113 캠프 2단계:
@@ -703,29 +691,3 @@ SQLite-like 타입:
    - `moveTo` 일반 모드 인라인 랜덤 이동 → `boss.moveRandom()` 위임.
 
 **브라우저 검증**: 미실행. Node 단위 스모크 테스트만 수행 (resolveHunt 수식, 맵 생성 스케일, 보스 미방문 우선). 요한 수동 QA — pending.md D-60/D-61/D-62 체크리스트 참조.
-
-## 2026-05-01 19차 세션 hotfix — D-197 (cardname float jumping)
-
-D-196 후속. 사용자 "한 턴 '주먹으로 치기' 3번 등장" 버그 리포트.
-
-**진단**: D-195 B 즉시 교체 정책은 React state 레벨 정상이지만 D-196 TURN_DELAY 단축(2000→1400) 후 같은 cardname의 fade 진행 중 강제 제거+신규 인스턴스가 시각적으로 같은 텍스트 jumping 인공물 생성 → 사용자 시각엔 3번 등장으로 인지.
-
-**수정**: `BattleStage` `floats useEffect`에 `lastCardNameRef` 추가 — 직전 cardName과 같으면 push skip. activeEvent=null 시 ref reset. damage/miss는 그대로(짧고 굵은 텍스트라 jumping 영향 적음).
-
-**파일**: `index.html` 5820~5853.
-
-**브라우저 검증**: preview reload + D-197 주석 반영 확인. 사냥 라이브 검증은 요한 QA — pending.md D-197 체크리스트 참조.
-
-## 2026-05-01 19차 세션 후속 #2 — D-201 (사냥 턴 페이싱 확장)
-
-사용자 지시: 내 행동 후 → 여우 행동 시작 전 호흡 확보. step2(사냥감 피격)→step3(여우 공격) 간격 500→800ms 확장.
-
-**수치**: `STEP_OFFSETS = { user:0, preyHit:600, userHit:1400 }`, `TURN_DELAY_MS = 1800`, tail buffer 1000. 한 턴 1400→1800ms (28% 연장).
-
-**TURN_DELAY 동조**: step3 t+1400 + 다음 턴 step1 시작점 = TURN_DELAY 1800 → step3 직후 400ms breathing 유지(D-196 의도 그대로). 짧게 두면 cardname float와 사냥감 말풍선이 같은 프레임에 mount되어 시각 혼란.
-
-**D-200 사냥감 말풍선 영향**: step3 시점에 묶여있으므로 그대로 따라감. 분기·CSS 무변경.
-
-**파일**: `index.html:6441~6507` (주석 D-196 → D-196·D-201 통합).
-
-**브라우저 검증**: preview reload, console error 없음, 베이스캠프 정상 렌더. 사냥 라이브 검증은 요한 QA — pending.md D-201 체크리스트 참조.

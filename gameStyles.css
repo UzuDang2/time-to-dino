@@ -717,17 +717,18 @@ button:disabled {
    사냥감(우상)은 좌측으로, 유저(좌하)는 우측으로 슬라이드 → 서로 멀어지는 방향. 의미: "공격선 회피".
    타이밍 1.0s: 슬라이드 0.15s(쑉, 0→15%) → 대기 0.6s(15→75%, 같은 위치 유지) → 복귀 0.25s(75→100%).
    keyframe % 비율은 1.0s 기준 절대 시간(0/0.15/0.75/1.0)을 1000ms 정규화한 값.
-   슬라이드/복귀는 animation의 ease-in-out으로 자연 감속, 대기 구간은 같은 값 두 keypoint로 정지 구현. */
+   슬라이드/복귀는 animation의 ease-in-out으로 자연 감속, 대기 구간은 같은 값 두 keypoint로 정지 구현.
+   D-205: 슬라이드 거리 18px→30px (사냥감·유저 동일). 18px는 모션이 작아 "회피"보다 "주춤"으로 보였음 → 더 명확한 변위. */
 @keyframes battle-prey-evade {
     0%   { transform: translateX(0); }
-    15%  { transform: translateX(-18px); }
-    75%  { transform: translateX(-18px); }
+    15%  { transform: translateX(-30px); }
+    75%  { transform: translateX(-30px); }
     100% { transform: translateX(0); }
 }
 @keyframes battle-player-evade {
     0%   { transform: translateX(0); }
-    15%  { transform: translateX(18px); }
-    75%  { transform: translateX(18px); }
+    15%  { transform: translateX(30px); }
+    75%  { transform: translateX(30px); }
     100% { transform: translateX(0); }
 }
 /* D-199: damped sine wave — 처음에 강하게 ±10 튕기고 점진적으로 진폭이 줄어들며 0으로 정착.
@@ -762,9 +763,10 @@ button:disabled {
 }
 .battle-anim-attack-push { animation: battle-attack-push 0.3s ease-out; }
 .battle-anim-prey-shake { animation: battle-prey-shake 0.4s ease-in-out; }
-/* D-204: 회피 모션 재정의 — 사냥감은 좌측 18px, 유저는 우측 18px. 슬라이드 0.15s + 대기 0.6s + 복귀 0.25s = 1.0s.
+/* D-204: 회피 모션 재정의 — 사냥감은 좌측, 유저는 우측. 슬라이드 0.15s + 대기 0.6s + 복귀 0.25s = 1.0s.
    ease-in-out으로 슬라이드/복귀 양 끝의 가속·감속이 자연스럽게 들어가고, 대기 구간(15%→75%)은 같은 값이라 정지.
-   기존 prey-shake는 다른 용도로 살려두되(폐기는 안 함), 회피용 클래스는 prey-evade/player-evade로 명확히 분리. */
+   기존 prey-shake는 다른 용도로 살려두되(폐기는 안 함), 회피용 클래스는 prey-evade/player-evade로 명확히 분리.
+   D-205: 변위 18px→30px — keyframe 본체 참조. */
 .battle-anim-prey-evade { animation: battle-prey-evade 1.0s ease-in-out; }
 .battle-anim-player-evade { animation: battle-player-evade 1.0s ease-in-out; }
 /* D-203: 사냥감 공격 push — 캐릭터 attack-push와 동일한 0.3s ease-out, 방향만 반대(좌측). */
