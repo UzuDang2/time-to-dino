@@ -6438,15 +6438,15 @@
                 setResult(res);
                 setPhase('resolve');
 
-                // D-196: 한 턴 = 3 step (4-step에서 축소). preyActionName step 제거(사냥감 슬롯=D-186과 중복).
+                // D-196 / D-201: 한 턴 = 3 step.
                 //   step 1 (t+0):    유저 카드 발동 + 캐릭터 공격 모션. cardName 'player' float.
-                //   step 2 (t+500):  사냥감 적중/회피. preyDamage 'prey' float 또는 '회피!' + prey shake/flash.
-                //   step 3 (t+1000): 유저 적중. playerDamage 'player' float + player-hit 흔들림+플래시.
-                //   각 step은 별도 id로 wrapper key 갱신 → CSS 애니/floats useEffect 재발동.
-                //   TURN_DELAY_MS 2000→1400 (3 step gap + 다음 턴 시작 400ms breathing). float fade(2.0s) + 1.0s tail은
-                //   다음 턴 step1과 자연 overlap — 사용자 결정(옵션 5 변형: float duration 유지, 다음 턴 시작만 단축).
-                const TURN_DELAY_MS = 1400;
-                const STEP_OFFSETS = { user: 0, preyHit: 500, userHit: 1000 };
+                //   step 2 (t+600):  사냥감 적중/회피. preyDamage 'prey' float 또는 '회피!' + prey shake/flash.
+                //   step 3 (t+1400): 유저 적중 + 사냥감 공격 행동명 말풍선(D-200). playerDamage 'player' float + player-hit shake.
+                //   D-201: step2→step3 간격 500ms→800ms (사용자 지시 — 내 행동 결과 인지 후 여우 공격 시작 전 여유 확보).
+                //   TURN_DELAY_MS 1400→1800 — 다음 턴 step1까지 step3 직후 400ms breathing 유지 (사냥감 말풍선 + float 잔존 자연 overlap).
+                //   tail 800→1000 — step3 말풍선/float가 마지막 턴에서 충분히 보여진 후 결과 페이즈 전환.
+                const TURN_DELAY_MS = 1800;
+                const STEP_OFFSETS = { user: 0, preyHit: 600, userHit: 1400 };
                 res.turns.forEach((turn, idx) => {
                     const card = turn.userCard;
                     const cardDamage = Number(card && card.damage) || 0;
@@ -6500,11 +6500,11 @@
                         });
                     }, baseTime + STEP_OFFSETS.userHit);
                 });
-                // 마지막 step 3 float 끝까지 보여주고 결과 페이즈 전환.
+                // 마지막 step 3 float + 사냥감 말풍선(D-200) 끝까지 보여주고 결과 페이즈 전환. D-201: tail 800→1000.
                 setTimeout(() => {
                     setPhase('done');
                     setActiveEvent(null);
-                }, TURN_DELAY_MS * res.turns.length + 800);
+                }, TURN_DELAY_MS * res.turns.length + 1000);
             };
 
             // D-48: '결과 확인' 버튼 — 유저가 결과를 읽고 수동으로 닫을 때 onResolve 호출.
