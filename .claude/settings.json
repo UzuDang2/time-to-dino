@@ -73,8 +73,14 @@
       "mcp__scheduled-tasks__*",
       "mcp__mcp-registry__*",
       "mcp__f9e06bb3-7762-4cad-8e42-949f0d325ba7__*",
-      "mcp__f60c96a1-a016-4b6b-a746-978cf3e4cf72__*"
+      "mcp__f60c96a1-a016-4b6b-a746-978cf3e4cf72__*",
+      "Edit(/**)",
+      "Write(/**)",
+      "NotebookEdit(/**)",
+      "Read(/**)"
     ]
   },
-  "enabledMcpjsonServers": ["notion"]
+  "enabledMcpjsonServers": [
+    "notion"
+  ]
 }
