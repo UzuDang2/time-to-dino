@@ -7129,6 +7129,39 @@
             boar: '🐗', dinosaur: '🦕', deer: '🦌', badger: '🦡',
             fox: '🦊', turkey: '🦃', armadillo: '🦔'
         };
+        // D-213 (2026-05-01): 사냥감 추가 보상(기본 drop_item 외) — 등급별 확률 테이블.
+        //   1등급 prey: 가죽 50% (9종 공통, 기존 leather 재사용).
+        //   2등급 prey: 큰가죽 40%(공통) + 동물별 특징 소재 20%.
+        //   각 항목 독립 chance — 한 prey에 여러 추가 보상이 동시에 떨어질 수 있음.
+        //   시트 SSOT 외 코드 매핑: 시트 스키마 변경 없이 빠른 적용 — 추후 prey.json `extra_drops_raw` 컬럼 신설 시 마이그레이션.
+        const PREY_EXTRA_DROPS = {
+            // Level 1 — 가죽 50% 공통
+            rabbit:      [{ item: 'leather',         count: 1, chance: 0.5 }],
+            mouse:       [{ item: 'leather',         count: 1, chance: 0.5 }],
+            squirrel:    [{ item: 'leather',         count: 1, chance: 0.5 }],
+            bird:        [{ item: 'leather',         count: 1, chance: 0.5 }],
+            salamander:  [{ item: 'leather',         count: 1, chance: 0.5 }],
+            snake:       [{ item: 'leather',         count: 1, chance: 0.5 }],
+            frog:        [{ item: 'leather',         count: 1, chance: 0.5 }],
+            crab:        [{ item: 'leather',         count: 1, chance: 0.5 }],
+            grasshopper: [{ item: 'leather',         count: 1, chance: 0.5 }],
+            // Level 2 — 큰가죽 40% + 동물별 특징 소재 20%
+            boar:        [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'boar_tusk',         count: 1, chance: 0.2 }],
+            dinosaur:    [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'dino_scale',        count: 1, chance: 0.2 }],
+            deer:        [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'deer_antler',       count: 1, chance: 0.2 }],
+            badger:      [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'badger_claw',       count: 1, chance: 0.2 }],
+            fox:         [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'fox_tail',          count: 1, chance: 0.2 }],
+            turkey:      [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'large_feather',     count: 1, chance: 0.2 }],
+            armadillo:   [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'armadillo_shell',   count: 1, chance: 0.2 }]
+        };
+        // 추가 보상 굴리기 — chance 미달 항목은 제외, 통과 항목만 [{item, count}] 배열로 반환.
+        function rollPreyExtraDrops(preyId) {
+            const drops = PREY_EXTRA_DROPS[preyId];
+            if (!Array.isArray(drops)) return [];
+            return drops
+                .filter(d => Math.random() < (Number(d.chance) || 0))
+                .map(d => ({ item: d.item, count: Number(d.count) || 1 }));
+        }
         // 사냥시작 카드 — 사냥감 타일 진입 시 손패에 자동 추가되는 overflow 카드.
         //   `overflow:true` 플래그로 HAND_SIZE 카운트에서 제외(손패가 5장이어도 이 카드는 추가됨).
         //   클릭 시 useCard('hunt_start')에서 즉시 소모 + 전투 모달 오픈.
@@ -7497,10 +7530,41 @@
                         if (ok) added += 1;
                         else overflow += 1;
                     }
+                    // D-213 (2026-05-01): 추가 보상 — prey.id별 PREY_EXTRA_DROPS 매핑에서 chance 굴려 인벤 추가.
+                    //   1등급 prey: 가죽 50% / 2등급 prey: 큰가죽 40% + 동물별 특징 소재 20%.
+                    //   각 항목 독립 chance — 한 prey에 여러 추가 보상 동시 가능.
+                    //   메시지: 기본 보상 라인 끝에 "추가로 X y개, Z w개도 얻었다." 합성.
+                    const extraRolls = rollPreyExtraDrops(prey.preyType);
+                    const extraResults = [];
+                    for (const ed of extraRolls) {
+                        let extraAdded = 0;
+                        let extraOverflow = 0;
+                        for (let i = 0; i < ed.count; i++) {
+                            const ok = inventory.addItem(ed.item);
+                            if (ok) extraAdded += 1;
+                            else extraOverflow += 1;
+                        }
+                        if (extraAdded > 0 || extraOverflow > 0) {
+                            const def = InventorySystem.resolveDef(ed.item) || {};
+                            const emj = (typeof itemEmoji === 'function') ? itemEmoji(ed.item) : '';
+                            extraResults.push({
+                                name: def.name || ed.item,
+                                emoji: emj,
+                                added: extraAdded,
+                                overflow: extraOverflow
+                            });
+                        }
+                    }
                     // D-161: LootToast 폐기 — 획득은 메시지에 인라인 이모지 + 이름으로 흡수.
                     const itemEmojiLocal = (typeof itemEmoji === 'function') ? itemEmoji(dropId) : '';
                     let msg = `사냥에 성공했다. ${itemEmojiLocal ? itemEmojiLocal + ' ' : ''}${dropName} ${added}을(를) 얻었다.`;
                     if (overflow > 0) msg += ` (가방이 가득 차 ${overflow}개는 두고 왔다.)`;
+                    if (extraResults.length > 0) {
+                        const parts = extraResults.map(r => `${r.emoji ? r.emoji + ' ' : ''}${r.name} ${r.added}`).join(', ');
+                        msg += ` 추가로 ${parts}도 얻었다.`;
+                        const totalExtraOverflow = extraResults.reduce((a, r) => a + r.overflow, 0);
+                        if (totalExtraOverflow > 0) msg += ` (자리가 모자라 ${totalExtraOverflow}개는 두고 왔다.)`;
+                    }
                     setMessage(withConsumed(msg));
                     setActiveHunt(null);
                 } else if (outcome === 'prey_fled') {

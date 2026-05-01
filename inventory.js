@@ -177,6 +177,17 @@ class InventorySystem {
                 merged.merge_result = itemDef.merge_result || null;
                 // D-106: 시트에서 weight/attack/accuracy 컬럼 제거됨. 내구도만 유지.
                 if (itemDef['내구도'] != null) merged.durability = Number(itemDef['내구도']);
+                // D-213: name/category/grade도 itemsBundle에서 덮어씀 — 시트 SSOT 원칙.
+                //   이전엔 weapons/armors bundle에서만 name을 덮어 동물재료(leather 등) 일반 아이템은
+                //   resolveDef 결과 name 누락 → 사냥 메시지에 영문 id('leather')가 그대로 노출되는 버그.
+                //   이제 시트의 모든 아이템이 자동으로 name·category·grade 갖춤. inventory.js static ITEMS는 backward compat용.
+                if (itemDef.name) merged.name = itemDef.name;
+                if (itemDef['이름']) merged.name = itemDef['이름'];
+                if (itemDef['카테고리']) merged.category = itemDef['카테고리'];
+                if (itemDef['아이템 등급']) {
+                    const m = String(itemDef['아이템 등급']).match(/(\d+)/);
+                    if (m) merged.grade = Number(m[1]);
+                }
             }
         }
         if (weaponsBundle) {
