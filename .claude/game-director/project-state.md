@@ -1,7 +1,7 @@
 # project-state.md
 
-마지막 검증: 2026-05-01 (**D-205, 턴 호흡 +400ms + 회피 변위 18→30px**).
-19th 세션 후속 (D-195~D-205, 모두 main에 push 완료):
+마지막 검증: 2026-05-01 (**D-206, 마지막 턴 → 결과 모달 tail 1400→800 단축**).
+19th 세션 후속 (D-195~D-206, 모두 main에 push 완료):
 - D-195: 사냥 시각 시스템 정착 + 카메라 추적 sync (4-step 시퀀스 + floats 정책 + 결과 모달 로그 + battle-float-up 2.0s + 카메라 raf 800ms ease-out + .map-container overflow-anchor:none).
 - D-196: D-195 사용자 검증 후 정제 — `preyActionName` step 제거(사냥감 슬롯=D-186 중복), cardname `!` 제거(분위기 톤), 4 step→3 step (`STEP_OFFSETS = { user: 0, preyHit: 500, userHit: 1000 }`), `TURN_DELAY_MS` 2000→1400 (옵션 5 변형: float duration 유지, 다음 턴 시작만 단축). 4 turn 사냥 8s→5.6s.
 - D-197 [PARTIAL]: cardname float jumping 1차 진단·가드 — `lastCardNameRef`로 직전 turn cardName 같으면 push X. 잔존 float가 자연 fade. 다만 **실제 root cause는 이 위층**이라 일부만 해결.
@@ -9,6 +9,7 @@
 - D-199: 피격 모션 강화 — 새 keyframes `battle-hit-shake` (damped sine wave envelope, 0/-10/+8/-6/+4/-3/+2/-1/0, 0.6s ease-out). 사냥감 피격(`.battle-anim-prey-flash`) = 기존 플래시만 → hit-shake + flash 동시. 캐릭터 피격(`.battle-anim-player-hit`) = 약한 ±3px shake → 같은 강한 envelope. 회피(`.battle-anim-prey-shake`)는 기존 약한 ±6px·0.4s 유지 → 진폭·duration 차이로 피격과 시각 분리. 런타임 transform sampling으로 envelope 검증(t=58ms -9.99 / t=116ms +7.89 / t=193ms -6.00 / t=601ms 0).
 - D-200~D-204: 한 턴 4-step 시퀀스 정제 — 사냥감 공격 행동명 말풍선 부활(D-200), step2→step3 호흡 500→800ms(D-201), step3을 preyAttack/userHit로 분리해 양쪽 공격→피격 200ms 텀(D-202, `STEP_OFFSETS = { user:0, preyHit:200, preyAttack:1000, userHit:1200 }`), 사냥감 push 모션 부활 + float 단일 ease(D-203), 회피 모션 재정의(D-204, 좌우 흔들림→공격선 멀어지는 슬라이드 18px + 정지 + 복귀 1.0s).
 - D-205: 턴 호흡 +400ms + 회피 변위 30px — `TURN_DELAY_MS` 1800→**2200** (step4 직후 다음 턴까지 600→1000ms breathing), tail 1200→**1400** (마지막 턴 evade 1.0s 잔존 보호), 회피 keyframes(`battle-prey-evade`/`battle-player-evade`) 변위 18→30px. 사용자 피드백 "사냥감 공격 후 턴 바뀔 때 여유 부족" + "회피 변위가 작아 주춤으로 보임" 정정.
+- D-206: 마지막 턴 → 결과 모달 tail **1400→800** (-600ms). 사용자 피드백 "마지막 턴 후 결과 모달까지 길다". 마지막 턴 step4 시작 → done 전환 = 2200-1200+800 = **1800ms** (기존 2400ms 대비 -600ms = 25% 단축). evade 1.0s는 step1·step2부터 → step4(t+1200) 시점엔 이미 종료, 보호 불필요. hit shake 0.6s는 step4+600ms 끝 → tail 800ms면 200ms 잔존 후 done.
 
 이전 검증: 2026-05-01 (**D-194, HP=❤️ 통일 + 턴 진행 시각화 selected/dim/normal**).
 18th~19th 세션 변경 요약 (D-169~D-194, 모두 main에 push 완료, `2372f4e..1b53a75`):

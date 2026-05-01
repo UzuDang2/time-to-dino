@@ -3410,6 +3410,28 @@ D-199 이후 사냥 시각 시퀀스를 한 턴=4-step으로 확장하며 핀포
 
 **검증**: preview reload + cssRules 직접 확인 — `battle-prey-evade` 15%/75% `translateX(-30px)`, `battle-player-evade` 15%/75% `translateX(30px)` 등록 확인. 콘솔 에러 없음(BABEL deopt 경고만, 무해). 사냥 한 라운드(4 turn) 시각 검증 — 턴 간 호흡 + 회피 변위 명확성은 사용자.
 
+## D-206. 마지막 턴 → 결과 모달 tail 단축 (2026-05-01)
+
+**요한 지시**: "마지막 턴 후 결과 모달 뜨기까지 대기 시간이 길다 — 단축."
+
+**현황 (D-205 직후)**:
+- `TURN_DELAY_MS` 2200ms, tail 1400ms.
+- 마지막 턴 step4 시작(`baseTime + 1200`) → done 전환(`TURN_DELAY_MS * turns.length + 1400`) = `2200 - 1200 + 1400` = **2400ms** 대기.
+
+**수정**:
+- tail 1400→**800** (-600ms). `index.html:6552`.
+- 마지막 턴 step4 시작 → done 전환 = `2200 - 1200 + 800` = **1800ms** (기존 2400ms 대비 -600ms = 25% 단축).
+
+**근거 (보호 대상별 검증)**:
+- 마지막 턴이 **회피 카드**로 끝: playerEvade 1.0s는 step1(t+0)에서 트리거 → t+1000ms에 종료. step4(t+1200)는 회피 끝난 후. tail이 1.0s 보호할 필요 없음.
+- 마지막 턴이 **prey 회피**로 끝(공격이 회피됨): prey evade 1.0s는 step2(t+200)에서 트리거 → t+1200ms에 종료. step4 시점에 정확히 끝남. 보호 불필요.
+- 마지막 턴이 **공격(피격)**으로 끝: hit shake 0.6s + flash는 step4(t+1200)에서 트리거 → t+1800ms에 종료. tail 800ms = 정확히 hit shake 끝과 동시에 done 전환. 200ms 잔존 여유.
+- float 2.0s 잔존: 결과 모달(z=1800)이 위에서 cover하니 시각상 자연 cut.
+
+**파일**: `index.html:6461~6467` (tail 주석), `:6543~6552` (setTimeout + 상수).
+
+**검증**: preview reload — 페이지 정상 부팅(`document.title` "🦖 타임투다이노"), 콘솔 에러 없음(BABEL deopt 경고만, 무해). 사냥 한 라운드 끝~결과 모달 사이 체감 단축은 사용자.
+
 ## 권한·운영 chore (D-169~D-194 기간 중)
 
 `.claude/settings.json` 3중 보장(글로벌 + 메인 리포 + 워크트리) 패턴이 이 구간에서 정착. 주요 마일스톤:
