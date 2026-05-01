@@ -466,6 +466,9 @@
         // 타일 위에 표시할 아이콘 후보 산출. 호출처가 같은 입력으로 동일 결과를 받도록 순수 함수.
         //   요한: "흔적은 정체가 밝혀지면 흔적 아이콘이 없어지고 사냥감 아이콘으로 대체"
         //   → trace는 prey나 carcass가 같은 타일에 보이면 자동 생략.
+        //   D-214 (2026-05-01): "발자국 개념 폐기, 동물 직접 표시" — prey trace 👣 마커 제거.
+        //   감지된 prey는 visited와 무관하게 PREY_EMOJI로 직접 노출(showPrey 조건이 hasTrace까지 포함).
+        //   carcass trace는 그대로(🦴) — 청각 단서로 인접 사체 위치만 알리는 시스템 유지.
         //   isPlayer/isBoss 플래그는 HexTile에서 본체 렌더 시 skip(GameMap이 별도 SVG text로
         //   transition 슬라이드를 위해 단일 인스턴스 유지) 하는데 쓰인다.
         function computeTileIcons(tile, ctx) {
@@ -488,12 +491,14 @@
                 if (ctx.hasBait && !(tile.visited && ctx.hasCarcass)) {
                     list.push({ kind: 'bait', emoji: '🍖' });
                 }
-                const traceVisible = (ctx.hasTrace || ctx.hasCarcassTrace)
+                // D-214: prey trace 분기 제거 — showPrey가 hasTrace까지 포함하므로 line 485에서 자동 처리.
+                //   carcass trace(🦴)만 남김. prey trace에 prey가 함께 있으면 line 485 prey 분기가 우선.
+                const carcassTraceVisible = ctx.hasCarcassTrace
                     && !ctx.showPrey
                     && !(tile.visited && ctx.hasCarcass)
                     && !ctx.hasBait;
-                if (traceVisible) {
-                    list.push({ kind: 'trace', emoji: ctx.hasCarcassTrace ? '🦴' : '👣' });
+                if (carcassTraceVisible) {
+                    list.push({ kind: 'carcass-trace', emoji: '🦴' });
                 }
             }
             if (ctx.isCurrent) list.push({ kind: 'player', emoji: '♟', isPlayer: true });
@@ -520,6 +525,8 @@
         //   - prey 아이콘: visited 타일 + preys에 이 tileId 있을 때. (보스가 있으면 보스 우선)
         //   - 흔적(👣 우상단): preyTraceTiles.has(tile.id) — visited 무관 (청각 단서).
         //   - D-48: 발자국 방향 화살표 제거 — 흔적(👣)만으로 단서 제공.
+        //   - D-214 (2026-05-01): "발자국 개념 폐기, 동물 직접 표시" — preyTraceTiles에 등록된 타일도
+        //     visited와 무관하게 PREY_EMOJI 직접 노출. 👣 마커 제거. carcass trace(🦴)는 그대로.
         function HexTile({ tile, currentTile, tiles, boss, bossVisible, gameOver, victory, moveTo, requestWait, preys, preyTraceTiles, carcassTiles, carcassTraceTiles, baitTiles, moveHistory, bossMoveHistory, showPathView }) {
             const { x, y } = tile.position;
             const isCurrent = tile.id === currentTile;
@@ -528,9 +535,11 @@
             const isRevealed = tile.revealed || tile.visited;
 
             const preyOnTile = (preys || []).find(p => p.tileId === tile.id);
-            const showPrey = tile.visited && preyOnTile && !isBoss;
-            const preyEmoji = showPrey ? (PREY_EMOJI[preyOnTile.preyType] || '❓') : null;
             const hasTrace = preyTraceTiles && preyTraceTiles.has && preyTraceTiles.has(tile.id);
+            // D-214: trace로 감지된 prey도 종류 직접 노출(visited 조건 완화).
+            //   prey가 거기 있고 보스가 아니면 visited이거나 trace 어느 쪽이든 종류 공개.
+            const showPrey = (tile.visited || hasTrace) && preyOnTile && !isBoss;
+            const preyEmoji = showPrey ? (PREY_EMOJI[preyOnTile.preyType] || '❓') : null;
             // D-78: 사체 타일. visited && carcassTiles.has(tile.id)면 🦴 오버레이.
             //   listen으로 감지된 인접 사체는 carcassTraceTiles에 들어가 trace 위치에 🦴 표시(visited 무관).
             const hasCarcass = carcassTiles && carcassTiles.has && carcassTiles.has(tile.id);
@@ -7556,7 +7565,7 @@
                                 : p
                         ));
                     }
-                    setMessage(withConsumed('사냥감이 도망쳤다. 발자국이 남아있다.'));
+                    setMessage(withConsumed('사냥감이 도망쳤다. 흔적이 남아있다.'));
                     setActiveHunt(null);
                 } else if (outcome === 'player_fled') {
                     // 플레이어 도주 — prey는 제자리지만 준 데미지는 유지.
@@ -7858,7 +7867,7 @@
                             const bossPos = boss ? boss.getPosition() : -1;
                             const info = fromHere(bossPos);
                             if (info && info.dir !== 'unknown') {
-                                setMessage(`종이 한 귀퉁이에서 짐승의 발자국이 보인다. ${info.label} ${info.arrow}`);
+                                setMessage(`종이 한 귀퉁이에서 짐승의 흔적이 보인다. ${info.label} ${info.arrow}`);
                             }
                         } else {
                             setMessage('무언가의 단서가 머릿속에 남는다.');
