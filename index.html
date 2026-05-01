@@ -6504,7 +6504,10 @@
                 //          prey evade 1.0s는 step2(t+200)부터 → step4(t+1200) 시점엔 이미 끝.
                 //          float 2.0s 잔존은 결과 모달(z=1800)이 위에서 cover하니 시각상 자연 cut.
                 //   설계 의도: 공격 신호와 피격 반응 사이 정확히 200ms 텀 (양쪽 다). 인과의 시각적 명료성.
-                const TURN_DELAY_MS = 2200;
+                // D-216 (2026-05-02 요한): TURN_DELAY 2200 → 1700 (-500ms). 사용자 피드백 "턴과 턴 사이 간격이 너무 길다".
+                //   D-205에서 1800→2200 늘렸던 호흡 일부 양보 — 마지막 step userHit(t+1200)와 다음 턴 시작(1700) 사이 500ms 여유 유지.
+                //   STEP_OFFSETS / tail은 보존(별개 결정). 한 턴 내 step 호흡은 그대로, 턴 단위 페이싱만 단축.
+                const TURN_DELAY_MS = 1700;
                 const STEP_OFFSETS = { user: 0, preyHit: 200, preyAttack: 1000, userHit: 1200 };
                 res.turns.forEach((turn, idx) => {
                     const card = turn.userCard;
