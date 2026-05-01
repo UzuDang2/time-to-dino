@@ -5842,7 +5842,8 @@
                     lastCardNameRef.current = activeEvent.cardName;
                 }
                 if (activeEvent.preyActionName) {
-                    newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'bubble', text: `[${activeEvent.preyActionName}]` });
+                    // D-203: 대괄호 제거 — 말풍선 박스(어두운 배경 + 흰 텍스트 + 라운드 8px) 자체가 이미 "라벨" 시각이므로 [...] 중복.
+                    newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'bubble', text: `${activeEvent.preyActionName}` });
                 }
                 if (activeEvent.preyDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'damage', text: `❤️-${activeEvent.preyDamage}` });
                 if (activeEvent.playerDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'damage', text: `❤️-${activeEvent.playerDamage}` });
@@ -5863,6 +5864,9 @@
             const playerHitClass = activeEvent && activeEvent.playerDamage > 0 ? 'battle-anim-player-hit' : '';
             const preyShakeClass = activeEvent && activeEvent.preyEvaded ? 'battle-anim-prey-shake' : '';
             const preyFlashClass = activeEvent && activeEvent.preyDamage > 0 ? 'battle-anim-prey-flash' : '';
+            // D-203: 사냥감 공격 push — step3 시점(preyAttackName 표시)에 사냥감이 좌측(유저 방향)으로 한 번 팍 미는 모션.
+            //   step2(prey-shake/flash, 피격)와 step4(유저 hit) 모두 사이 시점이 분리되어 클래스 충돌 X.
+            const preyAttackPushClass = activeEvent && activeEvent.preyAttack ? 'battle-anim-prey-attack-push' : '';
             return (
                 <div style={{
                     position: 'relative',
@@ -6011,7 +6015,7 @@
                             }}>
                                 <div
                                     key={`prey-anim-${eventId || 'idle'}`}
-                                    className={`${preyShakeClass} ${preyFlashClass}`.trim()}
+                                    className={`${preyShakeClass} ${preyFlashClass} ${preyAttackPushClass}`.trim()}
                                     style={{ width: '100%', height: '100%',
                                              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     {preyImageUrl ? (
@@ -6485,14 +6489,16 @@
                         });
                     }, baseTime + STEP_OFFSETS.preyHit);
 
-                    // Step 3: 사냥감 공격 행동명 말풍선만 (D-200, attack 행동에 한정)
+                    // Step 3: 사냥감 공격 행동명 말풍선 + 사냥감 push 모션 (D-200, attack 행동에 한정)
                     // D-202: 말풍선과 hit shake 분리. 말풍선은 사냥감 공격 "신호" — 피격은 200ms 후 step4.
+                    // D-203: 말풍선과 동시에 사냥감이 좌측(유저 방향)으로 한 번 팍 미는 push 모션 추가 — 캐릭터 step1 push와 대칭.
                     setTimeout(() => {
                         const showPreyAction = (turn.preyActionType === 'attack') && !!turn.preyAction;
                         setActiveEvent({
                             id: baseId + 3,
                             slotIdx: idx,
                             playerAttack: false,
+                            preyAttack: showPreyAction,
                             preyEvaded: false,
                             preyDamage: 0,
                             playerDamage: 0,

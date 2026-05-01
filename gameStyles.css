@@ -698,6 +698,14 @@ button:disabled {
     40% { transform: translateX(12px); }
     100% { transform: translateX(0); }
 }
+/* D-203: 사냥감 공격 push — 캐릭터 push와 대칭. 사냥감은 화면 우상에 있으므로 좌측(유저 방향)으로 밀기.
+   step3(말풍선과 동시) 시점에 발동 → 공격 "동작 신호"로 작용. 진폭은 캐릭터(±12px)와 동일.
+   step2 prey-shake/flash, step4와 시점이 분리되므로 클래스 동시 적용 충돌 없음. */
+@keyframes battle-prey-attack-push {
+    0% { transform: translateX(0); }
+    40% { transform: translateX(-12px); }
+    100% { transform: translateX(0); }
+}
 @keyframes battle-prey-shake {
     0%, 100% { transform: translateX(0); }
     20% { transform: translateX(-6px); }
@@ -724,14 +732,21 @@ button:disabled {
     30% { filter: brightness(1.4) drop-shadow(0 0 14px rgba(255,80,80,0.95)) drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
     100% { filter: brightness(1) drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
 }
+/* D-203: transform Y 이동을 0→100% 단일 보간으로 통일.
+   기존(0/10/50/100% 4단계)은 각 구간이 독립 보간 → 사용자 시각엔 "두 번 이동"으로 인지(빠름→느림→다시 큼).
+   transform은 0%/100%만 선언, animation의 ease-out이 전체 구간을 한 번의 자연 감속 곡선으로 보간 →
+   "처음 빠르게 솟구치다 점점 천천히 멈춤" 한 번의 모션. opacity만 단계 유지(등장 0~10% / 잔존 10~50% / fade 50~100%).
+   transform 중간 keypoint를 두면 ease 곡선이 그 점에서 재시작되어 단일 ease 효과가 깨지므로 의도적 미선언. */
 @keyframes battle-float-up {
-    0% { opacity: 0; transform: translate(-50%, 0); }
-    10% { opacity: 1; transform: translate(-50%, -8px); }
-    50% { opacity: 1; transform: translate(-50%, -20px); }
+    0%   { opacity: 0; transform: translate(-50%, 0); }
+    10%  { opacity: 1; }
+    50%  { opacity: 1; }
     100% { opacity: 0; transform: translate(-50%, -70px); }
 }
 .battle-anim-attack-push { animation: battle-attack-push 0.3s ease-out; }
 .battle-anim-prey-shake { animation: battle-prey-shake 0.4s ease-in-out; }
+/* D-203: 사냥감 공격 push — 캐릭터 attack-push와 동일한 0.3s ease-out, 방향만 반대(좌측). */
+.battle-anim-prey-attack-push { animation: battle-prey-attack-push 0.3s ease-out; }
 /* D-199: 사냥감 피격은 강한 damped 흔들림 + 빨강 플래시 동시.
    회피(prey-shake, 약함)와 시각적 차등화 — 같은 좌우 모션이라도 진폭·길이가 다름. */
 .battle-anim-prey-flash { animation: battle-hit-shake 0.6s ease-out, battle-damage-flash 0.6s ease-out; }
