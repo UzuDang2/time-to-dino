@@ -6438,22 +6438,26 @@
                 setResult(res);
                 setPhase('resolve');
 
-                // D-196 / D-201: 한 턴 = 3 step.
-                //   step 1 (t+0):    유저 카드 발동 + 캐릭터 공격 모션. cardName 'player' float.
-                //   step 2 (t+600):  사냥감 적중/회피. preyDamage 'prey' float 또는 '회피!' + prey shake/flash.
-                //   step 3 (t+1400): 유저 적중 + 사냥감 공격 행동명 말풍선(D-200). playerDamage 'player' float + player-hit shake.
-                //   D-201: step2→step3 간격 500ms→800ms (사용자 지시 — 내 행동 결과 인지 후 여우 공격 시작 전 여유 확보).
-                //   TURN_DELAY_MS 1400→1800 — 다음 턴 step1까지 step3 직후 400ms breathing 유지 (사냥감 말풍선 + float 잔존 자연 overlap).
-                //   tail 800→1000 — step3 말풍선/float가 마지막 턴에서 충분히 보여진 후 결과 페이즈 전환.
+                // D-196 / D-201 / D-202: 한 턴 = 4 step (D-202: step3을 preyAttack/userHit로 분리).
+                //   step 1 user       (t+0):    유저 카드 발동 + 캐릭터 공격 push 모션. cardName 'player' float.
+                //   step 2 preyHit    (t+200):  사냥감 적중/회피. preyDamage 'prey' float 또는 '회피!' + prey shake/flash.
+                //                              ← 유저 공격(t+0) → 피격 반응(t+200) = 200ms (D-202 사용자 지시).
+                //   step 3 preyAttack (t+1000): 사냥감 공격 행동명 말풍선만 (preyActionName, attack일 때만).
+                //                              ← step2(t+200) → step3(t+1000) = 800ms (D-201 호흡 유지: 내 결과 인지 후 여우 공격 시작 전 여유).
+                //   step 4 userHit    (t+1200): 캐릭터 hit shake + flash + playerDamage float.
+                //                              ← 사냥감 공격(t+1000) → 피격 반응(t+1200) = 200ms (D-202 사용자 지시).
+                //   TURN_DELAY_MS 1800 유지 — 다음 턴 t+0까지 step4(t+1200) 직후 600ms breathing.
+                //   tail 1000→1200 — 마지막 턴 step4 hit shake/float가 충분히 잔존 후 결과 페이즈 전환.
+                //   설계 의도: 공격 신호와 피격 반응 사이 정확히 200ms 텀 (양쪽 다). 인과의 시각적 명료성.
                 const TURN_DELAY_MS = 1800;
-                const STEP_OFFSETS = { user: 0, preyHit: 600, userHit: 1400 };
+                const STEP_OFFSETS = { user: 0, preyHit: 200, preyAttack: 1000, userHit: 1200 };
                 res.turns.forEach((turn, idx) => {
                     const card = turn.userCard;
                     const cardDamage = Number(card && card.damage) || 0;
                     const baseTime = TURN_DELAY_MS * idx;
                     const baseId = (idx + 1) * 100;
 
-                    // Step 1: 유저 카드 발동 — 카드 이름 + 캐릭터 공격 모션
+                    // Step 1: 유저 카드 발동 — 카드 이름 + 캐릭터 공격 push 모션
                     setTimeout(() => {
                         setLogs(prev => [...prev, turn]);
                         setActiveEvent({
@@ -6467,7 +6471,7 @@
                         });
                     }, baseTime + STEP_OFFSETS.user);
 
-                    // Step 2: 사냥감 적중 또는 회피 — preyDamage / preyEvaded float + prey shake/flash
+                    // Step 2: 사냥감 적중 또는 회피 — preyDamage / preyEvaded float + prey shake/flash (공격 200ms 후)
                     setTimeout(() => {
                         if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
                         setActiveEvent({
@@ -6481,12 +6485,9 @@
                         });
                     }, baseTime + STEP_OFFSETS.preyHit);
 
-                    // Step 3: 유저 적중 — playerDamage float + 캐릭터 hit 흔들림+플래시 + 사냥감 공격 행동명 말풍선
-                    // D-200: preyActionName 부활(부분 D-196 롤백) — 단 공격 행동(preyActionType==='attack')일 때만,
-                    //   인과 흐름상 step3(사냥감의 공격이 유저에게 닿는 시점)에 묶는다. 회피·peek·defend는 표시 X.
+                    // Step 3: 사냥감 공격 행동명 말풍선만 (D-200, attack 행동에 한정)
+                    // D-202: 말풍선과 hit shake 분리. 말풍선은 사냥감 공격 "신호" — 피격은 200ms 후 step4.
                     setTimeout(() => {
-                        const playerDmg = Number(turn.playerDamage) || 0;
-                        if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
                         const showPreyAction = (turn.preyActionType === 'attack') && !!turn.preyAction;
                         setActiveEvent({
                             id: baseId + 3,
@@ -6494,17 +6495,37 @@
                             playerAttack: false,
                             preyEvaded: false,
                             preyDamage: 0,
-                            playerDamage: playerDmg,
+                            playerDamage: 0,
                             cardName: null,
                             preyActionName: showPreyAction ? turn.preyAction : null,
                         });
+                    }, baseTime + STEP_OFFSETS.preyAttack);
+
+                    // Step 4: 유저 피격 반응 — playerDamage float + 캐릭터 hit shake + flash (공격 200ms 후)
+                    // D-202: step3 분리 — 말풍선이 떠오른 후 200ms의 텀을 두고 피격 반응이 일어남.
+                    //   preyActionName은 step4에선 null. step3 push된 'prey:bubble' float은 자체 2100ms expire로 자연 잔존.
+                    //   여기서 다시 push하면 useEffect의 newKeys 교체 로직(5853L)이 같은 side:kind를 새 id로 교체 → 깜빡임/점프.
+                    setTimeout(() => {
+                        const playerDmg = Number(turn.playerDamage) || 0;
+                        if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
+                        setActiveEvent({
+                            id: baseId + 4,
+                            slotIdx: idx,
+                            playerAttack: false,
+                            preyEvaded: false,
+                            preyDamage: 0,
+                            playerDamage: playerDmg,
+                            cardName: null,
+                            preyActionName: null,
+                        });
                     }, baseTime + STEP_OFFSETS.userHit);
                 });
-                // 마지막 step 3 float + 사냥감 말풍선(D-200) 끝까지 보여주고 결과 페이즈 전환. D-201: tail 800→1000.
+                // 마지막 step4 hit shake + float + 말풍선이 충분히 잔존 후 결과 페이즈 전환.
+                // D-202: tail 1000→1200 — step4가 step3보다 200ms 늦으니 마지막 턴 끝부분도 200ms 추가.
                 setTimeout(() => {
                     setPhase('done');
                     setActiveEvent(null);
-                }, TURN_DELAY_MS * res.turns.length + 1000);
+                }, TURN_DELAY_MS * res.turns.length + 1200);
             };
 
             // D-48: '결과 확인' 버튼 — 유저가 결과를 읽고 수동으로 닫을 때 onResolve 호출.

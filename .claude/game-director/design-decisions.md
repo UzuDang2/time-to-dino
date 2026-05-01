@@ -4455,3 +4455,50 @@ step3가 t+1400에 있는데 TURN_DELAY를 1400 그대로 두면 다음 턴 step
 - 화면 정상 렌더(베이스캠프 표시 확인).
 
 **대기 검증**: 사용자 라이브 사냥 1턴 — 내 카드 발동 → 사냥감 휘청 → **충분한 호흡** → 사냥감 `[…]` 말풍선 + 내 캐릭터 hit shake. 기존 대비 "여우가 다음 행동을 준비하고 있다"는 긴장감이 살아나는지.
+
+## D-202. 사냥 턴 페이싱 — 공격→피격 반응 200ms 분리 (2026-05-01)
+
+### 결정
+
+D-201에서 step1→step2(600ms)·step3에서 말풍선과 hit-shake 동시 발동(0ms)이었던 것을, **양방향 모두 공격→피격 반응 사이 정확히 200ms 텀**으로 통일. 인과의 시각적 명료성을 위해 step3을 분리해 한 턴 = **4 step**.
+
+**의도**: 공격 신호와 피격 반응 사이 200ms는 사람의 시각 인지가 인과를 잡는 가장 자연스러운 텀. 너무 짧으면 동시(둘 다 동일 시점), 너무 길면 분리(별개 사건). 양쪽 다 같은 200ms로 둬서 "공격→피격" 리듬이 일관되게 들린다.
+
+### 새 STEP_OFFSETS
+
+| step | t (ms) | 내용 | 인과 텀 |
+|---|---|---|---|
+| 1 user | 0 | 유저 카드 + 캐릭터 push 모션 | — |
+| 2 preyHit | 200 | 사냥감 shake/flash + preyDamage float | step1+200 (유저 공격→피격 반응) |
+| 3 preyAttack | 1000 | 사냥감 공격 행동명 `[…]` 말풍선만 | step2+800 (D-201 호흡 유지) |
+| 4 userHit | 1200 | 캐릭터 hit shake + flash + playerDamage float | step3+200 (사냥감 공격→피격 반응) |
+
+- `TURN_DELAY_MS = 1800` 유지(다음 턴 t+0까지 step4 직후 600ms breathing).
+- tail `1000 → 1200` (마지막 턴 step4가 step3보다 200ms 늦어진 만큼 보정).
+
+### 옵션 trade-off (자율 결정 근거)
+
+- **옵션 A (step3 분리, 3a/3b)**: 명명 충돌·디버깅 어려움.
+- **옵션 B (새 step4 신설)** ← **채택**. 4-step 명시 = 코드 가독성·향후 다른 사냥감/보스 추가 시 일관성·step별 책임 분리.
+- **옵션 C (한 step 안 setActiveEvent 두 번 + nested timer)**: timer 안 timer 패턴 — cleanup 추적 복잡.
+
+### 구현 디테일 (말풍선 중복 회피)
+
+`useEffect` deps `[activeEvent.id]`(index.html:5859)는 매 id마다 newOnes 푸시. step3에서 `prey:bubble` push, step4에서도 `preyActionName` 보내면 5853L `newKeys.has(side+kind)` 가드가 같은 키 → 새 id로 교체 → 깜빡임/점프.
+
+→ **step4의 `preyActionName: null`**. step3 push된 float은 자체 2100ms expire로 자연 잔존 → step4의 hit shake와 겹쳐서 보임. 의도된 시각적 인과 ("말풍선 떠 있는 동안 피격 반응 일어남").
+
+### 구현 (`index.html`)
+
+- `index.html:6448`: `TURN_DELAY_MS = 1800` 유지.
+- `index.html:6449`: `STEP_OFFSETS = { user: 0, preyHit: 200, preyAttack: 1000, userHit: 1200 }`.
+- `index.html:6504-6520`: step4 신설 (userHit 분리). preyActionName: null 명시 + 사유 주석.
+- `index.html:6526`: tail `+1000` → `+1200`.
+- 주석 D-202 블록 갱신, D-196/D-201 주석 history로 보존.
+
+### 검증
+
+- Preview reload 후 console error 없음 (Babel deopt 경고는 기존 noise).
+- React 런타임 에러 없음.
+
+**대기 검증**: 사용자 라이브 사냥 1턴 — (1) 카드 발동 후 정확히 200ms 후 사냥감 shake. (2) 사냥감 `[…]` 말풍선 후 정확히 200ms 후 캐릭터 hit shake. 양쪽 텀이 일관되게 200ms로 느껴지는지.
