@@ -3227,6 +3227,41 @@
             'heal_on_return', 'feed_on_return', 'repair_kit', 'revive'
         ]);
 
+        // D-210 (2026-05-01): 사용자 노출 텍스트 한글화 + 메타포 일관성.
+        //   PASSIVE/ONE_SHOT 키는 코드/데이터 내부용 — UI 노출 시 반드시 라벨 매핑 거침.
+        //   ❤️=체력, 🍖=배고픔 SSOT 메타포는 StatPanel/IntelMapTooltip(이미 정착)과 동일 사용.
+        //   라벨 신설 시: 같은 개념이 이미 어딘가에 노출되고 있는지 먼저 확인 후 그 표기를 따른다.
+        const PASSIVE_LABEL = {
+            health_max:   '❤️ 최대치',
+            hunger_max:   '🍖 최대치',
+            pack:         '🎒 가방 칸',
+            deck_size:    '🃏 덱 크기',
+            evade:        '회피',
+            accuracy:     '명중',
+            detection:    '발각',
+            armor:        '방어',
+            camp_storage: '📦 보관함 칸'
+        };
+        const ONE_SHOT_LABEL = {
+            peek_boss:        '👁️ 보스 엿보기',
+            weather_forecast: '🌤️ 일기예보',
+            safe_move:        '🦶 안전 이동',
+            heal_on_return:   '❤️ 복귀 시 회복',
+            feed_on_return:   '🍖 복귀 시 식량',
+            repair_kit:       '🔧 수리 키트',
+            revive:           '✨ 부활'
+        };
+        // UI 노출용 포맷 — 화이트리스트 누락 키는 키 그대로(개발 단계 디버깅용 폴백).
+        function formatPassiveDelta({ key, delta }) {
+            const label = PASSIVE_LABEL[key] || key;
+            const sign = delta >= 0 ? '+' : '';
+            return `${label} ${sign}${delta}`;
+        }
+        function formatOneShotEntry({ key, count }) {
+            const label = ONE_SHOT_LABEL[key] || key;
+            return `${label} +${count}`;
+        }
+
         // "붕대 x1, 약초 x2" → [{type:'bandage',count:1}, {type:'herb',count:2}].
         // 미매칭 토큰은 console.warn + 스킵.
         function parseRewardItems(dsl) {
@@ -4576,10 +4611,12 @@
                                         ))}
                                     </div>
                                     <div style={{ color: '#8bd17c', marginTop: '10px', fontSize: '12px', lineHeight: 1.6 }}>
-                                        {passive.length > 0 && <div>· 패시브: {passive.map(p => `${p.key}${p.delta >= 0 ? '+' : ''}${p.delta}`).join(', ')}</div>}
+                                        {/* D-210: 사용자 노출 텍스트 한글화 — passive/oneShot 영문 키를 PASSIVE_LABEL/ONE_SHOT_LABEL 매핑으로 변환.
+                                           "패시브" → "영구적용". 다른 라벨(즉시/매-탐험 시작/일회성)은 이미 한글이라 유지. */}
+                                        {passive.length > 0 && <div>· 영구적용: {passive.map(formatPassiveDelta).join(', ')}</div>}
                                         {items.length > 0 && <div>· 즉시: {renderItemList(items)}</div>}
                                         {runStart.length > 0 && <div>· 매-탐험 시작: {renderItemList(runStart)}</div>}
-                                        {oneShot.length > 0 && <div>· 일회성: {oneShot.map(o => `${o.key}+${o.count}`).join(', ')}</div>}
+                                        {oneShot.length > 0 && <div>· 일회성: {oneShot.map(formatOneShotEntry).join(', ')}</div>}
                                     </div>
                                 </div>
                             )}
@@ -5205,7 +5242,8 @@
                                         </button>
                                     </div>
                                     <div style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: 1 }}>
-                                        {available.length === 0 && activeQuests.length === 0 && completedQuests.length === 0 && (
+                                        {/* D-210: 활성 목록은 받기 가능 + 진행 중만 노출. 완수 항목은 목록에서 제거 — 한 번 끝낸 텐트 퀘스트는 아카이브. */}
+                                        {available.length === 0 && activeQuests.length === 0 && (
                                             <div style={{ fontSize: '12px', color: '#777', textAlign: 'center', padding: '24px 0' }}>
                                                 받을 수 있는 퀘스트가 없다.
                                             </div>
@@ -5244,21 +5282,9 @@
                                                 </div>
                                             );
                                         })}
-                                        {completedQuests.map(q => {
-                                            const def = getTentQuestDef(q.id);
-                                            if (!def) return null;
-                                            return (
-                                                <div
-                                                    key={q.id}
-                                                    style={{ ...rowStyle, cursor: 'default', opacity: 0.7 }}
-                                                >
-                                                    <span style={{ fontSize: '13px', color: '#8bd17c' }}>
-                                                        ✅ {def.name}
-                                                    </span>
-                                                    <span style={{ fontSize: '11px', color: '#666' }}>완수</span>
-                                                </div>
-                                            );
-                                        })}
+                                        {/* D-210: 완수 행 제거 — 활성 목록(받기 가능 + 진행 중)에서만 노출.
+                                           completedQuests는 영속 저장(handleCompleteQuest에서 push)되지만 UI에는 안 보임.
+                                           향후 별도 "완료 탭"이 필요해지면 이 자리에 토글 + 별도 섹션으로 부활. */}
                                     </div>
                                 </div>
                             </div>
