@@ -755,6 +755,22 @@ button:disabled {
 .battle-float-text.kind-damage { color: #ff7a8a; font-size: 22px; }
 .battle-float-text.kind-miss { color: #fff; font-size: 18px; letter-spacing: 1px; }
 .battle-float-text.kind-cardname { color: #ffe28a; font-size: 16px; bottom: 78%; }
+/* D-200: 사냥감 공격 행동명 말풍선 — 머리 위 시스템 라벨 톤.
+   유저 카드명(외치는 톤, 노란 글자)과 시각 차등화: 어두운 배경 + 흰 텍스트 + 대괄호 표기 [일반 공격].
+   bottom: 88% — kind-cardname(78%)보다 위, 사냥감 머리 위 영역. */
+.battle-float-text.kind-bubble {
+    color: #f4f4f4;
+    font-size: 13px;
+    bottom: 88%;
+    background: rgba(0, 0, 0, 0.78);
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
 
 /* D-177: 빌딩 카드 우상단 "수락 가능" 빨간 점.
    조합/퀘스트 마커(초록·노란)와 색상 구분 — 빨간색은 신규 기능/유저 확인 필요 신호. */

@@ -5834,9 +5834,15 @@
                 const newOnes = [];
                 // D-196: cardname '!' 제거(분위기 원칙). preyActionName 제거(사냥감 슬롯=D-186과 중복 → 시각 노이즈).
                 // D-197: 직전 cardName과 동일하면 push X — fade 안 끝난 잔존 텍스트 그대로 유지.
+                // D-200: 사냥감 공격 행동명 부활 — 단 말풍선(`bubble`) 스타일 + 대괄호 표기, step3(유저 피격) 시점에만.
+                //   user 카드명은 캐릭터가 외치는 톤("주먹으로 치기"), 사냥감은 외치는 톤이 어색 → 머리 위 시스템 라벨 톤(말풍선 + [...]).
+                //   회피·peek·defend는 공격 아니므로 표시 X (공격 행동 = 유저 피격 인과 시점에만).
                 if (activeEvent.cardName && activeEvent.cardName !== lastCardNameRef.current) {
                     newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'cardname', text: `${activeEvent.cardName}` });
                     lastCardNameRef.current = activeEvent.cardName;
+                }
+                if (activeEvent.preyActionName) {
+                    newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'bubble', text: `[${activeEvent.preyActionName}]` });
                 }
                 if (activeEvent.preyDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'damage', text: `❤️-${activeEvent.preyDamage}` });
                 if (activeEvent.playerDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'damage', text: `❤️-${activeEvent.playerDamage}` });
@@ -6475,10 +6481,13 @@
                         });
                     }, baseTime + STEP_OFFSETS.preyHit);
 
-                    // Step 3: 유저 적중 — playerDamage float + 캐릭터 hit 흔들림+플래시
+                    // Step 3: 유저 적중 — playerDamage float + 캐릭터 hit 흔들림+플래시 + 사냥감 공격 행동명 말풍선
+                    // D-200: preyActionName 부활(부분 D-196 롤백) — 단 공격 행동(preyActionType==='attack')일 때만,
+                    //   인과 흐름상 step3(사냥감의 공격이 유저에게 닿는 시점)에 묶는다. 회피·peek·defend는 표시 X.
                     setTimeout(() => {
                         const playerDmg = Number(turn.playerDamage) || 0;
                         if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
+                        const showPreyAction = (turn.preyActionType === 'attack') && !!turn.preyAction;
                         setActiveEvent({
                             id: baseId + 3,
                             slotIdx: idx,
@@ -6487,6 +6496,7 @@
                             preyDamage: 0,
                             playerDamage: playerDmg,
                             cardName: null,
+                            preyActionName: showPreyAction ? turn.preyAction : null,
                         });
                     }, baseTime + STEP_OFFSETS.userHit);
                 });

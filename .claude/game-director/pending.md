@@ -1579,3 +1579,31 @@ D-198은 JSX 구조 분리. 시트 무관.
 ### 시트 SSOT 동기화 (해당 없음)
 
 D-199은 CSS keyframes 추가/적용 클래스 변경. 시트 무관.
+
+---
+
+## D-200 (2026-05-01, 19th 세션 후속): 사냥감 공격 행동명 말풍선 — D-196 부분 롤백
+
+### 결정 요약
+
+D-196에서 제거했던 사냥감 행동명 표시를 **말풍선(`bubble`) 톤으로 부활**. user cardname(외치는 톤)과 시각 차등 — prey는 시스템 라벨 톤(`[일반 공격]` 어두운 박스). 공격 행동(`preyActionType === 'attack'`)일 때만 표시, step3(유저 피격) 시점에 묶음.
+
+### 구현 (`index.html`, `gameStyles.css`)
+
+- `index.html` floats useEffect에 `activeEvent.preyActionName` 분기 부활 + 새 kind `bubble`, 텍스트 `[${name}]`.
+- `index.html` setActiveEvent step3에 `preyActionName: showPreyAction ? turn.preyAction : null` 필드 추가. `showPreyAction = preyActionType==='attack' && preyAction 존재`.
+- `gameStyles.css` `.battle-float-text.kind-bubble` 신설 — `background: rgba(0,0,0,0.78)`, `color: #f4f4f4`, `font-size: 13px`, `padding: 4px 10px`, `border-radius: 8px`, `border: 1px solid rgba(255,255,255,0.12)`, `bottom: 88%`, `text-shadow: none`, `box-shadow: 0 2px 6px rgba(0,0,0,0.5)`.
+
+### 검증 완료
+
+- Preview 라이브에서 가짜 bubble float DOM mount → 모든 CSS 속성 정확히 적용됨 확인.
+- 시각 스크린샷: `[일반 공격]` 어두운 둥근 박스 + 흰 굵은 텍스트, 톤 의도대로.
+
+### 디렉터 후속
+
+- [ ] **[디렉터]** 사용자 라이브 사냥 1라운드 — step3에서 사냥감 머리 위 `[…]` 말풍선이 0.5초 솟아오름과 동시에 캐릭터 hit shake 인지 검증.
+- [ ] **[디렉터]** 글자 크기(13px) / 위치(bottom: 88%) / 배경 농도(0.78) 라이브에서 적정한지 확인. 너무 작으면 14px, 너무 어두우면 0.65.
+
+### 시트 SSOT 동기화 (해당 없음)
+
+D-200은 코드+CSS 시각 결정. 시트 무관.
