@@ -1,11 +1,11 @@
 # project-state.md
 
-마지막 검증: 2026-05-01 (**D-196, 사냥 시각 시퀀스 정제 — 4→3 step + cardname '!' 제거 + TURN_DELAY_MS 2000→1400**).
-19th 세션 후속 (D-196, 단일 PR):
-- **4 step → 3 step**: D-195 step3(사냥감 행동명 floats) 제거 — 사냥감 슬롯=D-186 중복 노출 해결. `STEP_OFFSETS = { user: 0, preyHit: 500, userHit: 1000 }`.
-- **cardname `'!'` 제거**: `${cardName}!` → `${cardName}`. 분위기·톤 정합. preyActionName 측은 step 자체 제거되어 텍스트 무관.
-- **TURN_DELAY_MS 2000→1400 (옵션 5 변형)**: float duration(2.0s) + fade tail은 그대로, 다음 턴 시작 시간만 단축. userHit(1000)+breathing(400) → 1400. 4 turn 사냥 8.0s → 5.6s (30% 단축).
-- **CSS 변경 없음**: `.battle-float-text.kind-cardname`은 이제 player 한쪽만 사용. 색·사이즈 분리 불필요.
+마지막 검증: 2026-05-01 (**D-198, cardname float remount 근본 수정 — eventId wrapper 분리**).
+19th 세션 후속 (D-196 → D-197 → D-198, 단일 사이클):
+- **D-196**: 4 step → 3 step + cardname `'!'` 제거 + TURN_DELAY_MS 2000→1400.
+- **D-197 [PARTIAL]**: cardname float jumping 1차 진단·`lastCardNameRef` 가드 — 직전 turn cardName 같으면 push X. 다만 root cause는 더 위층이라 일부만 해결.
+- **D-198 (root fix)**: floats `<span>`이 `key={...${eventId}...}` wrapper 자식이라 매 step(101→102→103) remount → CSS animation 처음부터 재시작 → "loop처럼 솟아오름 ×3" 시각 인공물. 수정: outer 박스에 `position:relative` 박고 floats span을 motion wrapper의 형제로 분리. 캐릭터 push/shake/flash·prey shake/flash 모션은 그대로, floats는 안정 mount.
+- **D-197 ref 가드는 유지** — 같은 카드 두 turn 연속 깜빡임 방지에 여전히 유익. D-198은 그 위층의 root cause를 잡음.
 
 이전 검증: 2026-05-01 (**D-195, 사냥 시각 시스템 정착 + 카메라 추적 sync — 19th 세션**).
 19th 세션 변경 요약 (D-195, 단일 PR 분량):

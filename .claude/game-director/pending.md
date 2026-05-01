@@ -1535,3 +1535,25 @@ D-196은 시각 시퀀스 코드 변경. 시트 무관.
 ### 시트 SSOT 동기화 (해당 없음)
 
 D-197은 BattleStage React state 가드 추가. 시트 무관.
+
+---
+
+## D-198 (2026-05-01, 19th 세션 hotfix #2): cardname float remount 근본 수정 — eventId wrapper 분리
+
+D-197 hotfix 후 사용자 정정 — 한 텍스트가 상승 도중 처음 위치로 reset되어 다시 상승, 또 reset 패턴. 같은 텍스트 3번 등장이 아니라 **한 텍스트의 animation 자체가 loop처럼 보이는 다른 버그**. 진단: floats span이 `key={...${eventId}...}` wrapper의 자식이라 매 step(101→102→103)마다 React unmount/remount → CSS animation 처음부터 재시작. 수정: outer 박스에 position:relative 박고 floats span을 motion wrapper의 형제로 분리. D-197 ref 가드는 같은 카드 두 turn 연속 깜빡임 방지에 유익이라 유지.
+
+### 요한 QA 대기
+
+- [ ] **[요한]** 🧪 D-198 — 사냥 한 턴 안에서 cardname 텍스트가 step1에 1번만 등장 후 끝까지 fade out. 이전엔 step1/2/3 사이에 reset되어 한 turn에 3번 처음부터 솟아오르는 loop.
+- [ ] **[요한]** 🧪 D-198 — 같은 카드 두 turn 연속 사용 시 D-197 ref 가드로 두 번째 turn에선 새 push X (잔존 fade 그대로). 다른 카드 두 turn 연속 시엔 정상적으로 두 인스턴스 등장하되 각자 자기 animation 끝까지 진행.
+- [ ] **[요한]** 🧪 D-198 — 캐릭터 push/shake/flash·prey shake/flash 모션은 이전대로 step별 동작. floats 분리가 모션·이미지 위치에 영향 X. prey 이미지 중앙 정렬 유지.
+- [ ] **[요한]** 🧪 D-198 — damage(❤️-N) / 회피! float 매 step 정상 등장 (즉시 교체 정책 유지). 한 turn = 정확한 슬롯 위치에서 등장.
+
+### 디렉터 후속
+
+- [ ] **[디렉터]** BattleStage에 새 motion wrapper(`key={...${eventId}...}`) 추가될 때, 자식에 자기 animation 가진 element를 두지 않도록 코드 컨벤션 가이드 정착(D-198 주석 참조).
+- [ ] **[디렉터]** D-197 ref 가드는 같은 카드 깜빡임 방지로 유익이라 유지하지만 — 향후 cardname float 정책 재검토 시(예: 다른 카드 연속 빠른 push) 함께 검토.
+
+### 시트 SSOT 동기화 (해당 없음)
+
+D-198은 JSX 구조 분리. 시트 무관.
