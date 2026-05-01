@@ -62,6 +62,9 @@ class InventorySystem {
         // === 2단계 (조합 결과물) ===
         wood:         { name: '목재',         shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         plant_fiber:  { name: '끈',           shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
+        // D-189 hotfix: stone_block static def 누락 → stone×2 머지 시 _placeDerivedItem이 silent fail로 인벤 소멸 버그.
+        //   D-168에서 합성 추가 시 items.json·combos.json엔 박았지만 static ITEMS에 누락.
+        stone_block:  { name: '석재',         shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         clean_cloth:  { name: '깨끗한 천',    shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null },
         bandage:      { name: '붕대',         shape: [[1]], grade: 2, mergeable: false, category: 'consumable', merge_result: null },
 
@@ -631,18 +634,25 @@ class InventorySystem {
     // 해당 자리가 차 있으면 빈 자리로 폴백(`addItem`).
     // - 공통 헬퍼: 머지·조합 분기에서 결과물 배치 로직 중복 제거.
     _placeDerivedItem(newType, preferredX, preferredY) {
-        const def = InventorySystem.ITEMS[newType];
-        if (!def) return false;
+        // D-189: static ITEMS 우선, 없으면 resolveDef 폴백 + shape 기본값.
+        //   기존엔 staticDef 없으면 silent fail → 두 재료 사라지고 결과물 안 들어가는 버그(stone_block 케이스).
+        //   resolveDef는 items.json/weapons.json/armors.json 머지 결과라 시트에 정의된 신규 아이템도 동작.
+        //   shape이 끝까지 없으면 [[1]](1x1) 폴백 — 시트의 모든 환경재료가 1x1이라 합리적 기본값.
+        const staticDef = InventorySystem.ITEMS[newType];
+        const resolved = InventorySystem.resolveDef(newType) || {};
+        const def = staticDef || resolved;
+        if (!def || (def === resolved && Object.keys(resolved).length === 0)) return false;
+        const shape = def.shape || resolved.shape || [[1]];
         const merged = {
             id: Date.now() + Math.random(),
             type: newType,
             ...def,
+            shape,
             rotation: 0,
             x: preferredX,
             y: preferredY
         };
         // D-51: 무기 결과물은 durabilityLeft 초기화 (조합으로 생성된 신품).
-        const resolved = InventorySystem.resolveDef(newType) || {};
         if (typeof resolved.durability === 'number' && resolved.durability > 0) {
             merged.durabilityLeft = resolved.durability;
         }

@@ -3830,3 +3830,59 @@ BattleStage (flex column, justify-content: space-between, padding: 8, gap: 8)
 - React 마운트 정상, 콘솔 SyntaxError 없음(Babel deopt 노이즈만 — 정상).
 - 사냥 모달은 RNG 기반이라 자율 진입 불가. 픽셀 단위 시각 검증은 요한 QA에 위임.
 - 모바일 viewport 375 fit: 좌 col flex 1 + 우 col 160 고정 + padding 16 + gap 8 = 184 + 좌col(191). 캐릭터 160 fit. 확인 포인트.
+
+---
+
+## D-189 (2026-04-30 요한 지시): 손패 폴리시 + 전투 타이밍 + stone_block 머지 hotfix
+
+### 의사결정
+
+D-188 위에서 요한 3건 + 1 hotfix:
+
+**손패 펼침/위로 올라옴** (시안 대조):
+- xStep 정적 `min(40, 320/(N-1))` → **viewport 폭 기반 동적**: `min(64, max(8, (containerWidth - 144)/(N-1)))`. 카드 적을 땐 64까지 펼침, 카드 늘면 viewport 안에 자동 fit, 매우 많아도 8 floor로 잘림 방지. containerWidth = `min(window.innerWidth - 24, 520)`.
+- maxWidth 480 → 520.
+- `.hunt-hand-fixed-bottom .hunt-hand-fan { translateY: 105 → 30 }`. 손패만 viewport 위로 75px 더 올라옴(무덤은 fixed-bottom anchor 자체라 영향 X).
+- 모달 하단 padding 130 → 210 (손패 위로 올라간 만큼 본문 영역 더 위로).
+
+**전투 시네마틱 타이밍** (요한 피드백: "너무 빨리 흘러가서 피드백 인지 어려움"):
+- 턴 간격 600 → **1300ms** (`TURN_DELAY_MS` 상수). 모션 0.4s + float 1.0s + 여유 0.3s = 각 턴이 분리되어 보임.
+- 마지막 턴 후 결과 페이즈 전환: `600 * (n+1)` → `1300 * n + 800` (마지막 모션·float 끝까지 보여줌).
+- `.battle-float-text` animation 0.7s → 1.0s.
+- React floats 큐 expire 750 → 1100ms (CSS 1.0s + 100ms 여유).
+- 모션 자체(`battle-anim-attack-push` 0.3s, `battle-anim-prey-shake` 0.4s 등)는 그대로 — 빠릿한 액션 임팩트 유지.
+- L2 4턴 전체 시간: 3.0s → 6.0s (2배).
+
+**stone_block 머지 hotfix** (요한 버그 리포트: "돌맹이 두 개 머지하니까 석재가 사라졌어"):
+- 원인: D-168에서 stone+stone → stone_block 합성 추가 시 `inventory.js`의 정적 `ITEMS` 객체에 `stone_block` 정의 **누락**. items.json·combos.json엔 박았지만 폴백 정적 def에 깜빡 누락.
+- 증상 흐름:
+  1. `canMerge` true (`resolveDef`가 items.json `merge_enabled:true` 인식).
+  2. `confirmPlacement` (line 710-711)에서 두 stone을 인벤에서 먼저 제거.
+  3. `_placeDerivedItem("stone_block", ...)` 호출.
+  4. `InventorySystem.ITEMS["stone_block"]` = undefined → `if (!def) return false` (line 635) **silent fail**.
+  5. 그래도 호출자는 `{ ok: true, action: 'merge', resultType: 'stone_block' }` 리턴 → UI는 성공처럼 표시.
+  6. **두 stone 사라지고 stone_block 안 들어감**.
+- 픽스 A (즉효): `inventory.js` static ITEMS에 stone_block 추가:
+  ```js
+  stone_block: { name: '석재', shape: [[1]], grade: 2, mergeable: false, category: 'material', merge_result: null }
+  ```
+- 픽스 B (재발 방지): `_placeDerivedItem`이 static 없을 때 `resolveDef` 폴백 + shape `[[1]]` 기본값. 향후 시트 신규 아이템에 정적 def 깜빡해도 silent fail 안 일어남.
+  ```js
+  const staticDef = InventorySystem.ITEMS[newType];
+  const resolved = InventorySystem.resolveDef(newType) || {};
+  const def = staticDef || resolved;
+  if (!def || (def === resolved && Object.keys(resolved).length === 0)) return false;
+  const shape = def.shape || resolved.shape || [[1]];
+  ```
+
+### 파일
+
+- `index.html`: `xStep` 동적 계산, `maxWidth` 480→520, 모달 padding 130→210, `TURN_DELAY_MS` 도입, floats expire 750→1100, 큰 preview 카드 이름 가운데 (D-188 후속).
+- `gameStyles.css`: `.hunt-hand-fixed-bottom .hunt-hand-fan { translateY: 30 }`, `.battle-float-text { animation: 1.0s }`.
+- `inventory.js`: static ITEMS에 stone_block 추가, `_placeDerivedItem` resolveDef 폴백 + shape 기본값.
+
+### 검증
+
+- 단위 테스트(브라우저 콘솔 InventorySystem 직접 호출): stone × 2 → confirmPlacement → `{ ok: true, action: 'merge', resultType: 'stone_block' }`, stone_block 1개 인벤 등장(좌표 정상), stoneCount 0.
+- 시각 검증(손패/타이밍): 요한 QA — 사냥 모달 진입 후 카드 펼침·턴 간격·float fade 확인.
+

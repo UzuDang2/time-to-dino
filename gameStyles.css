@@ -730,7 +730,8 @@ button:disabled {
     font-weight: 800;
     pointer-events: none;
     text-shadow: 0 2px 4px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.5);
-    animation: battle-float-up 0.7s ease-out forwards;
+    /* D-189: 0.7s → 1.0s. 데미지 숫자/MISS 더 천천히 fade — 턴 간격 1.3s에 맞춰 가독성↑. */
+    animation: battle-float-up 1.0s ease-out forwards;
     z-index: 5;
 }
 .battle-float-text.kind-damage { color: #ff7a8a; font-size: 22px; }
@@ -954,7 +955,8 @@ button:disabled {
 }
 .hunt-hand-fixed-bottom > * { pointer-events: auto; }
 .hunt-hand-fixed-bottom .hunt-hand-fan {
-    transform: translateY(105px);
+    /* D-189: translateY 105 → 30. 손패만 viewport 위로 더 올림(무덤은 fixed-bottom 자체 anchor라 영향 X). */
+    transform: translateY(30px);
 }
 .hunt-hand-fixed-bottom .hunt-discard-pile {
     margin-bottom: 4px;

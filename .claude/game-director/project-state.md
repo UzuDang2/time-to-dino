@@ -1,5 +1,14 @@
 # project-state.md
 
+마지막 검증: 2026-04-30 (**D-189, 손패 폴리시 + 전투 타이밍 + stone_block 머지 hotfix**).
+D-189 변경:
+- 손패 xStep 동적: viewport 폭 기반 `min(64, max(8, (cw-144)/(N-1)))`, maxWidth 480→520. 카드 적을 땐 펼침, 많을 땐 자동 fit.
+- 손패 위로 더 올라옴: `.hunt-hand-fixed-bottom .hunt-hand-fan { translateY: 105 → 30 }` (무덤 anchor 영향 X).
+- 모달 하단 padding 130 → 210.
+- 전투 타이밍: 턴 간격 600 → 1300ms (`TURN_DELAY_MS`), float CSS 0.7s → 1.0s, React expire 750 → 1100ms, 마지막 페이즈 전환 `1300*n + 800`. 모션 자체는 그대로.
+- 큰 preview 카드 이름 가로 가운데(D-188 후속): `.hunt-card-preview-large .hunt-card-name { left:4%; right:4% }`.
+- **stone_block 머지 hotfix**: `inventory.js` static ITEMS에 stone_block 누락 → stone×2 머지 시 silent fail로 인벤 소멸. (A) static 추가 (B) `_placeDerivedItem` resolveDef 폴백 + shape `[[1]]` 기본값. 단위 테스트 통과.
+
 마지막 검증: 2026-04-30 (**D-188, 시안 v2 — 사냥감 슬롯 위 / 캐릭터·사냥감 동등 사이즈 / 확정 위치 이관 / 손패 클릭 expand**).
 D-188 변경 5건 (요한 시안 v2):
 - BattleStage 3-block 재배치: ① 사냥감 슬롯 1234 (top) → ② 메인 row [좌:사냥감 스탯박스↑/캐릭터(160×210)↓ space-between | 우:사냥감 머리(160×160)↑/확정 버튼+나 박스↓ space-between] → ③ 내 슬롯 1234 (bottom). outer flex column space-between → 컨테이너 길어질수록 block 사이 빈 공간 자동 분배.
