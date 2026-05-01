@@ -793,14 +793,10 @@
             // 시작 위치를 찾아야 했음.
             // useLayoutEffect로 paint 전에 스크롤을 잡아 깜빡임 없음.
             // 마운트 시 1회만 — 이후 이동 자유, 자동 추적은 D-135로 별도.
-            React.useLayoutEffect(() => {
-                const el = containerRef.current;
-                if (!el) return;
-                const cur = tiles[currentTile];
-                if (!cur || !cur.position) return;
-                el.scrollLeft = cur.position.x - el.clientWidth / 2;
-                el.scrollTop = cur.position.y - el.clientHeight / 2;
-            }, []);
+            // D-47 useLayoutEffect 제거됨 — GameMap remount마다 발동돼 scrollLeft/Top을 instant set.
+            //   그 후 D-135 raf의 startLeft/Top이 D-47이 set한 새 hex 가운데와 같아 dy=0이 되고
+            //   y축 raf step이 진행 안 함(요한 본 "y 이동 모션 자체가 없는" 현상).
+            //   첫 mount instant set 책임은 D-135 isFirstCenterRef 분기로 이관.
 
             // D-135: currentTile 변경 시 1초 동안 ease로 viewport 중앙 추적.
             //   - 첫 mount는 D-47 useLayoutEffect가 instant 처리 → skip.
@@ -811,33 +807,40 @@
             const isFirstCenterRef = React.useRef(true);
             const prevTileIdRef = React.useRef(null);
             React.useEffect(() => {
-                if (isFirstCenterRef.current) {
-                    isFirstCenterRef.current = false;
-                    prevTileIdRef.current = currentTile;
-                    return;
-                }
-                if (prevTileIdRef.current === currentTile) return;
-                prevTileIdRef.current = currentTile;
-
                 const el = containerRef.current;
                 if (!el) return;
                 const cur = tiles[currentTile];
                 if (!cur || !cur.position) return;
 
-                centerAnimRef.current.cancel();
-
                 const z = zoomRef.current;
+                if (isFirstCenterRef.current) {
+                    isFirstCenterRef.current = false;
+                    prevTileIdRef.current = currentTile;
+                    el.scrollLeft = cur.position.x * z - el.clientWidth / 2;
+                    el.scrollTop = cur.position.y * z - (window.innerHeight / 2 - 200);
+                    return;
+                }
+                const prevId = prevTileIdRef.current;
+                if (prevId === currentTile) return;
+                prevTileIdRef.current = currentTile;
+
+                centerAnimRef.current.cancel();
                 const targetLeft = cur.position.x * z - el.clientWidth / 2;
-                const targetTop = cur.position.y * z - el.clientHeight / 2;
+                // 카메라 세로 중심 — device 하단에서 200px 위(요한 지시). D-47과 동일 식.
+                const targetTop = cur.position.y * z - (window.innerHeight / 2 - 200);
+                // startLeft/Top은 현재 scroll 위치 그대로 — force set 시 시각 jump('번쩍')가 발생해 제거.
+                //   D-47 useLayoutEffect의 instant set 영향이 있을 수 있지만, raf가 자연 보간으로 흡수.
                 const startLeft = el.scrollLeft;
                 const startTop = el.scrollTop;
                 if (Math.abs(targetLeft - startLeft) < 1 && Math.abs(targetTop - startTop) < 1) return;
 
-                const duration = 1000;
-                const startTime = performance.now();
+                // duration 500→800 — 이동 속도 늦춤(요한 지시). player piece SVG transition(.piece 0.8s)과 동기.
+                const duration = 800;
                 let cancelled = false;
                 let rafId = 0;
-                const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+                let startTime = 0;
+                // ease-out quintic — 끝에서 더 천천히 정지(요한 지시). cubic보다 감속 강함.
+                const ease = t => 1 - Math.pow(1 - t, 5);
 
                 const step = (now) => {
                     if (cancelled) return;
@@ -848,17 +851,26 @@
                     el.scrollTop = startTop + (targetTop - startTop) * eased;
                     if (t < 1) rafId = requestAnimationFrame(step);
                 };
-                rafId = requestAnimationFrame(step);
+                // 이동 직후 카메라 추적에 텀 — layout 안정화 + 사용자가 자기 위치 인지할 시간(요한 지시).
+                //   200ms 후 raf 시작. cleanup 시 timeout/raf 둘 다 cancel.
+                let delayId = setTimeout(() => {
+                    delayId = null;
+                    if (cancelled) return;
+                    startTime = performance.now();
+                    rafId = requestAnimationFrame(step);
+                }, 200);
 
                 centerAnimRef.current = {
                     cancel: () => {
                         cancelled = true;
+                        if (delayId) { clearTimeout(delayId); delayId = null; }
                         cancelAnimationFrame(rafId);
                     },
                 };
 
                 return () => {
                     cancelled = true;
+                    if (delayId) clearTimeout(delayId);
                     cancelAnimationFrame(rafId);
                 };
             }, [currentTile, tiles]);
@@ -5808,19 +5820,26 @@
             const floatCounterRef = React.useRef(0);
             const [floats, setFloats] = useState([]);
             useEffect(() => {
-                if (!activeEvent) return;
+                if (!activeEvent) {
+                    setFloats([]);
+                    return;
+                }
                 const newOnes = [];
-                if (activeEvent.preyDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'damage', text: `-${activeEvent.preyDamage}` });
-                if (activeEvent.playerDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'damage', text: `-${activeEvent.playerDamage}` });
-                if (activeEvent.preyEvaded) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'miss', text: 'MISS!' });
+                if (activeEvent.cardName) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'cardname', text: `${activeEvent.cardName}!` });
+                if (activeEvent.preyActionName) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'cardname', text: `${activeEvent.preyActionName}!` });
+                if (activeEvent.preyDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'damage', text: `❤️-${activeEvent.preyDamage}` });
+                if (activeEvent.playerDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'damage', text: `❤️-${activeEvent.playerDamage}` });
+                if (activeEvent.preyEvaded) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'miss', text: '회피!' });
+                // 같은 종류(side+kind)는 즉시 교체, 다른 종류는 누적 — 같은 텍스트 중복 방지.
+                //   ex) 두 턴 연속 같은 카드 사용해도 'player+cardname'은 한 시점 1개만.
+                //   damage / miss / cardname / prey-cardname 등 다른 종류는 동시 떠 있을 수 있음.
                 if (newOnes.length === 0) return;
-                setFloats(prev => [...prev, ...newOnes]);
+                const newKeys = new Set(newOnes.map(f => f.side + ':' + f.kind));
+                setFloats(prev => [...prev.filter(f => !newKeys.has(f.side + ':' + f.kind)), ...newOnes]);
                 const expireIds = newOnes.map(f => f.id);
-                // D-189: 750 → 1100ms. CSS battle-float-up 1.0s 애니메이션과 동기 + 100ms 여유.
-                const t = setTimeout(() => {
+                setTimeout(() => {
                     setFloats(prev => prev.filter(f => !expireIds.includes(f.id)));
-                }, 1100);
-                return () => clearTimeout(t);
+                }, 2100);
             }, [activeEvent && activeEvent.id]);
 
             const eventId = activeEvent && activeEvent.id;
@@ -5835,7 +5854,7 @@
                     //   outer flex column + space-between → 컨테이너 길어질수록 block 사이 빈 공간 자동 분배.
                     //   확정 버튼은 외부 모달 → BattleStage 우 col 내부로 이관(나 박스 위).
                     //   손패·무덤 버튼은 BattleStage 외부 fixed-bottom 유지.
-                    height: 'calc(100dvh - 200px)',
+                    height: 'calc(100dvh - 174px)',
                     minHeight: '520px',
                     marginBottom: '14px',
                     background: 'linear-gradient(180deg, #1f2a3a 0%, #2a2a3e 60%, #3a2f2a 100%)',
@@ -6040,6 +6059,9 @@
                                 outline: isCurrent ? '2px solid #d4b84a' : 'none',
                                 boxShadow: isCurrent ? '0 0 12px rgba(212, 184, 74, 0.55)' : 'none',
                                 transition: 'opacity 0.2s, outline-color 0.2s, box-shadow 0.2s',
+                                maxWidth: 80,
+                                justifySelf: 'center',
+                                width: '100%',
                             };
                             if (!card) {
                                 return (
@@ -6390,32 +6412,84 @@
                 setResult(res);
                 setPhase('resolve');
 
-                // D-176 Phase B / D-189 타이밍 조정: 턴 간격 600 → 1300ms.
-                //   - 600ms일 때 모션(0.3~0.4s) + float(1.0s)이 다 끝나기 전에 다음 턴 시작 → 피드백 인지 어려움.
-                //   - 1300ms = 모션 0.4s + float 1.0s + 여유 0.3s. 각 턴이 분리되어 보임.
-                //   - 카드 damage>0 + hit이면 playerAttack=true (사냥감 회피해도 공격 모션은 발동 — 헛스윙 자연).
-                //   - preyEvaded / preyDamage / playerDamage 그대로 전달.
-                const TURN_DELAY_MS = 1300;
+                // 한 턴을 4 step으로 분리 — 인과 흐름 명시(요한 지시).
+                //   step 1 (t+0):   유저 카드 발동 + 캐릭터 공격 모션. cardName 'player' float.
+                //   step 2 (t+500): 사냥감 적중/회피. preyDamage 'prey' float 또는 '회피!' + prey shake/flash.
+                //   step 3 (t+1100): 사냥감 행동명. preyActionName 'prey' float (사냥감이 무엇을 하는지).
+                //   step 4 (t+1500): 유저 적중. playerDamage 'player' float + player-hit 흔들림+플래시.
+                //   각 step은 별도 id로 wrapper key 갱신 → CSS 애니/floats useEffect 재발동.
+                //   TURN_DELAY_MS 1600→2000 (4 step gap 수용 + 다음 턴까지 자연 분리).
+                const TURN_DELAY_MS = 2000;
+                const STEP_OFFSETS = { user: 0, preyHit: 250, preyAct: 1000, userHit: 1250 };
                 res.turns.forEach((turn, idx) => {
+                    const card = turn.userCard;
+                    const cardDamage = Number(card && card.damage) || 0;
+                    const baseTime = TURN_DELAY_MS * idx;
+                    const baseId = (idx + 1) * 100;
+
+                    // Step 1: 유저 카드 발동 — 카드 이름 + 캐릭터 공격 모션
                     setTimeout(() => {
                         setLogs(prev => [...prev, turn]);
-                        if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
-                        // D-192: 캐릭터 HP도 매 턴 차감 즉시 반영.
-                        const playerDmg = Number(turn.playerDamage) || 0;
-                        if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
-                        const card = turn.userCard;
-                        const cardDamage = Number(card && card.damage) || 0;
                         setActiveEvent({
-                            id: idx + 1,
+                            id: baseId + 1,
                             slotIdx: idx,
                             playerAttack: !!(turn.hit && cardDamage > 0),
+                            preyEvaded: false,
+                            preyDamage: 0,
+                            playerDamage: 0,
+                            cardName: card && card.name ? card.name : null,
+                            preyActionName: null,
+                        });
+                    }, baseTime + STEP_OFFSETS.user);
+
+                    // Step 2: 사냥감 적중 또는 회피 — preyDamage / preyEvaded float + prey shake/flash
+                    setTimeout(() => {
+                        if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
+                        setActiveEvent({
+                            id: baseId + 2,
+                            slotIdx: idx,
+                            playerAttack: false,
                             preyEvaded: !!turn.preyEvaded,
                             preyDamage: Number(turn.damage) || 0,
-                            playerDamage: Number(turn.playerDamage) || 0,
+                            playerDamage: 0,
+                            cardName: null,
+                            preyActionName: null,
                         });
-                    }, TURN_DELAY_MS * (idx + 1));
+                    }, baseTime + STEP_OFFSETS.preyHit);
+
+                    // Step 3: 사냥감 행동명 — 사냥감이 그 턴 무엇을 하는지 prey 측에 텍스트.
+                    //   preyActionType이 'evade'면 step 2에서 이미 '회피!' 표시했으므로 행동명 생략.
+                    setTimeout(() => {
+                        const showAction = turn.preyAction && turn.preyActionType !== 'evade';
+                        setActiveEvent({
+                            id: baseId + 3,
+                            slotIdx: idx,
+                            playerAttack: false,
+                            preyEvaded: false,
+                            preyDamage: 0,
+                            playerDamage: 0,
+                            cardName: null,
+                            preyActionName: showAction ? turn.preyAction : null,
+                        });
+                    }, baseTime + STEP_OFFSETS.preyAct);
+
+                    // Step 4: 유저 적중 — playerDamage float + 캐릭터 hit 흔들림+플래시
+                    setTimeout(() => {
+                        const playerDmg = Number(turn.playerDamage) || 0;
+                        if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
+                        setActiveEvent({
+                            id: baseId + 4,
+                            slotIdx: idx,
+                            playerAttack: false,
+                            preyEvaded: false,
+                            preyDamage: 0,
+                            playerDamage: playerDmg,
+                            cardName: null,
+                            preyActionName: null,
+                        });
+                    }, baseTime + STEP_OFFSETS.userHit);
                 });
-                // 마지막 턴 모션·float 끝까지 보여주고 결과 페이즈 전환.
+                // 마지막 step 4 float 끝까지 보여주고 결과 페이즈 전환.
                 setTimeout(() => {
                     setPhase('done');
                     setActiveEvent(null);
@@ -6519,6 +6593,123 @@
                                     }}>
                                         {resultMessage}
                                     </div>
+                                    {/* D-91 형식 턴 로그 — 결과 모달 안에서만 노출(전투 중 시선 분산 방지). */}
+                                    {logs.length > 0 && (
+                                        <div style={{
+                                            background: '#0f0f1a',
+                                            padding: '8px',
+                                            borderRadius: '6px',
+                                            marginBottom: '14px',
+                                            fontSize: '11px',
+                                            maxHeight: '240px',
+                                            overflowY: 'auto',
+                                            textAlign: 'left'
+                                        }}>
+                                            {logs.map((log, i) => {
+                                                const card = log.userCard;
+                                                const preyEmoji = PREY_EMOJI[prey.preyType] || '🐾';
+                                                let playerColor = '#ddd';
+                                                let playerText;
+                                                if (log.outcome === 'flee_signal') {
+                                                    playerColor = '#aaa';
+                                                    playerText = '— (사냥감이 먼저 도망)';
+                                                } else if (log.outcome === 'player_flee') {
+                                                    playerColor = '#d4b84a';
+                                                    playerText = `${card ? card.name + ' → ' : ''}도망 성공 ✓`;
+                                                } else if (!card) {
+                                                    playerColor = '#666';
+                                                    playerText = '— (빈 슬롯)';
+                                                } else if (log.autoFail) {
+                                                    playerColor = '#ff9999';
+                                                    playerText = `${card.name} → ${log.reason === 'weapon_missing' ? '무기 부재로 무산' : '행동 무산'}`;
+                                                } else if (Number(card.damage) > 0) {
+                                                    if (!log.hit) {
+                                                        playerColor = '#aaa';
+                                                        playerText = `${card.name} → 빗나감 ✗`;
+                                                    } else if (log.preyEvaded) {
+                                                        playerColor = '#d4b84a';
+                                                        const evNote = (typeof log.effectiveEvade === 'number') ? ` (💨+${log.effectiveEvade})` : '';
+                                                        playerText = `${card.name} → 회피당함 〰️${evNote}`;
+                                                    } else if (Number(log.preyDefended) > 0) {
+                                                        playerColor = '#9bd6ff';
+                                                        playerText = `${card.name} → 명중하지만 -${log.damage} (방어 감쇄 ${log.preyDefended})`;
+                                                    } else {
+                                                        playerColor = '#3dd68c';
+                                                        playerText = `${card.name} → 명중! -${log.damage} HP`;
+                                                    }
+                                                } else if (card.id === 'run_away') {
+                                                    playerColor = '#aaa';
+                                                    playerText = `${card.name} → 도망 시도 실패`;
+                                                } else if (Number(card.defense) > 0) {
+                                                    playerColor = '#9bd6ff';
+                                                    playerText = `${card.name} → 방어 자세 🛡️ +${card.defense}`;
+                                                } else {
+                                                    playerColor = '#ddd';
+                                                    playerText = `${card.name}`;
+                                                }
+                                                let preyColor = '#aaa';
+                                                let preyText;
+                                                const playerDmg = Number(log.playerDamage) || 0;
+                                                if (log.outcome === 'flee_signal' || log.outcome === 'player_flee') {
+                                                    preyText = '—';
+                                                } else if (log.preyActionType === 'attack') {
+                                                    const actName = log.preyAction || '공격';
+                                                    if (playerDmg > 0) {
+                                                        preyColor = '#ff6666';
+                                                        preyText = `${actName} 💥 → 내 HP -${playerDmg}`;
+                                                    } else if (Number(card && card.defense) > 0) {
+                                                        preyColor = '#9bd6ff';
+                                                        preyText = `${actName} → 막아냄 (방어 ${card.defense}로 감쇄)`;
+                                                    } else {
+                                                        preyColor = '#aaa';
+                                                        preyText = `${actName} → 빗나감`;
+                                                    }
+                                                } else if (log.preyActionType === 'defend') {
+                                                    const actName = log.preyAction || '방어';
+                                                    if (Number(log.preyDefended) > 0) {
+                                                        preyColor = '#9bd6ff';
+                                                        preyText = `${actName} 🛡️ (감쇄 ${log.preyDefended})`;
+                                                    } else {
+                                                        preyColor = '#aaa';
+                                                        preyText = `${actName} 🛡️`;
+                                                    }
+                                                } else if (log.preyActionType === 'evade') {
+                                                    if (log.hit && log.preyEvaded) {
+                                                        preyColor = '#d4b84a';
+                                                        preyText = '회피 성공 〰️';
+                                                    } else if (log.hit && !log.preyEvaded && Number(card && card.damage) > 0) {
+                                                        preyColor = '#3dd68c';
+                                                        preyText = '회피 실패';
+                                                    } else {
+                                                        preyColor = '#aaa';
+                                                        preyText = '회피 자세';
+                                                    }
+                                                } else if (log.preyActionType === 'peek') {
+                                                    preyColor = '#aaa';
+                                                    preyText = '눈치 보기 👁️ (회피 못 함)';
+                                                } else {
+                                                    preyText = log.preyAction || '—';
+                                                }
+                                                return (
+                                                    <div key={i} style={{
+                                                        marginBottom: '8px',
+                                                        paddingLeft: '8px',
+                                                        borderLeft: `3px solid ${playerColor}`,
+                                                        lineHeight: 1.45
+                                                    }}>
+                                                        <div style={{ color: playerColor, fontWeight: 600 }}>
+                                                            <span style={{ color: '#888', fontWeight: 400, marginRight: '4px' }}>T{log.turn}</span>
+                                                            👤 {playerText}
+                                                        </div>
+                                                        <div style={{ color: preyColor, fontSize: '10.5px' }}>
+                                                            <span style={{ marginRight: '4px' }}>{preyEmoji}</span>
+                                                            {preyText}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                     <button
                                         onClick={handleCloseResult}
                                         style={{
@@ -6539,132 +6730,6 @@
                         )}
 
                         {/* D-188: 확정 버튼 — BattleStage 내부 우 col로 이관(나 박스 위). 외부 위치 제거. */}
-
-                        {/* D-91 (2026-04-25 요한 지시): 턴 로그 직관적 재설계.
-                            한 줄 요약 → 2줄(내 행동 / 적 행동) 카드 형식.
-                            결과별 색상 분기로 명중/회피/방어/피해를 한눈에 식별. */}
-                        {logs.length > 0 && (
-                            <div style={{
-                                background: '#0f0f1a',
-                                padding: '8px',
-                                borderRadius: '6px',
-                                marginBottom: '10px',
-                                fontSize: '11px',
-                                maxHeight: '180px',
-                                overflowY: 'auto'
-                            }}>
-                                {logs.map((log, i) => {
-                                    const card = log.userCard;
-                                    const preyEmoji = PREY_EMOJI[prey.preyType] || '🐾';
-
-                                    // 내 라인 — 색상 + 텍스트 결정
-                                    let playerColor = '#ddd';
-                                    let playerText;
-                                    if (log.outcome === 'flee_signal') {
-                                        playerColor = '#aaa';
-                                        playerText = '— (사냥감이 먼저 도망)';
-                                    } else if (log.outcome === 'player_flee') {
-                                        playerColor = '#d4b84a';
-                                        playerText = `${card ? card.name + ' → ' : ''}도망 성공 ✓`;
-                                    } else if (!card) {
-                                        playerColor = '#666';
-                                        playerText = '— (빈 슬롯)';
-                                    } else if (log.autoFail) {
-                                        playerColor = '#ff9999';
-                                        playerText = `${card.name} → ${log.reason === 'weapon_missing' ? '무기 부재로 무산' : '행동 무산'}`;
-                                    } else if (Number(card.damage) > 0) {
-                                        // 공격 카드
-                                        if (!log.hit) {
-                                            playerColor = '#aaa';
-                                            playerText = `${card.name} → 빗나감 ✗`;
-                                        } else if (log.preyEvaded) {
-                                            playerColor = '#d4b84a';
-                                            const evNote = (typeof log.effectiveEvade === 'number') ? ` (💨+${log.effectiveEvade})` : '';
-                                            playerText = `${card.name} → 회피당함 〰️${evNote}`;
-                                        } else if (Number(log.preyDefended) > 0) {
-                                            playerColor = '#9bd6ff';
-                                            playerText = `${card.name} → 명중하지만 -${log.damage} (방어 감쇄 ${log.preyDefended})`;
-                                        } else {
-                                            playerColor = '#3dd68c';
-                                            playerText = `${card.name} → 명중! -${log.damage} HP`;
-                                        }
-                                    } else if (card.id === 'run_away') {
-                                        playerColor = '#aaa';
-                                        playerText = `${card.name} → 도망 시도 실패`;
-                                    } else if (Number(card.defense) > 0) {
-                                        playerColor = '#9bd6ff';
-                                        playerText = `${card.name} → 방어 자세 🛡️ +${card.defense}`;
-                                    } else {
-                                        playerColor = '#ddd';
-                                        playerText = `${card.name}`;
-                                    }
-
-                                    // 적 라인
-                                    let preyColor = '#aaa';
-                                    let preyText;
-                                    const playerDmg = Number(log.playerDamage) || 0;
-                                    if (log.outcome === 'flee_signal' || log.outcome === 'player_flee') {
-                                        preyText = '—';
-                                    } else if (log.preyActionType === 'attack') {
-                                        // D-108: 행동명은 actionDef.name (예: '어금니 돌진') 사용.
-                                        const actName = log.preyAction || '공격';
-                                        if (playerDmg > 0) {
-                                            preyColor = '#ff6666';
-                                            preyText = `${actName} 💥 → 내 HP -${playerDmg}`;
-                                        } else if (Number(card && card.defense) > 0) {
-                                            preyColor = '#9bd6ff';
-                                            preyText = `${actName} → 막아냄 (방어 ${card.defense}로 감쇄)`;
-                                        } else {
-                                            preyColor = '#aaa';
-                                            preyText = `${actName} → 빗나감`;
-                                        }
-                                    } else if (log.preyActionType === 'defend') {
-                                        const actName = log.preyAction || '방어';
-                                        if (Number(log.preyDefended) > 0) {
-                                            preyColor = '#9bd6ff';
-                                            preyText = `${actName} 🛡️ (감쇄 ${log.preyDefended})`;
-                                        } else {
-                                            preyColor = '#aaa';
-                                            preyText = `${actName} 🛡️`;
-                                        }
-                                    } else if (log.preyActionType === 'evade') {
-                                        if (log.hit && log.preyEvaded) {
-                                            preyColor = '#d4b84a';
-                                            preyText = '회피 성공 〰️';
-                                        } else if (log.hit && !log.preyEvaded && Number(card && card.damage) > 0) {
-                                            preyColor = '#3dd68c';
-                                            preyText = '회피 실패';
-                                        } else {
-                                            preyColor = '#aaa';
-                                            preyText = '회피 자세';
-                                        }
-                                    } else if (log.preyActionType === 'peek') {
-                                        preyColor = '#aaa';
-                                        preyText = '눈치 보기 👁️ (회피 못 함)';
-                                    } else {
-                                        preyText = log.preyAction || '—';
-                                    }
-
-                                    return (
-                                        <div key={i} style={{
-                                            marginBottom: '8px',
-                                            paddingLeft: '8px',
-                                            borderLeft: `3px solid ${playerColor}`,
-                                            lineHeight: 1.45
-                                        }}>
-                                            <div style={{ color: playerColor, fontWeight: 600 }}>
-                                                <span style={{ color: '#888', fontWeight: 400, marginRight: '4px' }}>T{log.turn}</span>
-                                                👤 {playerText}
-                                            </div>
-                                            <div style={{ color: preyColor, fontSize: '10.5px' }}>
-                                                <span style={{ marginRight: '4px' }}>{preyEmoji}</span>
-                                                {preyText}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
 
                         {/* 내 손패 — D-179: 부채꼴 스택 + 비활성 카드는 무덤으로 분리.
                             카드 메타 계산은 활성/비활성 공통이라 한 번에 묶어 처리한 뒤 분류. */}
@@ -6741,16 +6806,23 @@
                                                     const isExpanded = hoveredCardUid === m.card.uid;
                                                     // D-188: hover 제거. 클릭=확대 preview 띄우기(슬롯 X). preview 다시 클릭 시 좌측 첫 빈 슬롯 자동 배치.
                                                     //   z-index는 부채꼴 자연 정렬 그대로(N - |off|) — 클릭해도 안 올림(어차피 가운데 큰 preview 뜸).
+                                                    //   동일 카드 재클릭 = 확정(슬롯 배치). 큰 preview 클릭과 동일 동작.
                                                     return (
                                                         <div
                                                             key={m.card.uid}
-                                                            className="hunt-card-fan-slot"
-                                                            onClick={() => setHoveredCardUid(m.card.uid)}
+                                                            className={`hunt-card-fan-slot${isExpanded ? ' is-focused' : ''}`}
+                                                            onClick={() => {
+                                                                if (isExpanded) {
+                                                                    handleHandClick(m.card);
+                                                                    setHoveredCardUid(null);
+                                                                } else {
+                                                                    setHoveredCardUid(m.card.uid);
+                                                                }
+                                                            }}
                                                             style={{
                                                                 transform: `translate(${xPx}px, ${yPx}px) rotate(${rot}deg)`,
-                                                                zIndex: N - Math.abs(off),
-                                                                filter: isExpanded ? 'brightness(0.35)' : 'none',
-                                                                transition: 'filter 0.15s',
+                                                                // 좌→우 순서로 z 단조 증가(요한 지시) — 우측 카드가 좌측 위로.
+                                                                zIndex: i,
                                                                 cursor: 'pointer',
                                                             }}>
                                                             <div className="hunt-card-fan-inner">
@@ -8999,6 +9071,7 @@
                     </div>
 
                     <GameMap
+                        key="game-map-stable"
                         tiles={tiles}
                         currentTile={currentTile}
                         boss={boss}

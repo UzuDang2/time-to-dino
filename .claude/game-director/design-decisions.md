@@ -4080,3 +4080,92 @@ const isDone = consumed && !isCurrent;  // selected 우선 — 같은 턴이 dim
 
 
 
+## D-195 (2026-05-01 요한 지시): 사냥 시각 시스템 정착 + 카메라 추적 sync
+
+**컨텍스트**: 19th 세션 단일 PR 분량의 시각 회귀·UX 다듬기. 4-step 시퀀스, floats 정책, 결과 모달 로그, 카메라 추적, fade out — 모두 사용자 시각 검증 사이클 통해 정착.
+
+### A. 사냥 4-step 시퀀스 (`HuntCombatModal` 시네마틱)
+
+**결정**: 한 턴을 4 step setTimeout으로 분리해 인과 흐름 가시화.
+1. **t+0ms** (`user`): 유저 카드 발동 — `cardName` player float + `playerAttack` push 모션.
+2. **t+250ms** (`preyHit`): 사냥감 적중·회피 — `preyDamage` 또는 `preyEvaded` prey float + prey shake/flash 모션.
+3. **t+1000ms** (`preyAct`): 사냥감 행동명 — `preyActionName` prey float (preyActionType==='evade'면 step 2와 중복이라 자동 생략).
+4. **t+1250ms** (`userHit`): 유저 적중 — `playerDamage` player float + `playerHit` 흔들림+플래시. 데미지 0이면 자동 생략.
+
+**상수**: `TURN_DELAY_MS = 2000`, `STEP_OFFSETS = { user: 0, preyHit: 250, preyAct: 1000, userHit: 1250 }`. setHpCurrent(사냥감)는 step 2, setDisplayHealth(캐릭터)는 step 4 — HP 차감 시점도 인과 분리.
+
+**근거**: 직전 패턴은 한 턴에 모든 effect 동시 발동(D-176 Phase B) → 인과 안 보임. 사용자: "유저 동작 → 사냥감 적중 → 사냥감 행동 → 유저 적중" 흐름 명시. 250ms 짧은 gap은 타격감(공격 → 즉시 피격), 큰 gap(750ms)은 사냥감 행동 텀.
+
+### B. floats 정책 — 같은 종류 교체 + 다른 종류 누적
+
+**결정**: 매 step의 setActiveEvent → useEffect → newOnes 생성. 같은 (`side`, `kind`)는 즉시 교체, 다른 종류는 누적. 각 batch는 자체 timer로 자연 만료.
+
+```js
+const newKeys = new Set(newOnes.map(f => f.side + ':' + f.kind));
+setFloats(prev => [
+    ...prev.filter(f => !newKeys.has(f.side + ':' + f.kind)),
+    ...newOnes
+]);
+const expireIds = newOnes.map(f => f.id);
+setTimeout(() => setFloats(prev => prev.filter(f => !expireIds.includes(f.id))), 2100);
+// cleanup에서 clearTimeout 안 함 — 각 batch 독립 만료.
+```
+
+**근거**: replace(한 시점 한 효과)면 step 사이 fade 못 봄. 누적이면 같은 카드 두 턴 연속 시 동일 텍스트 중복. 절충 — 같은 종류만 교체. 5종(`player+cardname`, `player+damage`, `prey+cardname`, `prey+damage`, `prey+miss`) 한 시점 최대 5개.
+
+### C. CSS — fade 1초 + 상승 동기
+
+**결정**: `.battle-float-text` animation 1.0s → **2.0s ease-out**, keyframes 0/10/50/100 — 등장 0.2s + 정점 0.8s + **fade 1s 동안 상승 -20→-70px**.
+
+```css
+@keyframes battle-float-up {
+    0%   { opacity: 0; transform: translate(-50%, 0); }
+    10%  { opacity: 1; transform: translate(-50%, -8px); }
+    50%  { opacity: 1; transform: translate(-50%, -20px); }
+    100% { opacity: 0; transform: translate(-50%, -70px); }
+}
+.battle-float-text.kind-cardname { color: #ffe28a; font-size: 16px; bottom: 78%; }
+.battle-float-text.kind-damage   { color: #ff7a8a; font-size: 22px; }
+.battle-float-text.kind-miss     { color: #fff; font-size: 18px; letter-spacing: 1px; }
+.battle-float-text { white-space: nowrap; ... }
+```
+
+**부수**: 데미지 텍스트 `-N` → `❤️-N`(메타포 일관), `MISS!` → `회피!`(한국어). cardname kind는 damage/miss(60%)보다 높은 78%에 떠올라 시각 분리. `white-space: nowrap`으로 두 줄 wrap 방지.
+
+### D. 전투 로그 — 결과 모달 안으로 이관
+
+**결정**: BattleStage 다음 외부 위치(D-91, 122줄 JSX)의 로그 영역 통째 결과 모달(`phase==='done'`, z 1800) 안으로 이동. `maxHeight 240px`, `textAlign:'left'`. 전투 중에는 미노출(시선 분산 차단).
+
+**근거**: 사용자: "전투 중에는 로그 보여주지 말고, 결과 화면에서 전투로그를 보여달라". 시선이 전투쪽에 머무르도록 + 결과 검토 시 모든 턴 로그 한 번에. logRef 자동 scrollTop 끝은 결과 phase에서 자연 시작점이 위라 불필요.
+
+### E. 카메라 추적 — `overflow-anchor:none` 결정타
+
+**결정**: D-135 카메라 추적 시스템을 device 좌표 기준으로 재설계 + brower scroll anchoring 차단.
+
+**구현 (`index.html` D-135, `gameStyles.css` `.map-container`)**:
+- D-47 useLayoutEffect 통째 제거. 첫 mount instant set은 D-135 `isFirstCenterRef` 분기로 흡수.
+- 카메라 세로 중심 = `window.innerHeight / 2 - 200` (device 가운데에서 200px 위). `el.clientHeight / 2`(map-container 가운데)는 ui-panel 변동에 따라 변해 흔들림.
+- raf duration 500→**800ms**, ease-out **quintic**(`1 - (1-t)^5`, 끝에서 강한 감속). `.piece` SVG transition도 `0.25s ease` → `0.8s ease-out`로 sync — player piece와 카메라 동시 도착.
+- 이동 직후 **200ms 텀** 후 raf 시작 — layout 안정화 + 사용자 위치 인지 시간.
+- `<GameMap key="game-map-stable" />` — 형제 element conditional rendering으로 위치 변화 시 remount 방지.
+- **`.map-container { overflow-anchor: none }`** — brower scroll anchoring 차단(결정타).
+
+**진단 사이클**:
+- 증상: 좌측하단 이동 시 y축이 instant jump, x축만 raf로 부드럽게 진행. 좌우/상하 비대칭.
+- 빗나간 가설: GameMap remount 시 D-47이 scrollTop instant set / startLeft·Top force set 누락 / duration 미스매치.
+- 결정타 단서: 사용자 "y만 instant" 비대칭 명시 → layout 변동 축 = 영향 축 = 세로 → **brower scroll anchoring** 의심 → `overflow-anchor:none` 한 줄로 해결.
+
+**원리**: 카드 줄바꿈으로 `.ui-panel` height 변화 → flex layout으로 `.map-container.clientHeight` 변화 → brower scroll anchoring(기본 ON)이 사용자가 보던 hex 위치 유지하려고 자동 `scrollTop` 보정 → 우리 raf의 y축 보간 무효화. anchoring 끄면 raf가 의도대로 두 축 동시 보간.
+
+### F. 손패 카드 폴리시
+
+**결정**:
+- 내 슬롯(block 3) 카드 max 80px (사냥감 슬롯 block 1은 그대로). `wrapperStyle: { maxWidth: 80, justifySelf: 'center', width: '100%' }`.
+- `.hunt-card-fan-slot` zIndex `N - |off|` → `i` (좌→우 단조 증가).
+- 손패 같은 카드 재클릭 = 확정 (큰 preview와 동일 동작). `isExpanded` 상태에서 클릭 시 `handleHandClick + setHoveredCardUid(null)`.
+- `.hunt-hand-fixed-bottom` z-index 10 → **1700** (backdrop 1599 + preview 1600 위로 — 같은 자리 재클릭 시 backdrop 가로채기 방지).
+- `.hunt-card-fan-slot.is-focused .hunt-card` — 노란 outline+glow (이전 dim 0.35 대신, 카드 본체에 적용해 라운드 코너 자연).
+
+### 미커밋 → 이번 commit에 포함
+
+**파일**: `index.html`(4-step 시퀀스, floats 정책, setActiveEvent 확장, 카메라 D-135 재설계, 결과 모달 로그 이관, 손패 폴리시), `gameStyles.css`(battle-float-up 2.0s, kind-cardname, white-space:nowrap, .hunt-card-fan-slot.is-focused, .hunt-hand-fixed-bottom z 1700, .map-container overflow-anchor:none).

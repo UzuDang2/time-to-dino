@@ -1,6 +1,21 @@
 # project-state.md
 
-마지막 검증: 2026-04-30 (**D-194, HP=❤️ 통일 + 턴 진행 시각화 (selected/dim/normal 3-state)**).
+마지막 검증: 2026-05-01 (**D-195, 사냥 시각 시스템 정착 + 카메라 추적 sync — 19th 세션**).
+19th 세션 변경 요약 (D-195, 단일 PR 분량):
+- **사냥 4-step 시퀀스**: 한 턴을 user(t+0) → preyHit(t+250) → preyAct(t+1000) → userHit(t+1250) 4 step. `TURN_DELAY_MS=2000`. setHpCurrent 사냥감은 step 2, setDisplayHealth 캐릭터는 step 4. 인과 시각 분리.
+- **floats 정책**: 같은 (side, kind) 즉시 교체, 다른 종류 누적. expire 2.1s. cleanup에서 clearTimeout 안 함 (각 batch 독립). 5종 한 시점 최대 5개 동시.
+- **CSS battle-float-up 2.0s**: 등장 0.2s + 정점 0.8s + fade 1s 동안 -20→-70px 상승. `❤️-N`(데미지) / `회피!`(미스, 한국어) / `${cardName}!`(player·prey 양쪽). `white-space: nowrap`로 줄바꿈 차단.
+- **전투 로그 → 결과 모달 안 이관**: BattleStage 다음 외부 위치 122줄 통째 결과 모달(z 1800) 안으로. `maxHeight 240px`, `textAlign:left`. 전투 중 미노출(시선 분산 차단).
+- **카메라 추적 재설계 (D-135)**: D-47 useLayoutEffect 제거 → D-135 첫 호출 instant set. 세로 중심 `el.clientHeight/2` → `window.innerHeight/2 - 200` (device 좌표 기준). raf 500→800ms ease-out quintic. `.piece` SVG transition 0.25s → 0.8s sync. 200ms 텀. `<GameMap key="game-map-stable">` + `.map-container { overflow-anchor: none }` (brower scroll anchoring 차단 — y축 instant jump 결정타).
+- **손패 폴리시**: 내 슬롯 카드 max 80px + 가운데. zIndex 좌→우 단조 증가. 같은 카드 재클릭 = 확정. `.hunt-hand-fixed-bottom` z 1700(backdrop+preview 위로). `.hunt-card-fan-slot.is-focused .hunt-card` 노란 outline+glow (이전 dim 0.35 대신).
+
+D-195 핵심 디테일:
+- 카메라 진단 사이클: 좌우/상하 비대칭 단서 → layout 변동 축 = 영향 축 → brower scroll anchoring 의심 → `overflow-anchor:none`로 1줄 해결. GameMap remount 8번은 별도 미진단 이슈(우회 처방으로 충분).
+- floats trade-off: replace(한 시점 한 효과)면 fade 안 보임, 누적이면 같은 텍스트 중복. 절충 — 같은 (side+kind) 교체.
+- 4-step 인과: 250ms(공격→피격) + 750ms(사냥감 행동 텀) + 250ms(행동→피격) — 짧은 gap은 타격감, 긴 gap은 사냥감 행동 인지.
+- **사용자 위임 결정(2026-05-01)**: 시각 회귀·UX 다듬기는 game-director가 맡는다. 다음 세션부터 위임.
+
+이전 검증: 2026-04-30 (**D-194, HP=❤️ 통일 + 턴 진행 시각화 (selected/dim/normal 3-state)**).
 D-194 변경:
 - BattleStage 사냥감·나 정보박스 HP 텍스트 → ❤️ 이모지 통일.
 - 턴 진행 시각화: `isCurrent = activeEvent && slotIdx===i` (셀렉트 골드 outline+glow), `isDone = consumed && !isCurrent` (딤드 opacity 0.4), 그 외 노말.
