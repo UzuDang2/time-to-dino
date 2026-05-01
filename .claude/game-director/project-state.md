@@ -1,11 +1,12 @@
 # project-state.md
 
-마지막 검증: 2026-05-01 (**D-198, cardname float remount 근본 수정 — eventId wrapper 분리**).
-19th 세션 후속 (D-196 → D-197 → D-198, 단일 사이클):
+마지막 검증: 2026-05-01 (**D-199, 피격 모션 강화 — damped sine wave 좌우 흔들림**).
+19th 세션 후속 (D-196 → D-197 → D-198 → D-199):
 - **D-196**: 4 step → 3 step + cardname `'!'` 제거 + TURN_DELAY_MS 2000→1400.
 - **D-197 [PARTIAL]**: cardname float jumping 1차 진단·`lastCardNameRef` 가드 — 직전 turn cardName 같으면 push X. 다만 root cause는 더 위층이라 일부만 해결.
 - **D-198 (root fix)**: floats `<span>`이 `key={...${eventId}...}` wrapper 자식이라 매 step(101→102→103) remount → CSS animation 처음부터 재시작 → "loop처럼 솟아오름 ×3" 시각 인공물. 수정: outer 박스에 `position:relative` 박고 floats span을 motion wrapper의 형제로 분리. 캐릭터 push/shake/flash·prey shake/flash 모션은 그대로, floats는 안정 mount.
 - **D-197 ref 가드는 유지** — 같은 카드 두 turn 연속 깜빡임 방지에 여전히 유익. D-198은 그 위층의 root cause를 잡음.
+- **D-199 (피격 모션 강화)**: 새 keyframes `battle-hit-shake` (0.6s ease-out, damped sine wave envelope ±10→0). 사냥감 피격(`battle-anim-prey-flash`) = 기존 플래시만 → hit-shake + flash 동시. 캐릭터 피격(`battle-anim-player-hit`) = 약한 ±3px → 같은 강한 envelope. 회피(`battle-anim-prey-shake`)는 기존 ±6px·0.4s 유지 → 진폭·duration 차이로 피격과 시각 분리. 런타임 transform sampling으로 envelope 검증(t=58ms -9.99 / t=116ms +7.89 / t=193ms -6.00 / t=601ms 0).
 
 이전 검증: 2026-05-01 (**D-195, 사냥 시각 시스템 정착 + 카메라 추적 sync — 19th 세션**).
 19th 세션 변경 요약 (D-195, 단일 PR 분량):
