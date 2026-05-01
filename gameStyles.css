@@ -804,8 +804,10 @@ button:disabled {
     white-space: nowrap;
     text-shadow: 0 2px 4px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.5);
     /* D-209: ease-out-circ + duration 1.2s — fade out과 Y 상승이 같은 곡선으로 동기, 처음 폭발적 솟구침 후 부드러운 정착.
-       거리 -45px (D-209 keyframe 본체 참조). cubic-bezier(0.075, 0.82, 0.165, 1) = ease-out-circ. */
-    animation: battle-float-up 1.2s cubic-bezier(0.075, 0.82, 0.165, 1) forwards;
+       D-211: duration 1.2 → 2.2s (+1s) — ease-out-circ로 처음 폭발적 솟구침 후 빠르게 사라지는 인상이 "너무 일찍" 인지된다는
+       사용자 피드백. 거리·이징·keyframe 그대로, duration만 늘려 마지막 25% 잔존 시간 확보 → 가독성 회복.
+       distance -45px(D-209) / cubic-bezier(0.075, 0.82, 0.165, 1) = ease-out-circ(D-209). */
+    animation: battle-float-up 2.2s cubic-bezier(0.075, 0.82, 0.165, 1) forwards;
     z-index: 5;
 }
 .battle-float-text.kind-damage { color: #ff7a8a; font-size: 22px; }
