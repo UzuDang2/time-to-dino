@@ -5825,14 +5825,14 @@
                     return;
                 }
                 const newOnes = [];
-                if (activeEvent.cardName) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'cardname', text: `${activeEvent.cardName}!` });
-                if (activeEvent.preyActionName) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'cardname', text: `${activeEvent.preyActionName}!` });
+                // D-196: cardname '!' 제거(분위기 원칙). preyActionName 제거(사냥감 슬롯=D-186과 중복 → 시각 노이즈).
+                if (activeEvent.cardName) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'cardname', text: `${activeEvent.cardName}` });
                 if (activeEvent.preyDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'damage', text: `❤️-${activeEvent.preyDamage}` });
                 if (activeEvent.playerDamage > 0) newOnes.push({ id: ++floatCounterRef.current, side: 'player', kind: 'damage', text: `❤️-${activeEvent.playerDamage}` });
                 if (activeEvent.preyEvaded) newOnes.push({ id: ++floatCounterRef.current, side: 'prey', kind: 'miss', text: '회피!' });
                 // 같은 종류(side+kind)는 즉시 교체, 다른 종류는 누적 — 같은 텍스트 중복 방지.
                 //   ex) 두 턴 연속 같은 카드 사용해도 'player+cardname'은 한 시점 1개만.
-                //   damage / miss / cardname / prey-cardname 등 다른 종류는 동시 떠 있을 수 있음.
+                //   damage / miss / cardname 등 다른 종류는 동시 떠 있을 수 있음.
                 if (newOnes.length === 0) return;
                 const newKeys = new Set(newOnes.map(f => f.side + ':' + f.kind));
                 setFloats(prev => [...prev.filter(f => !newKeys.has(f.side + ':' + f.kind)), ...newOnes]);
@@ -6412,15 +6412,15 @@
                 setResult(res);
                 setPhase('resolve');
 
-                // 한 턴을 4 step으로 분리 — 인과 흐름 명시(요한 지시).
-                //   step 1 (t+0):   유저 카드 발동 + 캐릭터 공격 모션. cardName 'player' float.
-                //   step 2 (t+500): 사냥감 적중/회피. preyDamage 'prey' float 또는 '회피!' + prey shake/flash.
-                //   step 3 (t+1100): 사냥감 행동명. preyActionName 'prey' float (사냥감이 무엇을 하는지).
-                //   step 4 (t+1500): 유저 적중. playerDamage 'player' float + player-hit 흔들림+플래시.
+                // D-196: 한 턴 = 3 step (4-step에서 축소). preyActionName step 제거(사냥감 슬롯=D-186과 중복).
+                //   step 1 (t+0):    유저 카드 발동 + 캐릭터 공격 모션. cardName 'player' float.
+                //   step 2 (t+500):  사냥감 적중/회피. preyDamage 'prey' float 또는 '회피!' + prey shake/flash.
+                //   step 3 (t+1000): 유저 적중. playerDamage 'player' float + player-hit 흔들림+플래시.
                 //   각 step은 별도 id로 wrapper key 갱신 → CSS 애니/floats useEffect 재발동.
-                //   TURN_DELAY_MS 1600→2000 (4 step gap 수용 + 다음 턴까지 자연 분리).
-                const TURN_DELAY_MS = 2000;
-                const STEP_OFFSETS = { user: 0, preyHit: 250, preyAct: 1000, userHit: 1250 };
+                //   TURN_DELAY_MS 2000→1400 (3 step gap + 다음 턴 시작 400ms breathing). float fade(2.0s) + 1.0s tail은
+                //   다음 턴 step1과 자연 overlap — 사용자 결정(옵션 5 변형: float duration 유지, 다음 턴 시작만 단축).
+                const TURN_DELAY_MS = 1400;
+                const STEP_OFFSETS = { user: 0, preyHit: 500, userHit: 1000 };
                 res.turns.forEach((turn, idx) => {
                     const card = turn.userCard;
                     const cardDamage = Number(card && card.damage) || 0;
@@ -6438,7 +6438,6 @@
                             preyDamage: 0,
                             playerDamage: 0,
                             cardName: card && card.name ? card.name : null,
-                            preyActionName: null,
                         });
                     }, baseTime + STEP_OFFSETS.user);
 
@@ -6453,43 +6452,25 @@
                             preyDamage: Number(turn.damage) || 0,
                             playerDamage: 0,
                             cardName: null,
-                            preyActionName: null,
                         });
                     }, baseTime + STEP_OFFSETS.preyHit);
 
-                    // Step 3: 사냥감 행동명 — 사냥감이 그 턴 무엇을 하는지 prey 측에 텍스트.
-                    //   preyActionType이 'evade'면 step 2에서 이미 '회피!' 표시했으므로 행동명 생략.
+                    // Step 3: 유저 적중 — playerDamage float + 캐릭터 hit 흔들림+플래시
                     setTimeout(() => {
-                        const showAction = turn.preyAction && turn.preyActionType !== 'evade';
+                        const playerDmg = Number(turn.playerDamage) || 0;
+                        if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
                         setActiveEvent({
                             id: baseId + 3,
                             slotIdx: idx,
                             playerAttack: false,
                             preyEvaded: false,
                             preyDamage: 0,
-                            playerDamage: 0,
-                            cardName: null,
-                            preyActionName: showAction ? turn.preyAction : null,
-                        });
-                    }, baseTime + STEP_OFFSETS.preyAct);
-
-                    // Step 4: 유저 적중 — playerDamage float + 캐릭터 hit 흔들림+플래시
-                    setTimeout(() => {
-                        const playerDmg = Number(turn.playerDamage) || 0;
-                        if (playerDmg > 0) setDisplayHealth(prev => Math.max(0, prev - playerDmg));
-                        setActiveEvent({
-                            id: baseId + 4,
-                            slotIdx: idx,
-                            playerAttack: false,
-                            preyEvaded: false,
-                            preyDamage: 0,
                             playerDamage: playerDmg,
                             cardName: null,
-                            preyActionName: null,
                         });
                     }, baseTime + STEP_OFFSETS.userHit);
                 });
-                // 마지막 step 4 float 끝까지 보여주고 결과 페이즈 전환.
+                // 마지막 step 3 float 끝까지 보여주고 결과 페이즈 전환.
                 setTimeout(() => {
                     setPhase('done');
                     setActiveEvent(null);

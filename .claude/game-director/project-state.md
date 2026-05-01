@@ -1,6 +1,13 @@
 # project-state.md
 
-마지막 검증: 2026-05-01 (**D-195, 사냥 시각 시스템 정착 + 카메라 추적 sync — 19th 세션**).
+마지막 검증: 2026-05-01 (**D-196, 사냥 시각 시퀀스 정제 — 4→3 step + cardname '!' 제거 + TURN_DELAY_MS 2000→1400**).
+19th 세션 후속 (D-196, 단일 PR):
+- **4 step → 3 step**: D-195 step3(사냥감 행동명 floats) 제거 — 사냥감 슬롯=D-186 중복 노출 해결. `STEP_OFFSETS = { user: 0, preyHit: 500, userHit: 1000 }`.
+- **cardname `'!'` 제거**: `${cardName}!` → `${cardName}`. 분위기·톤 정합. preyActionName 측은 step 자체 제거되어 텍스트 무관.
+- **TURN_DELAY_MS 2000→1400 (옵션 5 변형)**: float duration(2.0s) + fade tail은 그대로, 다음 턴 시작 시간만 단축. userHit(1000)+breathing(400) → 1400. 4 turn 사냥 8.0s → 5.6s (30% 단축).
+- **CSS 변경 없음**: `.battle-float-text.kind-cardname`은 이제 player 한쪽만 사용. 색·사이즈 분리 불필요.
+
+이전 검증: 2026-05-01 (**D-195, 사냥 시각 시스템 정착 + 카메라 추적 sync — 19th 세션**).
 19th 세션 변경 요약 (D-195, 단일 PR 분량):
 - **사냥 4-step 시퀀스**: 한 턴을 user(t+0) → preyHit(t+250) → preyAct(t+1000) → userHit(t+1250) 4 step. `TURN_DELAY_MS=2000`. setHpCurrent 사냥감은 step 2, setDisplayHealth 캐릭터는 step 4. 인과 시각 분리.
 - **floats 정책**: 같은 (side, kind) 즉시 교체, 다른 종류 누적. expire 2.1s. cleanup에서 clearTimeout 안 함 (각 batch 독립). 5종 한 시점 최대 5개 동시.

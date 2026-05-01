@@ -4169,3 +4169,44 @@ setTimeout(() => setFloats(prev => prev.filter(f => !expireIds.includes(f.id))),
 ### 미커밋 → 이번 commit에 포함
 
 **파일**: `index.html`(4-step 시퀀스, floats 정책, setActiveEvent 확장, 카메라 D-135 재설계, 결과 모달 로그 이관, 손패 폴리시), `gameStyles.css`(battle-float-up 2.0s, kind-cardname, white-space:nowrap, .hunt-card-fan-slot.is-focused, .hunt-hand-fixed-bottom z 1700, .map-container overflow-anchor:none).
+
+---
+
+## D-196 (2026-05-01 요한 진단·결정): 사냥 시각 시퀀스 정제 — 4→3 step + cardname '!' 제거
+
+**컨텍스트**: D-195 4-step 시퀀스 사용자 시각 검증 후 진단. 사냥감 슬롯(D-186)이 이미 사냥감 행동명 텍스트를 책임지는데 floats step3에서 같은 정보를 또 띄우면 노이즈 + 한 turn당 2초 × 4 turn = 8초로 템포 둔화. 옵션 1+2+4 묶음 적용 + 옵션 5 변형(float duration 유지, 다음 턴 시작 단축).
+
+### 결정
+
+1. **`preyActionName` floats step 제거** — 사냥감 슬롯=D-186 중복 노출. `BattleStage` `floats useEffect`의 `preyActionName` 분기와 `setActiveEvent`의 `preyActionName` 필드 자체 제거. step3 setTimeout 블록 폐기.
+
+2. **cardname `'!'` 접미사 제거** — `${cardName}!` → `${cardName}`. 게임 분위기 원칙(텍스트 1인칭·건조한 시스템 메시지 금지) 정합. 액션감은 push/shake/flash 모션이 충분히 책임. preyActionName 측은 step 자체 제거되어 텍스트 무관.
+
+3. **4 step → 3 step**: `STEP_OFFSETS = { user: 0, preyHit: 500, userHit: 1000 }`.
+   - step1 (t+0): 유저 카드 발동 + push (cardName player float).
+   - step2 (t+500): 사냥감 적중·회피 + shake/flash (preyDamage/preyEvaded prey float).
+   - step3 (t+1000): 유저 적중 + hit 흔들림+플래시 (playerDamage player float).
+   - user→preyHit 250→500, userHit 1250→1000 — step3 제거로 자연 재간격.
+
+4. **`TURN_DELAY_MS` 2000→1400ms (옵션 5 변형)** — float duration(2.0s) + fade tail은 그대로, **다음 턴 시작 시간만 단축**. userHit(1000ms) + breathing(400ms) → 1400ms. 이전 턴 player float fade 1초가 다음 턴 step1과 자연 overlap — 의도된 연속감.
+
+### 영향
+
+- **4 turn 사냥**: 이전 8.0s → **5.6s** (30% 단축). 마지막 step 후 `+800ms` 결과 페이즈 텀은 그대로.
+- **사냥감 슬롯 selected/dim 진행**: D-194 `activeEvent.slotIdx` 동일 idx 동기 유지.
+- **CSS 변경 없음**: `.battle-float-text.kind-cardname`은 player 한쪽만 사용 — 색·사이즈 분리 불필요(prey cardname이 사라지면서 자동 해결).
+
+### 근거
+
+- D-195 step3는 사용자 검증 직후 "사냥감 슬롯과 중복 + 시각 노이즈"로 판정. 사냥감 행동 책임을 슬롯에 단일화.
+- `'!'`는 인스턴트 액션 게임 톤이지 본 게임의 텍스트 1인칭 분위기에 어긋남.
+- TURN_DELAY_MS 단축은 float duration 단축이 아니라 "다음 턴 시작 시간만 단축". fade tail 1초가 다음 step1과 overlap = 끊김 없는 연속 시각.
+
+### 후속 (옵션 6)
+
+- 본 패치 적용 후 사용자 사냥 한 라운드 같이 보고 추가 핀포인트. 다음 턴 overlap 자연감, cardname '!' 제거 톤, 3-step 인과 흐름 가독성 검증.
+
+### 파일
+
+- `index.html`: BattleStage `floats useEffect` (preyActionName 분기 제거 + cardname '!' 제거), HuntCombatModal step setTimeout 블록 (4→3), `STEP_OFFSETS`·`TURN_DELAY_MS` 상수.
+- `gameStyles.css`: 변경 없음.
