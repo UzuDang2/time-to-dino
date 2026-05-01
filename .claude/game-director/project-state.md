@@ -1,5 +1,12 @@
 # project-state.md
 
+마지막 검증: 2026-04-30 (**D-193, 카드 = 단일 컴포넌트 + 균일 스케일 인스턴스**).
+D-193 변경:
+- `.hunt-card`에 `container-type: inline-size` + 자식 룰 9건 픽셀→cqw 변환(7.86cqw/5cqw 등 280px 기준).
+- `.hunt-card-preview-large .hunt-card-*` 자식 오버라이드 7건 제거 — 자동 비례.
+- 손패(86px) ↔ preview(280px) 폰트·패딩·아이콘 동일 비율, 다른 사이즈.
+- 박스 그림자/외곽선 강조만 `.hunt-card-preview-large .hunt-card` 유지.
+
 마지막 검증: 2026-04-30 (**D-192, 사냥 중 캐릭터 HP 게이지 즉시 반영 hotfix**).
 D-192 변경:
 - `HuntCombatModal`에 자체 `displayHealth` state(`useState(playerHealth)`) 추가. 사냥감 `hpCurrent` 패턴 대칭.

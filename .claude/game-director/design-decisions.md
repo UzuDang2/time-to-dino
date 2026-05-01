@@ -3980,6 +3980,59 @@ playerHealth={displayHealth}
 
 - 콘솔 무에러. 시각 확인은 요한 QA — 사냥 중 캐릭터 hit 모션 + float "-N" + HP 게이지/수치 즉시 갱신 일관성.
 
+---
+
+## D-193 (2026-04-30 요한 디자인 시스템 정리): 카드 = 단일 컴포넌트 + 균일 스케일 인스턴스
+
+### 의사결정
+
+기존 카드 컴포넌트는 `.hunt-card-preview-large .hunt-card-*` 오버라이드 7건으로 큰 preview용 폰트·패딩을 별도 명시. 손패는 base 룰(픽셀 기반)이라 카드 폭 변경 시 텍스트·아이콘 비율이 제멋대로. 사용자 진단 정확.
+
+요청: **단일 default = 큰 preview 사이즈**, 손패는 거기서 균일 스케일된 인스턴스. 폰트·패딩·아이콘·여백 전부 같은 비율.
+
+### 픽스 — Container Query Units(`cqw`) 도입
+
+`transform: scale`도 후보였지만 layout/hit 영역 부작용(자식 layout box는 base 사이즈로 남고 visual만 축소 → overflow·click hit 어긋남) 때문에 제외. 대신 **CSS `cqw` 단위**(카드 폭의 %)로 모든 자식 룰 변환:
+
+- `.hunt-card`에 `container-type: inline-size` 추가 → 자식 cqw 단위가 카드 자체 폭 기준.
+- 모든 자식 룰의 `font-size / padding / gap / img w·h / border-radius` 등 픽셀 → `cqw`. base는 큰 preview 280px 기준:
+  - 22px → 7.86cqw (name·stat·stat img)
+  - 14px → 5cqw (body·corner-badge font)
+  - 16px → 5.71cqw (illust-empty)
+  - 10px → 3.57cqw (body padding-top)
+  - 8px → 2.86cqw (stats gap)
+  - 7px → 2.5cqw (corner-badge padding-x)
+  - 6px → 2.14cqw (corner-badge top/right)
+  - 5px → 1.79cqw (stat border-radius)
+  - 4px → 1.43cqw (stat padding-left, corner-badge border-radius)
+  - 2px → 0.71cqw (stat padding-right, gap)
+- `.hunt-card-preview-large .hunt-card-*` 오버라이드 자식 룰 **7개 모두 제거**. 노란 외곽선·글로우만 `.hunt-card-preview-large .hunt-card`에 유지(시각 강조).
+
+### 결과
+
+- 카드 폭 280px(큰 preview) → 폰트 22px, body padding 10px 14px 등 기존 큰 preview 스타일 유지.
+- 카드 폭 86px(손패) → 폰트 ~6.76px, body padding ~3.07px ~4.3px — 자동 30.7% 비례 축소. 별도 분기 없음.
+- 향후 카드 폭 어떤 값이든 일관 비율로 자동 스케일.
+
+### 영향 범위
+
+- `.hunt-card`를 사용하는 모든 곳(부채꼴 손패, 슬롯 안 카드, 큰 preview, 무덤 모달 등)에서 자동 스케일.
+- `.hunt-card-preview-large` wrapper는 그대로 유지 — 박스 그림자만 적용.
+- 별도 폰트 오버라이드 박은 곳 없으니 회귀 0.
+
+### 파일
+
+- `gameStyles.css`: `.hunt-card` cqw 도입, 자식 룰 9건 픽셀→cqw 변환, `.hunt-card-preview-large .*` 오버라이드 7건 제거.
+
+### 검증
+
+- 콘솔 무에러. 시각 검증 요한 QA — 손패 카드와 큰 preview 카드 둘 다에서 폰트·아이콘·패딩 비율이 동일하게 보이는지(각 사이즈 차이만 균일 비율).
+
+### 한계 / 후속
+
+- `cqw` 브라우저 지원: Chrome 105+, Safari 16+, Firefox 110+. 게임 타깃 모바일·데스크톱 최신 브라우저라 호환 OK.
+- 손패 카드 폰트 6.76px가 가독성 낮으면 후속에 카드 폭 86 → 100~ 조정(또는 base 280 줄임) 검토.
+
 
 
 
