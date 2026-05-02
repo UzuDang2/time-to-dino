@@ -918,11 +918,11 @@ window.TTD_DATA = {
           "count": 6
         }
       ],
-      "effect_raw": "\"투박한 작업대 위에 칼날을 갈 수 있는 자리가 생겼다.\"",
-      "설명": "제작법을 새로 배운다",
-      "reward_items": "나뭇가지 x2",
-      "reward_passive": "accuracy+1",
-      "products": "나뭇가지 x2",
+      "effect_raw": "\"투박한 작업대 위에 두 번째 등급 재료를 다루는 길이 열린다.\"",
+      "설명": "2등급 재료 레시피 학습 가능",
+      "reward_items": null,
+      "reward_passive": null,
+      "products": null,
       "reward_one_shot": null,
       "cost_raw": "목재 x12, 끈 x6"
     },
@@ -944,11 +944,11 @@ window.TTD_DATA = {
           "count": 5
         }
       ],
-      "effect_raw": "\"가죽 끈으로 손잡이를 단단히 묶었다. 손에 더 잘 잡힌다.\"",
-      "설명": null,
-      "reward_items": "나뭇가지 x3, 끈 x2",
-      "reward_passive": "accuracy+2, armor+1",
-      "products": "나뭇가지 x3, 끈 x2",
+      "effect_raw": "\"한 차례 다듬인 손이 세 번째 등급 재료까지 가닿는다.\"",
+      "설명": "3등급 재료 레시피 학습 가능",
+      "reward_items": null,
+      "reward_passive": null,
+      "products": null,
       "reward_one_shot": null,
       "cost_raw": "목재 x20, 석재 x10, 가죽 x5"
     },
@@ -970,12 +970,12 @@ window.TTD_DATA = {
           "count": 10
         }
       ],
-      "effect_raw": "\"숯불 화덕과 모루까지 들였다. 무기는 더 이상 부서지지 않을 것 같다.\"",
-      "설명": null,
-      "reward_items": "나뭇가지 x4, 끈 x3, 금속 x1",
-      "reward_passive": "accuracy+3, armor+2",
-      "products": "나뭇가지 x4, 끈 x3, 금속 x1",
-      "reward_one_shot": "repair_kit+1",
+      "effect_raw": "\"숯불 화덕과 모루까지 들였다. 가장 깊은 등급의 제작법까지 다룰 수 있다.\"",
+      "설명": "4등급 재료 레시피 학습 가능",
+      "reward_items": null,
+      "reward_passive": null,
+      "products": null,
+      "reward_one_shot": null,
       "cost_raw": "석재 x20, 금속 x10, 가죽 x10"
     },
     {
