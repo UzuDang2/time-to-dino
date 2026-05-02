@@ -957,6 +957,39 @@ button:disabled {
     border-radius: 1.43cqw;
     z-index: 3;
 }
+/* D-223 (2026-05-02 Figma 노드 67:1460): 무기 require 카드의 우상단 내구도 배지.
+   - 카드 frame 141 기준 절대값을 cqw(카드 폭의 %)로 환산해 D-193 일관성 유지.
+     · width 22px → 15.6cqw
+     · icon 8px → 5.67cqw
+     · font 10px → 7.09cqw
+     · top-right radius 10px(카드 코너와 같이) → 7.09cqw, bottom-left radius 5px → 3.55cqw
+   - cornerBadge와는 같은 우상단 위치 — JSX에서 mutually exclusive 처리(무기 카드면 dur-badge, 비무기 카드면 cornerBadge). */
+.hunt-card-dur-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #405387;
+    border-radius: 0 7.09cqw 0 3.55cqw;
+    width: 15.6cqw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.71cqw;
+    padding: 2.14cqw 1.43cqw;
+    z-index: 4;
+    pointer-events: none;
+}
+.hunt-card-dur-badge img {
+    width: 5.67cqw;
+    height: 5.67cqw;
+    object-fit: contain;
+}
+.hunt-card-dur-badge span {
+    color: #fff;
+    font-size: 7.09cqw;
+    font-weight: 700;
+    line-height: 1;
+}
 /* 슬롯 안에 들어간 카드는 살짝 축소 + 외곽 강조 */
 .hunt-card.is-in-slot { box-shadow: 0 0 0 1px #6a6aaa inset; }
 

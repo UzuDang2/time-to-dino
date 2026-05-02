@@ -6204,6 +6204,7 @@
             acc: 'data/Assets/cards/icons/acc.png',
             eva: 'data/Assets/cards/icons/eva.png',
             def: 'data/Assets/cards/icons/def.png',
+            dur: 'data/Assets/64icon/dur.png', // D-223: 내구도 배지 아이콘 (Figma 노드 67:1460, 사용자가 64icon 폴더에 게임용 압축본 비치)
         };
         // 디자인 명세상 카드 하단 본문은 카드별 다른 효과 설명. 시트 컬럼 추가 전까지
         //   디자인에 명시된 punch만 하드코딩. 나머지는 빈 본문(추가 정보 영역으로 사용).
@@ -6211,6 +6212,11 @@
             punch: '두 주먹 불끈쥐고 휘둘러\n1 대미지를 줍니다.',
         };
         // HuntCard — 디자인 카드 한 장 렌더.
+        // D-223 (2026-05-02 Figma 노드 41-485 시안 반영): 무기 require 카드의 우상단에 내구도 배지 추가.
+        //   - durability prop: { left: number, max: number } 또는 null. null이면 미표시.
+        //   - 무기 require 카드면 cornerBadge(×N) 대신 dur-badge 노출 — 잔여 사용 횟수가 무기 내구도로 자연 표현되어 의미 중복 회피.
+        //   - 무기 require 없는 카드(주먹/회피/도망/웅크리기/방패)는 cornerBadge(∞/×N) 그대로 — 위치 충돌 X.
+        //   - 다중 무기 카드(D-221 화살쏘기): weaponIds[0] 잔여 합 표기 — 단일 표기 가정. 후속에 둘 다 표기 검토.
         //   props:
         //     card        — combat_card 객체.
         //     exhausted   — 잔여 0 / 무기 부재 등 비활성. opacity 0.45 + click ignore.
@@ -6218,7 +6224,7 @@
         //     onClick     — 클릭 핸들러.
         //     cornerBadge — 우상단 작은 배지(잔여 ×N 또는 ∞).
         //     extraInfo   — 본문 영역에 추가 표시할 정보(내구도/분실/방어구). ReactNode.
-        function HuntCard({ card, exhausted, selected, onClick, cornerBadge, extraInfo }) {
+        function HuntCard({ card, exhausted, selected, onClick, cornerBadge, extraInfo, durability }) {
             if (!card) return null;
             const illustUrl = CARD_ILLUSTRATIONS[card.id];
             const desc = CARD_DESCRIPTIONS[card.id];
@@ -6267,7 +6273,15 @@
                             )}
                         </div>
                     )}
-                    {cornerBadge && <div className="hunt-card-corner-badge">{cornerBadge}</div>}
+                    {/* D-223: 무기 require 카드는 dur-badge 우선, cornerBadge 미표시 (잔여 사용 횟수 = 무기 내구도로 자연 표현). */}
+                    {durability != null && typeof durability.left === 'number' ? (
+                        <div className="hunt-card-dur-badge">
+                            <img src={HUNT_CARD_ICONS.dur} alt="" />
+                            <span>{durability.left}</span>
+                        </div>
+                    ) : (
+                        cornerBadge && <div className="hunt-card-corner-badge">{cornerBadge}</div>
+                    )}
                     <div className="hunt-card-body">
                         {desc && <div style={{ whiteSpace: 'pre-line' }}>{desc}</div>}
                         {extraInfo}
@@ -6888,6 +6902,7 @@
                             const cardMeta = hand.map(card => {
                                 const exhausted = !canPlaceCard(card);
                                 let durBadge = null;
+                                let durability = null; // D-223: 카드 우상단 dur-badge용 — 무기 require 카드만 산출.
                                 if (card.weaponId) {
                                     const items = (inventory && inventory.items) || [];
                                     const instances = items.filter(it => it.type === card.weaponId);
@@ -6895,7 +6910,12 @@
                                         s + (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0), 0);
                                     const usedInSlots = slots.filter(s => s && s.weaponId === card.weaponId).length;
                                     const durLeft = Math.max(0, durMaxInitial - usedInSlots);
-                                    if (durMaxInitial > 0) durBadge = `내구 ${durLeft}/${durMaxInitial}`;
+                                    if (durMaxInitial > 0) {
+                                        durBadge = `내구 ${durLeft}/${durMaxInitial}`;
+                                        // D-223: dur-badge — 무기 require 카드의 잔여 내구도. Figma 노드 67:1460 시안 반영.
+                                        //   다중 무기(D-221 화살쏘기)는 weaponIds[0] 잔량(=card.weaponId)만 단일 표기 — 후속에 둘 다 표기 검토.
+                                        durability = { left: durLeft, max: durMaxInitial };
+                                    }
                                 }
                                 const reqRemaining = (Array.isArray(card.requirements) && card.requirements.length > 0)
                                     ? Math.max(0, Math.min(...card.requirements.map(r => remainingByReq[r] ?? 0)))
@@ -6919,7 +6939,7 @@
                                         {!fl && lc > 0 && <div style={{ color: '#ff9999', fontSize: '9px' }}>⚠ {lc}% 분실</div>}
                                     </>
                                 );
-                                return { card, exhausted, cornerBadge, extraInfo };
+                                return { card, exhausted, cornerBadge, extraInfo, durability };
                             });
                             const active = cardMeta.filter(m => !m.exhausted);
                             const discarded = cardMeta.filter(m => m.exhausted);
@@ -6981,6 +7001,7 @@
                                                                     card={m.card}
                                                                     cornerBadge={m.cornerBadge}
                                                                     extraInfo={m.extraInfo}
+                                                                    durability={m.durability}
                                                                 />
                                                             </div>
                                                         </div>
