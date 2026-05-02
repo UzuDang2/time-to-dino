@@ -992,10 +992,10 @@ window.TTD_DATA = {
           "count": 10
         }
       ],
-      "effect_raw": "\"선반 위에 가지런히 놓인 자루들. 어제의 수확이 보인다.\"",
+      "effect_raw": "\"단단한 작업대 위에 첫 도구가 놓인다. 뗀석기 한 자루가 시작이다.\"",
       "설명": "무기를 제작한다",
       "reward_items": null,
-      "reward_passive": "pack+1, deck_size+1",
+      "reward_passive": null,
       "products": null,
       "reward_one_shot": null,
       "cost_raw": "목재 x10, 돌맹이 x10"
@@ -1018,10 +1018,10 @@ window.TTD_DATA = {
           "count": 6
         }
       ],
-      "effect_raw": "\"천장까지 닿는 선반. 한 번 더 깊이 들어갈 수 있다.\"",
+      "effect_raw": "\"갈고닦은 손에 새총이 익숙해진다. 멀리서도 노릴 수 있다.\"",
       "설명": null,
       "reward_items": null,
-      "reward_passive": "pack+2, deck_size+1",
+      "reward_passive": null,
       "products": null,
       "reward_one_shot": null,
       "cost_raw": "목재 x18, 석재 x10, 끈 x6"
@@ -1044,10 +1044,10 @@ window.TTD_DATA = {
           "count": 10
         }
       ],
-      "effect_raw": "\"잘 정리된 창고. 무엇이 어디에 있는지 손이 먼저 안다.\"",
+      "effect_raw": "\"활시위가 팽팽하게 당겨진다. 거리가 사냥을 바꾸기 시작한다.\"",
       "설명": null,
       "reward_items": null,
-      "reward_passive": "pack+3, deck_size+2",
+      "reward_passive": null,
       "products": null,
       "reward_one_shot": null,
       "cost_raw": "석재 x25, 금속 x8, 끈 x10"

@@ -3253,6 +3253,52 @@
             'heal_on_return', 'feed_on_return', 'repair_kit', 'revive'
         ]);
 
+        // D-227 (2026-05-02 요한 지시): 무기 제작소(id=storage) 동적 시스템.
+        //   stage별 unlock 무기 + cost — 별도 합성법(combos.json) 거치지 않고 빌딩이 직접 생산.
+        //   탐험 2회마다 무기 1자루 생산 (베이스캠프 [탐험 떠나기] = 1회).
+        //   ※ 향후 보호구 제작소(training)·작업대(workshop)도 동일 시스템 적용 예정 — buildingId 분기로 확장 가능.
+        const WORKSHOP_RUNS_REQUIRED = 2;
+        const WORKSHOP_RECIPES = {
+            storage: {
+                1: ['chipped_stone'],   // 뗀석기
+                2: ['slingshot'],        // 새총
+                3: ['bow'],              // 조잡한 활
+                4: ['wood_skewer'],      // 나무쑤시개 (D-227 신규)
+                5: ['weapon_basic']      // 나무창
+            }
+        };
+        // 무기 제작 cost — 합성법(combos.json)과 일치하지만 시스템이 직접 차감해 합성 모달 거치지 않음.
+        //   사용자 지시: "별도의 합성법 없이 시스템이 알아서 만들어주는 개념".
+        const WORKSHOP_WEAPON_COST = {
+            chipped_stone: { stone: 3 },
+            slingshot:     { branch: 1, plant_fiber: 1 },
+            bow:           { branch: 3, plant_fiber: 2 },
+            wood_skewer:   { wood: 1, stone: 1, stem: 1 },
+            weapon_basic:  { stone: 2, wood: 1, plant_fiber: 1 }
+        };
+        // stage 1~lv까지 누적 unlock된 무기 id 배열 반환.
+        function getWorkshopUnlockedWeapons(buildingId, stage) {
+            const recipes = WORKSHOP_RECIPES[buildingId];
+            if (!recipes) return [];
+            const out = [];
+            const lv = Math.max(0, Number(stage) || 0);
+            for (let s = 1; s <= lv; s++) {
+                if (Array.isArray(recipes[s])) out.push(...recipes[s]);
+            }
+            return out;
+        }
+        // 인벤에서 cost 충족 가능 여부 (보유량 확인만 — 차감 X).
+        function canAffordWorkshopWeapon(weaponId, inventory) {
+            const cost = WORKSHOP_WEAPON_COST[weaponId];
+            if (!cost) return false;
+            const items = (inventory && Array.isArray(inventory.items)) ? inventory.items : [];
+            for (const [type, need] of Object.entries(cost)) {
+                const have = items.filter(it => it && it.type === type).length;
+                if (have < need) return false;
+            }
+            return true;
+        }
+
         // D-210 (2026-05-01): 사용자 노출 텍스트 한글화 + 메타포 일관성.
         //   PASSIVE/ONE_SHOT 키는 코드/데이터 내부용 — UI 노출 시 반드시 라벨 매핑 거침.
         //   ❤️=체력, 🍖=배고픔 SSOT 메타포는 StatPanel/IntelMapTooltip(이미 정착)과 동일 사용.
@@ -4525,7 +4571,7 @@
         //   - locked: "추후 공개" 안내.
         //   - tent: 현재 레벨 + 다음 레벨 퀘스트(요구재료 + 보상). [받기]/[완수].
         //   - sheet: 시트 빌딩 6종. 다음 stage cost(한글 자원) 카운트 + 4종 보상 표시. [완수](재료 충족 시 즉시).
-        function BuildingDetailModal({ building, campState, activeQuests, completedQuests, onClose, onTakeQuest, onCompleteQuest }) {
+        function BuildingDetailModal({ building, campState, activeQuests, completedQuests, onClose, onTakeQuest, onCompleteQuest, onWorkshopStart, onWorkshopReceive }) {
             if (!building) return null;
             const cardStyle = {
                 background: '#1a1a2e',
@@ -4608,6 +4654,94 @@
                                     {headerName} <span style={{ color: '#d4b84a' }}>Lv.{curStage}/{maxStage}</span>
                                 </div>
                             </div>
+                            {/* D-227 (2026-05-02): 무기 제작소(storage) 생산 슬롯 — stage>=1 + WORKSHOP_RECIPES에 등록된 빌딩만.
+                                슬롯 1개. 빈 슬롯 → 제작 가능 무기 목록(stage 누적 unlock). 생산 중 → "탐험 N/2". 수령 가능 → [수령]. */}
+                            {WORKSHOP_RECIPES[building.id] && curStage >= 1 && (() => {
+                                const queue = (campState && campState.workshopQueue && campState.workshopQueue[building.id]) || null;
+                                const unlockedIds = getWorkshopUnlockedWeapons(building.id, curStage);
+                                const queueWeaponDef = queue ? (InventorySystem.resolveDef(queue.weaponId) || {}) : null;
+                                const runsRem = queue ? Math.max(0, Number(queue.runsRemaining) || 0) : 0;
+                                const runsDone = WORKSHOP_RUNS_REQUIRED - runsRem;
+                                const ready = queue && runsRem <= 0;
+                                return (
+                                    <div style={{
+                                        background: 'rgba(0,0,0,0.25)',
+                                        padding: '12px 14px',
+                                        borderRadius: '6px',
+                                        marginBottom: '12px',
+                                        fontSize: '13px',
+                                        lineHeight: 1.5
+                                    }}>
+                                        <div style={{ color: '#d4b84a', fontWeight: 700, fontSize: '12px', marginBottom: '6px' }}>
+                                            🛠️ 생산 슬롯
+                                        </div>
+                                        {!queue ? (
+                                            // 빈 슬롯 — 제작 가능 무기 목록.
+                                            <div>
+                                                <div style={{ color: '#888', fontSize: '11px', marginBottom: '6px' }}>비어 있음 — 제작할 무기를 선택</div>
+                                                {unlockedIds.map(wid => {
+                                                    const wdef = InventorySystem.resolveDef(wid) || {};
+                                                    const cost = WORKSHOP_WEAPON_COST[wid] || {};
+                                                    const can = canAffordWorkshopWeapon(wid, inv);
+                                                    const costText = Object.entries(cost).map(([type, n]) => {
+                                                        const d = InventorySystem.resolveDef(type) || {};
+                                                        return `${d.name || type} ${n}`;
+                                                    }).join(', ');
+                                                    return (
+                                                        <div
+                                                            key={wid}
+                                                            onClick={() => can && onWorkshopStart && onWorkshopStart(building.id, wid)}
+                                                            style={{
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                alignItems: 'center',
+                                                                padding: '6px 8px',
+                                                                marginBottom: '4px',
+                                                                background: can ? 'rgba(76,175,80,0.12)' : 'rgba(255,255,255,0.04)',
+                                                                border: `1px solid ${can ? '#4CAF50' : '#444'}`,
+                                                                borderRadius: '6px',
+                                                                cursor: can ? 'pointer' : 'not-allowed',
+                                                                opacity: can ? 1 : 0.55
+                                                            }}>
+                                                            <span style={{ fontSize: '12px', color: can ? '#fff' : '#999' }}>{wdef.name || wid}</span>
+                                                            <span style={{ fontSize: '10px', color: can ? '#8bd17c' : '#888' }}>{costText}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : ready ? (
+                                            // 수령 가능.
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#8bd17c' }}>
+                                                        ✅ {queueWeaponDef.name || queue.weaponId}
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', color: '#888' }}>수령 가능</div>
+                                                </div>
+                                                <button
+                                                    onClick={() => onWorkshopReceive && onWorkshopReceive(building.id)}
+                                                    style={{
+                                                        background: '#4CAF50', color: '#fff', border: 'none',
+                                                        padding: '6px 14px', borderRadius: '6px',
+                                                        fontSize: '12px', fontWeight: 700, cursor: 'pointer'
+                                                    }}>
+                                                    수령
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            // 생산 중.
+                                            <div>
+                                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '2px' }}>
+                                                    🔧 {queueWeaponDef.name || queue.weaponId}
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: '#d4b84a' }}>
+                                                    생산 중… 탐험 {runsDone}/{WORKSHOP_RUNS_REQUIRED}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                             {!nextDef ? (
                                 <div style={{ textAlign: 'center', color: '#8bd17c', padding: '16px 0' }}>
                                     최고 단계에 도달했다.
@@ -4794,7 +4928,7 @@
         //   상단: 점수 → [보관함] 버튼 → [퀘스트 목록] → [현재 진행 중 퀘스트] → 건설.
         //   하단: [물건 챙기기] [탐험 떠나기] 두 버튼.
         // D-168: 빌딩 그리드 추가 — 보관함 버튼 아래.
-        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange }) {
+        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange, onWorkshopStart, onWorkshopReceive }) {
             const [resetOpen, setResetOpen] = React.useState(false);
             const [storageOpen, setStorageOpen] = React.useState(false);
             const [packOpen, setPackOpen] = React.useState(false);
@@ -5195,6 +5329,8 @@
                                 }
                             }}
                             onCompleteQuest={onCompleteQuest}
+                            onWorkshopStart={onWorkshopStart}
+                            onWorkshopReceive={onWorkshopReceive}
                         />
                     )}
 
@@ -10157,8 +10293,80 @@
                 }
                 setDepartInv(carried || null);
                 // D-148/D-168/D-174: 새 빈 pack은 buildingLevels+tentLevel 합산 보너스 반영.
-                setCampState(prev => ({ ...prev, pack: makePackInventory(getPackBonusSlots(prev)) }));
+                // D-227: workshopQueue runsRemaining -= 1 (탐험 떠나기 = 1회). 0 도달 시 "수령 가능" 상태(자동 인벤 X).
+                setCampState(prev => {
+                    const next = { ...prev, pack: makePackInventory(getPackBonusSlots(prev)) };
+                    const queue = prev.workshopQueue || {};
+                    const updatedQueue = {};
+                    let queueChanged = false;
+                    for (const [bId, q] of Object.entries(queue)) {
+                        if (!q || typeof q !== 'object') continue;
+                        const runsRem = Math.max(0, (Number(q.runsRemaining) || 0) - 1);
+                        updatedQueue[bId] = { ...q, runsRemaining: runsRem };
+                        queueChanged = true;
+                    }
+                    if (queueChanged) next.workshopQueue = updatedQueue;
+                    return next;
+                });
                 setView('play');
+            };
+
+            // D-227 (2026-05-02): 무기 제작소 — 무기 선택 시 cost 차감 + workshopQueue 등록.
+            //   buildingId(storage 등) 단위 큐. 같은 빌딩 슬롯 1개 — 이미 생산 중이면 무시.
+            const handleWorkshopStart = (buildingId, weaponId) => {
+                const cost = WORKSHOP_WEAPON_COST[weaponId];
+                if (!cost) return;
+                const inv = campState.inventory;
+                if (!inv) return;
+                // 보유량 가드 (레이스).
+                for (const [type, need] of Object.entries(cost)) {
+                    const have = inv.items.filter(it => it && it.type === type).length;
+                    if (have < need) return;
+                }
+                // 이미 큐 점유 중이면 무시.
+                const existing = (campState.workshopQueue || {})[buildingId];
+                if (existing && existing.weaponId) return;
+                // cost 차감 — 빌딩 [완수] 패턴(handleCompleteQuest)과 동일: removeItem(grid 청소) + items 배열 filter.
+                for (const [type, need] of Object.entries(cost)) {
+                    let remaining = need;
+                    const keep = [];
+                    for (const it of inv.items) {
+                        if (remaining > 0 && it.type === type) {
+                            inv.removeItem(it);
+                            remaining -= 1;
+                            continue;
+                        }
+                        keep.push(it);
+                    }
+                    inv.items = keep;
+                }
+                setCampState(prev => ({
+                    ...prev,
+                    workshopQueue: {
+                        ...(prev.workshopQueue || {}),
+                        [buildingId]: { weaponId, runsRemaining: WORKSHOP_RUNS_REQUIRED }
+                    }
+                }));
+            };
+
+            // D-227: 수령 — 빌딩 모달 [수령] 버튼. 인벤(보관함) 추가 + 큐 비움.
+            const handleWorkshopReceive = (buildingId) => {
+                const q = (campState.workshopQueue || {})[buildingId];
+                if (!q || !q.weaponId) return;
+                if ((Number(q.runsRemaining) || 0) > 0) return; // 아직 생산 중
+                const inv = campState.inventory;
+                if (!inv) return;
+                const ok = inv.addItem(q.weaponId);
+                if (!ok) {
+                    // 보관함 가득 — 수령 실패. 큐 유지 + 사용자에게 알림(현재는 단순 console).
+                    console.warn(`[handleWorkshopReceive] 보관함 가득. 무기 ${q.weaponId} 수령 보류.`);
+                    return;
+                }
+                setCampState(prev => {
+                    const queue = { ...(prev.workshopQueue || {}) };
+                    delete queue[buildingId];
+                    return { ...prev, workshopQueue: queue };
+                });
             };
 
             // 텐트 퀘스트 완료 알림 메시지 — App 레벨 토스트 대신 가벼운 모달.
@@ -10369,6 +10577,8 @@
                         }}
                         onResetData={handleResetData}
                         onInventoryChange={() => setCampState(prev => ({ ...prev }))}
+                        onWorkshopStart={handleWorkshopStart}
+                        onWorkshopReceive={handleWorkshopReceive}
                     />
                     {pendingTentModal && (
                         <TentQuestModal
