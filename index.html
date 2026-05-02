@@ -3134,12 +3134,20 @@
         // D-174: 단일 빌딩 단계 reward_passive를 키별 합산. 단계간 누적 X.
         //   id==='tent'면 단계당 camp_storage+7 (D-174 v3 — 폭 7 row 1줄).
         //   그 외는 시트 BUILDINGS reward_passive DSL 파싱.
+        // D-217 (2026-05-02 사용자 답): id==='watchtower'(도구작업대)도 텐트 패턴 — 단계별 +1 누적.
+        //   사용자 의도: stage1=+1, stage2=+2, stage3=+3 누적. 시트 stage1/2/3 모두 pack+1 단일값 박고
+        //   buildingBonuses는 단일값 반환 → allCampBonuses에서 lv 곱셈 누적.
+        //   D-174 정책(시트 누적값) 위반이지만 도구작업대만 특수 — 다른 빌딩(치료소/화덕 등)은 정책 그대로.
         function buildingBonuses(id, stage) {
             const lv = Number(stage) || 0;
             if (lv <= 0) return {};
             if (id === 'tent') {
                 // 텐트는 단계마다 camp_storage+7 (row 1줄) — TENT_LEVEL_DEFS 누적 = lv*7칸.
                 return { camp_storage: 7 };
+            }
+            if (id === 'watchtower') {
+                // D-217: 도구작업대 단계별 +1 누적 — 텐트 패턴. 단일값 반환, allCampBonuses에서 lv 곱셈.
+                return { pack: 1 };
             }
             const def = getBuildingDef(id, lv);
             if (!def) return {};
@@ -3170,6 +3178,14 @@
                 const lv = Number(stage) || 0;
                 if (lv <= 0) continue;
                 const b = buildingBonuses(id, lv);
+                if (id === 'watchtower') {
+                    // D-217 (2026-05-02): 도구작업대 단계별 +1 누적 — 텐트 패턴.
+                    //   buildingBonuses는 단일값(pack:1) 반환, 여기서 lv 곱셈으로 stage1=+1/stage2=+2/stage3=+3 누적.
+                    for (const [k, v] of Object.entries(b)) {
+                        out[k] = (out[k] || 0) + v * lv;
+                    }
+                    continue;
+                }
                 for (const [k, v] of Object.entries(b)) {
                     out[k] = (out[k] || 0) + v;
                 }
