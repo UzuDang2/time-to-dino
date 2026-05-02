@@ -910,12 +910,16 @@ window.TTD_DATA = {
       "stage": 1,
       "cost": [
         {
-          "material": "목재",
-          "count": 12
+          "material": "나뭇가지",
+          "count": 4
         },
         {
-          "material": "끈",
-          "count": 6
+          "material": "돌맹이",
+          "count": 4
+        },
+        {
+          "material": "줄기",
+          "count": 4
         }
       ],
       "effect_raw": "\"투박한 작업대 위에 두 번째 등급 재료를 다루는 길이 열린다.\"",
@@ -924,7 +928,7 @@ window.TTD_DATA = {
       "reward_passive": null,
       "products": null,
       "reward_one_shot": null,
-      "cost_raw": "목재 x12, 끈 x6"
+      "cost_raw": "나뭇가지 x4, 돌맹이 x4, 줄기 x4"
     },
     {
       "id": "workshop",
@@ -932,16 +936,16 @@ window.TTD_DATA = {
       "stage": 2,
       "cost": [
         {
-          "material": "목재",
-          "count": 20
+          "material": "나뭇가지",
+          "count": 6
         },
         {
-          "material": "석재",
-          "count": 10
+          "material": "돌맹이",
+          "count": 6
         },
         {
-          "material": "가죽",
-          "count": 5
+          "material": "줄기",
+          "count": 6
         }
       ],
       "effect_raw": "\"한 차례 다듬인 손이 세 번째 등급 재료까지 가닿는다.\"",
@@ -950,7 +954,7 @@ window.TTD_DATA = {
       "reward_passive": null,
       "products": null,
       "reward_one_shot": null,
-      "cost_raw": "목재 x20, 석재 x10, 가죽 x5"
+      "cost_raw": "나뭇가지 x6, 돌맹이 x6, 줄기 x6"
     },
     {
       "id": "workshop",
@@ -958,16 +962,16 @@ window.TTD_DATA = {
       "stage": 3,
       "cost": [
         {
-          "material": "석재",
-          "count": 20
+          "material": "나뭇가지",
+          "count": 8
         },
         {
-          "material": "금속",
-          "count": 10
+          "material": "돌맹이",
+          "count": 8
         },
         {
-          "material": "가죽",
-          "count": 10
+          "material": "줄기",
+          "count": 8
         }
       ],
       "effect_raw": "\"숯불 화덕과 모루까지 들였다. 가장 깊은 등급의 제작법까지 다룰 수 있다.\"",
@@ -976,7 +980,7 @@ window.TTD_DATA = {
       "reward_passive": null,
       "products": null,
       "reward_one_shot": null,
-      "cost_raw": "석재 x20, 금속 x10, 가죽 x10"
+      "cost_raw": "나뭇가지 x8, 돌맹이 x8, 줄기 x8"
     },
     {
       "id": "storage",
