@@ -5859,6 +5859,8 @@
             activeEvent,
             // D-188 (요한 시안 v2): 사냥감 슬롯=상단, 내 슬롯=하단, 확정 버튼=우 col 안.
             SLOT_COUNT, slots, phase, handleSlotClick, allFilled, onConfirm,
+            // D-225: 도망치기 버튼 — 손패 카드에서 분리, 확정 버튼 위 별도 버튼. 즉시 발동(success_rate 굴림).
+            onRunAway, runAwayPct, runAwayMsg,
         }) {
             const healthPct = Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100));
             const hungerPct = Math.max(0, Math.min(100, (playerHunger / Math.max(1, maxHunger)) * 100));
@@ -6092,6 +6094,30 @@
                             </div>
                             {/* 확정 + 나 박스 묶음 (bottom). */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {/* D-225: 도망치기 버튼 — 카드에서 분리, 확정 버튼 위. success_rate 굴려 즉시 outcome 'player_fled' 또는 실패 메시지. */}
+                                {phase === 'select' && onRunAway && typeof runAwayPct === 'number' && (
+                                    <button
+                                        onClick={onRunAway}
+                                        style={{
+                                            padding: '6px 10px',
+                                            background: 'rgba(0,0,0,0.45)',
+                                            color: '#e0a070',
+                                            border: '1px solid rgba(224,160,112,0.35)',
+                                            borderRadius: '8px',
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            cursor: 'pointer'
+                                        }}>
+                                        도망치기 ({runAwayPct}%)
+                                    </button>
+                                )}
+                                {/* 도망 실패 시 1.5s 메시지 노출 */}
+                                {runAwayMsg && (
+                                    <div style={{
+                                        padding: '4px 8px', fontSize: 11, color: '#e07a86',
+                                        background: 'rgba(0,0,0,0.5)', borderRadius: '6px', textAlign: 'center'
+                                    }}>{runAwayMsg}</div>
+                                )}
                                 {/* D-188: 확정 버튼 — 외부 모달 → BattleStage 우 col 안 나 박스 위로 이관. */}
                                 {(phase === 'select' || phase === 'resolve') && (
                                     <button
@@ -6300,7 +6326,28 @@
             // D-75: Level 2 prey는 4턴. Level 1은 기존 3턴.
             const SLOT_COUNT = Number(prey && prey.level) === 2 ? 4 : 3;
             const [slots, setSlots] = useState(() => Array(SLOT_COUNT).fill(null));
-            const [hand, setHand] = useState(() => CombatDeck.buildHuntDeck(combatCards, inventory));
+            // D-225 (2026-05-02 요한 지시): 도망치기 카드 분리 + 카드 정렬.
+            //   ① run_away는 손패 카드에서 빼고 BattleStage 확정 버튼 위 별도 [도망치기 (N%)] 버튼으로 — 즉시 발동.
+            //   ② 기본 카드(punch/dodge/crouch) 좌측 우선 정렬 → 그 외(무기 카드/shield_block 등) 그 다음.
+            //      ES2019+ stable sort 보장 — 같은 그룹 내에서는 deck 등장 순서 보존.
+            const BASIC_HAND_ORDER = ['punch', 'dodge', 'crouch'];
+            const [hand, setHand] = useState(() => {
+                const fullDeck = CombatDeck.buildHuntDeck(combatCards, inventory);
+                const handOnly = fullDeck.filter(c => c.id !== 'run_away');
+                return [...handOnly].sort((a, b) => {
+                    const ai = BASIC_HAND_ORDER.indexOf(a.id);
+                    const bi = BASIC_HAND_ORDER.indexOf(b.id);
+                    if (ai >= 0 && bi >= 0) return ai - bi;
+                    if (ai >= 0) return -1;
+                    if (bi >= 0) return 1;
+                    return 0;
+                });
+            });
+            // D-225: run_away 카드는 손패 분리 후 별도 추출. success_rate 표기에 사용.
+            const runAwayCard = React.useMemo(() => {
+                const fullDeck = CombatDeck.buildHuntDeck(combatCards, inventory);
+                return fullDeck.find(c => c.id === 'run_away') || null;
+            }, [combatCards, inventory]);
             const [phase, setPhase] = useState('select');     // 'select' | 'resolve' | 'done'
             const [logs, setLogs] = useState([]);             // 표시된 턴 로그
             const [result, setResult] = useState(null);
@@ -6507,6 +6554,28 @@
                 const isReusable = !!(card.infinite || card.slotLimit);
                 if (!isReusable) {
                     setHand([...hand, card]);
+                }
+            };
+
+            // D-225: 도망치기 — 카드 시스템 분리, 즉시 발동.
+            //   success_rate 굴림 → 성공 시 outcome 'player_fled'로 onResolve 호출(부모 Game).
+            //   실패 시 1.5s 메시지 표시 + 슬롯 미경유(재시도 가능). 게임 균형은 사용자 검증 후 조정.
+            const [runAwayMsg, setRunAwayMsg] = useState(null);
+            const handleRunAway = () => {
+                if (phase !== 'select' || !runAwayCard) return;
+                const successRate = Math.max(0, Math.min(100, Number(runAwayCard.success_rate) || 0));
+                if (Math.random() * 100 < successRate) {
+                    onResolve && onResolve({
+                        outcome: 'player_fled',
+                        turns: [],
+                        preyHpFinal: prey.hp,
+                        weaponUsage: {},
+                        armorUsage: {},
+                        playerDamageTaken: 0
+                    });
+                } else {
+                    setRunAwayMsg('도망치지 못했다.');
+                    setTimeout(() => setRunAwayMsg(null), 1500);
                 }
             };
 
@@ -6751,6 +6820,9 @@
                             handleSlotClick={handleSlotClick}
                             allFilled={allFilled}
                             onConfirm={handleConfirm}
+                            onRunAway={handleRunAway}
+                            runAwayPct={runAwayCard ? Number(runAwayCard.success_rate) || 0 : null}
+                            runAwayMsg={runAwayMsg}
                         />
 
                         {/* D-183: 결과 배너 → 별도 팝업(z-index 1800)으로 분리. BattleStage 시원하게 늘릴 자리 확보. */}
