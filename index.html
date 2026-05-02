@@ -7024,9 +7024,14 @@
                             //   무기 카드(stab_weapon+throw_spear, chipped_stone_strike+chipped_stone_throw 등) 같은 무기끼리 stack.
                             // D-226-fix (2026-05-02 요한 정정): stack layer 순서 반전 + offset 확장.
                             //   ① 첫 카드(i=0)가 가장 앞(zIndex 높음, column 아래쪽 위치). 후속 카드는 뒤로 빠지면서 헤더(카드명+스탯)만 보임.
-                            //   ② STACK_OFFSET 15 → 30 — 카드 위쪽 30px가 카드명+4 스탯 배지 영역이라 후속 카드의 그 부분만 노출.
+                            //   ② STACK_OFFSET — 카드 위쪽이 카드명+4 스탯 배지 영역. 후속 카드의 그 부분 노출.
                             //   ③ 사용자 인지: "창던지기(i=1)가 창찌르기(i=0)에 가려져있다" → 본체 보이는 카드가 i=0이 의도. layer 반전 후 일치.
-                            const STACK_OFFSET_PX = 30;
+                            // D-226-fix2 (2026-05-02 요한 정정): A+B+C 안 적용.
+                            //   A. column z-index 좌측 우선 → 우측 우선 반전 — 우측 카드 본체 보임, 좌측 카드는 우측 가장자리만 가려짐.
+                            //      → 카드 좌상단 stat 배지 모두 보임(가림 해소).
+                            //   B. STACK_OFFSET 30 → 40 — 후속 카드 헤더(카드명+스탯) 더 잘 보이게.
+                            //   C. column overlap 16 → 10 — 16은 살짝 과해 카드 외곽선 흐림.
+                            const STACK_OFFSET_PX = 40;
                             const CARD_HEIGHT_PX = 128; // 86 × 210/141 ≈ 128
                             const stackGroups = (() => {
                                 const groups = [];
@@ -7051,14 +7056,16 @@
                                         </div>
                                     ) : (
                                         <>
-                                            {/* D-226: stack column 정렬 — 무덤은 우측 absolute로 분리. */}
-                                            <div className="hunt-hand-stacks" style={{ width: '100%', maxWidth: 520 }}>
+                                            {/* D-226: stack column 정렬 — 무덤은 우측 absolute로 분리.
+                                                D-226-fix2: 좌우 전체 max-width 520 → 460 축소. */}
+                                            <div className="hunt-hand-stacks" style={{ width: '100%', maxWidth: 460 }}>
                                                 {stackGroups.map((g, groupIdx) => {
                                                     const colHeight = CARD_HEIGHT_PX + (g.cards.length - 1) * STACK_OFFSET_PX;
-                                                    // D-226-fix: column 간 좌우 겹침 시 좌측 column이 위 layer — 좌측 우선 z 순서.
+                                                    // D-226-fix2: column z-index 우측 우선 — 우측 카드가 위 layer.
+                                                    //   좌측 카드는 우측 가장자리(빈 공간/본문)만 가려짐. 우측 카드 좌상단 stat 배지 보존.
                                                     return (
                                                         <div className="hunt-hand-stack-column" key={g.key}
-                                                             style={{ height: `${colHeight}px`, zIndex: stackGroups.length - groupIdx }}>
+                                                             style={{ height: `${colHeight}px`, zIndex: groupIdx + 1 }}>
                                                             {g.cards.map((m, i) => {
                                                                 const isExpanded = hoveredCardUid === m.card.uid;
                                                                 // D-226-fix: i=0(첫 카드) column 아래쪽 + 가장 앞 layer. 후속 카드(i>0) 위로 빠지며 뒤 layer.

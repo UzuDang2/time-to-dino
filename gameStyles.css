@@ -1118,8 +1118,9 @@ button:disabled {
     /* z-index는 JSX inline style에서 지정 (좌측 우선). */
 }
 .hunt-hand-stack-column + .hunt-hand-stack-column {
-    /* D-226-fix: 두 번째 이후 column은 좌측 column에 겹쳐들어감. 카드 폭 86의 ~19% overlap. */
-    margin-left: -16px;
+    /* D-226-fix: 두 번째 이후 column은 좌측 column에 겹쳐들어감.
+       D-226-fix2: -16 → -10 (16은 살짝 과해 카드 외곽선 흐림. 카드 폭 86의 ~12% overlap). */
+    margin-left: -10px;
 }
 .hunt-hand-stack-card {
     position: absolute;
