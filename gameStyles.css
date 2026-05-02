@@ -1104,7 +1104,9 @@ button:disabled {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    gap: 8px;
+    /* D-226-fix: column 간 좌우 겹침 — gap 음수는 flex 미지원이라 margin-left negative로 처리(첫 column 제외).
+       좌측 column이 z 위(JSX inline style로 stackGroups.length-groupIdx) → 좌측이 우측 위에 살짝 겹침. */
+    gap: 0;
     width: 100%;
     margin: 0 auto;
     padding: 30px 0 6px;
@@ -1113,6 +1115,11 @@ button:disabled {
     position: relative;
     width: 86px;
     flex-shrink: 0;
+    /* z-index는 JSX inline style에서 지정 (좌측 우선). */
+}
+.hunt-hand-stack-column + .hunt-hand-stack-column {
+    /* D-226-fix: 두 번째 이후 column은 좌측 column에 겹쳐들어감. 카드 폭 86의 ~19% overlap. */
+    margin-left: -16px;
 }
 .hunt-hand-stack-card {
     position: absolute;
