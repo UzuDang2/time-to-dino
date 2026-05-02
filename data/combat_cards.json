@@ -28,7 +28,7 @@
   {
     "id": "stab_weapon",
     "name": "창으로 찌르기",
-    "damage": 4,
+    "damage": 3,
     "success_rate": 100,
     "requirement": "나무창",
     "count": 1,
