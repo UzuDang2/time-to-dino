@@ -3306,7 +3306,7 @@
         //      ※ wood_skewer는 combos.json 미존재라 사문화 — 향후 합성법 추가 시 자동 무료(화이트리스트 명시).
         const RECIPE_UNLOCK_WHITELIST = new Set(['chipped_stone', 'wood_skewer']);
         const WORKSHOP_TIER_BY_STAGE = { 0: 1, 1: 2, 2: 3, 3: 4 };
-        const RECIPE_LEARN_COST_MULTIPLIER = 2; // ingredients × 2 (학습세)
+        const RECIPE_LEARN_COST_MULTIPLIER = 4; // ingredients × 4 (학습세 — D-228-B 사용자 정정, 이전 ×2)
 
         // 레시피 잠금 등급 산출 — 가장 높은 ingredient grade.
         //   1 = 자동 unlock(1등급 재료만), 2+ = 작업대 stage 풀 필요.
@@ -4646,7 +4646,7 @@
         //   - locked: "추후 공개" 안내.
         //   - tent: 현재 레벨 + 다음 레벨 퀘스트(요구재료 + 보상). [받기]/[완수].
         //   - sheet: 시트 빌딩 6종. 다음 stage cost(한글 자원) 카운트 + 4종 보상 표시. [완수](재료 충족 시 즉시).
-        function BuildingDetailModal({ building, campState, activeQuests, completedQuests, onClose, onTakeQuest, onCompleteQuest, onWorkshopStart, onWorkshopReceive }) {
+        function BuildingDetailModal({ building, campState, activeQuests, completedQuests, onClose, onTakeQuest, onCompleteQuest, onWorkshopStart, onWorkshopReceive, onLearnRecipe }) {
             if (!building) return null;
             const cardStyle = {
                 background: '#1a1a2e',
@@ -4729,6 +4729,87 @@
                                     {headerName} <span style={{ color: '#d4b84a' }}>Lv.{curStage}/{maxStage}</span>
                                 </div>
                             </div>
+                            {/* D-228-B (2026-05-02): 작업대(workshop) 레시피 학습 박스 — stage>=1.
+                                풀 등급 표시 + 학습 가능 레시피 목록(stage 풀 안 + 미학습) + 학습됨 섹션. */}
+                            {building.id === 'workshop' && curStage >= 1 && (() => {
+                                const combos = (window.TTD_DATA && window.TTD_DATA.COMBOS) || [];
+                                const poolMaxTier = WORKSHOP_TIER_BY_STAGE[curStage] || 1;
+                                const learnable = combos.filter(c => c && c.result && isRecipeLearnable(c, curStage, campState));
+                                const learnedIds = new Set((campState && campState.learnedRecipes) || []);
+                                const learnedList = combos.filter(c => c && c.result && learnedIds.has(c.result));
+                                const renderCostText = (recipe) => {
+                                    const cost = getRecipeLearnCost(recipe);
+                                    return Object.entries(cost).map(([type, n]) => {
+                                        const d = InventorySystem.resolveDef(type) || {};
+                                        return `${d.name || type} ${n}`;
+                                    }).join(', ');
+                                };
+                                return (
+                                    <div style={{
+                                        background: 'rgba(0,0,0,0.25)',
+                                        padding: '12px 14px',
+                                        borderRadius: '6px',
+                                        marginBottom: '12px',
+                                        fontSize: '13px',
+                                        lineHeight: 1.5,
+                                        maxHeight: '40vh',
+                                        overflowY: 'auto'
+                                    }}>
+                                        <div style={{ color: '#d4b84a', fontWeight: 700, fontSize: '12px', marginBottom: '6px' }}>
+                                            📚 학습 가능: 등급 ≤ {poolMaxTier}
+                                        </div>
+                                        {learnable.length === 0 ? (
+                                            <div style={{ color: '#888', fontSize: '11px', marginBottom: '6px' }}>이 풀에서 학습 가능한 레시피가 없다.</div>
+                                        ) : (
+                                            learnable.map(r => {
+                                                const wdef = InventorySystem.resolveDef(r.result) || {};
+                                                const can = canAffordRecipeLearn(r, inv);
+                                                return (
+                                                    <div
+                                                        key={r.result}
+                                                        onClick={() => can && onLearnRecipe && onLearnRecipe(r.result)}
+                                                        style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            padding: '6px 8px',
+                                                            marginBottom: '4px',
+                                                            background: can ? 'rgba(76,175,80,0.12)' : 'rgba(255,255,255,0.04)',
+                                                            border: `1px solid ${can ? '#4CAF50' : '#444'}`,
+                                                            borderRadius: '6px',
+                                                            cursor: can ? 'pointer' : 'not-allowed',
+                                                            opacity: can ? 1 : 0.55
+                                                        }}>
+                                                        <span style={{ fontSize: '12px', color: can ? '#fff' : '#999' }}>{wdef.name || r.result}</span>
+                                                        <span style={{ fontSize: '10px', color: can ? '#8bd17c' : '#888' }}>{renderCostText(r)}</span>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                        {learnedList.length > 0 && (
+                                            <div style={{ marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '8px' }}>
+                                                <div style={{ color: '#8bd17c', fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>
+                                                    ✅ 학습됨 ({learnedList.length})
+                                                </div>
+                                                {learnedList.map(r => {
+                                                    const wdef = InventorySystem.resolveDef(r.result) || {};
+                                                    return (
+                                                        <div key={r.result} style={{
+                                                            padding: '4px 8px', marginBottom: '2px',
+                                                            background: 'rgba(255,255,255,0.04)',
+                                                            borderRadius: '6px',
+                                                            fontSize: '11px',
+                                                            color: '#888'
+                                                        }}>
+                                                            {wdef.name || r.result}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                             {/* D-227 (2026-05-02): 무기 제작소(storage) 생산 슬롯 — stage>=1 + WORKSHOP_RECIPES에 등록된 빌딩만.
                                 슬롯 1개. 빈 슬롯 → 제작 가능 무기 목록(stage 누적 unlock). 생산 중 → "탐험 N/2". 수령 가능 → [수령]. */}
                             {WORKSHOP_RECIPES[building.id] && curStage >= 1 && (() => {
@@ -5003,7 +5084,7 @@
         //   상단: 점수 → [보관함] 버튼 → [퀘스트 목록] → [현재 진행 중 퀘스트] → 건설.
         //   하단: [물건 챙기기] [탐험 떠나기] 두 버튼.
         // D-168: 빌딩 그리드 추가 — 보관함 버튼 아래.
-        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange, onWorkshopStart, onWorkshopReceive }) {
+        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange, onWorkshopStart, onWorkshopReceive, onLearnRecipe }) {
             const [resetOpen, setResetOpen] = React.useState(false);
             const [storageOpen, setStorageOpen] = React.useState(false);
             const [packOpen, setPackOpen] = React.useState(false);
@@ -5406,6 +5487,7 @@
                             onCompleteQuest={onCompleteQuest}
                             onWorkshopStart={onWorkshopStart}
                             onWorkshopReceive={onWorkshopReceive}
+                            onLearnRecipe={onLearnRecipe}
                         />
                     )}
 
@@ -10428,6 +10510,14 @@
                 }));
             };
 
+            // D-228-B (2026-05-02): 머지 lock 게이트 — InventorySystem.recipeLockGate 콜백을 campState 변경 시마다 갱신.
+            //   잠긴 레시피는 inventory.js의 lookupCombo에서 null 반환 → 자동 머지 거부.
+            //   합성 패널(findRecipesContainingAny)은 별도 — UI에서 회색 처리(후속).
+            React.useEffect(() => {
+                InventorySystem.recipeLockGate = (recipe) => isRecipeUnlocked(recipe, campState);
+                return () => { InventorySystem.recipeLockGate = null; };
+            }, [campState]);
+
             // D-228 (2026-05-02 요한 지시): 작업대(workshop) 레시피 학습 — 잠긴 레시피 → 비용 차감 → learnedRecipes 추가.
             //   isRecipeLearnable 가드(작업대 stage 풀 안 + 미학습 + 보유 가능). 가드 통과 후 cost(getRecipeLearnCost) 차감.
             const handleLearnRecipe = (recipeResultId) => {
@@ -10695,6 +10785,7 @@
                         onInventoryChange={() => setCampState(prev => ({ ...prev }))}
                         onWorkshopStart={handleWorkshopStart}
                         onWorkshopReceive={handleWorkshopReceive}
+                        onLearnRecipe={handleLearnRecipe}
                     />
                     {pendingTentModal && (
                         <TentQuestModal

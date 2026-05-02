@@ -277,6 +277,11 @@ class InventorySystem {
     // 두 아이템의 2종 조합 레시피 조회 (TTD_DATA.COMBOS 전역 리스트).
     // ingredients 순서 무관 비교. **2종 레시피만** 매칭 — 3종은 합성 패널 경유.
     // (D-24 자동 조합 경로에서 쓰던 API. 현재는 fallback 용으로만 유지.)
+    // D-228 (2026-05-02): 머지 lock 게이트 — index.html에서 isRecipeUnlocked 콜백 등록.
+    //   `InventorySystem.recipeLockGate = (recipe) => bool` 형태. lookupCombo 결과가 잠긴 레시피면 null 반환 → 자동 머지 거부.
+    //   useEffect로 campState 변경 시 갱신. 콜백 미등록(null) 시 게이트 통과(기본 동작 유지) — backward compat.
+    static recipeLockGate = null;
+
     static lookupCombo(typeA, typeB) {
         const bundle = InventorySystem._combosBundle();
         const target = [typeA, typeB].sort();
@@ -285,6 +290,11 @@ class InventorySystem {
             if (recipe.ingredients.length !== 2) continue;
             const sorted = [...recipe.ingredients].sort();
             if (sorted[0] === target[0] && sorted[1] === target[1]) {
+                // D-228: lock 게이트 — 잠긴 레시피면 null 반환(자동 머지 거부).
+                if (typeof InventorySystem.recipeLockGate === 'function'
+                    && !InventorySystem.recipeLockGate(recipe)) {
+                    return null;
+                }
                 return recipe.result;
             }
         }
