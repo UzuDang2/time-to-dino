@@ -6393,11 +6393,25 @@
                 }
                 const remain = { ...weaponCap };
                 return slots.map(card => {
-                    if (!card || !card.weaponId) return null;
-                    const before = remain[card.weaponId] || 0;
-                    const loss = (card.full_loss === 'Y' || card.fullLoss === true) ? before : 1;
-                    const after = Math.max(0, before - loss);
-                    remain[card.weaponId] = after;
+                    if (!card) return null;
+                    // D-221: 카드의 모든 무기 내구도를 동시에 차감해야 슬롯 노출 시각 정확.
+                    //   배열이 비어있으면 무기 없는 카드(주먹/회피 등) — null 반환.
+                    const wids = (Array.isArray(card.weaponIds) && card.weaponIds.length > 0)
+                        ? card.weaponIds
+                        : (card.weaponId ? [card.weaponId] : []);
+                    if (wids.length === 0) return null;
+                    const loss = (card.full_loss === 'Y' || card.fullLoss === true) ? Infinity : 1;
+                    // 슬롯 시각 표시는 첫 무기(주무기) 기준 — before/after 한 쌍.
+                    //   다중 무기 카드는 모든 무기가 동시 차감되니 한쪽 기준만 보여도 의미 통함.
+                    const primary = wids[0];
+                    const before = remain[primary] || 0;
+                    const dec = (loss === Infinity) ? before : 1;
+                    const after = Math.max(0, before - dec);
+                    for (const wid of wids) {
+                        const b = remain[wid] || 0;
+                        const d = (loss === Infinity) ? b : 1;
+                        remain[wid] = Math.max(0, b - d);
+                    }
                     return { before, after };
                 });
             }, [slots, inventory]);
@@ -6474,14 +6488,21 @@
                 const weaponState = {};
                 const seenWeaponIds = new Set();
                 for (const c of slots) {
-                    if (!c || !c.weaponId || seenWeaponIds.has(c.weaponId)) continue;
-                    seenWeaponIds.add(c.weaponId);
-                    // inventory에서 해당 type의 아이템 중 durabilityLeft 최댓값 사용.
-                    const items = (inventory && inventory.items) || [];
-                    const instances = items.filter(it => it.type === c.weaponId);
-                    const total = instances.reduce((s, it) =>
-                        s + (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0), 0);
-                    weaponState[c.weaponId] = { durabilityLeft: total };
+                    if (!c) continue;
+                    // D-221: 카드의 weaponIds 배열 모두에 대해 weaponState 등록 (활/화살묶음 동시 추적).
+                    const wids = (Array.isArray(c.weaponIds) && c.weaponIds.length > 0)
+                        ? c.weaponIds
+                        : (c.weaponId ? [c.weaponId] : []);
+                    for (const wid of wids) {
+                        if (seenWeaponIds.has(wid)) continue;
+                        seenWeaponIds.add(wid);
+                        // inventory에서 해당 type의 아이템 중 durabilityLeft 합 사용.
+                        const items = (inventory && inventory.items) || [];
+                        const instances = items.filter(it => it.type === wid);
+                        const total = instances.reduce((s, it) =>
+                            s + (typeof it.durabilityLeft === 'number' ? it.durabilityLeft : 0), 0);
+                        weaponState[wid] = { durabilityLeft: total };
+                    }
                 }
                 // D-150: armorState — 인벤 모든 방어구(shield/armor) 인스턴스별 잔여 durability.
                 //   item.id를 키로 인스턴스 단위 추적(동일 type 여러 개 보유 가능).

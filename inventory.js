@@ -127,6 +127,14 @@ class InventorySystem {
         // D-99 신규: 뗀석기 — 1x1 원시 무기. stone×3 합성. 뗀석기 카드 2종 사용 조건.
         chipped_stone: { name: '뗀석기', shape: [[1, 1]], grade: 1, mergeable: false, category: '무기' },
 
+        // D-221 (2026-05-02): 활/화살묶음 신규 무기. 화살쏘기 카드 require="조잡한 활 + 조잡한 화살묶음".
+        //   bow: 2x1 1단계 무기. branch×3 + plant_fiber×2 합성. 내구도 10.
+        //   arrow_bundle: 2x1 1단계 무기 카테고리(편의상 무기로 등록 — 카드 require에 동시 매칭 필요).
+        //     branch×1 + stem×1 + feather×1 합성. 내구도 5(=화살 5발).
+        //   화살쏘기 사용 시 양쪽 내구도 -1 (combatDeck.js owningWeaponIds 배열 확장 D-221).
+        bow:          { name: '조잡한 활',         shape: [[1, 1]], grade: 1, mergeable: false, category: '무기' },
+        arrow_bundle: { name: '조잡한 화살묶음',   shape: [[1, 1]], grade: 1, mergeable: false, category: '무기' },
+
         // === D-72 방어구 5종 (2026-04-24) ===
         //   shape 1x1 고정, mergeable=false. category는 type과 동일('shield' | 'armor').
         //   런타임 TTD_DATA.ARMORS가 defense/name/size/grade 등을 덮어씀.

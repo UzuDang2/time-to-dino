@@ -193,5 +193,23 @@
       "giant_bait"
     ],
     "result": "grilled_giant_bait"
+  },
+  {
+    "ingredients": [
+      "branch",
+      "branch",
+      "branch",
+      "plant_fiber",
+      "plant_fiber"
+    ],
+    "result": "bow"
+  },
+  {
+    "ingredients": [
+      "branch",
+      "stem",
+      "feather"
+    ],
+    "result": "arrow_bundle"
   }
 ]

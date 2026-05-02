@@ -141,5 +141,18 @@
     "defense": "",
     "evade": "",
     "loss_chance": ""
+  },
+  {
+    "id": "bow_shot",
+    "name": "화살쏘기",
+    "damage": 3,
+    "success_rate": 100,
+    "requirement": "조잡한 활 + 조잡한 화살묶음",
+    "count": 1,
+    "accuracy": 2,
+    "full_loss": "N",
+    "defense": null,
+    "evade": null,
+    "loss_chance": null
   }
 ]

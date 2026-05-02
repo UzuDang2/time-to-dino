@@ -162,16 +162,19 @@
 
             // D-106: 카드 자체 accuracy만 사용 (무기 accuracy 컬럼 제거됨).
             //   weaponId 추적은 D-51 내구도 차감을 위해 유지.
+            // D-221 (2026-05-02): owningWeaponId 단일 → weaponIds 배열 확장. require에 무기 여러 개 명시 가능.
+            //   예: 화살쏘기 require="조잡한 활 + 조잡한 화살묶음" → weaponIds=['bow', 'arrow_bundle'].
+            //   사용 시 모든 무기 내구도 차감. backward compat 위해 weaponId(=weaponIds[0])도 유지.
             const totalAccuracy = Number(card.accuracy) || 0;
-            let owningWeaponId = null;
+            const ownedWeaponIds = [];
             for (const r of reqs) {
                 if (CATEGORY_REQ_TOKENS.has(r)) continue;
                 const wdef = weaponByName[r];
-                if (wdef) {
-                    owningWeaponId = owningWeaponId || wdef.id;
-                    break;
+                if (wdef && !ownedWeaponIds.includes(wdef.id)) {
+                    ownedWeaponIds.push(wdef.id);
                 }
             }
+            const owningWeaponId = ownedWeaponIds[0] || null;
 
             // D-73 / D-143 / D-146: 모든 방어카드(cardDefense > 0)는 인벤 방어구(shield+armor) 합산.
             //   D-146 (요한 정정): +1 추가 보너스 제거. 잎사귀(1) + 웅크리기(card 1) = 2 방어.
@@ -189,7 +192,8 @@
                 accuracy: totalAccuracy,
                 defense: finalDefense,
                 slotLimit,
-                weaponId: owningWeaponId,               // null이면 무기 아닌 카드(돌던지기 등)
+                weaponId: owningWeaponId,               // null이면 무기 아닌 카드(돌던지기 등). backward compat — D-221 이전 코드 호환.
+                weaponIds: ownedWeaponIds,              // D-221: 모든 무기 id 배열 — 화살쏘기 등 require에 무기 여러 개 명시한 카드.
                 uid: `combat:${card.id}:${idx++}`
             });
         }
@@ -391,9 +395,16 @@
             if (cardDefense > 0) recordArmorUseAll();
 
             // D-51 auto-fail: 무기 요구 카드인데 무기 재고가 0이면 시도조차 하지 않음.
-            if (card.weaponId) {
-                const ws = weaponState[card.weaponId];
-                if (!ws || ws.durabilityLeft <= 0) {
+            // D-221: weaponIds 배열 — 무기 여러 개 require하는 카드(화살쏘기)는 어느 하나라도 0이면 fail.
+            const cardWeaponIds = (Array.isArray(card.weaponIds) && card.weaponIds.length > 0)
+                ? card.weaponIds
+                : (card.weaponId ? [card.weaponId] : []);
+            if (cardWeaponIds.length > 0) {
+                const anyMissing = cardWeaponIds.some(wid => {
+                    const ws = weaponState[wid];
+                    return !ws || ws.durabilityLeft <= 0;
+                });
+                if (anyMissing) {
                     const dmgTaken = takeDamageThisTurn();
                     turns.push({
                         turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
@@ -431,11 +442,12 @@
                 // 공격 실행 자체는 성공 — 무기 사용 카운트(명중/회피 무관).
                 // D-97 (2026-04-25 요한 지시): full_loss="Y" 100% 손실 외, loss_chance(0~100)
                 //   확률 손실도 지원. throw_spear는 50% 확률로 창을 잃는다.
-                if (card.weaponId) {
+                // D-221: weaponIds 배열 — 모든 무기에 내구도 차감 적용 (활/화살묶음 동시 -1).
+                if (cardWeaponIds.length > 0) {
                     const fullLoss = String(card.full_loss || '').toUpperCase() === 'Y';
                     const lossChance = Math.max(0, Math.min(100, Number(card.loss_chance) || 0));
                     const probLoss = !fullLoss && lossChance > 0 && (Math.random() * 100 < lossChance);
-                    recordWeaponUse(card.weaponId, fullLoss || probLoss);
+                    for (const wid of cardWeaponIds) recordWeaponUse(wid, fullLoss || probLoss);
                 }
 
                 if (!preyEvaded) {
