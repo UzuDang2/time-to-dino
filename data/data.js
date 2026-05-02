@@ -2357,6 +2357,24 @@ window.TTD_DATA = {
       "merge_result": null,
       "merge_enabled": false,
       "effect": null
+    },
+    {
+      "id": "feather",
+      "name": "깃털",
+      "이름": "깃털",
+      "카테고리": "재료",
+      "재료 타입": "동물재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "가볍고 끝이 부드러운 깃털. 화살을 만드는 데 쓴다.",
+      "효과 요약": null,
+      "사용 효과": null,
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": null
     }
   ],
   "WEAPONS": [

@@ -7154,24 +7154,25 @@
         //   각 항목 독립 chance — 한 prey에 여러 추가 보상이 동시에 떨어질 수 있음.
         //   시트 SSOT 외 코드 매핑: 시트 스키마 변경 없이 빠른 적용 — 추후 prey.json `extra_drops_raw` 컬럼 신설 시 마이그레이션.
         // D-218 (2026-05-02 요한 정정): 3등급 보상(동물별 특징 소재) 확률 20 → 10%로 하향. 2등급(큰가죽) 40% 유지.
+        // D-220 (2026-05-02 요한): 새 종류 prey(bird/turkey)에 깃털 50% 독립 굴림 추가. 가죽/큰가죽/특징과 별개 entry로 동시 가능.
         const PREY_EXTRA_DROPS = {
-            // Level 1 — 가죽 50% 공통
+            // Level 1 — 가죽 50% 공통 (bird만 깃털 50% 추가, D-220)
             rabbit:      [{ item: 'leather',         count: 1, chance: 0.5 }],
             mouse:       [{ item: 'leather',         count: 1, chance: 0.5 }],
             squirrel:    [{ item: 'leather',         count: 1, chance: 0.5 }],
-            bird:        [{ item: 'leather',         count: 1, chance: 0.5 }],
+            bird:        [{ item: 'leather',         count: 1, chance: 0.5 }, { item: 'feather',          count: 1, chance: 0.5 }],
             salamander:  [{ item: 'leather',         count: 1, chance: 0.5 }],
             snake:       [{ item: 'leather',         count: 1, chance: 0.5 }],
             frog:        [{ item: 'leather',         count: 1, chance: 0.5 }],
             crab:        [{ item: 'leather',         count: 1, chance: 0.5 }],
             grasshopper: [{ item: 'leather',         count: 1, chance: 0.5 }],
-            // Level 2 — 큰가죽 40% + 동물별 특징 소재 10% (D-218 정정, 이전 20%)
+            // Level 2 — 큰가죽 40% + 동물별 특징 소재 10% (D-218 정정, 이전 20%). turkey는 추가로 깃털 50%(D-220).
             boar:        [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'boar_tusk',         count: 1, chance: 0.1 }],
             dinosaur:    [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'dino_scale',        count: 1, chance: 0.1 }],
             deer:        [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'deer_antler',       count: 1, chance: 0.1 }],
             badger:      [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'badger_claw',       count: 1, chance: 0.1 }],
             fox:         [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'fox_tail',          count: 1, chance: 0.1 }],
-            turkey:      [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'large_feather',     count: 1, chance: 0.1 }],
+            turkey:      [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'large_feather',     count: 1, chance: 0.1 }, { item: 'feather', count: 1, chance: 0.5 }],
             armadillo:   [{ item: 'big_leather',     count: 1, chance: 0.4 }, { item: 'armadillo_shell',   count: 1, chance: 0.1 }]
         };
         // 추가 보상 굴리기 — chance 미달 항목은 제외, 통과 항목만 [{item, count}] 배열로 반환.
