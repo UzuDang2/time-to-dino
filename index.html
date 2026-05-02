@@ -5510,10 +5510,30 @@
                             ...activeQuests.map(q => q.id),
                             ...completedQuests.map(q => q.id)
                         ]);
-                        // D-168: 다음 텐트 레벨 1종만.
+                        // D-168: 다음 텐트 레벨 1종.
                         const curTentLv = Number((campState && (campState.tentLevel != null ? campState.tentLevel : (campState.tentBuilt ? 1 : 0))) || 0);
                         const nextTent = getNextTentQuest(curTentLv);
-                        const available = (nextTent && !taken.has(nextTent.id)) ? [nextTent] : [];
+                        const available = [];
+                        if (nextTent && !taken.has(nextTent.id)) available.push({ ...nextTent, kind: 'tent' });
+                        // D-230 (2026-05-02 hotfix): 빌딩 6종 다음 단계도 available에 추가 — D-154/D-168 모달이 텐트 전용으로 좁게 짜여
+                        //   빌딩 quest 시스템(D-174~D-177) 도입 후도 표시 안 되던 버그.
+                        //   buildingLevels 기준 currentStage → getNextBuildingStage로 nextDef. 'bld_<id>_<stage>' id로 taken 체크.
+                        const buildingIds = Object.keys(BUILDING_ICON).filter(id => id !== 'tent');
+                        for (const bId of buildingIds) {
+                            const curStage = Number((campState.buildingLevels || {})[bId]) || 0;
+                            const nextBDef = getNextBuildingStage(bId, curStage);
+                            if (!nextBDef) continue;
+                            const buildingQuestId = `bld_${bId}_${nextBDef.stage}`;
+                            if (taken.has(buildingQuestId)) continue;
+                            available.push({
+                                id: buildingQuestId,
+                                name: nextBDef.name,
+                                icon: BUILDING_ICON[bId] || '🏗️',
+                                stage: nextBDef.stage,
+                                kind: 'building',
+                                buildingId: bId
+                            });
+                        }
                         const rowStyle = {
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -5572,7 +5592,12 @@
                                                 key={`avail:${def.id}`}
                                                 onClick={() => {
                                                     setQuestListOpen(false);
-                                                    setOfferQuestId(def.id);
+                                                    // D-230: 빌딩 quest는 BuildingDetailModal로 — [받기] 버튼 누를 수 있음.
+                                                    if (def.kind === 'building') {
+                                                        setSelectedBuilding({ id: def.buildingId, kind: 'sheet' });
+                                                    } else {
+                                                        setOfferQuestId(def.id);
+                                                    }
                                                 }}
                                                 style={rowStyle}
                                             >
@@ -5583,14 +5608,35 @@
                                             </div>
                                         ))}
                                         {activeQuests.map(quest => {
-                                            const def = getTentQuestDef(quest.id);
+                                            // D-230: 빌딩 quest('bld_<id>_<stage>') 패턴 인식 + BUILDING_ICON 매핑.
+                                            //   기존엔 getTentQuestDef만 사용 → 빌딩 active quest 모두 def null로 행 누락 버그.
+                                            let def = null;
+                                            let isBuilding = false;
+                                            let buildingId = null;
+                                            if (typeof quest.id === 'string' && quest.id.startsWith('bld_')) {
+                                                const m = quest.id.match(/^bld_([a-z_]+)_(\d+)$/);
+                                                if (m) {
+                                                    const bDef = getBuildingDef(m[1], Number(m[2]));
+                                                    if (bDef) {
+                                                        def = { name: bDef.name, icon: BUILDING_ICON[m[1]] || '🏗️' };
+                                                        isBuilding = true;
+                                                        buildingId = m[1];
+                                                    }
+                                                }
+                                            } else {
+                                                def = getTentQuestDef(quest.id);
+                                            }
                                             if (!def) return null;
                                             return (
                                                 <div
                                                     key={quest.id}
                                                     onClick={() => {
                                                         setQuestListOpen(false);
-                                                        setActiveDetailQuestId(quest.id);
+                                                        if (isBuilding && buildingId) {
+                                                            setSelectedBuilding({ id: buildingId, kind: 'sheet' });
+                                                        } else {
+                                                            setActiveDetailQuestId(quest.id);
+                                                        }
                                                     }}
                                                     style={rowStyle}
                                                 >
