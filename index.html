@@ -7018,22 +7018,28 @@
                             });
                             const active = cardMeta.filter(m => !m.exhausted);
                             const discarded = cardMeta.filter(m => m.exhausted);
-                            // D-180: 부채꼴 각도 완화 — 카드 기울기가 너무 심해 가독성/이쁨 저하.
-                            //   step 8→4° (절반), x 간격은 살짝 늘려 옆으로 더 펴짐(겹침 감소).
-                            //   yOffset도 약하게(parabolic 계수 6→3).
-                            const N = active.length;
-                            // D-190: 부채꼴 각도 살짝 덜 둥글게 — step 4°→3°, max angular range 14/N.
-                            //   N=4: 양 끝 ±4.5° (전: ±6°). N=5: ±6° (전: ±7.2°). 좀 더 평평한 부채.
-                            const step = N > 1 ? Math.min(3, 14 / N) : 0;
-                            // D-189/D-190: xStep 동적. 카드 사이즈 120→108로 줄어 base 144→132.
-                            //   max 펼침 64→76 (간격 더 넓힘). min 8 floor 그대로.
-                            const fanContainerWidth = (typeof window !== 'undefined')
-                                ? Math.min(window.innerWidth - 24, 520) : 480;
-                            const xStep = N > 1
-                                ? Math.min(76, Math.max(8, (fanContainerWidth - 132) / (N - 1)))
-                                : 0;
-                            // D-181: 손패 viewport 하단 fixed wrapper — 카드 절반 viewport 밖.
-                            //   "내 손패" 라벨 제거(레퍼 이미지 단순함). 빈 상태도 fixed 영역에 안내.
+                            // D-226 (2026-05-02 요한 지시): 부채꼴(D-179/D-188/D-190) 폐기 → 같은 무기 require 카드 column 단위 stack.
+                            //   그룹 키 = card.weaponId(같은 무기 카드 한 column에 stack) || card.id(비무기 카드는 각자 단독 column).
+                            //   같은 column 내 카드는 위로 -15px씩 어긋나게(첫 카드 아래 깔림, 후속 카드 위 stack).
+                            //   D-225 손패 정렬(BASIC 좌측 우선)이 그룹 등장 순서로 그대로 반영 — punch/dodge/crouch 좌측 단독 column,
+                            //   무기 카드(stab_weapon+throw_spear, chipped_stone_strike+chipped_stone_throw 등) 같은 무기끼리 stack.
+                            const STACK_OFFSET_PX = 15;
+                            const CARD_HEIGHT_PX = 128; // 86 × 210/141 ≈ 128
+                            const stackGroups = (() => {
+                                const groups = [];
+                                const map = new Map();
+                                for (const m of active) {
+                                    const key = m.card.weaponId || m.card.id;
+                                    if (!map.has(key)) {
+                                        const g = { key, cards: [] };
+                                        map.set(key, g);
+                                        groups.push(g);
+                                    }
+                                    map.get(key).cards.push(m);
+                                }
+                                return groups;
+                            })();
+                            // D-181: 손패 viewport 하단 fixed wrapper — "내 손패" 라벨 제거. 빈 상태도 fixed 영역에 안내.
                             return (
                                 <div className="hunt-hand-fixed-bottom">
                                     {active.length === 0 && discarded.length === 0 ? (
@@ -7042,43 +7048,42 @@
                                         </div>
                                     ) : (
                                         <>
-                                            {/* D-182: 부채꼴 가운데 정렬 — 무덤은 우측 absolute로 분리해 부채꼴 무게에 영향 X. */}
-                                            <div className="hunt-hand-fan" style={{ width: '100%', maxWidth: 520 }}>
-                                                {active.map((m, i) => {
-                                                    const off = i - (N - 1) / 2;
-                                                    const rot = off * step;
-                                                    const xPx = off * xStep;
-                                                    const yPx = Math.pow(Math.abs(off), 1.2) * 3;
-                                                    const isExpanded = hoveredCardUid === m.card.uid;
-                                                    // D-188: hover 제거. 클릭=확대 preview 띄우기(슬롯 X). preview 다시 클릭 시 좌측 첫 빈 슬롯 자동 배치.
-                                                    //   z-index는 부채꼴 자연 정렬 그대로(N - |off|) — 클릭해도 안 올림(어차피 가운데 큰 preview 뜸).
-                                                    //   동일 카드 재클릭 = 확정(슬롯 배치). 큰 preview 클릭과 동일 동작.
+                                            {/* D-226: stack column 정렬 — 무덤은 우측 absolute로 분리. */}
+                                            <div className="hunt-hand-stacks" style={{ width: '100%', maxWidth: 520 }}>
+                                                {stackGroups.map(g => {
+                                                    const colHeight = CARD_HEIGHT_PX + (g.cards.length - 1) * STACK_OFFSET_PX;
                                                     return (
-                                                        <div
-                                                            key={m.card.uid}
-                                                            className={`hunt-card-fan-slot${isExpanded ? ' is-focused' : ''}`}
-                                                            onClick={() => {
-                                                                if (isExpanded) {
-                                                                    handleHandClick(m.card);
-                                                                    setHoveredCardUid(null);
-                                                                } else {
-                                                                    setHoveredCardUid(m.card.uid);
-                                                                }
-                                                            }}
-                                                            style={{
-                                                                transform: `translate(${xPx}px, ${yPx}px) rotate(${rot}deg)`,
-                                                                // 좌→우 순서로 z 단조 증가(요한 지시) — 우측 카드가 좌측 위로.
-                                                                zIndex: i,
-                                                                cursor: 'pointer',
-                                                            }}>
-                                                            <div className="hunt-card-fan-inner">
-                                                                <HuntCard
-                                                                    card={m.card}
-                                                                    cornerBadge={m.cornerBadge}
-                                                                    extraInfo={m.extraInfo}
-                                                                    durability={m.durability}
-                                                                />
-                                                            </div>
+                                                        <div className="hunt-hand-stack-column" key={g.key} style={{ height: `${colHeight}px` }}>
+                                                            {g.cards.map((m, i) => {
+                                                                const isExpanded = hoveredCardUid === m.card.uid;
+                                                                // 첫 카드(i=0)가 아래(top:0), 후속 카드는 위로 -15px씩 stack.
+                                                                // z-index도 i+1 단조 증가 — 위 카드가 시각상 앞에.
+                                                                return (
+                                                                    <div
+                                                                        key={m.card.uid}
+                                                                        className={`hunt-hand-stack-card${isExpanded ? ' is-focused' : ''}`}
+                                                                        onClick={() => {
+                                                                            if (isExpanded) {
+                                                                                handleHandClick(m.card);
+                                                                                setHoveredCardUid(null);
+                                                                            } else {
+                                                                                setHoveredCardUid(m.card.uid);
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            top: `${i * -STACK_OFFSET_PX + (g.cards.length - 1) * STACK_OFFSET_PX}px`,
+                                                                            zIndex: i + 1,
+                                                                            cursor: 'pointer',
+                                                                        }}>
+                                                                        <HuntCard
+                                                                            card={m.card}
+                                                                            cornerBadge={m.cornerBadge}
+                                                                            extraInfo={m.extraInfo}
+                                                                            durability={m.durability}
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     );
                                                 })}

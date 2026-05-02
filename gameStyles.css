@@ -1092,3 +1092,40 @@ button:disabled {
 .hunt-hand-fixed-bottom .hunt-discard-pile {
     margin-bottom: 4px;
 }
+
+/* D-226 (2026-05-02): 손패 stack column — 부채꼴(D-179/D-188/D-190) 폐기 후 신규 layout.
+   - 같은 무기 require 카드(또는 비무기 카드 단독)는 한 column에 위로 stack.
+   - 그룹 등장 순서로 column row 정렬(D-225 BASIC 좌측 우선).
+   - column 내 첫 카드(i=0) bottom 고정, 후속 카드 위로 -15px씩 어긋남 + zIndex 단조 증가.
+   - column 폭 86px(D-191 카드 폭). 각 column 높이 = 카드 높이 128 + (n-1)*15.
+   - flex row, align-items:flex-end → 짧은 stack은 하단 정렬, 큰 stack은 위로 솟음(사용자 mock 시안 일치). */
+.hunt-hand-stacks {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 30px 0 6px;
+}
+.hunt-hand-stack-column {
+    position: relative;
+    width: 86px;
+    flex-shrink: 0;
+}
+.hunt-hand-stack-card {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    transition: transform 0.1s;
+}
+/* 클릭(focus)한 카드 — 노란 테두리. 카드 본체에 outline+glow 적용. */
+.hunt-hand-stack-card.is-focused .hunt-card {
+    outline: 2px solid #d4b84a;
+    box-shadow: 0 0 12px rgba(212, 184, 74, 0.55);
+}
+.hunt-hand-fixed-bottom .hunt-hand-stacks {
+    /* D-189 패턴 동일 — 손패 viewport 위로 30px 올림. */
+    transform: translateY(30px);
+}
