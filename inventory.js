@@ -134,6 +134,8 @@ class InventorySystem {
         //   화살쏘기 사용 시 양쪽 내구도 -1 (combatDeck.js owningWeaponIds 배열 확장 D-221).
         bow:          { name: '조잡한 활',         shape: [[1, 1]], grade: 1, mergeable: false, category: '무기' },
         arrow_bundle: { name: '조잡한 화살묶음',   shape: [[1, 1]], grade: 1, mergeable: false, category: '무기' },
+        // D-227 (2026-05-02): 나무쑤시개 — 무기 제작소 stage 4 unlock. 빌딩 시스템이 알아서 만들어줌(별도 합성법 없음).
+        wood_skewer:  { name: '나무쑤시개',         shape: [[1, 1]], grade: 1, mergeable: false, category: '무기' },
 
         // === D-72 방어구 5종 (2026-04-24) ===
         //   shape 1x1 고정, mergeable=false. category는 type과 동일('shield' | 'armor').

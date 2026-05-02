@@ -154,5 +154,31 @@
     "defense": null,
     "evade": null,
     "loss_chance": null
+  },
+  {
+    "id": "skewer_thrust",
+    "name": "쑤시개 찌르기",
+    "damage": 2,
+    "success_rate": 100,
+    "requirement": "나무쑤시개",
+    "count": 1,
+    "accuracy": 1,
+    "full_loss": "N",
+    "defense": null,
+    "evade": null,
+    "loss_chance": null
+  },
+  {
+    "id": "skewer_throw",
+    "name": "쑤시개 던지기",
+    "damage": 4,
+    "success_rate": 100,
+    "requirement": "나무쑤시개",
+    "count": 1,
+    "accuracy": 1,
+    "full_loss": "N",
+    "defense": null,
+    "evade": null,
+    "loss_chance": 50
   }
 ]
