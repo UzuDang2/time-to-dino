@@ -382,16 +382,58 @@
     "name": "도구작업대",
     "stage": 1,
     "cost": [
-      {
-        "material": "나뭇가지",
-        "count": 6
-      },
-      {
-        "material": "돌맹이",
-        "count": 4
-      }
+      { "material": "나뭇가지", "count": 3 },
+      { "material": "돌맹이",   "count": 2 }
     ],
     "effect_raw": "\"손에 익숙한 도구가 늘어난다. 작은 가방이 가벼워진다.\"",
+    "설명": null,
+    "reward_items": null,
+    "reward_passive": "pack+1",
+    "products": null,
+    "reward_one_shot": null,
+    "cost_raw": "나뭇가지 x3, 돌맹이 x2"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 2,
+    "cost": [
+      { "material": "나뭇가지", "count": 4 },
+      { "material": "돌맹이",   "count": 3 }
+    ],
+    "effect_raw": "\"선반이 깔리고 손이 빨라진다. 더 챙길 자리가 생긴다.\"",
+    "설명": null,
+    "reward_items": null,
+    "reward_passive": "pack+1",
+    "products": null,
+    "reward_one_shot": null,
+    "cost_raw": "나뭇가지 x4, 돌맹이 x3"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 3,
+    "cost": [
+      { "material": "나뭇가지", "count": 5 },
+      { "material": "돌맹이",   "count": 3 }
+    ],
+    "effect_raw": "\"갈고리가 박힌다. 무거운 도구도 위에 걸린다.\"",
+    "설명": null,
+    "reward_items": null,
+    "reward_passive": "pack+1",
+    "products": null,
+    "reward_one_shot": null,
+    "cost_raw": "나뭇가지 x5, 돌맹이 x3"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 4,
+    "cost": [
+      { "material": "나뭇가지", "count": 6 },
+      { "material": "돌맹이",   "count": 4 }
+    ],
+    "effect_raw": "\"선반 한 줄이 더 늘어난다.\"",
     "설명": null,
     "reward_items": null,
     "reward_passive": "pack+1",
@@ -402,50 +444,95 @@
   {
     "id": "watchtower",
     "name": "도구작업대",
-    "stage": 2,
+    "stage": 5,
     "cost": [
-      {
-        "material": "나뭇가지",
-        "count": 10
-      },
-      {
-        "material": "돌맹이",
-        "count": 8
-      },
-      {
-        "material": "깨끗한 천",
-        "count": 4
-      }
+      { "material": "나뭇가지", "count": 7 },
+      { "material": "돌맹이",   "count": 5 }
     ],
-    "effect_raw": "\"선반이 깔리고 손이 빨라진다. 더 챙길 자리가 생긴다.\"",
+    "effect_raw": "\"두 손이 자유로워진다. 짐 옮기기 한결 쉽다.\"",
     "설명": null,
     "reward_items": null,
     "reward_passive": "pack+1",
     "products": null,
     "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x10, 돌맹이 x8, 깨끗한 천 x4"
+    "cost_raw": "나뭇가지 x7, 돌맹이 x5"
   },
   {
     "id": "watchtower",
     "name": "도구작업대",
-    "stage": 3,
+    "stage": 6,
     "cost": [
-      {
-        "material": "나뭇가지",
-        "count": 15
-      },
-      {
-        "material": "돌맹이",
-        "count": 12
-      },
-      {
-        "material": "깨끗한 천",
-        "count": 6
-      },
-      {
-        "material": "가죽",
-        "count": 4
-      }
+      { "material": "나뭇가지", "count": 8 },
+      { "material": "돌맹이",   "count": 6 },
+      { "material": "줄기",     "count": 1 }
+    ],
+    "effect_raw": "\"정돈된 자루마다 자리가 정해진다.\"",
+    "설명": null,
+    "reward_items": null,
+    "reward_passive": "pack+1",
+    "products": null,
+    "reward_one_shot": null,
+    "cost_raw": "나뭇가지 x8, 돌맹이 x6, 줄기 x1"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 7,
+    "cost": [
+      { "material": "나뭇가지", "count": 9 },
+      { "material": "돌맹이",   "count": 7 },
+      { "material": "줄기",     "count": 1 }
+    ],
+    "effect_raw": "\"손이 닿지 않던 안쪽 칸까지 정리된다.\"",
+    "설명": null,
+    "reward_items": null,
+    "reward_passive": "pack+1",
+    "products": null,
+    "reward_one_shot": null,
+    "cost_raw": "나뭇가지 x9, 돌맹이 x7, 줄기 x1"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 8,
+    "cost": [
+      { "material": "나뭇가지", "count": 10 },
+      { "material": "돌맹이",   "count": 8 },
+      { "material": "줄기",     "count": 2 }
+    ],
+    "effect_raw": "\"낡은 도구가 다듬어져 새것처럼 다시 매달린다.\"",
+    "설명": null,
+    "reward_items": null,
+    "reward_passive": "pack+1",
+    "products": null,
+    "reward_one_shot": null,
+    "cost_raw": "나뭇가지 x10, 돌맹이 x8, 줄기 x2"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 9,
+    "cost": [
+      { "material": "나뭇가지", "count": 11 },
+      { "material": "돌맹이",   "count": 9 },
+      { "material": "줄기",     "count": 2 }
+    ],
+    "effect_raw": "\"벽도 천장도 도구로 가득 찬다.\"",
+    "설명": null,
+    "reward_items": null,
+    "reward_passive": "pack+1",
+    "products": null,
+    "reward_one_shot": null,
+    "cost_raw": "나뭇가지 x11, 돌맹이 x9, 줄기 x2"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 10,
+    "cost": [
+      { "material": "나뭇가지", "count": 12 },
+      { "material": "돌맹이",   "count": 10 },
+      { "material": "줄기",     "count": 3 }
     ],
     "effect_raw": "\"벽 가득 도구가 걸린다. 짐을 두고 갈 일이 줄어든다.\"",
     "설명": null,
@@ -453,6 +540,6 @@
     "reward_passive": "pack+1",
     "products": null,
     "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x15, 돌맹이 x12, 깨끗한 천 x6, 가죽 x4"
+    "cost_raw": "나뭇가지 x12, 돌맹이 x10, 줄기 x3"
   }
 ]
