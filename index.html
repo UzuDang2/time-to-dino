@@ -4748,12 +4748,22 @@
                                 const learnable = combos.filter(c => c && c.result && isRecipeLearnable(c, curStage, campState));
                                 const learnedIds = new Set((campState && campState.learnedRecipes) || []);
                                 const learnedList = combos.filter(c => c && c.result && learnedIds.has(c.result));
+                                // D-237 (2026-05-02 요한 지시): 학습 비용에 ITEM_EMOJI prefix.
+                                //   1단계 재료(stone/branch/stem/...)는 emoji 매핑(D-92), 2단계+는 텍스트 폴백.
+                                //   가방·조합 패널과 동일 메타포 — itemEmoji() SSOT 사용.
                                 const renderCostText = (recipe) => {
                                     const cost = getRecipeLearnCost(recipe);
                                     return Object.entries(cost).map(([type, n]) => {
                                         const d = InventorySystem.resolveDef(type) || {};
-                                        return `${d.name || type} ${n}`;
+                                        const e = itemEmoji(type);
+                                        return `${e ? e + ' ' : ''}${d.name || type} ${n}`;
                                     }).join(', ');
+                                };
+                                // D-237: 결과물 라벨에도 emoji prefix(가능할 때) — 학습 가능/학습됨 행 통일.
+                                const renderResultLabel = (recipe) => {
+                                    const wdef = InventorySystem.resolveDef(recipe.result) || {};
+                                    const e = itemEmoji(recipe.result);
+                                    return `${e ? e + ' ' : ''}${wdef.name || recipe.result}`;
                                 };
                                 return (
                                     <div style={{
@@ -4773,7 +4783,6 @@
                                             <div style={{ color: '#888', fontSize: '11px', marginBottom: '6px' }}>이 풀에서 학습 가능한 레시피가 없다.</div>
                                         ) : (
                                             learnable.map(r => {
-                                                const wdef = InventorySystem.resolveDef(r.result) || {};
                                                 const can = canAffordRecipeLearn(r, inv);
                                                 return (
                                                     <div
@@ -4791,7 +4800,7 @@
                                                             cursor: can ? 'pointer' : 'not-allowed',
                                                             opacity: can ? 1 : 0.55
                                                         }}>
-                                                        <span style={{ fontSize: '12px', color: can ? '#fff' : '#999' }}>{wdef.name || r.result}</span>
+                                                        <span style={{ fontSize: '12px', color: can ? '#fff' : '#999' }}>{renderResultLabel(r)}</span>
                                                         <span style={{ fontSize: '10px', color: can ? '#8bd17c' : '#888' }}>{renderCostText(r)}</span>
                                                     </div>
                                                 );
@@ -4802,20 +4811,17 @@
                                                 <div style={{ color: '#8bd17c', fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>
                                                     ✅ 학습됨 ({learnedList.length})
                                                 </div>
-                                                {learnedList.map(r => {
-                                                    const wdef = InventorySystem.resolveDef(r.result) || {};
-                                                    return (
-                                                        <div key={r.result} style={{
-                                                            padding: '4px 8px', marginBottom: '2px',
-                                                            background: 'rgba(255,255,255,0.04)',
-                                                            borderRadius: '6px',
-                                                            fontSize: '11px',
-                                                            color: '#888'
-                                                        }}>
-                                                            {wdef.name || r.result}
-                                                        </div>
-                                                    );
-                                                })}
+                                                {learnedList.map(r => (
+                                                    <div key={r.result} style={{
+                                                        padding: '4px 8px', marginBottom: '2px',
+                                                        background: 'rgba(255,255,255,0.04)',
+                                                        borderRadius: '6px',
+                                                        fontSize: '11px',
+                                                        color: '#888'
+                                                    }}>
+                                                        {renderResultLabel(r)}
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
                                     </div>
