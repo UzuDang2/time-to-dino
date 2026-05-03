@@ -1935,9 +1935,14 @@
                 if (cat === 'shield' || cat === 'armor' || cat === '방어구') return 'armor';
                 return 'material'; // 재료·소모품 등 나머지 전부
             };
-            const filteredAllRecipes = recipeCategory === 'all'
+            // D-239: 잠긴 레시피 노출 제외 — 카테고리 필터 후 lock 게이트 통과만.
+            //   recipeLockGate 미등록(backward compat)이면 전체. 작업대 학습 풀은 별도 경로(영향 없음).
+            const _categoryFiltered = recipeCategory === 'all'
                 ? allRecipes
                 : allRecipes.filter(r => recipeCategoryOf(r) === recipeCategory);
+            const filteredAllRecipes = (typeof InventorySystem.recipeLockGate === 'function')
+                ? _categoryFiltered.filter(r => InventorySystem.recipeLockGate(r))
+                : _categoryFiltered;
             const displayedRecipes = pendingCraft ? pendingCraft.candidates : filteredAllRecipes;
             const showCategoryTabs = !pendingCraft;
             const panelOnClose = pendingCraft

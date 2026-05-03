@@ -326,6 +326,12 @@ class InventorySystem {
                 hits.push(recipe);
             }
         }
+        // D-239 (2026-05-02 요한 정책): 잠긴 레시피는 노출 목록에서 아예 제외.
+        //   recipeLockGate 콜백 등록 시 게이트 통과한 것만 반환. 미등록(backward compat) 시 전체.
+        //   작업대 학습 풀(BuildingDetailModal)은 본 함수 미사용(`combos.filter(isRecipeLearnable)`)이라 영향 없음.
+        if (typeof InventorySystem.recipeLockGate === 'function') {
+            return hits.filter(r => InventorySystem.recipeLockGate(r));
+        }
         return hits;
     }
 
