@@ -373,6 +373,10 @@
             );
             const takeDamageThisTurn = () => {
                 if (preyActionType !== 'attack' || preyAttackThisTurn <= 0) return 0;
+                // D-232 (2026-05-02 요한 룰): 유저 선공 — 유저 그 턴 행동으로 prey hp ≤ 0 도달 시
+                //   prey의 가해 액션(attack)은 무효(prey가 공격 시도하기 전에 쓰러진 것으로 판정).
+                //   회피/방어/peek은 어차피 dmg 0이라 영향 없음 — attack만 무효 가드.
+                if (hp <= 0) return 0;
                 if (cardEvade > preyAttackAccuracy) return 0;
                 const dmg = Math.max(0, preyAttackThisTurn - cardDefense);
                 playerDamageTaken += dmg;
