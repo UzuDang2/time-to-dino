@@ -2825,6 +2825,12 @@ window.TTD_DATA = {
     },
     {
       "ingredients": [
+        "branch"
+      ],
+      "result": "wood_skewer"
+    },
+    {
+      "ingredients": [
         "big_meat",
         "branch"
       ],
