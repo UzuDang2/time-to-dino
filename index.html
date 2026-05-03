@@ -7689,7 +7689,9 @@
             const [health, setHealth] = useState(MAX_HEALTH);
             const [hunger, setHunger] = useState(MAX_HUNGER);
             const [time, setTime] = useState(0);
-            const [maxTime, setMaxTime] = useState(3);
+            // D-234 (2026-05-02 요한 지시): 한 타일 당 행동 횟수 3 → 4. 여유 확보.
+            //   진행 중 런은 직렬화된 maxTime(3) 유지(룰 변경은 새 런부터). 새 런이면 useState 초기값 4.
+            const [maxTime, setMaxTime] = useState(4);
             const [detection, setDetection] = useState(0);
             const [hand, setHand] = useState([]);
             const [deck, setDeck] = useState([]);
