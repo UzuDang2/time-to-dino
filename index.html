@@ -9132,12 +9132,15 @@
                             return;
                         }
                         if (kind === 'wrong_exit_direction') {
-                            // 의도적으로 잘못된 방향 — 실제 탈출구의 반대편 6방향 중 하나를 골라 알림.
+                            // 의도적으로 잘못된 방향 — 실제 탈출구의 반대편 방향을 골라 알림.
+                            // D-242 픽스: getHexDirection은 W/E/NW/NE/SW/SE 6방향만 반환(N/S 없음).
+                            //   기존 매핑이 N/S 키 기반이라 real.dir='E'/'W'에서 OPPOSITE 미매칭 →
+                            //   fallback 'N'으로 항상 '북쪽 ↑' 출력하는 버그. 매핑을 6방향과 일치시킴.
                             const real = fromHere(exitTileId);
-                            const OPPOSITE = { N: 'S', S: 'N', NE: 'SW', SW: 'NE', NW: 'SE', SE: 'NW' };
-                            const LABEL = { N: '북쪽', NE: '북동쪽', SE: '남동쪽', S: '남쪽', SW: '남서쪽', NW: '북서쪽' };
-                            const ARROW = { N: '↑', NE: '↗', SE: '↘', S: '↓', SW: '↙', NW: '↖' };
-                            const wrongDir = (real && real.dir && OPPOSITE[real.dir]) || 'N';
+                            const OPPOSITE = { W: 'E', E: 'W', NW: 'SE', SE: 'NW', NE: 'SW', SW: 'NE' };
+                            const LABEL = { W: '서쪽', E: '동쪽', NW: '북서쪽', NE: '북동쪽', SW: '남서쪽', SE: '남동쪽' };
+                            const ARROW = { W: '←', E: '→', NW: '↖', NE: '↗', SW: '↙', SE: '↘' };
+                            const wrongDir = (real && real.dir && OPPOSITE[real.dir]) || 'E';
                             lines.push(`바람이 ${LABEL[wrongDir]}으로 흐른다고 일러주는데… 어쩐지 미덥지 않다. ${ARROW[wrongDir]}`);
                             return;
                         }
