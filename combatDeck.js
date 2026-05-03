@@ -200,27 +200,19 @@
         return deck;
     }
 
-    // D-60/D-96/D-233: prey.evade_per_turn (CSV "T1,T2,T3,T4") 파싱 → 턴별 회피(정수) 배열.
-    //   빈 값/미지정 → fallback [evade_rate, ...] (turnCount만큼).
+    // D-60/D-96: prey.evade_per_turn (CSV "T1,T2,T3") 파싱 → 턴별 회피(정수) 배열.
+    //   빈 값/미지정 → fallback [evade_rate, evade_rate, evade_rate] (3턴 공통).
     //   D-96: 회피율(%) → 회피(정수) 시스템 변경. 기본값 fallback 20 → 1.
-    //   D-233 (2026-05-02 요한 지시): L1·L2 모두 4턴 통일 — turnCount 파라미터화.
-    //   부분 CSV("30,30")면 나머지는 마지막 값으로 패딩.
-    function parseEvadesByTurn(prey, turnCount) {
-        const N = Math.max(1, Number(turnCount) || 4);
+    //   항상 길이 3 보장. 부분 CSV("30,30")면 나머지는 마지막 값으로 패딩.
+    function parseEvadesByTurn(prey) {
         const fallback = (Number(prey && prey.evade_rate) >= 0)
             ? Number(prey.evade_rate) : 1;
         const raw = prey && prey.evade_per_turn;
-        const out = [];
-        if (raw == null || raw === '') {
-            for (let i = 0; i < N; i++) out.push(fallback);
-            return out;
-        }
+        if (raw == null || raw === '') return [fallback, fallback, fallback];
         const parts = String(raw).split(',').map(s => s.trim()).filter(Boolean);
-        if (parts.length === 0) {
-            for (let i = 0; i < N; i++) out.push(fallback);
-            return out;
-        }
-        for (let i = 0; i < N; i++) {
+        if (parts.length === 0) return [fallback, fallback, fallback];
+        const out = [];
+        for (let i = 0; i < 3; i++) {
             const token = parts[i] != null ? parts[i] : parts[parts.length - 1];
             const n = Number(token);
             out.push(Number.isFinite(n) ? n : fallback);
@@ -235,13 +227,9 @@
     //     resolveHunt에서 findPreyAction으로 lookup·fallback 처리.
     function parsePreyActions(prey, turnCount) {
         const lvl = Number(prey && prey.level) || 1;
-        // D-233 (2026-05-02 요한 지시): L1·L2 모두 4턴 통일.
-        //   L1 default 3→4 토큰. 시트 L1 9종 actions_per_turn은 3 토큰이라
-        //   for 루프 내 마지막 토큰 반복 fallback이 4번째 턴을 채움(과도기).
-        //   시트 L1 actions_per_turn 4 토큰 확장은 별도 작업(시트 SSOT).
         const defaults = lvl === 2
             ? ['attack', 'evade', 'attack', 'peek']
-            : ['peek', 'evade', 'peek', 'peek'];
+            : ['peek', 'evade', 'peek'];
         const raw = prey && prey.actions_per_turn;
         const parts = (raw == null || raw === '')
             ? defaults
@@ -277,10 +265,9 @@
         return { id, name: id, type: t, damage: 0, accuracy: 0, defense: 0 };
     }
 
-    // D-48/D-50/D-51/D-60/D-74/D-75/D-98/D-233 개정: 사냥 전투 해결 로직.
-    //   D-233 (2026-05-02 요한 지시): L1·L2 모두 4턴 고정 — 한 사냥 라운드 행동 횟수 3→4 통일.
-    //   Level 1: 4턴. D-98 (2026-04-25 요한 지시) — actions_per_turn DSL 사용
-    //     (peek≤2 / evade≤1 / defend≤1로 사냥감별 성격 반영). 시트 3 토큰은 마지막 토큰 반복으로 4 채움.
+    // D-48/D-50/D-51/D-60/D-74/D-75/D-98 개정: 사냥 전투 해결 로직.
+    //   Level 1: 3턴 고정. D-98 (2026-04-25 요한 지시) — actions_per_turn DSL 사용
+    //     (peek≤2 / evade≤1 / defend≤1로 사냥감별 성격 반영).
     //   Level 2: 4턴 고정. prey.actions_per_turn 시트 DSL로 턴별 행동.
     //   공통:
     //     - attack: prey가 공격. 유저가 defense>0 카드 배치 시 finalDamage = max(0, preyAttack - cardDefense).
@@ -311,8 +298,7 @@
         }
 
         let hp = prey.hp;
-        // D-233: 사냥 라운드 4턴 고정. parseEvadesByTurn에 명시적 turnCount 전달.
-        const evadesByTurn = parseEvadesByTurn(prey, 4);
+        const evadesByTurn = parseEvadesByTurn(prey);
         const fleeCount = Math.max(0, Number(prey && prey.fleeCount) || 0);
         const turns = [];
         const weaponUsage = {}; // 턴 내 누적 소모량
@@ -353,8 +339,8 @@
 
         let terminatedOutcome = null;
 
-        // D-233 (2026-05-02 요한 지시): L1·L2 모두 4턴 통일.
-        const turnCount = 4;
+        const isLevel2 = Number(prey && prey.level) === 2;
+        const turnCount = isLevel2 ? 4 : 3;
         // D-98: L1도 actions_per_turn DSL 사용 — L1/L2 공통 처리.
         const preyActions = parsePreyActions(prey, turnCount);
         const preyDefenseFallback = Math.max(0, Number(prey && prey.defense) || 0);
