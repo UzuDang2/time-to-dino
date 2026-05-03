@@ -788,13 +788,79 @@ class InventorySystem {
     //   인벤이 가득 차면 들어간 만큼만 생성(overflow>0)하고 ok 반환.
     //   재료 소비는 1회 고정(count와 무관) — 한 번의 조합.
     // 반환: { ok, reason?, resultType?, shortage?, produced?, overflow? }
+    // D-241 (2026-05-02 요한 지시): 재료 소모 후 결과물 fit 시뮬레이션.
+    //   사용자 사례 — 가방이 꽉 차 보여도 재료가 소모되면 그만큼 빈칸이 생기므로
+    //   결과물이 들어갈 수 있는 케이스를 사전 검사로 통과시킴. 인벤 상태 변경 없음.
+    //   반환: { canPlace, produced, removedIds:Set }
+    _simulateCraftPlacement(recipe, preferredPos) {
+        const need = InventorySystem.recipeRequirements(recipe);
+        const removedIds = new Set();
+        for (const [type, n] of Object.entries(need)) {
+            let rem = n;
+            for (const it of this.items) {
+                if (rem > 0 && it.type === type && !removedIds.has(it.id)) {
+                    removedIds.add(it.id);
+                    rem--;
+                }
+            }
+        }
+        // 가상 grid — 재료 자리 비움(원본 훼손 X).
+        const vGrid = this.grid.map(row => row.slice());
+        for (const it of this.items) {
+            if (!removedIds.has(it.id)) continue;
+            for (let dy = 0; dy < it.shape.length; dy++) {
+                for (let dx = 0; dx < it.shape[dy].length; dx++) {
+                    if (it.shape[dy][dx]) vGrid[it.y + dy][it.x + dx] = null;
+                }
+            }
+        }
+        const resultDef = InventorySystem.ITEMS[recipe.result];
+        if (!resultDef) return { canPlace: false, produced: 0, removedIds };
+        const shape = resultDef.shape;
+        const canVirtual = (sx, sy) => {
+            if (sy + shape.length > this.rows || sx + shape[0].length > this.cols) return false;
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[dy].length; dx++) {
+                    if (shape[dy][dx] !== 1) continue;
+                    const cy = sy + dy, cx = sx + dx;
+                    if (this.isDisabled(cx, cy)) return false;
+                    if (vGrid[cy][cx] !== null) return false;
+                }
+            }
+            return true;
+        };
+        const findVirtual = () => {
+            for (let y = 0; y <= this.rows - shape.length; y++) {
+                for (let x = 0; x <= this.cols - shape[0].length; x++) {
+                    if (canVirtual(x, y)) return { x, y };
+                }
+            }
+            return null;
+        };
+        const count = Math.max(1, Number(recipe.count) || 1);
+        let produced = 0;
+        for (let i = 0; i < count; i++) {
+            let pos = null;
+            if (i === 0 && preferredPos && canVirtual(preferredPos.x, preferredPos.y)) {
+                pos = preferredPos;
+            }
+            if (!pos) pos = findVirtual();
+            if (!pos) break;
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[dy].length; dx++) {
+                    if (shape[dy][dx]) vGrid[pos.y + dy][pos.x + dx] = '__r__';
+                }
+            }
+            produced++;
+        }
+        return { canPlace: produced > 0, produced, removedIds };
+    }
+
     craftRecipe(recipe, preferredPos) {
         if (!recipe || !Array.isArray(recipe.ingredients) || !recipe.result) {
             return { ok: false, reason: 'invalid_recipe' };
         }
         // D-236 (2026-05-02 요한 보고): 잠긴 레시피 차단 — lookupCombo 머지 게이트와 일관 적용.
-        //   합성 패널 [제작] 버튼(handleCraft) + 휴식 요리 모달(handleCookRecipe) 모두 이 함수 경유라
-        //   여기서 단일 SSOT 게이트. recipeLockGate 미등록 시 통과(backward compat).
         if (typeof InventorySystem.recipeLockGate === 'function'
             && !InventorySystem.recipeLockGate(recipe)) {
             return { ok: false, reason: 'recipe_locked' };
@@ -803,40 +869,40 @@ class InventorySystem {
         if (!evalResult.canCraft) {
             return { ok: false, reason: 'short_ingredients', shortage: evalResult.shortage };
         }
-        // 결과물 배치 가능 여부 선검사 — 실제 소비 전에 공간 체크(첫 1개 기준).
         const resultDef = InventorySystem.ITEMS[recipe.result];
         if (!resultDef) return { ok: false, reason: 'unknown_result' };
-        const canPlaceAtPreferred = preferredPos
-            && this.canPlace(resultDef.shape, preferredPos.x, preferredPos.y);
-        const placementPos = canPlaceAtPreferred
-            ? preferredPos
-            : this.findEmptySpace(resultDef.shape);
-        if (!placementPos) {
+
+        // D-241: 사전 시뮬 — 재료 가상 제거 후 결과물 fit 확인. 통과 못 하면 'no_space'.
+        const sim = this._simulateCraftPlacement(recipe, preferredPos);
+        if (!sim.canPlace) {
             return { ok: false, reason: 'no_space' };
         }
-        // 재료 소비 — 각 type에 대해 필요 개수만큼 items 앞에서부터 제거.
-        const need = InventorySystem.recipeRequirements(recipe);
-        for (const [type, count] of Object.entries(need)) {
-            let remaining = count;
-            const keep = [];
-            for (const it of this.items) {
-                if (remaining > 0 && it.type === type) {
-                    this.removeItem(it);
-                    remaining -= 1;
-                    continue;
-                }
+
+        // 진짜 재료 소비 — 시뮬에서 식별된 removedIds 기준.
+        const removed = sim.removedIds;
+        const keep = [];
+        for (const it of this.items) {
+            if (removed.has(it.id)) {
+                this.removeItem(it);
+            } else {
                 keep.push(it);
             }
-            this.items = keep;
         }
-        // 결과 배치 — count만큼 반복. 첫 1개는 preferredPos에, 나머지는 빈 칸.
+        this.items = keep;
+
+        // 결과물 배치 — 첫 1개는 preferredPos(가능 시)에, 나머지는 빈 칸 자동.
         const count = Math.max(1, Number(recipe.count) || 1);
         let produced = 0;
-        const firstOk = this._placeDerivedItem(recipe.result, placementPos.x, placementPos.y);
-        if (firstOk) produced += 1;
+        const startPos = (preferredPos && this.canPlace(resultDef.shape, preferredPos.x, preferredPos.y))
+            ? preferredPos
+            : this.findEmptySpace(resultDef.shape);
+        if (startPos) {
+            const firstOk = this._placeDerivedItem(recipe.result, startPos.x, startPos.y);
+            if (firstOk) produced += 1;
+        }
         for (let i = 1; i < count; i++) {
             if (this.addItem(recipe.result)) produced += 1;
-            else break; // 가방 포화 — 나머지는 포기.
+            else break;
         }
         if (produced === 0) return { ok: false, reason: 'place_failed' };
         const overflow = count - produced;
