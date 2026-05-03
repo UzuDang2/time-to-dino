@@ -3305,6 +3305,11 @@
         //   ③ 화이트리스트(무료 자동 해금): chipped_stone(뗀석기) + food 카테고리 결과물 + 자동 판정 1등급(`unlock_tier=1`).
         //      ※ wood_skewer는 combos.json 미존재라 사문화 — 향후 합성법 추가 시 자동 무료(화이트리스트 명시).
         const RECIPE_UNLOCK_WHITELIST = new Set(['chipped_stone', 'wood_skewer']);
+        // D-235 (2026-05-02 요한 지시): 자동 unlock 정책 예외 강제 잠금.
+        //   1등급 재료라도 자동으로 풀리면 안 되는 레시피 — whitelist/food/tier 모두 우회하고
+        //   learnedRecipes에만 의존(작업대 학습으로만 풀림).
+        //   ※ 무기 카테고리는 의외성·진행감 보호가 필요해 자동 1등급 풀에 노출 X.
+        const RECIPE_UNLOCK_BLACKLIST = new Set(['weapon_basic']);
         const WORKSHOP_TIER_BY_STAGE = { 0: 1, 1: 2, 2: 3, 3: 4 };
         const RECIPE_LEARN_COST_MULTIPLIER = 4; // ingredients × 4 (학습세 — D-228-B 사용자 정정, 이전 ×2)
 
@@ -3329,18 +3334,21 @@
         }
 
         // 레시피 해금 여부 — campState.learnedRecipes에 의존.
+        //   ⓪ 블랙리스트(D-235: weapon_basic) → 자동 unlock 우회. learnedRecipes만 본다.
         //   ① 화이트리스트(chipped_stone, wood_skewer) → 항상 unlock.
         //   ② food 카테고리 → 항상 unlock.
         //   ③ tier=1(1등급 재료만) → 항상 unlock.
         //   ④ tier≥2 → learnedRecipes에 result.id 있어야 unlock.
         function isRecipeUnlocked(recipe, campState) {
             if (!recipe || !recipe.result) return false;
+            const learned = (campState && campState.learnedRecipes) || [];
+            const isLearned = Array.isArray(learned) && learned.includes(recipe.result);
+            if (RECIPE_UNLOCK_BLACKLIST.has(recipe.result)) return isLearned;
             if (RECIPE_UNLOCK_WHITELIST.has(recipe.result)) return true;
             if (isRecipeFoodCategory(recipe)) return true;
             const tier = getRecipeUnlockTier(recipe);
             if (tier <= 1) return true;
-            const learned = (campState && campState.learnedRecipes) || [];
-            return Array.isArray(learned) && learned.includes(recipe.result);
+            return isLearned;
         }
 
         // 학습 가능 — 작업대 stage 풀 안 + 미학습 + 잠긴 레시피만.
