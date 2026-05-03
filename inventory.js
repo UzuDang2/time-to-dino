@@ -786,6 +786,13 @@ class InventorySystem {
         if (!recipe || !Array.isArray(recipe.ingredients) || !recipe.result) {
             return { ok: false, reason: 'invalid_recipe' };
         }
+        // D-236 (2026-05-02 요한 보고): 잠긴 레시피 차단 — lookupCombo 머지 게이트와 일관 적용.
+        //   합성 패널 [제작] 버튼(handleCraft) + 휴식 요리 모달(handleCookRecipe) 모두 이 함수 경유라
+        //   여기서 단일 SSOT 게이트. recipeLockGate 미등록 시 통과(backward compat).
+        if (typeof InventorySystem.recipeLockGate === 'function'
+            && !InventorySystem.recipeLockGate(recipe)) {
+            return { ok: false, reason: 'recipe_locked' };
+        }
         const evalResult = InventorySystem.evaluateRecipe(recipe, this.items);
         if (!evalResult.canCraft) {
             return { ok: false, reason: 'short_ingredients', shortage: evalResult.shortage };

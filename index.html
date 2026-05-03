@@ -1776,6 +1776,9 @@
                     if (onFlashMessage) onFlashMessage('가방이 가득 차 만들 수 없다.');
                 } else if (res.reason === 'short_ingredients') {
                     if (onFlashMessage) onFlashMessage('재료가 부족하다.');
+                } else if (res.reason === 'recipe_locked') {
+                    // D-236: 잠긴 레시피 — 작업대에서 학습한 후 제작 가능.
+                    if (onFlashMessage) onFlashMessage('아직 만드는 법을 익히지 못했다.');
                 }
                 bump();
             };
