@@ -6662,8 +6662,8 @@
         function HuntCombatModal({ prey, inventory, combatCards, onResolve, onCancel,
                                    playerHealth, playerHunger, maxHealth, maxHunger,
                                    playerImageUrl }) {
-            // D-75: Level 2 prey는 4턴. Level 1은 기존 3턴.
-            const SLOT_COUNT = Number(prey && prey.level) === 2 ? 4 : 3;
+            // D-75/D-233: L1·L2 모두 4턴 통일 (2026-05-02 요한 지시 — 한 사냥 라운드 행동 횟수 3→4).
+            const SLOT_COUNT = 4;
             const [slots, setSlots] = useState(() => Array(SLOT_COUNT).fill(null));
             // D-225 (2026-05-02 요한 지시): 도망치기 카드 분리 + 카드 정렬.
             //   ① run_away는 손패 카드에서 빼고 BattleStage 확정 버튼 위 별도 [도망치기 (N%)] 버튼으로 — 즉시 발동.
@@ -6714,7 +6714,8 @@
             }, [prey.actions_per_turn, prey.level, SLOT_COUNT]);
 
             const computedEvades = React.useMemo(() => {
-                const byTurn = CombatDeck.parseEvadesByTurn(prey);
+                // D-233: SLOT_COUNT(=4) 명시 — parseEvadesByTurn 길이 일치.
+                const byTurn = CombatDeck.parseEvadesByTurn(prey, SLOT_COUNT);
                 const fleeCount = Math.max(0, Number(prey.fleeCount) || 0);
                 return slots.map((card, i) => {
                     // D-96: % → 정수. 도주 누적 패널티는 1당 회피 -1.
