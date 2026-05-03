@@ -2825,7 +2825,9 @@ window.TTD_DATA = {
     },
     {
       "ingredients": [
-        "branch"
+        "stem",
+        "wood",
+        "stone"
       ],
       "result": "wood_skewer"
     },

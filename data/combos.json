@@ -168,7 +168,9 @@
   },
   {
     "ingredients": [
-      "branch"
+      "stem",
+      "wood",
+      "stone"
     ],
     "result": "wood_skewer"
   },
