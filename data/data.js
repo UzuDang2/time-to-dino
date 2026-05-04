@@ -2068,8 +2068,8 @@ window.TTD_DATA = {
       "머지 가능": false,
       "일회용": true,
       "설명 텍스트": "맑은 물에 씻어낸 산딸기 한 접시. 개운하고 든든하다.",
-      "효과 요약": "배고픔 +3.",
-      "사용 효과": "hunger+3",
+      "효과 요약": "배고픔 +3, 생명력 +1.",
+      "사용 효과": "hunger+3;health+1",
       "merge_result": null,
       "merge_enabled": false,
       "effect": {
@@ -2079,9 +2079,14 @@ window.TTD_DATA = {
             "type": "stat",
             "stat": "hunger",
             "delta": 3
+          },
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 1
           }
         ],
-        "raw": "hunger+3"
+        "raw": "hunger+3;health+1"
       }
     },
     {
