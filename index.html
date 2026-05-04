@@ -3327,7 +3327,8 @@
         //   ※ 무기 카테고리는 의외성·진행감 보호가 필요해 자동 1등급 풀에 노출 X.
         const RECIPE_UNLOCK_BLACKLIST = new Set(['weapon_basic']);
         const WORKSHOP_TIER_BY_STAGE = { 0: 1, 1: 2, 2: 3, 3: 4 };
-        const RECIPE_LEARN_COST_MULTIPLIER = 4; // ingredients × 4 (학습세 — D-228-B 사용자 정정, 이전 ×2)
+        // D-247 (2026-05-04 요한 지시): 학습세 ×4 → ×2 (절반). D-228-B 정정값에서 다시 완화.
+        const RECIPE_LEARN_COST_MULTIPLIER = 2;
 
         // 레시피 잠금 등급 산출 — 가장 높은 ingredient grade.
         //   1 = 자동 unlock(1등급 재료만), 2+ = 작업대 stage 풀 필요.
