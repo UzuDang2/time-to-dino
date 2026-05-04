@@ -6230,6 +6230,8 @@
             SLOT_COUNT, slots, phase, handleSlotClick, allFilled, onConfirm,
             // D-225: 도망치기 버튼 — 손패 카드에서 분리, 확정 버튼 위 별도 버튼. 즉시 발동(success_rate 굴림).
             onRunAway, runAwayPct, runAwayMsg,
+            // D-246: 방어/회피 스택 cap 표시 (장비/패시브 합산 max). 동적 stack 진행은 후속.
+            defenseCap, evadeCap,
         }) {
             const healthPct = Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100));
             const hungerPct = Math.max(0, Math.min(100, (playerHunger / Math.max(1, maxHunger)) * 100));
@@ -6521,8 +6523,15 @@
                                             transition: 'width 0.3s ease'
                                         }} />
                                     </div>
-                                    <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10, color: '#ccc' }}>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10, color: '#ccc', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <span>❤️ {playerHealth}/{maxHealth}</span>
+                                        {/* D-246: 방어/회피 cap 배지 — 장비/패시브 합산 max 표시. 0이면 숨김. */}
+                                        {defenseCap > 0 && (
+                                            <span style={{ color: '#a8c4ff' }} title="방어 카드 사용 시 이만큼 스택 부여">🛡️ {defenseCap}</span>
+                                        )}
+                                        {evadeCap > 0 && (
+                                            <span style={{ color: '#a8e8c4' }} title="회피 카드 사용 시 이만큼 스택 부여">💨 {evadeCap}</span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -6689,9 +6698,27 @@
         //   - playerHealth / playerHunger / maxHealth / maxHunger 추가 prop으로 받아 BattleStage에 표시.
         //   - 사냥감은 emoji 또는 imageUrl(prey.imageUrl, 향후 시트 컬럼) 분기.
         //   - playerImageUrl 기본값: data/Assets/character/Player.png (뒷모습 스케치).
-        function HuntCombatModal({ prey, inventory, combatCards, onResolve, onCancel,
+        function HuntCombatModal({ prey, inventory, combatCards, campState, onResolve, onCancel,
                                    playerHealth, playerHunger, maxHealth, maxHunger,
                                    playerImageUrl }) {
+            // D-246 (2026-05-04 요한): 방어/회피 스택 cap — 장비/패시브 합산.
+            //   defenseCap = 인벤 방어구(shield+armor) defense 합 + 캠프 패시브(armor 보너스).
+            //   evadeCap   = 캠프 패시브(evade 보너스). 회피 장비 카테고리 없음 — 패시브만.
+            const stackCaps = React.useMemo(() => {
+                let invDef = 0;
+                for (const it of (inventory && inventory.items) || []) {
+                    const def = InventorySystem.resolveDef(it.type) || {};
+                    if (def.category === 'shield' || def.category === 'armor') {
+                        invDef += Number(def.defense) || 0;
+                    }
+                }
+                const passive = (typeof allCampBonuses === 'function')
+                    ? allCampBonuses(campState) : { armor: 0, evade: 0 };
+                return {
+                    defenseCap: invDef + (Number(passive.armor) || 0),
+                    evadeCap: Number(passive.evade) || 0
+                };
+            }, [inventory && inventory.items, campState]);
             // D-75: Level 2 prey는 4턴. Level 1은 기존 3턴.
             const SLOT_COUNT = Number(prey && prey.level) === 2 ? 4 : 3;
             const [slots, setSlots] = useState(() => Array(SLOT_COUNT).fill(null));
@@ -6988,7 +7015,11 @@
                         armorState[it.id] = { durabilityLeft: dur };
                     }
                 }
-                const res = CombatDeck.resolveHunt(prey, slots, { weaponState, armorState });
+                const res = CombatDeck.resolveHunt(prey, slots, {
+                    weaponState, armorState,
+                    defenseCap: stackCaps.defenseCap,
+                    evadeCap: stackCaps.evadeCap
+                });
                 setResult(res);
                 setPhase('resolve');
 
@@ -7192,6 +7223,8 @@
                             onRunAway={handleRunAway}
                             runAwayPct={runAwayCard ? Number(runAwayCard.success_rate) || 0 : null}
                             runAwayMsg={runAwayMsg}
+                            defenseCap={stackCaps.defenseCap}
+                            evadeCap={stackCaps.evadeCap}
                         />
 
                         {/* D-183: 결과 배너 → 별도 팝업(z-index 1800)으로 분리. BattleStage 시원하게 늘릴 자리 확보. */}
@@ -10055,6 +10088,7 @@
                             prey={activeHunt.prey}
                             inventory={inventory}
                             combatCards={(window.TTD_DATA && window.TTD_DATA.COMBAT_CARDS) || []}
+                            campState={campState}
                             onResolve={handleHuntResolve}
                             onCancel={() => setActiveHunt(null)}
                             playerHealth={health}

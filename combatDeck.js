@@ -303,9 +303,23 @@
         const turns = [];
         const weaponUsage = {}; // 턴 내 누적 소모량
         const armorUsage = {};  // D-150: 방어구 누적 차감
-        // D-74: 유저가 받은 누적 대미지. prey.attack이 있을 때만 의미 있음.
-        //   유저 카드의 defense로 감쇄 — finalDamage = max(0, preyAttack - cardDefense).
+        // D-74: 유저가 받은 누적 대미지.
         let playerDamageTaken = 0;
+
+        // D-246 (2026-05-04 요한 지시): 방어/회피 스택 시스템.
+        //   카드 사용 시 stack ← cap (cap = 유저 총 방어력/회피력 — 장비/패시브 합산).
+        //   카드 자체 수치는 stack 부여 트리거일 뿐, 그 값은 무관(사용자 (1) implicit 폐기 — (2) 정정 결과).
+        //   evade stack > 0 → 사냥감 attack 1회 회피(stack -1). 그 다음 defense stack로 흡수.
+        //   "한 턴 유지(다음 턴까지)" — 부여 turn 포함 2 turn 유효, 그 후 만료.
+        //   사냥감은 본 시스템 미적용(현재 동작 유지) — 사용자 (4) 결정.
+        //   opts.defenseCap / opts.evadeCap 미전달 시 0 — 스택 시스템 비활성(backward compat).
+        const defenseCap = Math.max(0, Number(opts.defenseCap) || 0);
+        const evadeCap = Math.max(0, Number(opts.evadeCap) || 0);
+        let defenseStack = 0;
+        let defenseStackAge = 0;  // 0 = 부여 turn, 1 = 다음 turn, 2+ 만료
+        let evadeStack = 0;
+        let evadeStackAge = 0;
+        const stackEvents = [];   // UI용 — 매 turn 끝 시점 stack 스냅샷
         // D-108: prey.attack은 fallback. 우선 turn별 actionDef.damage 사용.
         const preyAttackFallback = Math.max(0, Number(prey && prey.attack) || 0);
 
@@ -346,6 +360,14 @@
         const preyDefenseFallback = Math.max(0, Number(prey && prey.defense) || 0);
 
         for (let t = 0; t < turnCount; t++) {
+            // D-246: turn 시작 시 (첫 turn 제외) age += 1, 만료 처리(age >= 2면 stack 0).
+            if (t > 0) {
+                if (defenseStack > 0) defenseStackAge += 1;
+                if (evadeStack > 0) evadeStackAge += 1;
+                if (defenseStackAge >= 2) { defenseStack = 0; defenseStackAge = 0; }
+                if (evadeStackAge >= 2) { evadeStack = 0; evadeStackAge = 0; }
+            }
+
             const card = userSlots[t];
             // D-108: 행동 id → actionDef lookup. type/damage/accuracy/defense 모두 actionDef 기준.
             const actionDef = findPreyAction(preyActions[t]);
@@ -362,25 +384,39 @@
                 ? actionDef.damage : preyAttackFallback;
             const preyDefenseThisTurn = (actionDef.defense > 0)
                 ? actionDef.defense : preyDefenseFallback;
-            // D-74: 유저 카드의 defense로 prey 공격 감쇄 — preyAction.type='attack'일 때만 적용.
-            // D-101/D-108: 카드 evade가 actionDef.accuracy(없으면 prey.attack_accuracy)를 초과하면 prey 공격 무효.
-            //   D-96 결정론(명중≥회피→명중) 대칭 — 유저 측 회피도 정수 비교.
             const cardDefense = Math.max(0, Number(card && card.defense) || 0);
             const cardEvade = Math.max(0, Number(card && card.evade) || 0);
-            const preyAttackAccuracy = Math.max(
-                0,
-                Number(actionDef.accuracy) || Number(prey && prey.attack_accuracy) || 0
-            );
+
+            // D-246: 방어/회피 카드 사용 시 stack ← cap. 카드 자체 수치 무관(트리거 역할).
+            //   stack < cap이면 cap으로 set, 이미 cap이면 변화 X. age 0 리셋(부여 turn).
+            if (card && cardDefense > 0 && defenseStack < defenseCap) {
+                defenseStack = defenseCap;
+                defenseStackAge = 0;
+            }
+            if (card && cardEvade > 0 && evadeStack < evadeCap) {
+                evadeStack = evadeCap;
+                evadeStackAge = 0;
+            }
+
             const takeDamageThisTurn = () => {
                 if (preyActionType !== 'attack' || preyAttackThisTurn <= 0) return 0;
-                // D-232 (2026-05-02 요한 룰): 유저 선공 — 유저 그 턴 행동으로 prey hp ≤ 0 도달 시
-                //   prey의 가해 액션(attack)은 무효(prey가 공격 시도하기 전에 쓰러진 것으로 판정).
-                //   회피/방어/peek은 어차피 dmg 0이라 영향 없음 — attack만 무효 가드.
+                // D-232: 유저 선공 — 유저 카드로 prey HP 0 도달 시 prey attack 무효.
                 if (hp <= 0) return 0;
-                if (cardEvade > preyAttackAccuracy) return 0;
-                const dmg = Math.max(0, preyAttackThisTurn - cardDefense);
-                playerDamageTaken += dmg;
-                return dmg;
+                // D-246: evade stack 우선 — 1회 회피 + stack -1.
+                if (evadeStack > 0) {
+                    evadeStack -= 1;
+                    return 0;
+                }
+                // D-246: defense stack 흡수 — 흡수한 만큼 stack 차감.
+                if (defenseStack > 0) {
+                    const absorbed = Math.min(defenseStack, preyAttackThisTurn);
+                    defenseStack -= absorbed;
+                    const dmg = preyAttackThisTurn - absorbed;
+                    if (dmg > 0) playerDamageTaken += dmg;
+                    return dmg;
+                }
+                playerDamageTaken += preyAttackThisTurn;
+                return preyAttackThisTurn;
             };
 
             if (!card) {
@@ -489,10 +525,23 @@
                     ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
                 });
             }
+
+            // D-246: turn 끝 시점 stack 스냅샷 — 마지막 push된 turn에 기록 + 별도 events 배열.
+            const lastTurn = turns[turns.length - 1];
+            if (lastTurn) {
+                lastTurn.defenseStack = defenseStack;
+                lastTurn.evadeStack = evadeStack;
+            }
+            stackEvents.push({ turn: t + 1, defenseStack, evadeStack });
         }
 
         const outcome = terminatedOutcome || (hp <= 0 ? 'victory' : 'prey_fled');
-        return { outcome, turns, preyHpFinal: hp, weaponUsage, armorUsage, playerDamageTaken };
+        return {
+            outcome, turns, preyHpFinal: hp,
+            weaponUsage, armorUsage, playerDamageTaken,
+            stackEvents,                                   // D-246: turn별 스택 변화
+            defenseCap, evadeCap                           // D-246: UI 표시용 cap (캐릭터 박스 배지 max)
+        };
     }
 
     const api = {
