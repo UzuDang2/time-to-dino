@@ -4765,12 +4765,17 @@
                                 // D-237 (2026-05-02 요한 지시): 학습 비용에 ITEM_EMOJI prefix.
                                 //   1단계 재료(stone/branch/stem/...)는 emoji 매핑(D-92), 2단계+는 텍스트 폴백.
                                 //   가방·조합 패널과 동일 메타포 — itemEmoji() SSOT 사용.
+                                // D-248 (2026-05-04 요한 지시): 보유/필요 표시 — 부족분 한눈에.
+                                //   캠프 인벤(inv = campState.inventory) 기준 보유량 카운트.
+                                const items = (inv && inv.items) || [];
+                                const countOf = (type) => items.filter(it => it && it.type === type).length;
                                 const renderCostText = (recipe) => {
                                     const cost = getRecipeLearnCost(recipe);
                                     return Object.entries(cost).map(([type, n]) => {
                                         const d = InventorySystem.resolveDef(type) || {};
                                         const e = itemEmoji(type);
-                                        return `${e ? e + ' ' : ''}${d.name || type} ${n}`;
+                                        const have = countOf(type);
+                                        return `${e ? e + ' ' : ''}${d.name || type} ${have}/${n}`;
                                     }).join(', ');
                                 };
                                 // D-237: 결과물 라벨에도 emoji prefix(가능할 때) — 학습 가능/학습됨 행 통일.
