@@ -1762,10 +1762,18 @@
                         const resultDef = InventorySystem.ITEMS[res.resultType] || {};
                         const name = resultDef.name || res.resultType;
                         // D-71: count>1 레시피 — produced/overflow 안내.
+                        // D-245: compacted=true면 가방 정리 알림.
                         const produced = Number(res.produced || 1);
-                        let msg = produced > 1
-                            ? `재료를 조합해 ${name} ${produced}개를 만들었다.`
-                            : `재료를 조합해 ${name}을(를) 만들었다.`;
+                        let msg;
+                        if (res.compacted) {
+                            msg = produced > 1
+                                ? `가방을 정리해 ${name} ${produced}개를 만들었다.`
+                                : `가방을 정리해 ${name}을(를) 만들었다.`;
+                        } else {
+                            msg = produced > 1
+                                ? `재료를 조합해 ${name} ${produced}개를 만들었다.`
+                                : `재료를 조합해 ${name}을(를) 만들었다.`;
+                        }
                         if (res.overflow > 0) msg += ` (가방이 가득 차 ${res.overflow}개는 두고 왔다.)`;
                         onFlashMessage(msg);
                     }
@@ -8604,7 +8612,10 @@
                 const resultName = (resultMeta && resultMeta['이름'])
                     || (InventorySystem.ITEMS[res.resultType] && InventorySystem.ITEMS[res.resultType].name)
                     || res.resultType;
-                setMessage(`${resultName}을(를) 구웠다.`);
+                // D-245: compacted=true면 가방 정리 알림.
+                setMessage(res.compacted
+                    ? `가방을 정리해 ${resultName}을(를) 구웠다.`
+                    : `${resultName}을(를) 구웠다.`);
                 setCookingOpen(false);
             };
 

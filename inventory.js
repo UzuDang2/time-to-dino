@@ -788,6 +788,73 @@ class InventorySystem {
     //   인벤이 가득 차면 들어간 만큼만 생성(overflow>0)하고 ok 반환.
     //   재료 소비는 1회 고정(count와 무관) — 한 번의 조합.
     // 반환: { ok, reason?, resultType?, shortage?, produced?, overflow? }
+    // D-245 (2026-05-04 요한 지시): 인벤 자동 정렬 시뮬.
+    //   itemsForCompact를 큰 면적 순으로 좌상→우하 fit. extraShapes(결과물 등)도 함께 시뮬.
+    //   인벤 상태 변경 X. 정렬 후도 fit 안 되면 ok=false.
+    //   반환: { ok, newPositions: Map<id, {x,y}>, extraPositions: [{x,y}] }
+    _simulateCompact(itemsForCompact, extraShapes) {
+        const vGrid = Array(this.rows).fill(null).map(() => Array(this.cols).fill(null));
+        const shapeArea = (shape) => shape.reduce(
+            (a, row) => a + row.filter(v => v === 1).length, 0);
+        const canPlaceVirtual = (shape, x, y) => {
+            if (y + shape.length > this.rows || x + shape[0].length > this.cols) return false;
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[dy].length; dx++) {
+                    if (shape[dy][dx] !== 1) continue;
+                    const cy = y + dy, cx = x + dx;
+                    if (this.isDisabled(cx, cy)) return false;
+                    if (vGrid[cy][cx] !== null) return false;
+                }
+            }
+            return true;
+        };
+        const findEmptyVirtual = (shape) => {
+            for (let y = 0; y <= this.rows - shape.length; y++) {
+                for (let x = 0; x <= this.cols - shape[0].length; x++) {
+                    if (canPlaceVirtual(shape, x, y)) return { x, y };
+                }
+            }
+            return null;
+        };
+        const writeShape = (shape, x, y, marker) => {
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[dy].length; dx++) {
+                    if (shape[dy][dx]) vGrid[y + dy][x + dx] = marker;
+                }
+            }
+        };
+        // 큰 면적 순(decreasing). 같은 면적은 입력 순서 보존(stable sort).
+        const sorted = [...itemsForCompact].sort((a, b) => shapeArea(b.shape) - shapeArea(a.shape));
+        const newPositions = new Map();
+        for (const item of sorted) {
+            const pos = findEmptyVirtual(item.shape);
+            if (!pos) return { ok: false, newPositions, extraPositions: [] };
+            writeShape(item.shape, pos.x, pos.y, item.id);
+            newPositions.set(item.id, pos);
+        }
+        const extraPositions = [];
+        const extraSorted = (extraShapes || []).slice().sort((a, b) => shapeArea(b) - shapeArea(a));
+        for (const shape of extraSorted) {
+            const pos = findEmptyVirtual(shape);
+            if (!pos) return { ok: false, newPositions, extraPositions };
+            writeShape(shape, pos.x, pos.y, '__extra__');
+            extraPositions.push(pos);
+        }
+        return { ok: true, newPositions, extraPositions };
+    }
+
+    // D-245: 시뮬 newPositions 실제 적용 — grid 클리어 + items.x/y 갱신 + 재배치.
+    _applyCompact(newPositions) {
+        this.grid = Array(this.rows).fill(null).map(() => Array(this.cols).fill(null));
+        for (const item of this.items) {
+            const pos = newPositions.get(item.id);
+            if (!pos) continue;
+            item.x = pos.x;
+            item.y = pos.y;
+            this.placeItem(item);
+        }
+    }
+
     // D-241 (2026-05-02 요한 지시): 재료 소모 후 결과물 fit 시뮬레이션.
     //   사용자 사례 — 가방이 꽉 차 보여도 재료가 소모되면 그만큼 빈칸이 생기므로
     //   결과물이 들어갈 수 있는 케이스를 사전 검사로 통과시킴. 인벤 상태 변경 없음.
@@ -872,13 +939,55 @@ class InventorySystem {
         const resultDef = InventorySystem.ITEMS[recipe.result];
         if (!resultDef) return { ok: false, reason: 'unknown_result' };
 
-        // D-241: 사전 시뮬 — 재료 가상 제거 후 결과물 fit 확인. 통과 못 하면 'no_space'.
+        // D-241: 사전 시뮬 — 재료 가상 제거 후 결과물 fit 확인.
         const sim = this._simulateCraftPlacement(recipe, preferredPos);
+        const count = Math.max(1, Number(recipe.count) || 1);
+
+        // D-245: D-241 시뮬 실패면 자동 정렬(컴팩트) 시도.
+        //   재료 빠진 survivors + 결과물 count개 shape으로 _simulateCompact.
+        //   정렬 시뮬 통과 시 진짜 재료 제거 + 인벤 정렬 + 결과물 배치 + compacted=true.
         if (!sim.canPlace) {
-            return { ok: false, reason: 'no_space' };
+            const need = InventorySystem.recipeRequirements(recipe);
+            const removedIds = new Set();
+            for (const [type, n] of Object.entries(need)) {
+                let rem = n;
+                for (const it of this.items) {
+                    if (rem > 0 && it.type === type && !removedIds.has(it.id)) {
+                        removedIds.add(it.id);
+                        rem--;
+                    }
+                }
+            }
+            const survivors = this.items.filter(it => !removedIds.has(it.id));
+            const extraShapes = [];
+            for (let i = 0; i < count; i++) extraShapes.push(resultDef.shape);
+            const compactSim = this._simulateCompact(survivors, extraShapes);
+            if (!compactSim.ok) {
+                return { ok: false, reason: 'no_space' };
+            }
+            // 진짜 재료 제거 + 정렬 적용.
+            const keep = [];
+            for (const it of this.items) {
+                if (removedIds.has(it.id)) {
+                    this.removeItem(it);
+                } else {
+                    keep.push(it);
+                }
+            }
+            this.items = keep;
+            this._applyCompact(compactSim.newPositions);
+            // 결과물 배치 — 시뮬에서 결정된 extraPositions 사용.
+            let produced = 0;
+            for (let i = 0; i < count && i < compactSim.extraPositions.length; i++) {
+                const pos = compactSim.extraPositions[i];
+                if (this._placeDerivedItem(recipe.result, pos.x, pos.y)) produced++;
+            }
+            if (produced === 0) return { ok: false, reason: 'place_failed' };
+            const overflow = count - produced;
+            return { ok: true, resultType: recipe.result, produced, overflow, compacted: true };
         }
 
-        // 진짜 재료 소비 — 시뮬에서 식별된 removedIds 기준.
+        // 일반 경로 — 진짜 재료 소비 (시뮬 removedIds 기준).
         const removed = sim.removedIds;
         const keep = [];
         for (const it of this.items) {
@@ -891,7 +1000,6 @@ class InventorySystem {
         this.items = keep;
 
         // 결과물 배치 — 첫 1개는 preferredPos(가능 시)에, 나머지는 빈 칸 자동.
-        const count = Math.max(1, Number(recipe.count) || 1);
         let produced = 0;
         const startPos = (preferredPos && this.canPlace(resultDef.shape, preferredPos.x, preferredPos.y))
             ? preferredPos
