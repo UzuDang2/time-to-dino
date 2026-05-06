@@ -4631,8 +4631,11 @@
         const CAMP_HUB_MOVE_DURATION_MS = 600;       // CSS transition과 동일. 도착 후 자동 상호작용 트리거 시 sleep.
         const CAMP_HUB_PLAYER_START = { x: 50, y: 92 };
 
-        function CampHubMap({ campState, activeQuests, onClickBuilding }) {
-            const [playerPos, setPlayerPos] = React.useState(CAMP_HUB_PLAYER_START);
+        function CampHubMap({ campState, activeQuests, onClickBuilding, onPlayerMove }) {
+            // D-255: 마지막 캐릭터 위치 영속화. campState.campHubState.playerPosition 폴백 = (50,92).
+            const initialPos = (campState && campState.campHubState && campState.campHubState.playerPosition)
+                || CAMP_HUB_PLAYER_START;
+            const [playerPos, setPlayerPos] = React.useState(initialPos);
             const [moving, setMoving] = React.useState(false);
             // 빌딩 직접 탭 시: 이동 후 자동 상호작용 트리거. timeout id를 ref로 보관해 cleanup.
             const autoInteractRef = React.useRef(null);
@@ -4683,6 +4686,7 @@
                 };
                 setPlayerPos(clamped);
                 setMoving(true);
+                if (typeof onPlayerMove === 'function') onPlayerMove(clamped);
                 moveDoneRef.current = setTimeout(() => setMoving(false), CAMP_HUB_MOVE_DURATION_MS);
             };
 
@@ -5352,7 +5356,7 @@
         //   상단: 점수 → [보관함] 버튼 → [퀘스트 목록] → [현재 진행 중 퀘스트] → 건설.
         //   하단: [물건 챙기기] [탐험 떠나기] 두 버튼.
         // D-168: 빌딩 그리드 추가 — 보관함 버튼 아래.
-        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange, onWorkshopStart, onWorkshopReceive, onLearnRecipe }) {
+        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange, onWorkshopStart, onWorkshopReceive, onLearnRecipe, onCampHubChange }) {
             const [resetOpen, setResetOpen] = React.useState(false);
             const [storageOpen, setStorageOpen] = React.useState(false);
             const [packOpen, setPackOpen] = React.useState(false);
@@ -5514,11 +5518,13 @@
                             </button>
                         </div>
 
-                        {/* D-254: 카드 그리드 폐기 → 공간형 허브맵 (BuildingsGrid 함수는 잔존, unused). */}
+                        {/* D-254: 카드 그리드 폐기 → 공간형 허브맵 (BuildingsGrid 함수는 잔존, unused).
+                            D-255: 캐릭터 위치 영속화 — onPlayerMove → onCampHubChange → App.setCampState. */}
                         <CampHubMap
                             campState={campState}
                             activeQuests={(campState && campState.quests && campState.quests.active) || []}
                             onClickBuilding={(b) => setSelectedBuilding(b)}
+                            onPlayerMove={(pos) => onCampHubChange && onCampHubChange({ playerPosition: pos })}
                         />
 
                         {/* D-154: 퀘스트 목록 — 패널 자체를 버튼화. 클릭 시 모달.
@@ -10526,6 +10532,7 @@
                 tentLevel: 0,
                 buildingLevels: {},        // D-174
                 oneShotInventory: {},      // D-174
+                campHubState: { playerPosition: { x: 50, y: 92 } }, // D-255
                 inventory: makeCampStorageInventory(0),  // D-174 v3: 7x20 + row 10-19 disabled.
                 pack: makePackInventory(0),
                 quests: { active: [], completed: [] },
@@ -10580,14 +10587,24 @@
                 ? { ...state.buildingLevels } : {};
             const oneShotInventory = (state.oneShotInventory && typeof state.oneShotInventory === 'object')
                 ? { ...state.oneShotInventory } : {};
+            // D-255: campHubState — 마지막 캐릭터 위치 등 허브맵 영속 상태. 미존재 폴백 = (50,92).
+            const hubRaw = (state.campHubState && typeof state.campHubState === 'object') ? state.campHubState : {};
+            const hubPos = (hubRaw.playerPosition && typeof hubRaw.playerPosition === 'object') ? hubRaw.playerPosition : {};
+            const campHubState = {
+                playerPosition: {
+                    x: Math.max(2, Math.min(98, Number(hubPos.x) || 50)),
+                    y: Math.max(2, Math.min(98, Number(hubPos.y) || 92))
+                }
+            };
             return {
-                version: 4,
+                version: 5,
                 seenIntro: !!state.seenIntro,
                 firstReturnDone: !!state.firstReturnDone,
                 tentLevel,
                 tentBuilt: tentLevel >= 1,
                 buildingLevels,         // D-174
                 oneShotInventory,       // D-174
+                campHubState,           // D-255
                 inventory: serializeInvItems(state.inventory),
                 pack: serializeInvItems(state.pack),
                 quests: {
@@ -10664,6 +10681,15 @@
                 ? { ...raw.buildingLevels } : {};
             const oneShotInventory = (raw.oneShotInventory && typeof raw.oneShotInventory === 'object')
                 ? { ...raw.oneShotInventory } : {};
+            // D-255: campHubState — v4 이하 폴백 = 기본 시작 위치 (50,92).
+            const hubRaw = (raw.campHubState && typeof raw.campHubState === 'object') ? raw.campHubState : {};
+            const hubPos = (hubRaw.playerPosition && typeof hubRaw.playerPosition === 'object') ? hubRaw.playerPosition : {};
+            const campHubState = {
+                playerPosition: {
+                    x: Math.max(2, Math.min(98, Number(hubPos.x) || 50)),
+                    y: Math.max(2, Math.min(98, Number(hubPos.y) || 92))
+                }
+            };
 
             // D-174: 캠프 보관함 12x7 + 마지막 row가 텐트 슬롯.
             //   기존 v3 12x6 세이브 → 12x7로 마이그레이션. 좌표 그대로 복원 가능
@@ -10679,13 +10705,14 @@
             for (const entry of packRaw) restoreItemEntry(pack, entry);
 
             return {
-                version: 4,
+                version: 5,
                 seenIntro: !!raw.seenIntro,
                 firstReturnDone: !!raw.firstReturnDone,
                 tentLevel: tentLevelRestored,
                 tentBuilt: tentLevelRestored >= 1,
                 buildingLevels,
                 oneShotInventory,
+                campHubState,        // D-255
                 inventory: inv,
                 pack,
                 quests: {
@@ -11197,6 +11224,10 @@
                         onWorkshopStart={handleWorkshopStart}
                         onWorkshopReceive={handleWorkshopReceive}
                         onLearnRecipe={handleLearnRecipe}
+                        onCampHubChange={(patch) => setCampState(prev => ({
+                            ...prev,
+                            campHubState: { ...(prev.campHubState || {}), ...patch }
+                        }))}
                     />
                     {pendingTentModal && (
                         <TentQuestModal
