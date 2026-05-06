@@ -375,76 +375,242 @@
   },
   {
     "id": "watchtower",
-    "name": "감시탑",
+    "name": "도구작업대",
     "stage": 1,
     "cost": [
       {
-        "material": "목재",
-        "count": 15
+        "material": "나뭇가지",
+        "count": 3
       },
       {
         "material": "돌맹이",
-        "count": 15
+        "count": 2
       }
     ],
-    "effect_raw": "\"높은 발판에서 멀리 본다. 숲의 들썩임이 먼저 들린다.\"",
+    "effect_raw": "\"손에 익숙한 도구가 늘어난다. 작은 가방이 가벼워진다.\"",
     "설명": "",
     "reward_items": "",
-    "reward_passive": "detection-1",
+    "reward_passive": "pack+1",
     "products": "",
     "reward_one_shot": "",
-    "cost_raw": "목재 x15, 돌맹이 x15"
+    "cost_raw": "나뭇가지 x3, 돌맹이 x2"
   },
   {
     "id": "watchtower",
-    "name": "감시탑",
+    "name": "도구작업대",
     "stage": 2,
     "cost": [
       {
-        "material": "목재",
-        "count": 25
+        "material": "나뭇가지",
+        "count": 4
       },
       {
-        "material": "석재",
-        "count": 15
-      },
-      {
-        "material": "금속",
+        "material": "돌맹이",
         "count": 3
       }
     ],
-    "effect_raw": "\"바람의 방향이 보인다. 내일의 하늘을 미리 짚을 수 있다.\"",
+    "effect_raw": "\"선반이 깔리고 손이 빨라진다. 더 챙길 자리가 생긴다.\"",
     "설명": "",
     "reward_items": "",
-    "reward_passive": "detection-1",
+    "reward_passive": "pack+1",
     "products": "",
-    "reward_one_shot": "weather_forecast+1",
-    "cost_raw": "목재 x25, 석재 x15, 금속 x3"
+    "reward_one_shot": "",
+    "cost_raw": "나뭇가지 x4, 돌맹이 x3"
   },
   {
     "id": "watchtower",
-    "name": "감시탑",
+    "name": "도구작업대",
     "stage": 3,
     "cost": [
       {
-        "material": "석재",
-        "count": 30
+        "material": "나뭇가지",
+        "count": 5
       },
       {
-        "material": "금속",
-        "count": 10
-      },
-      {
-        "material": "가죽",
-        "count": 10
+        "material": "돌맹이",
+        "count": 3
       }
     ],
-    "effect_raw": "\"탑 꼭대기에서 보면 그놈의 자리가 보인다. 한 발만 비껴서면 된다.\"",
+    "effect_raw": "\"갈고리가 박힌다. 무거운 도구도 위에 걸린다.\"",
     "설명": "",
     "reward_items": "",
-    "reward_passive": "detection-2",
+    "reward_passive": "pack+1",
     "products": "",
-    "reward_one_shot": "safe_move+1",
-    "cost_raw": "석재 x30, 금속 x10, 가죽 x10"
+    "reward_one_shot": "",
+    "cost_raw": "나뭇가지 x5, 돌맹이 x3"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 4,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 3
+      },
+      {
+        "material": "석재",
+        "count": 2
+      }
+    ],
+    "effect_raw": "\"선반 한 줄이 더 늘어난다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+1",
+    "products": "",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x3, 석재 x2"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 5,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 4
+      },
+      {
+        "material": "석재",
+        "count": 3
+      }
+    ],
+    "effect_raw": "\"두 손이 자유로워진다. 짐 옮기기 한결 쉽다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+1",
+    "products": "",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x4, 석재 x3"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 6,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 4
+      },
+      {
+        "material": "석재",
+        "count": 3
+      },
+      {
+        "material": "줄기",
+        "count": 1
+      }
+    ],
+    "effect_raw": "\"정돈된 자루마다 자리가 정해진다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+1",
+    "products": "",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x4, 석재 x3, 줄기 x1"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 7,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 5
+      },
+      {
+        "material": "석재",
+        "count": 4
+      },
+      {
+        "material": "줄기",
+        "count": 1
+      }
+    ],
+    "effect_raw": "\"손이 닿지 않던 안쪽 칸까지 정리된다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+1",
+    "products": "",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x5, 석재 x4, 줄기 x1"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 8,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 5
+      },
+      {
+        "material": "석재",
+        "count": 4
+      },
+      {
+        "material": "줄기",
+        "count": 2
+      }
+    ],
+    "effect_raw": "\"낡은 도구가 다듬어져 새것처럼 다시 매달린다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+1",
+    "products": "",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x5, 석재 x4, 줄기 x2"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 9,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 6
+      },
+      {
+        "material": "석재",
+        "count": 5
+      },
+      {
+        "material": "줄기",
+        "count": 2
+      }
+    ],
+    "effect_raw": "\"벽도 천장도 도구로 가득 찬다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+1",
+    "products": "",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x6, 석재 x5, 줄기 x2"
+  },
+  {
+    "id": "watchtower",
+    "name": "도구작업대",
+    "stage": 10,
+    "cost": [
+      {
+        "material": "목재",
+        "count": 6
+      },
+      {
+        "material": "석재",
+        "count": 5
+      },
+      {
+        "material": "줄기",
+        "count": 3
+      }
+    ],
+    "effect_raw": "\"벽 가득 도구가 걸린다. 짐을 두고 갈 일이 줄어든다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+1",
+    "products": "",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x6, 석재 x5, 줄기 x3"
   }
 ]
