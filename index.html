@@ -6234,8 +6234,10 @@
             activeEvent,
             // D-188 (요한 시안 v2): 사냥감 슬롯=상단, 내 슬롯=하단, 확정 버튼=우 col 안.
             SLOT_COUNT, slots, phase, handleSlotClick, allFilled, onConfirm,
-            // D-225: 도망치기 버튼 — 손패 카드에서 분리, 확정 버튼 위 별도 버튼. 즉시 발동(success_rate 굴림).
-            onRunAway, runAwayPct, runAwayMsg,
+            // D-250: 도망치기 버튼 — 빈 슬롯에 도망치기 카드 1장 추가. resolveHunt가 success_rate(20%) 굴림.
+            //   D-225 즉발 메시지(runAwayMsg) 폐기 — 슬롯 카드형이라 결과는 confirm 후 turn 로그에서.
+            onRunAway, runAwayPct,
+            slotsFull,
             // D-246: 방어/회피 스택 cap 표시 (장비/패시브 합산 max). 동적 stack 진행은 후속.
             defenseCap, evadeCap,
         }) {
@@ -6471,29 +6473,23 @@
                             </div>
                             {/* 확정 + 나 박스 묶음 (bottom). */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {/* D-225: 도망치기 버튼 — 카드에서 분리, 확정 버튼 위. success_rate 굴려 즉시 outcome 'player_fled' 또는 실패 메시지. */}
+                                {/* D-250: 도망치기 버튼 — 빈 슬롯에 카드 1장 추가. 슬롯 가득 차면 비활성. */}
                                 {phase === 'select' && onRunAway && typeof runAwayPct === 'number' && (
                                     <button
                                         onClick={onRunAway}
+                                        disabled={!!slotsFull}
                                         style={{
                                             padding: '6px 10px',
-                                            background: 'rgba(0,0,0,0.45)',
-                                            color: '#e0a070',
-                                            border: '1px solid rgba(224,160,112,0.35)',
+                                            background: slotsFull ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.45)',
+                                            color: slotsFull ? '#666' : '#e0a070',
+                                            border: `1px solid ${slotsFull ? 'rgba(120,120,120,0.25)' : 'rgba(224,160,112,0.35)'}`,
                                             borderRadius: '8px',
                                             fontSize: 12,
                                             fontWeight: 600,
-                                            cursor: 'pointer'
+                                            cursor: slotsFull ? 'not-allowed' : 'pointer'
                                         }}>
                                         도망치기 ({runAwayPct}%)
                                     </button>
-                                )}
-                                {/* 도망 실패 시 1.5s 메시지 노출 */}
-                                {runAwayMsg && (
-                                    <div style={{
-                                        padding: '4px 8px', fontSize: 11, color: '#e07a86',
-                                        background: 'rgba(0,0,0,0.5)', borderRadius: '6px', textAlign: 'center'
-                                    }}>{runAwayMsg}</div>
                                 )}
                                 {/* D-188: 확정 버튼 — 외부 모달 → BattleStage 우 col 안 나 박스 위로 이관. */}
                                 {(phase === 'select' || phase === 'resolve') && (
@@ -6959,26 +6955,21 @@
                 }
             };
 
-            // D-225: 도망치기 — 카드 시스템 분리, 즉시 발동.
-            //   success_rate 굴림 → 성공 시 outcome 'player_fled'로 onResolve 호출(부모 Game).
-            //   실패 시 1.5s 메시지 표시 + 슬롯 미경유(재시도 가능). 게임 균형은 사용자 검증 후 조정.
-            const [runAwayMsg, setRunAwayMsg] = useState(null);
+            // D-250 (2026-05-06 요한 정정): 도망치기 — 즉시 발동 → 카드 슬롯 추가형으로 변경.
+            //   D-225 즉발 정책 폐기. 버튼 누를 때마다 빈 슬롯에 도망치기 카드(success_rate=20%) 1장 push.
+            //   확정 시 combatDeck.resolveHunt가 turn 순서대로 굴려 성공 시 player_fled outcome.
+            //   회피/방어/공격 카드와 자유 조합 가능. 무한 사용 (빈 슬롯 있는 한 계속 추가 가능 — infinite=true).
+            //   실패 메시지(1.5s)는 더 이상 즉발이 아니므로 제거.
             const handleRunAway = () => {
                 if (phase !== 'select' || !runAwayCard) return;
-                const successRate = Math.max(0, Math.min(100, Number(runAwayCard.success_rate) || 0));
-                if (Math.random() * 100 < successRate) {
-                    onResolve && onResolve({
-                        outcome: 'player_fled',
-                        turns: [],
-                        preyHpFinal: prey.hp,
-                        weaponUsage: {},
-                        armorUsage: {},
-                        playerDamageTaken: 0
-                    });
-                } else {
-                    setRunAwayMsg('도망치지 못했다.');
-                    setTimeout(() => setRunAwayMsg(null), 1500);
-                }
+                const emptyIdx = slots.findIndex(s => s === null);
+                if (emptyIdx < 0) return;
+                const newSlots = [...slots];
+                newSlots[emptyIdx] = {
+                    ...runAwayCard,
+                    uid: `${runAwayCard.uid || 'run_away'}:slot:${emptyIdx}:${Date.now()}`
+                };
+                setSlots(newSlots);
             };
 
             const handleConfirm = () => {
@@ -7228,7 +7219,7 @@
                             onConfirm={handleConfirm}
                             onRunAway={handleRunAway}
                             runAwayPct={runAwayCard ? Number(runAwayCard.success_rate) || 0 : null}
-                            runAwayMsg={runAwayMsg}
+                            slotsFull={allFilled}
                             defenseCap={stackCaps.defenseCap}
                             evadeCap={stackCaps.evadeCap}
                         />
@@ -9615,36 +9606,38 @@
 
                 // D-161: 합성 조각 — 사냥감 발견. 이모지 + 이름 + (HP 부분 노출) 인라인.
                 let preyNarration = '';
-                let ambushDamage = 0;
-                let ambushPreyName = '';
+                let aggressivePreyAuto = null;   // D-249 v2: 공격성 사냥감 자동 hunt 진입 페이로드
                 if (preyHere && !inPredationSafe) {
-                    newHand.push({
-                        ...HUNT_START_CARD,
-                        uid: `hunt_start_${preyHere.id}_${Date.now()}`,
-                        target: {
-                            tileId: targetId,
-                            preyId: preyHere.id,
-                            preyType: preyHere.preyType
-                        }
-                    });
                     const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
                     const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
+                    // D-249 v2 (2026-05-06 요한 정정): 공격성 사냥감 = 사냥시작 자동 발동.
+                    //   기존 v1(즉시 HP 차감) 폐기. aggressive=true면 hunt_start 카드를 손패에 추가하지 않고,
+                    //   바로 setActiveHunt를 트리거해 전투 화면 진입. 첫 턴 회피/방어 카드 정상 작동.
+                    //   wait-in-place(같은 칸 대기)에서는 자동 진입 미발동 — 이미 그 칸에 멈춰 있던 상태.
+                    const isAggressiveAutoEnter = !!foundDef.aggressive && !isWaitInPlace;
+
+                    if (!isAggressiveAutoEnter) {
+                        newHand.push({
+                            ...HUNT_START_CARD,
+                            uid: `hunt_start_${preyHere.id}_${Date.now()}`,
+                            target: {
+                                tileId: targetId,
+                                preyId: preyHere.id,
+                                preyType: preyHere.preyType
+                            }
+                        });
+                    }
                     if (!isWaitInPlace) {
                         const hpNote = (typeof preyHere.hpCurrent === 'number' && preyHere.hpCurrent < (foundDef.hp || 0))
                             ? ` (HP ${preyHere.hpCurrent}/${foundDef.hp})`
                             : '';
                         const emj = PREY_EMOJI[preyHere.preyType] || '❓';
-                        preyNarration = `${emj} ${foundDef.name || preyHere.preyType}을(를) 발견했다${hpNote}.`;
+                        preyNarration = isAggressiveAutoEnter
+                            ? `‼️ ${emj} ${foundDef.name || preyHere.preyType}이(가) 풀숲을 박차고 달려든다! 사냥이 시작된다${hpNote}.`
+                            : `${emj} ${foundDef.name || preyHere.preyType}을(를) 발견했다${hpNote}.`;
                     }
-                    // D-249 (2026-05-06 요한 지시): 공격성 사냥감 선공.
-                    //   foundDef.aggressive=true (시트 'aggressive'=Y, 현재 boar/dinosaur 2종)면
-                    //   진입 즉시 사냥감이 달려들어 attack만큼 plr HP 차감. waiting/재방문 무관 X —
-                    //   sound가 들리는 칸에 들어선 순간이 핵심이라 wait-in-place(같은 칸 대기)에는 미적용.
-                    //   회피/방어 stack은 카드 사용 트리거여서 진입 시점엔 0 — 가공 없이 그대로 받는다.
-                    //   기습은 반드시 손해여야 보스=공포 원칙과 일관된 위험 설계가 된다.
-                    if (foundDef.aggressive && !isWaitInPlace) {
-                        ambushDamage = Math.max(0, Number(foundDef.attack) || 0);
-                        ambushPreyName = foundDef.name || preyHere.preyType;
+                    if (isAggressiveAutoEnter) {
+                        aggressivePreyAuto = { prey: preyHere, def: foundDef };
                     }
                 }
                 setHand(newHand);
@@ -9716,14 +9709,8 @@
                     chaseNarration = '⚠️ 거대한 짐승의 발소리가 등 뒤로 쫓아온다.';
                 }
 
-                // D-249: 공격성 사냥감 선공 — HP 차감 + 내레이션. ambushDamage > 0일 때만.
-                //   같은 턴 함정 데미지(setHealth(health - damage))와 충돌 가능 — 함수형 setter로 누적.
-                //   같은 칸 재진입(wait-in-place)·발견 모드(시야)에서는 미적용 (위 분기에서 isWaitInPlace 가드).
-                let ambushNarration = '';
-                if (ambushDamage > 0) {
-                    setHealth(prev => Math.max(0, prev - ambushDamage));
-                    ambushNarration = `‼️ ${ambushPreyName}이(가) 풀숲을 박차고 달려든다! 생명력 -${ambushDamage}.`;
-                }
+                // D-249 v2: 공격성 사냥감 자동 hunt 진입 — preyNarration에 통합되어 별도 라인 없음.
+                //   실제 setActiveHunt 호출은 모든 setMessage/state 합성 후 아래 'aggressivePreyAuto' 분기에서.
 
                 // D-126: 상태이상 tick — 매 이동 후 1회. tick_effect + 라인 누적.
                 let statusLines = [];
@@ -9761,14 +9748,13 @@
                     }
                 }
 
-                // 합성: [지역 인트로] [사체] [사냥감 발견] [선공] [타일/보스] [추격] [상태이상 라인…] [임계치 리마인드…].
+                // 합성: [지역 인트로] [사체] [사냥감 발견(공격성이면 자동전투 알림 통합)] [타일/보스] [추격] [상태이상 라인…] [임계치 리마인드…].
                 //   bossEncounterNarration이 있으면 tileNarration 무시 (조우가 우선).
-                //   D-249: ambushNarration은 preyNarration 직후 — 발견 → 기습 순서로 자연스럽게.
+                //   D-249 v2: 공격성 자동 진입 시 preyNarration이 "달려든다! 사냥이 시작된다"로 변경됨 — 별도 라인 없음.
                 const finalMsg = composeNarration([
                     narrationIntro,
                     carcassNarration,
                     preyNarration,
-                    ambushNarration,
                     bossEncounterNarration || tileNarration,
                     chaseNarration,
                     ...statusLines,
@@ -9776,6 +9762,32 @@
                 ]);
 
                 setMessage(finalMsg);
+
+                // D-249 v2: 공격성 사냥감 자동 hunt 진입.
+                //   useCard('hunt_start')와 동일한 setActiveHunt 페이로드. 시간/발각은 이번 이동분만 차감,
+                //   추가 +1/+2(사냥시작 카드 비용)는 미부과 — "선공"은 거부할 수 없는 만남이라 자동 강제이며
+                //   카드 비용까지 떠넘기는 건 가혹. 첫 턴부터 회피/방어 카드 정상 사용 가능 (combatDeck 기존 흐름).
+                if (aggressivePreyAuto) {
+                    const { prey, def: preyDef } = aggressivePreyAuto;
+                    setActiveHunt({
+                        prey: {
+                            id: prey.id,
+                            tileId: prey.tileId,
+                            preyType: prey.preyType,
+                            name: preyDef.name || prey.preyType,
+                            hp: (typeof prey.hpCurrent === 'number') ? prey.hpCurrent : (preyDef.hp || 1),
+                            meat: preyDef.meat || 1,
+                            drop_item: preyDef.drop_item || '',
+                            evade_rate: Number(preyDef.evade ?? preyDef.evade_rate) || 1,
+                            evade_per_turn: preyDef.evade_per_turn || '',
+                            fleeCount: prey.fleeCount || 0,
+                            level: Number(preyDef.level) || 1,
+                            attack: Number(preyDef.attack) || 0,
+                            defense: Number(preyDef.defense) || 0,
+                            actions_per_turn: preyDef.actions_per_turn || ''
+                        }
+                    });
+                }
             };
 
             // D-109: 베이스캠프 귀환 — GameEndModal/맵 보기 footer에서 호출.

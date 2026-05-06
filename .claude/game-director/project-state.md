@@ -1,6 +1,8 @@
 # project-state.md
 
-마지막 검증: 2026-05-06 (**D-249, L2 공격성 사냥감 선공 — boar/dinosaur 진입 즉시 attack만큼 HP 차감 + ambush 내레이션. 시트 `aggressive` 컬럼 + fetch 변환 + index.html hunt 진입 분기**).
+마지막 검증: 2026-05-06 (**D-249 v2 / D-250, ① 공격성 사냥감 선공 = HP 차감 → 자동 hunt 진입(사냥시작 버튼 자동 발동)으로 정정. ② 도망치기 = 즉발 → 카드 슬롯 추가형(20% × 무한 사용)으로 재정의. 시트 `전투카드.run_away.success_rate` 25→20**).
+
+이전 검증: 2026-05-06 (D-249 v1, L2 공격성 사냥감 선공 v1 — 즉시 HP 차감. v2에서 SUPERSEDED).
 19th 세션 후속 (D-195~D-206, 모두 main에 push 완료):
 - D-195: 사냥 시각 시스템 정착 + 카메라 추적 sync (4-step 시퀀스 + floats 정책 + 결과 모달 로그 + battle-float-up 2.0s + 카메라 raf 800ms ease-out + .map-container overflow-anchor:none).
 - D-196: D-195 사용자 검증 후 정제 — `preyActionName` step 제거(사냥감 슬롯=D-186 중복), cardname `!` 제거(분위기 톤), 4 step→3 step (`STEP_OFFSETS = { user: 0, preyHit: 500, userHit: 1000 }`), `TURN_DELAY_MS` 2000→1400 (옵션 5 변형: float duration 유지, 다음 턴 시작만 단축). 4 turn 사냥 8s→5.6s.
