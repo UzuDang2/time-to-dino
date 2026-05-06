@@ -9615,6 +9615,8 @@
 
                 // D-161: 합성 조각 — 사냥감 발견. 이모지 + 이름 + (HP 부분 노출) 인라인.
                 let preyNarration = '';
+                let ambushDamage = 0;
+                let ambushPreyName = '';
                 if (preyHere && !inPredationSafe) {
                     newHand.push({
                         ...HUNT_START_CARD,
@@ -9625,14 +9627,24 @@
                             preyType: preyHere.preyType
                         }
                     });
+                    const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
+                    const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
                     if (!isWaitInPlace) {
-                        const preyDataArr = (window.TTD_DATA && window.TTD_DATA.PREY) || [];
-                        const foundDef = preyDataArr.find(p => p.id === preyHere.preyType) || {};
                         const hpNote = (typeof preyHere.hpCurrent === 'number' && preyHere.hpCurrent < (foundDef.hp || 0))
                             ? ` (HP ${preyHere.hpCurrent}/${foundDef.hp})`
                             : '';
                         const emj = PREY_EMOJI[preyHere.preyType] || '❓';
                         preyNarration = `${emj} ${foundDef.name || preyHere.preyType}을(를) 발견했다${hpNote}.`;
+                    }
+                    // D-249 (2026-05-06 요한 지시): 공격성 사냥감 선공.
+                    //   foundDef.aggressive=true (시트 'aggressive'=Y, 현재 boar/dinosaur 2종)면
+                    //   진입 즉시 사냥감이 달려들어 attack만큼 plr HP 차감. waiting/재방문 무관 X —
+                    //   sound가 들리는 칸에 들어선 순간이 핵심이라 wait-in-place(같은 칸 대기)에는 미적용.
+                    //   회피/방어 stack은 카드 사용 트리거여서 진입 시점엔 0 — 가공 없이 그대로 받는다.
+                    //   기습은 반드시 손해여야 보스=공포 원칙과 일관된 위험 설계가 된다.
+                    if (foundDef.aggressive && !isWaitInPlace) {
+                        ambushDamage = Math.max(0, Number(foundDef.attack) || 0);
+                        ambushPreyName = foundDef.name || preyHere.preyType;
                     }
                 }
                 setHand(newHand);
@@ -9704,6 +9716,15 @@
                     chaseNarration = '⚠️ 거대한 짐승의 발소리가 등 뒤로 쫓아온다.';
                 }
 
+                // D-249: 공격성 사냥감 선공 — HP 차감 + 내레이션. ambushDamage > 0일 때만.
+                //   같은 턴 함정 데미지(setHealth(health - damage))와 충돌 가능 — 함수형 setter로 누적.
+                //   같은 칸 재진입(wait-in-place)·발견 모드(시야)에서는 미적용 (위 분기에서 isWaitInPlace 가드).
+                let ambushNarration = '';
+                if (ambushDamage > 0) {
+                    setHealth(prev => Math.max(0, prev - ambushDamage));
+                    ambushNarration = `‼️ ${ambushPreyName}이(가) 풀숲을 박차고 달려든다! 생명력 -${ambushDamage}.`;
+                }
+
                 // D-126: 상태이상 tick — 매 이동 후 1회. tick_effect + 라인 누적.
                 let statusLines = [];
                 if (window.StatusEffects && playerStatuses.length > 0) {
@@ -9740,12 +9761,14 @@
                     }
                 }
 
-                // 합성: [지역 인트로] [사체] [사냥감 발견] [타일/보스] [추격] [상태이상 라인…] [임계치 리마인드…].
+                // 합성: [지역 인트로] [사체] [사냥감 발견] [선공] [타일/보스] [추격] [상태이상 라인…] [임계치 리마인드…].
                 //   bossEncounterNarration이 있으면 tileNarration 무시 (조우가 우선).
+                //   D-249: ambushNarration은 preyNarration 직후 — 발견 → 기습 순서로 자연스럽게.
                 const finalMsg = composeNarration([
                     narrationIntro,
                     carcassNarration,
                     preyNarration,
+                    ambushNarration,
                     bossEncounterNarration || tileNarration,
                     chaseNarration,
                     ...statusLines,

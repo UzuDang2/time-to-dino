@@ -336,6 +336,10 @@ def transform_prey_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         # evade_per_turn: 턴 수만큼 evade 반복 (L1=3, L2=4가 일반).
         n_turns = len(turns) if turns else 3
         evade_csv = ",".join([str(evade)] * n_turns)
+        # D-249 (2026-05-06 요한 지시): 공격성 사냥감.
+        #   시트 'aggressive' 컬럼 = "Y"이면 진입 즉시 사냥감이 선공(plr 한 대 맞은 채 전투 시작).
+        #   현재 boar / dinosaur 2종. 빈값/N은 false.
+        aggressive = str(r.get("aggressive") or "").strip().upper() == "Y"
         out.append({
             "id": r.get("id"),
             "name": r.get("name"),
@@ -350,6 +354,7 @@ def transform_prey_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "drop_item": r.get("drop_item") or "",
             "actions_per_turn": actions_csv,
             "defense": int(r.get("defense") or 0),
+            "aggressive": aggressive,
         })
     return out
 

@@ -3486,3 +3486,54 @@ D-199 이후 사냥 시각 시퀀스를 한 턴=4-step으로 확장하며 핀포
 - **607a2f7**: 파일 도구·신규 도구(Glob, Grep, NotebookEdit, TodoWrite, ToolSearch, Skill, AskUserQuestion, ExitPlanMode 등) 풀세트.
 
 **근거**: 직전 세션에서 Edit prompt 3번 떴다는 신고 → settings.json hot-reload 안 되어 다음 세션부터 적용된다는 진단. backstop으로 specific 룰 다수 박음.
+
+# D-249 — L2 공격성 사냥감 선공 시스템 (2026-05-06 요한 지시)
+
+## 결정
+
+L2 사냥감 중 "공격성"을 띄는 종(현재 boar / dinosaur 2종)은 **유저가 그 타일에 진입한 즉시 선공해 1회 데미지를 입힌다.** 카드 사용 전, 전투 모달 진입 전에 이미 한 대 맞은 채 사냥이 시작된다.
+
+## 적용 사냥감 (2종)
+
+- **boar** (작은 멧돼지) — atk=2 → 진입 시 HP -2.  t1=`tusk_charge` (이름이 곧 돌진).
+- **dinosaur** (작은 공룡) — atk=1 → 진입 시 HP -1.  t1=`pounce_bite` (덮쳐물기).
+
+L2 나머지 5종(deer/badger/fox/turkey/armadillo)은 회피형·방어형이거나 t1이 evade/defend라 선공 부적격 — 시트 `aggressive` 빈값(false).
+
+## 메커니즘
+
+- 진입 시 `setHealth(prev => prev - prey.attack)` 1회 적용 + 내레이션 `‼️ {이름}이(가) 풀숲을 박차고 달려든다! 생명력 -N.` 합성.
+- **회피/방어 stack 미관여** — D-246 stack은 카드 사용 트리거. 진입 시점 stack=0이라 자동으로 그대로 받음 = 의도. "기습은 반드시 손해" → 보스=공포 원칙과 일관된 위험 설계.
+- **wait-in-place(같은 타일 대기) 미적용** — sound가 들리는 칸에 처음 들어선 순간이 핵심. 같은 칸 재대기엔 추가 데미지 없음.
+- **inPredationSafe 미적용** — 보스가 prey 포식 중이면 prey 자체가 곧 사라질 운명, hunt 자체가 트리거되지 않으므로 자연 배제.
+
+## 구현
+
+- **시트** (SSOT): `사냥감` 탭 헤더에 `aggressive` 컬럼(P열) 추가, boar/dinosaur 행에 "Y" 입력. gspread 직접 호출(헤더 신설은 ensure-tab/update-cell 1쌍으로 처리 어려워 1회용 인라인 스크립트).
+- **fetch_data.py:339~358 (`transform_prey_rows`)**: `aggressive = (시트값.upper()=="Y")` boolean 흘리기.
+- **data/prey.json**: `make data` 후 `aggressive: true/false` 자동 생성.
+- **index.html:9618~9651 (preyHere 분기)**: `ambushDamage` / `ambushPreyName` 산출. `foundDef.aggressive && !isWaitInPlace` 조건.
+- **index.html:9719~9725**: `ambushDamage > 0`이면 `setHealth` 함수형 차감 + ambushNarration 작성. 같은 턴 함정 데미지(non-functional setHealth)와 충돌 가능 → 함수형 setter로 누적 안전.
+- **index.html:9755~9774 (composeNarration)**: 합성 순서 [지역인트로 / 사체 / **사냥감 발견** / **선공** / 타일·보스 / 추격 / 상태이상 / 임계리마인드] — 발견 → 기습 흐름.
+
+## 근거
+
+기획 원문(요한): "2단계 사냥감들 중 공격성을 띄는 애들이 있다. 해당 칸에 진입했을 때 사냥감 쪽이 먼저 달려들어 선공하게 해줘."
+
+- 단순 `attack` 수치 그대로 사용 = 종별 공격성 강도가 자동 차등(boar 더 위험).
+- 카드 사용 전이라 회피·방어 카드를 미리 준비할 수 없음 = "기습"의 핵심.
+- 시트 boolean 컬럼 1개로 끝나는 데이터 모델 = 향후 다른 사냥감에 확장 용이.
+
+## 검증
+
+- `make data` 정상. `data/prey.json` boar/dinosaur `aggressive=true` 확인.
+- preview reload 후 `window.TTD_DATA.PREY` 콘솔 출력에서 boar(true,atk=2) / dinosaur(true,atk=1) / 나머지 5종(false) 확인. 런타임 에러 없음.
+- 정적 grep: `ambushDamage` 5곳 / `ambushNarration` 4곳 / `aggressive` 진입 분기 1곳 모두 적정 위치.
+- 인게임 라이브 검증(실 사냥 진입까지 진행)은 요한 수동 QA에 위임 — pending에 등록.
+
+## 파일
+
+- `data/prey.json` (auto-generated, +`aggressive`)
+- `data/data.js` (browser bundle, auto-generated)
+- `scripts/fetch_data.py:339` (transform_prey_rows에 aggressive 매핑)
+- `index.html:9618~9651, 9719~9725, 9755~9774` (진입 분기 + HP 차감 + narration 합성)

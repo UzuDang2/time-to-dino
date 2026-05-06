@@ -22,7 +22,7 @@
     "reward_items": "붕대 x1",
     "reward_passive": "health_max+1",
     "products": "붕대 x1",
-    "reward_one_shot": null,
+    "reward_one_shot": "",
     "cost_raw": "목재 x10, 끈 x5, 깨끗한 천 x3"
   },
   {
@@ -44,11 +44,11 @@
       }
     ],
     "effect_raw": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
-    "설명": null,
+    "설명": "",
     "reward_items": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
     "reward_passive": "health_max+2",
     "products": "붕대 x2, 약초 x1",
-    "reward_one_shot": null,
+    "reward_one_shot": "",
     "cost_raw": "목재 x20, 석재 x10, 약초 x10"
   },
   {
@@ -70,7 +70,7 @@
       }
     ],
     "effect_raw": "\"잘 마른 약초가 천장에 매달려 있다. 여기서는 죽지 않을 것 같다.\"",
-    "설명": null,
+    "설명": "",
     "reward_items": "붕대 x3, 약초 x2",
     "reward_passive": "health_max+3",
     "products": "붕대 x3, 약초 x2",
@@ -96,7 +96,7 @@
     "reward_items": "맑은물 x1",
     "reward_passive": "hunger_max+1",
     "products": "맑은물 x1",
-    "reward_one_shot": null,
+    "reward_one_shot": "",
     "cost_raw": "목재 x8, 돌맹이 x10"
   },
   {
@@ -118,11 +118,11 @@
       }
     ],
     "effect_raw": "\"국솥에서 김이 오른다. 위장이 먼저 안다.\"",
-    "설명": null,
+    "설명": "",
     "reward_items": "맑은물 x2, 산딸기 x1",
     "reward_passive": "hunger_max+2",
     "products": "맑은물 x2, 산딸기 x1",
-    "reward_one_shot": null,
+    "reward_one_shot": "",
     "cost_raw": "목재 x15, 석재 x10, 약초 x5"
   },
   {
@@ -144,7 +144,7 @@
       }
     ],
     "effect_raw": "\"무쇠 솥은 밤새 식지 않는다. 무엇이든 익혀 먹을 수 있다.\"",
-    "설명": null,
+    "설명": "",
     "reward_items": "맑은물 x3, 딸기모둠 x1",
     "reward_passive": "hunger_max+3",
     "products": "맑은물 x3, 딸기모둠 x1",
@@ -157,25 +157,21 @@
     "stage": 1,
     "cost": [
       {
-        "material": "나뭇가지",
-        "count": 4
+        "material": "목재",
+        "count": 12
       },
       {
-        "material": "돌맹이",
-        "count": 4
-      },
-      {
-        "material": "줄기",
-        "count": 4
+        "material": "끈",
+        "count": 6
       }
     ],
-    "effect_raw": "\"투박한 작업대 위에 두 번째 등급 재료를 다루는 길이 열린다.\"",
-    "설명": "2등급 재료 레시피 학습 가능",
-    "reward_items": null,
-    "reward_passive": null,
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x4, 돌맹이 x4, 줄기 x4"
+    "effect_raw": "\"투박한 작업대 위에 칼날을 갈 수 있는 자리가 생겼다.\"",
+    "설명": "제작법을 새로 배운다",
+    "reward_items": "나뭇가지 x2",
+    "reward_passive": "accuracy+1",
+    "products": "나뭇가지 x2",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x12, 끈 x6"
   },
   {
     "id": "workshop",
@@ -183,25 +179,25 @@
     "stage": 2,
     "cost": [
       {
-        "material": "나뭇가지",
-        "count": 6
+        "material": "목재",
+        "count": 20
       },
       {
-        "material": "돌맹이",
-        "count": 6
+        "material": "석재",
+        "count": 10
       },
       {
-        "material": "줄기",
-        "count": 6
+        "material": "가죽",
+        "count": 5
       }
     ],
-    "effect_raw": "\"한 차례 다듬인 손이 세 번째 등급 재료까지 가닿는다.\"",
-    "설명": "3등급 재료 레시피 학습 가능",
-    "reward_items": null,
-    "reward_passive": null,
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x6, 돌맹이 x6, 줄기 x6"
+    "effect_raw": "\"가죽 끈으로 손잡이를 단단히 묶었다. 손에 더 잘 잡힌다.\"",
+    "설명": "",
+    "reward_items": "나뭇가지 x3, 끈 x2",
+    "reward_passive": "accuracy+2, armor+1",
+    "products": "나뭇가지 x3, 끈 x2",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x20, 석재 x10, 가죽 x5"
   },
   {
     "id": "workshop",
@@ -209,25 +205,25 @@
     "stage": 3,
     "cost": [
       {
-        "material": "나뭇가지",
-        "count": 8
+        "material": "석재",
+        "count": 20
       },
       {
-        "material": "돌맹이",
-        "count": 8
+        "material": "금속",
+        "count": 10
       },
       {
-        "material": "줄기",
-        "count": 8
+        "material": "가죽",
+        "count": 10
       }
     ],
-    "effect_raw": "\"숯불 화덕과 모루까지 들였다. 가장 깊은 등급의 제작법까지 다룰 수 있다.\"",
-    "설명": "4등급 재료 레시피 학습 가능",
-    "reward_items": null,
-    "reward_passive": null,
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x8, 돌맹이 x8, 줄기 x8"
+    "effect_raw": "\"숯불 화덕과 모루까지 들였다. 무기는 더 이상 부서지지 않을 것 같다.\"",
+    "설명": "",
+    "reward_items": "나뭇가지 x4, 끈 x3, 금속 x1",
+    "reward_passive": "accuracy+3, armor+2",
+    "products": "나뭇가지 x4, 끈 x3, 금속 x1",
+    "reward_one_shot": "repair_kit+1",
+    "cost_raw": "석재 x20, 금속 x10, 가죽 x10"
   },
   {
     "id": "storage",
@@ -243,12 +239,12 @@
         "count": 10
       }
     ],
-    "effect_raw": "\"단단한 작업대 위에 첫 도구가 놓인다. 뗀석기 한 자루가 시작이다.\"",
+    "effect_raw": "\"선반 위에 가지런히 놓인 자루들. 어제의 수확이 보인다.\"",
     "설명": "무기를 제작한다",
-    "reward_items": null,
-    "reward_passive": null,
-    "products": null,
-    "reward_one_shot": null,
+    "reward_items": "",
+    "reward_passive": "pack+1, deck_size+1",
+    "products": "",
+    "reward_one_shot": "",
     "cost_raw": "목재 x10, 돌맹이 x10"
   },
   {
@@ -269,12 +265,12 @@
         "count": 6
       }
     ],
-    "effect_raw": "\"갈고닦은 손에 새총이 익숙해진다. 멀리서도 노릴 수 있다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": null,
-    "products": null,
-    "reward_one_shot": null,
+    "effect_raw": "\"천장까지 닿는 선반. 한 번 더 깊이 들어갈 수 있다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+2, deck_size+1",
+    "products": "",
+    "reward_one_shot": "",
     "cost_raw": "목재 x18, 석재 x10, 끈 x6"
   },
   {
@@ -295,12 +291,12 @@
         "count": 10
       }
     ],
-    "effect_raw": "\"활시위가 팽팽하게 당겨진다. 거리가 사냥을 바꾸기 시작한다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": null,
-    "products": null,
-    "reward_one_shot": null,
+    "effect_raw": "\"잘 정리된 창고. 무엇이 어디에 있는지 손이 먼저 안다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "pack+3, deck_size+2",
+    "products": "",
+    "reward_one_shot": "",
     "cost_raw": "석재 x25, 금속 x8, 끈 x10"
   },
   {
@@ -318,11 +314,11 @@
       }
     ],
     "effect_raw": "\"낡은 활 한 자루가 벽에 걸려 있다. 첫 사냥의 흔적.\"",
-    "설명": null,
+    "설명": "",
     "reward_items": "나뭇가지 x3",
     "reward_passive": "evade+1",
     "products": "나뭇가지 x3",
-    "reward_one_shot": null,
+    "reward_one_shot": "",
     "cost_raw": "목재 x12, 가죽 x5"
   },
   {
@@ -344,11 +340,11 @@
       }
     ],
     "effect_raw": "\"발자국 도감과 추적 매듭. 짐승의 길이 눈에 들어온다.\"",
-    "설명": null,
+    "설명": "",
     "reward_items": "나뭇가지 x4, 가죽 x1",
     "reward_passive": "evade+2",
     "products": "나뭇가지 x4, 가죽 x1",
-    "reward_one_shot": null,
+    "reward_one_shot": "",
     "cost_raw": "목재 x20, 석재 x10, 가죽 x10"
   },
   {
@@ -370,176 +366,85 @@
       }
     ],
     "effect_raw": "\"사냥꾼 셋이 모이면 보스의 그림자도 피할 수 있다고들 한다.\"",
-    "설명": null,
+    "설명": "",
     "reward_items": "나뭇가지 x5, 가죽 x2",
     "reward_passive": "evade+3",
     "products": "나뭇가지 x5, 가죽 x2",
-    "reward_one_shot": null,
+    "reward_one_shot": "",
     "cost_raw": "석재 x20, 금속 x5, 가죽 x15"
   },
   {
     "id": "watchtower",
-    "name": "도구작업대",
+    "name": "감시탑",
     "stage": 1,
     "cost": [
-      { "material": "나뭇가지", "count": 3 },
-      { "material": "돌맹이",   "count": 2 }
+      {
+        "material": "목재",
+        "count": 15
+      },
+      {
+        "material": "돌맹이",
+        "count": 15
+      }
     ],
-    "effect_raw": "\"손에 익숙한 도구가 늘어난다. 작은 가방이 가벼워진다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x3, 돌맹이 x2"
+    "effect_raw": "\"높은 발판에서 멀리 본다. 숲의 들썩임이 먼저 들린다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "detection-1",
+    "products": "",
+    "reward_one_shot": "",
+    "cost_raw": "목재 x15, 돌맹이 x15"
   },
   {
     "id": "watchtower",
-    "name": "도구작업대",
+    "name": "감시탑",
     "stage": 2,
     "cost": [
-      { "material": "나뭇가지", "count": 4 },
-      { "material": "돌맹이",   "count": 3 }
+      {
+        "material": "목재",
+        "count": 25
+      },
+      {
+        "material": "석재",
+        "count": 15
+      },
+      {
+        "material": "금속",
+        "count": 3
+      }
     ],
-    "effect_raw": "\"선반이 깔리고 손이 빨라진다. 더 챙길 자리가 생긴다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x4, 돌맹이 x3"
+    "effect_raw": "\"바람의 방향이 보인다. 내일의 하늘을 미리 짚을 수 있다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "detection-1",
+    "products": "",
+    "reward_one_shot": "weather_forecast+1",
+    "cost_raw": "목재 x25, 석재 x15, 금속 x3"
   },
   {
     "id": "watchtower",
-    "name": "도구작업대",
+    "name": "감시탑",
     "stage": 3,
     "cost": [
-      { "material": "나뭇가지", "count": 5 },
-      { "material": "돌맹이",   "count": 3 }
+      {
+        "material": "석재",
+        "count": 30
+      },
+      {
+        "material": "금속",
+        "count": 10
+      },
+      {
+        "material": "가죽",
+        "count": 10
+      }
     ],
-    "effect_raw": "\"갈고리가 박힌다. 무거운 도구도 위에 걸린다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x5, 돌맹이 x3"
-  },
-  {
-    "id": "watchtower",
-    "name": "도구작업대",
-    "stage": 4,
-    "cost": [
-      { "material": "나뭇가지", "count": 6 },
-      { "material": "돌맹이",   "count": 4 }
-    ],
-    "effect_raw": "\"선반 한 줄이 더 늘어난다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x6, 돌맹이 x4"
-  },
-  {
-    "id": "watchtower",
-    "name": "도구작업대",
-    "stage": 5,
-    "cost": [
-      { "material": "나뭇가지", "count": 7 },
-      { "material": "돌맹이",   "count": 5 }
-    ],
-    "effect_raw": "\"두 손이 자유로워진다. 짐 옮기기 한결 쉽다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x7, 돌맹이 x5"
-  },
-  {
-    "id": "watchtower",
-    "name": "도구작업대",
-    "stage": 6,
-    "cost": [
-      { "material": "나뭇가지", "count": 8 },
-      { "material": "돌맹이",   "count": 6 },
-      { "material": "줄기",     "count": 1 }
-    ],
-    "effect_raw": "\"정돈된 자루마다 자리가 정해진다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x8, 돌맹이 x6, 줄기 x1"
-  },
-  {
-    "id": "watchtower",
-    "name": "도구작업대",
-    "stage": 7,
-    "cost": [
-      { "material": "나뭇가지", "count": 9 },
-      { "material": "돌맹이",   "count": 7 },
-      { "material": "줄기",     "count": 1 }
-    ],
-    "effect_raw": "\"손이 닿지 않던 안쪽 칸까지 정리된다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x9, 돌맹이 x7, 줄기 x1"
-  },
-  {
-    "id": "watchtower",
-    "name": "도구작업대",
-    "stage": 8,
-    "cost": [
-      { "material": "나뭇가지", "count": 10 },
-      { "material": "돌맹이",   "count": 8 },
-      { "material": "줄기",     "count": 2 }
-    ],
-    "effect_raw": "\"낡은 도구가 다듬어져 새것처럼 다시 매달린다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x10, 돌맹이 x8, 줄기 x2"
-  },
-  {
-    "id": "watchtower",
-    "name": "도구작업대",
-    "stage": 9,
-    "cost": [
-      { "material": "나뭇가지", "count": 11 },
-      { "material": "돌맹이",   "count": 9 },
-      { "material": "줄기",     "count": 2 }
-    ],
-    "effect_raw": "\"벽도 천장도 도구로 가득 찬다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x11, 돌맹이 x9, 줄기 x2"
-  },
-  {
-    "id": "watchtower",
-    "name": "도구작업대",
-    "stage": 10,
-    "cost": [
-      { "material": "나뭇가지", "count": 12 },
-      { "material": "돌맹이",   "count": 10 },
-      { "material": "줄기",     "count": 3 }
-    ],
-    "effect_raw": "\"벽 가득 도구가 걸린다. 짐을 두고 갈 일이 줄어든다.\"",
-    "설명": null,
-    "reward_items": null,
-    "reward_passive": "pack+1",
-    "products": null,
-    "reward_one_shot": null,
-    "cost_raw": "나뭇가지 x12, 돌맹이 x10, 줄기 x3"
+    "effect_raw": "\"탑 꼭대기에서 보면 그놈의 자리가 보인다. 한 발만 비껴서면 된다.\"",
+    "설명": "",
+    "reward_items": "",
+    "reward_passive": "detection-2",
+    "products": "",
+    "reward_one_shot": "safe_move+1",
+    "cost_raw": "석재 x30, 금속 x10, 가죽 x10"
   }
 ]
