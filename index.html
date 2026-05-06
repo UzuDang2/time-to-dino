@@ -4915,14 +4915,18 @@
         //   짓기 흐름([받기]/[완수]) 그대로. 다음 단계 업그레이드는 D-260 후속.
         function FarmModal({ building, campState, onClose, onCampStateUpdate }) {
             if (!building || building.id !== 'farm') return null;
+            // D-261 (2026-05-06): UI 흐름 개편 — 메인=상태만, 선택 목록=팝업 분리.
+            //   data 구조·헬퍼·handle*·advanceFarmDay 모두 D-257/D-258 그대로. UI 레이어만 재구성.
+            const [plantPickerSlotIdx, setPlantPickerSlotIdx] = React.useState(null);  // null | number(밭 idx)
+            const [extractPickerOpen, setExtractPickerOpen] = React.useState(false);
+
             const farmStage = (campState && campState.buildingLevels && Number(campState.buildingLevels.farm)) || 0;
             const capacity = getFarmCapacity(farmStage);
             const farmState = (campState && campState.farmState) || makeInitialFarmState();
             const gameDay = (campState && campState.gameDay) || 1;
             const inv = campState && campState.inventory;
 
-            // D-258: 'clear_water' 요청 시 'water' 동의어 합산 — items.json에 같은 한글명 '맑은물'이
-            //   두 id에 매핑된 레거시 정합 처리(별도 D 후보로 등록됨). 농장에서만 합산 분기, 다른 시스템은 그대로.
+            // 'water' / 'clear_water' 동의어 합산(D-258 발견 이슈) — 농장 한정 분기.
             const WATER_ALIASES = { clear_water: ['clear_water', 'water'] };
             const matchTypes = (type) => WATER_ALIASES[type] || [type];
             const countOf = (type) => {
@@ -4930,9 +4934,7 @@
                 const aliases = matchTypes(type);
                 return inv.items.filter(it => it && aliases.includes(it.type)).length;
             };
-            // 보관함 인스턴스 직접 변형 — n개 차감 (별칭 합산 우선순위는 처음 alias).
-            //   주의: InventorySystem.removeItem은 grid만 비우고 items 배열은 보존(rotate/move/swap 패턴).
-            //   따라서 차감 시 grid 비움 + items 배열에서 splice 둘 다 필요(combatDeck.consumeWeaponUse 패턴 참조).
+            // InventorySystem.removeItem invariant — grid만 비우고 items 배열 보존(D-258).
             const consume = (type, n = 1) => {
                 if (!inv || !Array.isArray(inv.items)) return false;
                 const aliases = matchTypes(type);
@@ -4947,7 +4949,6 @@
                 inv.items = inv.items.filter(it => !toRemoveIds.includes(it.id));
                 return true;
             };
-            // 보관함 인스턴스 직접 변형 — n개 인입(빈자리 부족 시 부분 인입).
             const award = (type, n = 1) => {
                 if (!inv) return 0;
                 let added = 0;
@@ -4967,10 +4968,8 @@
                     const fs = prev.farmState || makeInitialFarmState();
                     const slots = fs.extractionSlots.slice();
                     slots[slotIdx] = {
-                        sourceItemId: sourceId,
-                        resultSeedId: def.resultSeedId,
-                        remainingDays: def.requiredDays,
-                        state: 'extracting'
+                        sourceItemId: sourceId, resultSeedId: def.resultSeedId,
+                        remainingDays: def.requiredDays, state: 'extracting'
                     };
                     return { ...prev, farmState: { ...fs, extractionSlots: slots } };
                 });
@@ -4999,10 +4998,8 @@
                     const fs = prev.farmState || makeInitialFarmState();
                     const plots = fs.plots.slice();
                     plots[plotIdx] = {
-                        seedId,
-                        remainingDays: def.growDays,
-                        watered: def.waterCost > 0,
-                        state: 'growing'
+                        seedId, remainingDays: def.growDays,
+                        watered: def.waterCost > 0, state: 'growing'
                     };
                     return { ...prev, farmState: { ...fs, plots } };
                 });
@@ -5028,15 +5025,80 @@
                 }));
             };
 
+            // 첫 빈 추출 슬롯 — [씨앗 추출] 버튼이 활성될 때 실제 등록 대상.
+            const firstEmptyExtractIdx = (() => {
+                for (let i = 0; i < capacity.extract; i++) {
+                    const s = farmState.extractionSlots[i];
+                    if (s && s.state === 'empty') return i;
+                }
+                return -1;
+            })();
+            const canStartExtract = firstEmptyExtractIdx !== -1;
+
+            const onPickExtractItem = (sourceId) => {
+                if (firstEmptyExtractIdx === -1) return;
+                handleExtractStart(firstEmptyExtractIdx, sourceId);
+                setExtractPickerOpen(false);
+            };
+            const onPickPlantSeed = (seedId) => {
+                if (plantPickerSlotIdx == null) return;
+                handlePlant(plantPickerSlotIdx, seedId);
+                setPlantPickerSlotIdx(null);
+            };
+
             const extractableItems = Object.keys(SEED_EXTRACTION_DEFS).filter(id => countOf(id) > 0);
             const plantableSeeds = Object.keys(CROP_DEFS).filter(id => countOf(id) > 0);
 
-            const sectionTitle = { fontSize: '13px', fontWeight: 700, color: '#bbb', marginTop: '14px', marginBottom: '6px', letterSpacing: '0.5px' };
-            const slotBox = { background: '#16213e', border: '1px solid #2a3a5e', borderRadius: '6px', padding: '8px 10px', marginBottom: '6px', fontSize: '12px', lineHeight: 1.55 };
-            const slotDisabled = { ...slotBox, opacity: 0.35, color: '#666' };
-            const btn = { background: '#0f3460', color: '#eee', border: '1px solid #16213e', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer', marginRight: '4px', marginTop: '4px' };
+            // ── 스타일 토큰 ─────────────────────────────────────
+            const sectionTitle = { fontSize: '12px', fontWeight: 700, color: '#888', marginTop: '14px', marginBottom: '8px', letterSpacing: '0.5px', textTransform: 'uppercase' };
+            const cardBox = { background: '#16213e', border: '1px solid #2a3a5e', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', lineHeight: 1.55 };
+            const btn = { background: '#0f3460', color: '#eee', border: '1px solid #16213e', borderRadius: '6px', padding: '8px 14px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' };
             const btnPrimary = { ...btn, background: '#d4b84a', color: '#1a1a2e', border: 'none', fontWeight: 700 };
-            const btnDisabled = { ...btn, background: '#2a2a3e', color: '#666', cursor: 'not-allowed' };
+            const btnGhost = { ...btn, background: 'transparent', border: '1px solid #2a3a5e', color: '#aaa' };
+            const btnDisabled = { ...btn, background: '#1a1a2e', color: '#555', cursor: 'not-allowed' };
+
+            // 밭 슬롯 그리드 — 활성 + 잠금 모두 동일 크기 카드.
+            const plotGrid = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '4px' };
+            const plotCardBase = { aspectRatio: '1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 4px', fontSize: '11px', textAlign: 'center', lineHeight: 1.4, position: 'relative' };
+            const plotEmpty = { ...plotCardBase, background: '#16213e', border: '1px dashed #3a4a6e', color: '#666', cursor: 'pointer' };
+            const plotGrowing = { ...plotCardBase, background: '#1e3a2e', border: '1px solid #2e5a3e', color: '#bbe5b5' };
+            const plotReady = { ...plotCardBase, background: '#3e3a1e', border: '1px solid #6e6a2e', color: '#fff8c0', cursor: 'pointer', boxShadow: '0 0 12px rgba(212,184,74,0.3)' };
+            const plotLocked = { ...plotCardBase, background: '#0f0f1a', border: '1px dashed #2a2a3e', color: '#444' };
+
+            // 추출 진행 카드(상단). empty 슬롯은 메인에 안 보이고 [씨앗 추출] 버튼만 노출.
+            const renderExtractionStatus = () => {
+                const activeSlots = farmState.extractionSlots.slice(0, capacity.extract);
+                const inProgress = activeSlots.filter(s => s.state === 'extracting' || s.state === 'resultReady');
+                if (inProgress.length === 0) return null;
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                        {activeSlots.map((slot, idx) => {
+                            if (slot.state === 'extracting') {
+                                const seedDef = CROP_DEFS[slot.resultSeedId] || {};
+                                return (
+                                    <div key={idx} style={cardBox}>
+                                        <span style={{ color: '#aaa' }}>🌾 {seedDef.name || slot.resultSeedId} 추출 중</span>
+                                        <span style={{ color: '#d4b84a', fontWeight: 700, marginLeft: '8px' }}>{slot.remainingDays}일 남음</span>
+                                    </div>
+                                );
+                            }
+                            if (slot.state === 'resultReady') {
+                                const def = SEED_EXTRACTION_DEFS[slot.sourceItemId] || {};
+                                const seedDef = CROP_DEFS[slot.resultSeedId] || {};
+                                return (
+                                    <div key={idx} style={{ ...cardBox, background: '#2e3a1e', border: '1px solid #6e8a2e' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#fff8c0' }}>✓ {seedDef.name || slot.resultSeedId} {def.resultCount}개 수령 가능</span>
+                                            <button style={btnPrimary} onClick={() => handleExtractClaim(idx)}>수령</button>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })}
+                    </div>
+                );
+            };
 
             return (
                 <div className="modal" style={{
@@ -5049,99 +5111,184 @@
                         padding: '16px 18px', width: '100%', maxWidth: '440px', maxHeight: '88vh',
                         overflowY: 'auto', color: '#eee'
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+                        {/* 헤더 */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
                             <div style={{ fontSize: '17px', fontWeight: 700, color: '#d4b84a' }}>
                                 🌱 농장 Lv.{farmStage}/3
                             </div>
                             <div style={{ fontSize: '11px', color: '#888' }}>게임 일자 {gameDay}일</div>
                         </div>
 
-                        <div style={sectionTitle}>씨앗 추출 슬롯 ({capacity.extract}/{FARM_MAX_EXTRACT} 활성)</div>
-                        {farmState.extractionSlots.map((slot, idx) => {
-                            const active = idx < capacity.extract;
-                            if (!active) return <div key={idx} style={slotDisabled}>잠금 (농장 Lv.3에서 해제)</div>;
-                            if (slot.state === 'empty') {
-                                return (
-                                    <div key={idx} style={slotBox}>
-                                        <div style={{ color: '#888', marginBottom: '4px' }}>비어 있음 — 추출할 완제품 선택</div>
-                                        {extractableItems.length === 0
-                                            ? <div style={{ color: '#666', fontSize: '11px' }}>보관함에 추출 가능한 완제품(산딸기/버섯/덩이뿌리/약초/섬유풀)이 없습니다.</div>
-                                            : extractableItems.map(id => {
-                                                const itemDef = InventorySystem.resolveDef(id) || {};
-                                                const seedDef = CROP_DEFS[SEED_EXTRACTION_DEFS[id].resultSeedId] || {};
-                                                return (
-                                                    <button key={id} style={btn} onClick={() => handleExtractStart(idx, id)}>
-                                                        {itemDef.name || id} → {seedDef.name || SEED_EXTRACTION_DEFS[id].resultSeedId} x{SEED_EXTRACTION_DEFS[id].resultCount} (보유 {countOf(id)})
-                                                    </button>
-                                                );
-                                            })}
-                                    </div>
-                                );
-                            }
-                            if (slot.state === 'extracting') {
-                                const seedDef = CROP_DEFS[slot.resultSeedId] || {};
-                                return <div key={idx} style={slotBox}>{seedDef.name || slot.resultSeedId} 추출 중 — <span style={{ color: '#d4b84a' }}>{slot.remainingDays}일 남음</span></div>;
-                            }
-                            if (slot.state === 'resultReady') {
-                                const def = SEED_EXTRACTION_DEFS[slot.sourceItemId] || {};
-                                const seedDef = CROP_DEFS[slot.resultSeedId] || {};
-                                return (
-                                    <div key={idx} style={slotBox}>
-                                        <div style={{ color: '#8bd17c' }}>✓ {seedDef.name || slot.resultSeedId} {def.resultCount}개 수령 가능</div>
-                                        <button style={btnPrimary} onClick={() => handleExtractClaim(idx)}>수령</button>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })}
+                        {/* 씨앗 추출 영역 — 진행/수령 카드 + [씨앗 추출] 버튼 */}
+                        <div style={sectionTitle}>씨앗 추출</div>
+                        {renderExtractionStatus()}
+                        <button
+                            style={canStartExtract ? btn : btnDisabled}
+                            disabled={!canStartExtract}
+                            onClick={() => canStartExtract && setExtractPickerOpen(true)}
+                        >
+                            {canStartExtract
+                                ? '🌾 씨앗 추출 시작'
+                                : (capacity.extract === 0 ? '추출 슬롯 없음 (농장 Lv.1 필요)' : '추출 슬롯 사용 중')}
+                        </button>
 
-                        <div style={sectionTitle}>밭 슬롯 ({capacity.plots}/{FARM_MAX_PLOTS} 활성)</div>
-                        {farmState.plots.map((plot, idx) => {
-                            const active = idx < capacity.plots;
-                            if (!active) return <div key={idx} style={slotDisabled}>잠금 (농장 Lv.{idx <= 2 ? 1 : (idx <= 3 ? 2 : 3)}에서 해제)</div>;
-                            if (plot.state === 'empty') {
-                                return (
-                                    <div key={idx} style={slotBox}>
-                                        <div style={{ color: '#888', marginBottom: '4px' }}>비어 있음 — 심을 씨앗 선택</div>
-                                        {plantableSeeds.length === 0
-                                            ? <div style={{ color: '#666', fontSize: '11px' }}>보관함에 씨앗이 없습니다. 추출 슬롯에서 만들어 주세요.</div>
-                                            : plantableSeeds.map(id => {
-                                                const def = CROP_DEFS[id];
-                                                const waterOk = def.waterCost === 0 || countOf('clear_water') >= def.waterCost;
-                                                return (
-                                                    <button key={id} style={waterOk ? btn : btnDisabled} disabled={!waterOk} onClick={() => handlePlant(idx, id)}>
-                                                        {def.name} 심기 (성장 {def.growDays}일{def.waterCost > 0 ? `, 맑은물 x${def.waterCost}` : ''}, 보유 {countOf(id)})
-                                                    </button>
-                                                );
-                                            })}
-                                    </div>
-                                );
-                            }
-                            if (plot.state === 'growing') {
-                                const def = CROP_DEFS[plot.seedId] || {};
-                                return <div key={idx} style={slotBox}>{def.cropName || plot.seedId} 성장 중 — <span style={{ color: '#d4b84a' }}>{plot.remainingDays}일 남음</span></div>;
-                            }
-                            if (plot.state === 'ready') {
-                                const def = CROP_DEFS[plot.seedId] || {};
-                                return (
-                                    <div key={idx} style={slotBox}>
-                                        <div style={{ color: '#8bd17c' }}>✓ {def.cropName || plot.seedId} 수확 가능 ({def.yieldCount}개)</div>
-                                        <button style={btnPrimary} onClick={() => handleHarvest(idx)}>수확</button>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })}
-
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
-                            <button style={{ ...btn, background: '#3a2a1e', color: '#bbb', flex: 1 }} onClick={handleDebugDay}>🔧 [+1 day] (디버그)</button>
-                            <button style={{ ...btn, flex: 1 }} onClick={onClose}>닫기</button>
+                        {/* 밭 슬롯 그리드 — 상태만 표시, empty 클릭 시 심기 팝업 */}
+                        <div style={sectionTitle}>밭 슬롯</div>
+                        <div style={plotGrid}>
+                            {Array.from({ length: FARM_MAX_PLOTS }).map((_, idx) => {
+                                const active = idx < capacity.plots;
+                                if (!active) {
+                                    const unlockLv = idx <= 2 ? 1 : (idx <= 3 ? 2 : 3);
+                                    return (
+                                        <div key={idx} style={plotLocked}>
+                                            🔒
+                                            <div style={{ marginTop: '4px', fontSize: '10px' }}>Lv.{unlockLv}</div>
+                                        </div>
+                                    );
+                                }
+                                const plot = farmState.plots[idx] || makeEmptyPlot();
+                                if (plot.state === 'empty') {
+                                    return (
+                                        <div key={idx} style={plotEmpty} onClick={() => setPlantPickerSlotIdx(idx)}>
+                                            <div style={{ fontSize: '20px', opacity: 0.5 }}>🌱</div>
+                                            <div style={{ marginTop: '4px' }}>비어 있음</div>
+                                        </div>
+                                    );
+                                }
+                                if (plot.state === 'growing') {
+                                    const def = CROP_DEFS[plot.seedId] || {};
+                                    return (
+                                        <div key={idx} style={plotGrowing}>
+                                            <div style={{ fontSize: '18px' }}>🌿</div>
+                                            <div style={{ marginTop: '4px', fontWeight: 600 }}>{def.cropName || plot.seedId}</div>
+                                            <div style={{ marginTop: '2px', color: '#d4b84a', fontWeight: 700, fontSize: '10px' }}>{plot.remainingDays}일 남음</div>
+                                        </div>
+                                    );
+                                }
+                                if (plot.state === 'ready') {
+                                    const def = CROP_DEFS[plot.seedId] || {};
+                                    return (
+                                        <div key={idx} style={plotReady} onClick={() => handleHarvest(idx)}>
+                                            <div style={{ fontSize: '20px' }}>🌾</div>
+                                            <div style={{ marginTop: '4px', fontWeight: 600 }}>{def.cropName || plot.seedId}</div>
+                                            <div style={{ marginTop: '2px', fontWeight: 700, fontSize: '10px' }}>✓ 수확 가능</div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })}
                         </div>
 
+                        {/* 디버그·닫기 */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                            <button style={{ ...btnGhost, flex: 1 }} onClick={handleDebugDay}>🔧 +1 day</button>
+                            <button style={{ ...btn, flex: 1 }} onClick={onClose}>닫기</button>
+                        </div>
                         <div style={{ fontSize: '10px', color: '#555', marginTop: '8px', lineHeight: 1.5 }}>
                             ※ 탐험 1회 완료 = 1일 경과(자동). +1 day 버튼은 라이브 테스트용 디버그.
                         </div>
                     </div>
+
+                    {/* D-261: 씨앗 추출 picker 팝업 — 보관함 보유 완제품만 슬롯 카드로 노출. */}
+                    {extractPickerOpen && (
+                        <div style={{
+                            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            zIndex: 1700, padding: '20px'
+                        }} onClick={(e) => { e.stopPropagation(); setExtractPickerOpen(false); }}>
+                            <div onClick={(e) => e.stopPropagation()} style={{
+                                background: '#0f0f1a', border: '1px solid #2a3a5e', borderRadius: '10px',
+                                padding: '14px 16px', width: '100%', maxWidth: '380px', maxHeight: '80vh',
+                                overflowY: 'auto', color: '#eee'
+                            }}>
+                                <div style={{ fontSize: '15px', fontWeight: 700, color: '#d4b84a', marginBottom: '10px' }}>
+                                    🌾 추출할 완제품 선택
+                                </div>
+                                {extractableItems.length === 0 ? (
+                                    <div style={{ ...cardBox, color: '#888', fontSize: '12px' }}>
+                                        보관함에 추출 가능한 완제품(산딸기/버섯/덩이뿌리/약초/섬유풀)이 없습니다.
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {extractableItems.map(id => {
+                                            const itemDef = InventorySystem.resolveDef(id) || {};
+                                            const def = SEED_EXTRACTION_DEFS[id];
+                                            const seedDef = CROP_DEFS[def.resultSeedId] || {};
+                                            return (
+                                                <button key={id} style={{
+                                                    ...cardBox, cursor: 'pointer', textAlign: 'left',
+                                                    background: '#16213e', border: '1px solid #2a3a5e', color: '#eee'
+                                                }} onClick={() => onPickExtractItem(id)}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div>
+                                                            <div style={{ fontWeight: 700 }}>{itemDef.name || id} → {seedDef.name || def.resultSeedId} x{def.resultCount}</div>
+                                                            <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>소요 {def.requiredDays}일</div>
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: '#d4b84a', fontWeight: 700 }}>보유 {countOf(id)}</div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                <button style={{ ...btnGhost, width: '100%', marginTop: '12px' }} onClick={() => setExtractPickerOpen(false)}>취소</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* D-261: 심기 picker 팝업 — 보관함 보유 씨앗만 슬롯 카드로 노출. 물 부족 시 disabled + 사유. */}
+                    {plantPickerSlotIdx != null && (
+                        <div style={{
+                            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            zIndex: 1700, padding: '20px'
+                        }} onClick={(e) => { e.stopPropagation(); setPlantPickerSlotIdx(null); }}>
+                            <div onClick={(e) => e.stopPropagation()} style={{
+                                background: '#0f0f1a', border: '1px solid #2a3a5e', borderRadius: '10px',
+                                padding: '14px 16px', width: '100%', maxWidth: '380px', maxHeight: '80vh',
+                                overflowY: 'auto', color: '#eee'
+                            }}>
+                                <div style={{ fontSize: '15px', fontWeight: 700, color: '#d4b84a', marginBottom: '10px' }}>
+                                    🌱 심을 씨앗 선택
+                                </div>
+                                {plantableSeeds.length === 0 ? (
+                                    <div style={{ ...cardBox, color: '#888', fontSize: '12px' }}>
+                                        심을 수 있는 씨앗이 없습니다. 씨앗 추출을 먼저 해주세요.
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {plantableSeeds.map(id => {
+                                            const def = CROP_DEFS[id];
+                                            const waterHave = countOf('clear_water');
+                                            const waterOk = def.waterCost === 0 || waterHave >= def.waterCost;
+                                            const reason = !waterOk ? `맑은물 부족 (보유 ${waterHave}, 필요 ${def.waterCost})` : null;
+                                            return (
+                                                <button key={id} style={{
+                                                    ...cardBox, cursor: waterOk ? 'pointer' : 'not-allowed', textAlign: 'left',
+                                                    background: waterOk ? '#16213e' : '#1a1a2e',
+                                                    border: '1px solid #2a3a5e',
+                                                    color: waterOk ? '#eee' : '#666',
+                                                    opacity: waterOk ? 1 : 0.65
+                                                }} disabled={!waterOk} onClick={() => waterOk && onPickPlantSeed(id)}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div>
+                                                            <div style={{ fontWeight: 700 }}>{def.name}</div>
+                                                            <div style={{ fontSize: '11px', color: waterOk ? '#888' : '#555', marginTop: '2px' }}>
+                                                                성장 {def.growDays}일{def.waterCost > 0 ? ` · 맑은물 x${def.waterCost} 필요` : ' · 물 필요 없음'}
+                                                            </div>
+                                                            {reason && <div style={{ fontSize: '11px', color: '#e94560', marginTop: '3px' }}>⚠ {reason}</div>}
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: waterOk ? '#d4b84a' : '#666', fontWeight: 700 }}>보유 {countOf(id)}</div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                <button style={{ ...btnGhost, width: '100%', marginTop: '12px' }} onClick={() => setPlantPickerSlotIdx(null)}>취소</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
