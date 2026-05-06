@@ -4684,12 +4684,27 @@
         //   stage 3: 추출 2, 밭 5.
         const FARM_MAX_EXTRACT = 2;
         const FARM_MAX_PLOTS = 5;
-        function getFarmCapacity(farmStage) {
+        // D-260 (2026-05-06): 도구작업대(watchtower) 농장 가속 보너스 — 요한 결정 #3.
+        //   D-217 가방 +1 누적 패시브 유지하면서 농장 슬롯 보너스 추가.
+        //   stage 5+: 추출 슬롯 +1 / stage 7+: 밭 슬롯 +1 / stage 9+: 밭 슬롯 +1 (총 +2).
+        //   합산 후 FARM_MAX_*으로 clamp — farm stage 1 + watchtower 9면 farm stage 3과 동등(가속기 역할).
+        function getWatchtowerFarmBonus(watchtowerStage) {
+            const lv = Number(watchtowerStage) || 0;
+            return {
+                extract: lv >= 5 ? 1 : 0,
+                plots: (lv >= 9 ? 2 : (lv >= 7 ? 1 : 0))
+            };
+        }
+        function getFarmCapacity(farmStage, watchtowerStage = 0) {
             const lv = Number(farmStage) || 0;
             if (lv <= 0) return { extract: 0, plots: 0 };
-            const extract = lv >= 3 ? 2 : 1;
-            const plots = Math.min(FARM_MAX_PLOTS, 2 + lv);
-            return { extract, plots };
+            const baseExtract = lv >= 3 ? 2 : 1;
+            const basePlots = 2 + lv;  // stage 1=3 / 2=4 / 3=5
+            const bonus = getWatchtowerFarmBonus(watchtowerStage);
+            return {
+                extract: Math.min(FARM_MAX_EXTRACT, baseExtract + bonus.extract),
+                plots: Math.min(FARM_MAX_PLOTS, basePlots + bonus.plots)
+            };
         }
 
         function makeEmptyExtractionSlot() {
@@ -4921,7 +4936,8 @@
             const [extractPickerSlotIdx, setExtractPickerSlotIdx] = React.useState(null);  // null | number(추출 idx) — D-262: 슬롯 분리
 
             const farmStage = (campState && campState.buildingLevels && Number(campState.buildingLevels.farm)) || 0;
-            const capacity = getFarmCapacity(farmStage);
+            const watchtowerStage = (campState && campState.buildingLevels && Number(campState.buildingLevels.watchtower)) || 0;
+            const capacity = getFarmCapacity(farmStage, watchtowerStage);  // D-260: 도구작업대 stage 5/7/9 농장 보너스
             const farmState = (campState && campState.farmState) || makeInitialFarmState();
             const gameDay = (campState && campState.gameDay) || 1;
             const inv = campState && campState.inventory;
@@ -5078,6 +5094,19 @@
                             </div>
                             <div style={{ fontSize: '11px', color: '#888' }}>게임 일자 {gameDay}일</div>
                         </div>
+                        {/* D-260: 도구작업대 농장 보너스 활성 시 보조 라벨 */}
+                        {(() => {
+                            const bonus = getWatchtowerFarmBonus(watchtowerStage);
+                            if (bonus.extract === 0 && bonus.plots === 0) return null;
+                            const parts = [];
+                            if (bonus.extract > 0) parts.push(`추출 +${bonus.extract}`);
+                            if (bonus.plots > 0) parts.push(`밭 +${bonus.plots}`);
+                            return (
+                                <div style={{ fontSize: '10px', color: '#bbd0e5', marginBottom: '4px' }}>
+                                    🛠️ 도구작업대 Lv.{watchtowerStage} 보너스: {parts.join(' / ')}
+                                </div>
+                            );
+                        })()}
 
                         {/* D-262: 씨앗 추출 슬롯 그리드 — 밭과 동일 패턴, growing 톤만 파랑 차등.
                             empty 클릭 → 추출 picker 팝업, resultReady 클릭 → 즉시 수령. */}
