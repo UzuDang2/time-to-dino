@@ -3294,7 +3294,8 @@
             workshop: '🛠️',
             storage: '🏚️',
             training: '🏹',
-            watchtower: '🛠️'
+            watchtower: '🛠️',
+            farm: '🌱'    // D-256
         };
 
         // 보상 패시브 키 화이트리스트 (9종). parsePassive에서 사용.
@@ -4600,6 +4601,9 @@
         // D-174 (2026-04-30): 시트 SSOT 통합 — 빌딩 6종 + 텐트 + 잠금 2칸 = 9칸.
         //   slots: { id, kind } — kind: 'tent' | 'sheet' | 'locked'.
         //   라벨 통일 — Lv.{stage}/{maxStage}. stage=0이면 30% 투명도.
+        // D-256 (2026-05-06): 잠금 슬롯 #1 → 'farm' 빌딩으로 전환 (요한 결정 #5).
+        //   locked_2는 잔존 잠금 1개 유지. farm은 sheet kind — D-258 farmState 도입 전엔
+        //   reward_passive 빈값이라 효과 없음(빌딩 카드·quest 흐름만 활성).
         const BUILDING_SLOTS = [
             { id: 'tent',       kind: 'tent' },
             { id: 'clinic',     kind: 'sheet' },
@@ -4608,8 +4612,8 @@
             { id: 'storage',    kind: 'sheet' },
             { id: 'training',   kind: 'sheet' },
             { id: 'watchtower', kind: 'sheet' },
-            { id: 'locked_1',   kind: 'locked' },
-            { id: 'locked_2',   kind: 'locked' }
+            { id: 'farm',       kind: 'sheet' },
+            { id: 'locked_1',   kind: 'locked' }
         ];
 
         // D-254 (2026-05-06): 베이스캠프 허브맵 — 카드 그리드 → 공간형 허브.
@@ -4624,8 +4628,8 @@
             { id: 'workshop',   x: 25, y: 60 },
             { id: 'training',   x: 75, y: 60 },
             { id: 'watchtower', x: 75, y: 82 },
-            { id: 'locked_1',   x: 50, y: 28 },
-            { id: 'locked_2',   x: 50, y: 60 }
+            { id: 'farm',       x: 50, y: 28 },   // D-256: 옛 locked_1 자리 — 텐트·치료소 사이 가운데 위
+            { id: 'locked_1',   x: 50, y: 60 }     // 잔존 잠금 1개
         ];
         const CAMP_HUB_INTERACTION_RADIUS = 16;     // 퍼센트 단위(맵 박스 기준 거리). 빌딩 폭 64px ≒ ~14% 이라 16이 자연스러운 근접.
         const CAMP_HUB_MOVE_DURATION_MS = 600;       // CSS transition과 동일. 도착 후 자동 상호작용 트리거 시 sleep.
@@ -4809,99 +4813,8 @@
             );
         }
 
-        function BuildingsGrid({ campState, activeQuests, onClickBuilding }) {
-            const tentLevel = (campState && campState.tentLevel) || 0;
-            const buildingLevels = (campState && campState.buildingLevels) || {};
-            // D-177: "수락 가능"(다음 단계 존재 + active 미등록) 빌딩에 빨간 점 — 신규 인지 강화.
-            //   텐트도 동일 규칙으로 표시.
-            const activeIds = new Set((Array.isArray(activeQuests) ? activeQuests : []).map(q => q && q.id).filter(Boolean));
-            const isTakeable = (b) => {
-                if (b.kind === 'tent') {
-                    const next = getNextTentQuest(Number(tentLevel) || 0);
-                    return !!next && !activeIds.has(next.id);
-                }
-                if (b.kind === 'sheet') {
-                    const cur = Number(buildingLevels[b.id]) || 0;
-                    const next = getNextBuildingStage(b.id, cur);
-                    return !!next && !activeIds.has(`bld_${b.id}_${next.stage}`);
-                }
-                return false;
-            };
-            return (
-                <div style={{
-                    marginBottom: '16px',
-                    background: '#0f0f1a',
-                    border: '1px solid #2a3a5e',
-                    borderRadius: '10px',
-                    padding: '12px'
-                }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '8px' }}>
-                        🏘️ 베이스캠프
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                        {BUILDING_SLOTS.map(b => {
-                            let stage = 0, maxStage = 0, name = '', emoji = '🔒';
-                            if (b.kind === 'tent') {
-                                stage = Number(tentLevel) || 0;
-                                maxStage = TENT_MAX_LEVEL;
-                                name = '텐트';
-                                emoji = BUILDING_ICON.tent;
-                            } else if (b.kind === 'sheet') {
-                                stage = Number(buildingLevels[b.id]) || 0;
-                                maxStage = getMaxStage(b.id) || 3;
-                                // 시트에서 한글 name 1단계 행 기준 — 표시용.
-                                const def0 = getBuildingDef(b.id, 1);
-                                name = (def0 && def0.name) || b.id;
-                                emoji = BUILDING_ICON[b.id] || '🏗️';
-                            } else {
-                                // locked
-                                stage = 0;
-                                maxStage = 0;
-                                name = '잠금';
-                                emoji = '🔒';
-                            }
-                            // D-177: 카드 전체 dim → 아이콘만 dim 으로 분리.
-                            //   미빌드 일반 빌딩(stage===0): 배경/이름/Lv 텍스트는 정상, 아이콘만 흐림 + 빨간 점은 그대로 밝게.
-                            //   locked: 카드 전체 흐림(잠금 의도 유지) — takeable=false라 빨간 점 없음.
-                            const isLocked = b.kind === 'locked';
-                            const isUnbuilt = !isLocked && stage === 0;
-                            const cardOpacity = isLocked ? 0.3 : 1;
-                            const iconOpacity = isUnbuilt ? 0.45 : 1;
-                            const lvColor = isLocked ? '#666' : (stage > 0 ? '#d4b84a' : '#888');
-                            const takeable = isTakeable(b);
-                            return (
-                                <button
-                                    key={b.id}
-                                    onClick={() => onClickBuilding && onClickBuilding(b)}
-                                    style={{
-                                        background: '#1a1a2e',
-                                        border: '1px solid #2a3a5e',
-                                        borderRadius: '8px',
-                                        padding: '10px 4px',
-                                        cursor: 'pointer',
-                                        color: '#eee',
-                                        opacity: cardOpacity,
-                                        position: 'relative',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '3px',
-                                        transition: 'opacity 0.2s, transform 0.1s'
-                                    }}
-                                >
-                                    {takeable && <span className="building-takeable-dot" />}
-                                    <div style={{ fontSize: '30px', lineHeight: 1, opacity: iconOpacity }}>{emoji}</div>
-                                    <div style={{ fontSize: '11px', fontWeight: 600 }}>{name}</div>
-                                    <div style={{ fontSize: '10px', color: lvColor }}>
-                                        {isLocked ? '추후' : `Lv.${stage}/${maxStage}`}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        }
+        // D-256 (2026-05-06): BuildingsGrid 함수 제거 — D-254에서 호출처 폐기, 이번에 정의도 제거.
+        //   기능은 CampHubMap이 흡수했고 isTakeable 로직도 거기 동일 이식. dead code 정리.
 
         // D-174: 빌딩 카드 클릭 시 띄우는 상세 모달.
         //   - locked: "추후 공개" 안내.

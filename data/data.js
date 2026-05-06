@@ -872,6 +872,76 @@ window.TTD_DATA = {
       "cost_raw": "목재 x3, 석재 x3, 큰생고기 x3, 딸기모둠 x1, 맑은물 x3, 버섯모둠 x1"
     },
     {
+      "id": "kitchen",
+      "name": "화덕",
+      "stage": 4,
+      "cost": [
+        {
+          "material": "목재",
+          "count": 4
+        },
+        {
+          "material": "석재",
+          "count": 4
+        },
+        {
+          "material": "큰생고기",
+          "count": 4
+        },
+        {
+          "material": "딸기모둠",
+          "count": 2
+        },
+        {
+          "material": "맑은물",
+          "count": 4
+        },
+        {
+          "material": "버섯모둠",
+          "count": 2
+        }
+      ],
+      "effect_raw": "\"기름이 솥에 흐른다. 한 번 굽는 정도로 끝나지 않는다.\"",
+      "설명": "",
+      "reward_passive": "hunger_max+1",
+      "cost_raw": "목재 x4, 석재 x4, 큰생고기 x4, 딸기모둠 x2, 맑은물 x4, 버섯모둠 x2"
+    },
+    {
+      "id": "kitchen",
+      "name": "화덕",
+      "stage": 5,
+      "cost": [
+        {
+          "material": "목재",
+          "count": 5
+        },
+        {
+          "material": "석재",
+          "count": 5
+        },
+        {
+          "material": "큰생고기",
+          "count": 5
+        },
+        {
+          "material": "딸기모둠",
+          "count": 3
+        },
+        {
+          "material": "맑은물",
+          "count": 5
+        },
+        {
+          "material": "버섯모둠",
+          "count": 3
+        }
+      ],
+      "effect_raw": "\"연기가 천장을 덮는다. 화덕이 한 마을을 먹인다.\"",
+      "설명": "",
+      "reward_passive": "hunger_max+1",
+      "cost_raw": "목재 x5, 석재 x5, 큰생고기 x5, 딸기모둠 x3, 맑은물 x5, 버섯모둠 x3"
+    },
+    {
       "id": "workshop",
       "name": "작업대",
       "stage": 1,
@@ -1277,44 +1347,55 @@ window.TTD_DATA = {
       "cost_raw": "목재 x6, 석재 x5, 줄기 x3"
     },
     {
-      "id": "kitchen",
-      "name": "화덕",
-      "stage": 4,
+      "id": "farm",
+      "name": "농장",
+      "stage": 1,
       "cost": [
         {
-          "material": "목재",
+          "material": "나뭇가지",
+          "count": 6
+        },
+        {
+          "material": "돌맹이",
           "count": 4
         },
         {
-          "material": "석재",
+          "material": "줄기",
           "count": 4
-        },
-        {
-          "material": "큰생고기",
-          "count": 4
-        },
-        {
-          "material": "딸기모둠",
-          "count": 2
-        },
-        {
-          "material": "맑은물",
-          "count": 4
-        },
-        {
-          "material": "버섯모둠",
-          "count": 2
         }
       ],
-      "effect_raw": "\"기름이 솥에 흐른다. 한 번 굽는 정도로 끝나지 않는다.\"",
-      "설명": "",
-      "reward_passive": "hunger_max+1",
-      "cost_raw": "목재 x4, 석재 x4, 큰생고기 x4, 딸기모둠 x2, 맑은물 x4, 버섯모둠 x2"
+      "effect_raw": "\"흙을 갈아 첫 밭을 낸다. 씨앗을 받을 자리가 생긴다.\"",
+      "설명": "농장 시스템(D-258에서 활성화). 텐트 패턴 — 단계마다 밭 슬롯 +1, 씨앗 추출 슬롯 누적 예정.",
+      "reward_passive": "",
+      "cost_raw": "나뭇가지 x6, 돌맹이 x4, 줄기 x4"
     },
     {
-      "id": "kitchen",
-      "name": "화덕",
-      "stage": 5,
+      "id": "farm",
+      "name": "농장",
+      "stage": 2,
+      "cost": [
+        {
+          "material": "나뭇가지",
+          "count": 8
+        },
+        {
+          "material": "돌맹이",
+          "count": 6
+        },
+        {
+          "material": "줄기",
+          "count": 6
+        }
+      ],
+      "effect_raw": "\"두 번째 밭이 늘어선다. 손이 닿는 만큼 자랄 수 있다.\"",
+      "설명": "",
+      "reward_passive": "",
+      "cost_raw": "나뭇가지 x8, 돌맹이 x6, 줄기 x6"
+    },
+    {
+      "id": "farm",
+      "name": "농장",
+      "stage": 3,
       "cost": [
         {
           "material": "목재",
@@ -1322,29 +1403,17 @@ window.TTD_DATA = {
         },
         {
           "material": "석재",
-          "count": 5
-        },
-        {
-          "material": "큰생고기",
-          "count": 5
-        },
-        {
-          "material": "딸기모둠",
           "count": 3
         },
         {
-          "material": "맑은물",
-          "count": 5
-        },
-        {
-          "material": "버섯모둠",
-          "count": 3
+          "material": "줄기",
+          "count": 8
         }
       ],
-      "effect_raw": "\"연기가 천장을 덮는다. 화덕이 한 마을을 먹인다.\"",
+      "effect_raw": "\"씨앗 갈무리 자리도 생겼다. 캠프에 작은 농장이 자리잡았다.\"",
       "설명": "",
-      "reward_passive": "hunger_max+1",
-      "cost_raw": "목재 x5, 석재 x5, 큰생고기 x5, 딸기모둠 x3, 맑은물 x5, 버섯모둠 x3"
+      "reward_passive": "",
+      "cost_raw": "목재 x5, 석재 x3, 줄기 x8"
     }
   ],
   "ITEMS": [
