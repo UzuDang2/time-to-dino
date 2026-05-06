@@ -4918,7 +4918,7 @@
             // D-261 (2026-05-06): UI 흐름 개편 — 메인=상태만, 선택 목록=팝업 분리.
             //   data 구조·헬퍼·handle*·advanceFarmDay 모두 D-257/D-258 그대로. UI 레이어만 재구성.
             const [plantPickerSlotIdx, setPlantPickerSlotIdx] = React.useState(null);  // null | number(밭 idx)
-            const [extractPickerOpen, setExtractPickerOpen] = React.useState(false);
+            const [extractPickerSlotIdx, setExtractPickerSlotIdx] = React.useState(null);  // null | number(추출 idx) — D-262: 슬롯 분리
 
             const farmStage = (campState && campState.buildingLevels && Number(campState.buildingLevels.farm)) || 0;
             const capacity = getFarmCapacity(farmStage);
@@ -5025,20 +5025,13 @@
                 }));
             };
 
-            // 첫 빈 추출 슬롯 — [씨앗 추출] 버튼이 활성될 때 실제 등록 대상.
-            const firstEmptyExtractIdx = (() => {
-                for (let i = 0; i < capacity.extract; i++) {
-                    const s = farmState.extractionSlots[i];
-                    if (s && s.state === 'empty') return i;
-                }
-                return -1;
-            })();
-            const canStartExtract = firstEmptyExtractIdx !== -1;
+            // D-262: 추출 슬롯도 밭 슬롯처럼 그리드 카드로 분리. firstEmptyExtractIdx · canStartExtract 폐기.
+            //   각 빈 추출 슬롯 카드 클릭 → extractPickerSlotIdx 설정 → 팝업 → 선택 → 그 슬롯에 등록.
 
             const onPickExtractItem = (sourceId) => {
-                if (firstEmptyExtractIdx === -1) return;
-                handleExtractStart(firstEmptyExtractIdx, sourceId);
-                setExtractPickerOpen(false);
+                if (extractPickerSlotIdx == null) return;
+                handleExtractStart(extractPickerSlotIdx, sourceId);
+                setExtractPickerSlotIdx(null);
             };
             const onPickPlantSeed = (seedId) => {
                 if (plantPickerSlotIdx == null) return;
@@ -5057,48 +5050,15 @@
             const btnGhost = { ...btn, background: 'transparent', border: '1px solid #2a3a5e', color: '#aaa' };
             const btnDisabled = { ...btn, background: '#1a1a2e', color: '#555', cursor: 'not-allowed' };
 
-            // 밭 슬롯 그리드 — 활성 + 잠금 모두 동일 크기 카드.
-            const plotGrid = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '4px' };
-            const plotCardBase = { aspectRatio: '1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 4px', fontSize: '11px', textAlign: 'center', lineHeight: 1.4, position: 'relative' };
-            const plotEmpty = { ...plotCardBase, background: '#16213e', border: '1px dashed #3a4a6e', color: '#666', cursor: 'pointer' };
-            const plotGrowing = { ...plotCardBase, background: '#1e3a2e', border: '1px solid #2e5a3e', color: '#bbe5b5' };
-            const plotReady = { ...plotCardBase, background: '#3e3a1e', border: '1px solid #6e6a2e', color: '#fff8c0', cursor: 'pointer', boxShadow: '0 0 12px rgba(212,184,74,0.3)' };
-            const plotLocked = { ...plotCardBase, background: '#0f0f1a', border: '1px dashed #2a2a3e', color: '#444' };
-
-            // 추출 진행 카드(상단). empty 슬롯은 메인에 안 보이고 [씨앗 추출] 버튼만 노출.
-            const renderExtractionStatus = () => {
-                const activeSlots = farmState.extractionSlots.slice(0, capacity.extract);
-                const inProgress = activeSlots.filter(s => s.state === 'extracting' || s.state === 'resultReady');
-                if (inProgress.length === 0) return null;
-                return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
-                        {activeSlots.map((slot, idx) => {
-                            if (slot.state === 'extracting') {
-                                const seedDef = CROP_DEFS[slot.resultSeedId] || {};
-                                return (
-                                    <div key={idx} style={cardBox}>
-                                        <span style={{ color: '#aaa' }}>🌾 {seedDef.name || slot.resultSeedId} 추출 중</span>
-                                        <span style={{ color: '#d4b84a', fontWeight: 700, marginLeft: '8px' }}>{slot.remainingDays}일 남음</span>
-                                    </div>
-                                );
-                            }
-                            if (slot.state === 'resultReady') {
-                                const def = SEED_EXTRACTION_DEFS[slot.sourceItemId] || {};
-                                const seedDef = CROP_DEFS[slot.resultSeedId] || {};
-                                return (
-                                    <div key={idx} style={{ ...cardBox, background: '#2e3a1e', border: '1px solid #6e8a2e' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ color: '#fff8c0' }}>✓ {seedDef.name || slot.resultSeedId} {def.resultCount}개 수령 가능</span>
-                                            <button style={btnPrimary} onClick={() => handleExtractClaim(idx)}>수령</button>
-                                        </div>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })}
-                    </div>
-                );
-            };
+            // 슬롯 그리드 — 추출/밭 공용. 활성 + 잠금 모두 동일 크기 카드.
+            const slotGrid = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '4px' };
+            const slotCardBase = { aspectRatio: '1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 4px', fontSize: '11px', textAlign: 'center', lineHeight: 1.4, position: 'relative' };
+            const slotEmpty = { ...slotCardBase, background: '#16213e', border: '1px dashed #3a4a6e', color: '#666', cursor: 'pointer' };
+            const slotReady = { ...slotCardBase, background: '#3e3a1e', border: '1px solid #6e6a2e', color: '#fff8c0', cursor: 'pointer', boxShadow: '0 0 12px rgba(212,184,74,0.3)' };
+            const slotLocked = { ...slotCardBase, background: '#0f0f1a', border: '1px dashed #2a2a3e', color: '#444' };
+            // 밭(녹색) / 추출(파랑) — growing 톤만 차등.
+            const plotGrowing = { ...slotCardBase, background: '#1e3a2e', border: '1px solid #2e5a3e', color: '#bbe5b5' };
+            const extractGrowing = { ...slotCardBase, background: '#1e2e3e', border: '1px solid #2e4a6e', color: '#bbd0e5' };
 
             return (
                 <div className="modal" style={{
@@ -5119,28 +5079,63 @@
                             <div style={{ fontSize: '11px', color: '#888' }}>게임 일자 {gameDay}일</div>
                         </div>
 
-                        {/* 씨앗 추출 영역 — 진행/수령 카드 + [씨앗 추출] 버튼 */}
-                        <div style={sectionTitle}>씨앗 추출</div>
-                        {renderExtractionStatus()}
-                        <button
-                            style={canStartExtract ? btn : btnDisabled}
-                            disabled={!canStartExtract}
-                            onClick={() => canStartExtract && setExtractPickerOpen(true)}
-                        >
-                            {canStartExtract
-                                ? '🌾 씨앗 추출 시작'
-                                : (capacity.extract === 0 ? '추출 슬롯 없음 (농장 Lv.1 필요)' : '추출 슬롯 사용 중')}
-                        </button>
+                        {/* D-262: 씨앗 추출 슬롯 그리드 — 밭과 동일 패턴, growing 톤만 파랑 차등.
+                            empty 클릭 → 추출 picker 팝업, resultReady 클릭 → 즉시 수령. */}
+                        <div style={sectionTitle}>씨앗 추출 슬롯</div>
+                        <div style={slotGrid}>
+                            {Array.from({ length: FARM_MAX_EXTRACT }).map((_, idx) => {
+                                const active = idx < capacity.extract;
+                                if (!active) {
+                                    return (
+                                        <div key={idx} style={slotLocked}>
+                                            🔒
+                                            <div style={{ marginTop: '4px', fontSize: '10px' }}>Lv.3</div>
+                                        </div>
+                                    );
+                                }
+                                const slot = farmState.extractionSlots[idx] || makeEmptyExtractionSlot();
+                                if (slot.state === 'empty') {
+                                    return (
+                                        <div key={idx} style={slotEmpty} onClick={() => setExtractPickerSlotIdx(idx)}>
+                                            <div style={{ fontSize: '20px', opacity: 0.5 }}>🌾</div>
+                                            <div style={{ marginTop: '4px' }}>비어 있음</div>
+                                        </div>
+                                    );
+                                }
+                                if (slot.state === 'extracting') {
+                                    const seedDef = CROP_DEFS[slot.resultSeedId] || {};
+                                    return (
+                                        <div key={idx} style={extractGrowing}>
+                                            <div style={{ fontSize: '18px' }}>🧺</div>
+                                            <div style={{ marginTop: '4px', fontWeight: 600 }}>{seedDef.name || slot.resultSeedId}</div>
+                                            <div style={{ marginTop: '2px', color: '#d4b84a', fontWeight: 700, fontSize: '10px' }}>{slot.remainingDays}일 남음</div>
+                                        </div>
+                                    );
+                                }
+                                if (slot.state === 'resultReady') {
+                                    const def = SEED_EXTRACTION_DEFS[slot.sourceItemId] || {};
+                                    const seedDef = CROP_DEFS[slot.resultSeedId] || {};
+                                    return (
+                                        <div key={idx} style={slotReady} onClick={() => handleExtractClaim(idx)}>
+                                            <div style={{ fontSize: '20px' }}>✨</div>
+                                            <div style={{ marginTop: '4px', fontWeight: 600 }}>{seedDef.name || slot.resultSeedId} x{def.resultCount}</div>
+                                            <div style={{ marginTop: '2px', fontWeight: 700, fontSize: '10px' }}>✓ 수령 가능</div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })}
+                        </div>
 
                         {/* 밭 슬롯 그리드 — 상태만 표시, empty 클릭 시 심기 팝업 */}
                         <div style={sectionTitle}>밭 슬롯</div>
-                        <div style={plotGrid}>
+                        <div style={slotGrid}>
                             {Array.from({ length: FARM_MAX_PLOTS }).map((_, idx) => {
                                 const active = idx < capacity.plots;
                                 if (!active) {
                                     const unlockLv = idx <= 2 ? 1 : (idx <= 3 ? 2 : 3);
                                     return (
-                                        <div key={idx} style={plotLocked}>
+                                        <div key={idx} style={slotLocked}>
                                             🔒
                                             <div style={{ marginTop: '4px', fontSize: '10px' }}>Lv.{unlockLv}</div>
                                         </div>
@@ -5149,7 +5144,7 @@
                                 const plot = farmState.plots[idx] || makeEmptyPlot();
                                 if (plot.state === 'empty') {
                                     return (
-                                        <div key={idx} style={plotEmpty} onClick={() => setPlantPickerSlotIdx(idx)}>
+                                        <div key={idx} style={slotEmpty} onClick={() => setPlantPickerSlotIdx(idx)}>
                                             <div style={{ fontSize: '20px', opacity: 0.5 }}>🌱</div>
                                             <div style={{ marginTop: '4px' }}>비어 있음</div>
                                         </div>
@@ -5168,7 +5163,7 @@
                                 if (plot.state === 'ready') {
                                     const def = CROP_DEFS[plot.seedId] || {};
                                     return (
-                                        <div key={idx} style={plotReady} onClick={() => handleHarvest(idx)}>
+                                        <div key={idx} style={slotReady} onClick={() => handleHarvest(idx)}>
                                             <div style={{ fontSize: '20px' }}>🌾</div>
                                             <div style={{ marginTop: '4px', fontWeight: 600 }}>{def.cropName || plot.seedId}</div>
                                             <div style={{ marginTop: '2px', fontWeight: 700, fontSize: '10px' }}>✓ 수확 가능</div>
@@ -5190,12 +5185,12 @@
                     </div>
 
                     {/* D-261: 씨앗 추출 picker 팝업 — 보관함 보유 완제품만 슬롯 카드로 노출. */}
-                    {extractPickerOpen && (
+                    {extractPickerSlotIdx != null && (
                         <div style={{
                             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             zIndex: 1700, padding: '20px'
-                        }} onClick={(e) => { e.stopPropagation(); setExtractPickerOpen(false); }}>
+                        }} onClick={(e) => { e.stopPropagation(); setExtractPickerSlotIdx(null); }}>
                             <div onClick={(e) => e.stopPropagation()} style={{
                                 background: '#0f0f1a', border: '1px solid #2a3a5e', borderRadius: '10px',
                                 padding: '14px 16px', width: '100%', maxWidth: '380px', maxHeight: '80vh',
@@ -5231,7 +5226,7 @@
                                         })}
                                     </div>
                                 )}
-                                <button style={{ ...btnGhost, width: '100%', marginTop: '12px' }} onClick={() => setExtractPickerOpen(false)}>취소</button>
+                                <button style={{ ...btnGhost, width: '100%', marginTop: '12px' }} onClick={() => setExtractPickerSlotIdx(null)}>취소</button>
                             </div>
                         </div>
                     )}
