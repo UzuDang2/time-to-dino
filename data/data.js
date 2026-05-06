@@ -1698,37 +1698,6 @@ window.TTD_DATA = {
       }
     },
     {
-      "id": "root_tuber",
-      "name": "덩이뿌리",
-      "이름": "덩이뿌리",
-      "카테고리": "음식",
-      "재료 타입": "식물재료",
-      "아이템 등급": "1단계",
-      "가방칸수": "1x1",
-      "나오는 지역": [
-        "평원",
-        "시냇물"
-      ],
-      "머지 가능": false,
-      "일회용": true,
-      "설명 텍스트": "캠프 화덕에서 굽거나 그대로 먹을 수 있다.",
-      "효과 요약": "날것의 덩이뿌리. 화덕에 구우면 든든하다.",
-      "사용 효과": "hunger+2",
-      "merge_result": null,
-      "merge_enabled": false,
-      "effect": {
-        "usable": true,
-        "actions": [
-          {
-            "type": "stat",
-            "stat": "hunger",
-            "delta": 2
-          }
-        ],
-        "raw": "hunger+2"
-      }
-    },
-    {
       "id": "slingshot",
       "name": "새총",
       "이름": "새총",
@@ -2264,6 +2233,28 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "stone_block",
+      "name": "석재",
+      "이름": "석재",
+      "카테고리": "재료",
+      "재료 타입": "환경재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "건축·제작에 두루 쓰이는 정제 석재.",
+      "효과 요약": "돌맹이를 다듬어 만든 정제 재료.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
       "id": "wood",
       "name": "목재",
       "이름": "목재",
@@ -2717,6 +2708,13 @@ window.TTD_DATA = {
         "stem"
       ],
       "result": "plant_fiber"
+    },
+    {
+      "ingredients": [
+        "stone",
+        "stone"
+      ],
+      "result": "stone_block"
     },
     {
       "ingredients": [
