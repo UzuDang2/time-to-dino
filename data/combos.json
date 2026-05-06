@@ -15,6 +15,13 @@
   },
   {
     "ingredients": [
+      "herb",
+      "herb"
+    ],
+    "result": "herb_extract"
+  },
+  {
+    "ingredients": [
       "mushroom",
       "mushroom"
     ],

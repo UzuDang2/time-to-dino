@@ -171,7 +171,14 @@ class InventorySystem {
         fiber_seed:     { name: '섬유풀 씨앗',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
 
         // D-263 (2026-05-06): 화덕 농작물 요리 — 1재료 레시피(휴식 카드 → 요리 모달 경유).
-        grilled_root_tuber: { name: '구운 덩이뿌리', shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null }
+        grilled_root_tuber: { name: '구운 덩이뿌리', shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null },
+
+        // D-264 (2026-05-06): 시트 누락 4종 정착 — 코드에서 사용되지만 시트 `아이템마스터`엔 없던 항목들.
+        //   herb x2 → herb_extract 머지(약초즙 health+1, 치료소 가공). leather/metal은 동물·광물 재료.
+        herb:         { name: '약초',     shape: [[1]], grade: 1, mergeable: true,  category: 'food',       merge_result: 'herb_extract' },
+        herb_extract: { name: '약초즙',   shape: [[1]], grade: 2, mergeable: false, category: 'consumable', merge_result: null },
+        leather:      { name: '가죽',     shape: [[1]], grade: 2, mergeable: false, category: 'material',   merge_result: null },
+        metal:        { name: '금속',     shape: [[1]], grade: 2, mergeable: false, category: 'material',   merge_result: null }
     };
 
     // 런타임에 TTD_DATA.ITEMS(Notion 기반)이 덮어쓰는 값 조회.

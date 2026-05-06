@@ -1634,6 +1634,31 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "herb",
+      "name": "약초",
+      "이름": "약초",
+      "카테고리": "음식",
+      "재료 타입": "식물재료",
+      "아이템 등급": "1단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [
+        "숲",
+        "시냇물"
+      ],
+      "머지 가능": true,
+      "일회용": false,
+      "설명 텍스트": "잎을 끓여 약초즙으로 만들 수 있다.",
+      "효과 요약": "치료에 쓰이는 약초.",
+      "사용 효과": "",
+      "merge_result": "herb_extract",
+      "merge_enabled": true,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
       "id": "meat",
       "name": "생고기",
       "이름": "생고기",
@@ -2143,6 +2168,34 @@ window.TTD_DATA = {
       }
     },
     {
+      "id": "herb_extract",
+      "name": "약초즙",
+      "이름": "약초즙",
+      "카테고리": "약품",
+      "재료 타입": "가공재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": true,
+      "설명 텍스트": "치료소 회복 재료.",
+      "효과 요약": "약초를 끓여 만든 회복약.",
+      "사용 효과": "health+1",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": true,
+        "actions": [
+          {
+            "type": "stat",
+            "stat": "health",
+            "delta": 1
+          }
+        ],
+        "raw": "health+1"
+      }
+    },
+    {
       "id": "herb_seed",
       "name": "약초 씨앗",
       "이름": "약초 씨앗",
@@ -2155,6 +2208,28 @@ window.TTD_DATA = {
       "일회용": true,
       "설명 텍스트": "농장에서 추출한 재배 원료.",
       "효과 요약": "밭에 심는 약초 씨앗.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
+      }
+    },
+    {
+      "id": "leather",
+      "name": "가죽",
+      "이름": "가죽",
+      "카테고리": "재료",
+      "재료 타입": "동물재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "도구·방어구 재료.",
+      "효과 요약": "동물 가죽.",
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
@@ -2195,6 +2270,30 @@ window.TTD_DATA = {
           }
         ],
         "raw": "hunger+1;health-1"
+      }
+    },
+    {
+      "id": "metal",
+      "name": "금속",
+      "이름": "금속",
+      "카테고리": "재료",
+      "재료 타입": "광물재료",
+      "아이템 등급": "2단계",
+      "가방칸수": "1x1",
+      "나오는 지역": [
+        "동굴"
+      ],
+      "머지 가능": false,
+      "일회용": false,
+      "설명 텍스트": "제련하면 강한 도구가 된다.",
+      "효과 요약": "단단한 금속 광석.",
+      "사용 효과": "",
+      "merge_result": null,
+      "merge_enabled": false,
+      "effect": {
+        "usable": false,
+        "actions": [],
+        "raw": ""
       }
     },
     {
@@ -2778,6 +2877,13 @@ window.TTD_DATA = {
         "branch"
       ],
       "result": "wood"
+    },
+    {
+      "ingredients": [
+        "herb",
+        "herb"
+      ],
+      "result": "herb_extract"
     },
     {
       "ingredients": [
