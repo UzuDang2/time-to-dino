@@ -4942,21 +4942,18 @@
             const gameDay = (campState && campState.gameDay) || 1;
             const inv = campState && campState.inventory;
 
-            // 'water' / 'clear_water' 동의어 합산(D-258 발견 이슈) — 농장 한정 분기.
-            const WATER_ALIASES = { clear_water: ['clear_water', 'water'] };
-            const matchTypes = (type) => WATER_ALIASES[type] || [type];
+            // D-265 (2026-05-06): clear_water 폐기 → water 단일 id로 통합. WATER_ALIASES 분기 제거.
+            //   시트 SSOT는 'water' (한글명 '맑은물') 이라 코드도 일관. items.json 두 id 매핑 혼란 해소.
             const countOf = (type) => {
                 if (!inv || !Array.isArray(inv.items)) return 0;
-                const aliases = matchTypes(type);
-                return inv.items.filter(it => it && aliases.includes(it.type)).length;
+                return inv.items.filter(it => it && it.type === type).length;
             };
             // InventorySystem.removeItem invariant — grid만 비우고 items 배열 보존(D-258).
             const consume = (type, n = 1) => {
                 if (!inv || !Array.isArray(inv.items)) return false;
-                const aliases = matchTypes(type);
                 const toRemoveIds = [];
                 for (let i = inv.items.length - 1; i >= 0 && toRemoveIds.length < n; i--) {
-                    if (inv.items[i] && aliases.includes(inv.items[i].type)) {
+                    if (inv.items[i] && inv.items[i].type === type) {
                         toRemoveIds.push(inv.items[i].id);
                         inv.removeItem(inv.items[i]);
                     }
@@ -5007,9 +5004,9 @@
                 const def = CROP_DEFS[seedId];
                 if (!def) return;
                 if (countOf(seedId) < 1) return;
-                if (def.waterCost > 0 && countOf('clear_water') < def.waterCost) return;
+                if (def.waterCost > 0 && countOf('water') < def.waterCost) return;
                 if (!consume(seedId, 1)) return;
-                if (def.waterCost > 0) consume('clear_water', def.waterCost);
+                if (def.waterCost > 0) consume('water', def.waterCost);
                 onCampStateUpdate(prev => {
                     const fs = prev.farmState || makeInitialFarmState();
                     const plots = fs.plots.slice();
@@ -5283,7 +5280,7 @@
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                         {plantableSeeds.map(id => {
                                             const def = CROP_DEFS[id];
-                                            const waterHave = countOf('clear_water');
+                                            const waterHave = countOf('water');
                                             const waterOk = def.waterCost === 0 || waterHave >= def.waterCost;
                                             const reason = !waterOk ? `맑은물 부족 (보유 ${waterHave}, 필요 ${def.waterCost})` : null;
                                             return (

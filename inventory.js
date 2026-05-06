@@ -252,7 +252,7 @@ class InventorySystem {
     // D-174: 한글 자원 이름 → 영문 id 매핑.
     //   parseRewardItems / handleCompleteQuest 한글 cost 차감에서 사용.
     //   우선순위: static ITEMS 매칭(레거시 안정) → window.TTD_DATA.ITEMS 매칭(런타임 신규).
-    //   - 동일 이름이 여러 id에 걸친 경우(예: '맑은물' = water/clear_water) static의 'water'가 우선.
+    //   - 동일 이름이 여러 id에 걸쳤던 케이스(예전 '맑은물' = water/clear_water)는 D-265에서 'water'로 통일.
     //   미매칭 시 null. 호출부는 console.warn + 스킵.
     static findIdByKoreanName(koName) {
         if (!koName || typeof koName !== 'string') return null;
