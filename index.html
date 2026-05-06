@@ -4640,7 +4640,9 @@
         //  cropDefs는 1차 로컬 상수. D-259에서 시트 SSOT 이관 예정.
 
         // 작물 정의 — 씨앗 id → { 출처 완제품 / 결과 완제품 / 성장일 / 물 / 수확량 / 재배 타입 }.
-        const CROP_DEFS = {
+        // D-267 (2026-05-06): 시트 `작물` 탭 SSOT 이관. 이 로컬 상수는 시트 미존재 시 폴백.
+        //   FarmModal 진입 시점에 window.TTD_DATA.CROPS 우선 사용, 없으면 이 상수.
+        const FALLBACK_CROP_DEFS = {
             berry_seed: {
                 id: 'berry_seed', name: '산딸기 씨앗', cropName: '산딸기',
                 sourceItemId: 'berry', resultItemId: 'berry',
@@ -4669,7 +4671,8 @@
         };
 
         // 씨앗 추출 정의 — 완제품 id → { 결과 씨앗 id / 결과 수량 / 추출일 }.
-        const SEED_EXTRACTION_DEFS = {
+        // D-267: 시트 SSOT 이관 후 폴백.
+        const FALLBACK_SEED_EXTRACTION_DEFS = {
             berry:       { sourceItemId: 'berry',       resultSeedId: 'berry_seed',     resultCount: 2, requiredDays: 1 },
             mushroom:    { sourceItemId: 'mushroom',    resultSeedId: 'mushroom_spore', resultCount: 2, requiredDays: 1 },
             root_tuber:  { sourceItemId: 'root_tuber',  resultSeedId: 'root_tuber_eye', resultCount: 2, requiredDays: 1 },
@@ -4938,6 +4941,33 @@
             const farmStage = (campState && campState.buildingLevels && Number(campState.buildingLevels.farm)) || 0;
             const watchtowerStage = (campState && campState.buildingLevels && Number(campState.buildingLevels.watchtower)) || 0;
             const capacity = getFarmCapacity(farmStage, watchtowerStage);  // D-260: 도구작업대 stage 5/7/9 농장 보너스
+
+            // D-267 (2026-05-06): CROP_DEFS / SEED_EXTRACTION_DEFS 시트 SSOT 우선 — 미존재 시 로컬 폴백.
+            //   시트 `작물` 탭 데이터(window.TTD_DATA.CROPS)에서 동적 빌드. 사용처 16곳은 동일 이름이라 변경 X.
+            const sheetCrops = (typeof window !== 'undefined' && window.TTD_DATA && Array.isArray(window.TTD_DATA.CROPS))
+                ? window.TTD_DATA.CROPS : [];
+            const CROP_DEFS = sheetCrops.length > 0
+                ? Object.fromEntries(sheetCrops.filter(c => c && c.seedId).map(c => [c.seedId, {
+                    id: c.seedId,
+                    name: (InventorySystem.resolveDef(c.seedId) || {}).name || c.seedId,
+                    cropName: c.cropName,
+                    sourceItemId: c.sourceItemId,
+                    resultItemId: c.resultItemId,
+                    growDays: Number(c.growDays) || 0,
+                    waterCost: Number(c.waterCost) || 0,
+                    yieldCount: Number(c.yieldCount) || 0,
+                    growType: c.growType || 'field',
+                    category: c.category || ''
+                }]))
+                : FALLBACK_CROP_DEFS;
+            const SEED_EXTRACTION_DEFS = sheetCrops.length > 0
+                ? Object.fromEntries(sheetCrops.filter(c => c && c.sourceItemId).map(c => [c.sourceItemId, {
+                    sourceItemId: c.sourceItemId,
+                    resultSeedId: c.seedId,
+                    resultCount: Number(c.extractCount) || 0,
+                    requiredDays: Number(c.extractDays) || 0
+                }]))
+                : FALLBACK_SEED_EXTRACTION_DEFS;
             const farmState = (campState && campState.farmState) || makeInitialFarmState();
             const gameDay = (campState && campState.gameDay) || 1;
             const inv = campState && campState.inventory;

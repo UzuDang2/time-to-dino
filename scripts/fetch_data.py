@@ -135,6 +135,11 @@ ARMOR_MASTER_SHEET = "방어구"
 # 같은 재료 2개 머지는 아이템마스터의 merge_result 컬럼으로 표현.
 COMBO_RECIPE_SHEET = "조합레시피"
 
+# D-267 (2026-05-06): 농장 작물 정의 SSOT 시트.
+# 헤더: seedId, cropName, sourceItemId, resultItemId, growDays, waterCost, yieldCount, growType, category, extractCount, extractDays, note
+# index.html의 CROP_DEFS / SEED_EXTRACTION_DEFS 둘 다 이 시트에서 파생.
+CROPS_SHEET = "작물"
+
 
 # ─── 파서 ───────────────────────────────────────────────────────────────
 
@@ -1292,6 +1297,64 @@ def export_status_effects_from_xlsx(xlsx_path: Path) -> None:
     print(f"[export] status      → {out_path.name}  ({len(out)} statuses)")
 
 
+def rows_to_crops(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """시트 `작물` rows → crops.json. CROP_DEFS + SEED_EXTRACTION_DEFS 통합 표현."""
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        sid = str(r.get("seedId") or "").strip()
+        if not sid:
+            continue
+        def _int(key):
+            v = r.get(key)
+            try:
+                return int(float(v)) if v not in (None, "") else 0
+            except (TypeError, ValueError):
+                return 0
+        out.append({
+            "id": sid,
+            "seedId": sid,
+            "cropName": str(r.get("cropName") or "").strip(),
+            "sourceItemId": str(r.get("sourceItemId") or "").strip(),
+            "resultItemId": str(r.get("resultItemId") or "").strip(),
+            "growDays": _int("growDays"),
+            "waterCost": _int("waterCost"),
+            "yieldCount": _int("yieldCount"),
+            "growType": str(r.get("growType") or "field").strip(),
+            "category": str(r.get("category") or "").strip(),
+            "extractCount": _int("extractCount"),
+            "extractDays": _int("extractDays"),
+            "note": str(r.get("note") or "").strip()
+        })
+    return out
+
+
+def export_crops_via_api(sh) -> bool:
+    """D-267: 시트 `작물` 탭 → crops.json. 미존재 시 빈 리스트."""
+    names = {w.title for w in sh.worksheets()}
+    if CROPS_SHEET not in names:
+        print(f"[warn] 탭 '{CROPS_SHEET}' 없음 — crops.json 빈 리스트로 생성")
+        write_json(DATA_DIR / "crops.json", [])
+        return False
+    rows = _ws_rows(sh.worksheet(CROPS_SHEET))
+    crops = rows_to_crops(rows)
+    write_json(DATA_DIR / "crops.json", crops)
+    print(f"[api] crops        → crops.json  ({len(crops)} crops)")
+    return True
+
+
+def export_crops_from_xlsx(xlsx_path: Path) -> bool:
+    """xlsx 폴백."""
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    if CROPS_SHEET not in wb.sheetnames:
+        write_json(DATA_DIR / "crops.json", [])
+        return False
+    rows = sheet_to_rows(wb[CROPS_SHEET])
+    crops = rows_to_crops(rows)
+    write_json(DATA_DIR / "crops.json", crops)
+    print(f"[xlsx] crops       → crops.json  ({len(crops)} crops)")
+    return True
+
+
 def export_items_from_sheet(sh) -> bool:
     """API로 아이템마스터 + 무기 + 방어구 + 조합레시피 탭을 읽어 items/weapons/armors/combos 생성."""
     names = {w.title for w in sh.worksheets()}
@@ -1472,6 +1535,8 @@ def main() -> int:
                 # D-126: 이벤트 / 상태이상
                 export_events_via_api(sh)
                 export_status_effects_via_api(sh)
+                # D-267: 농장 작물 SSOT 이관
+                export_crops_via_api(sh)
                 used_api = True
                 print("[api] 시트 읽기 완료 (Sheets API)")
             except Exception as e:  # noqa: BLE001
@@ -1498,6 +1563,8 @@ def main() -> int:
         # D-126: 이벤트 / 상태이상 (xlsx 폴백)
         export_events_from_xlsx(xlsx_cache)
         export_status_effects_from_xlsx(xlsx_cache)
+        # D-267: 농장 작물 (xlsx 폴백)
+        export_crops_from_xlsx(xlsx_cache)
 
     # 브라우저 로더용 data.js 생성 (file:// 환경에서 fetch 없이 사용)
     export_data_js()
@@ -1525,6 +1592,7 @@ BROWSER_BUNDLE_KEYS = {
     "combos.json": "COMBOS",  # D-24: 머지·조합 통합 시스템
     "events.json": "EVENTS",  # D-126: 이벤트 9종 + 풀
     "status_effects.json": "STATUS_EFFECTS",  # D-126: 상태이상 3종 (☆3 fix)
+    "crops.json": "CROPS",  # D-267: 농장 작물 정의(시트 `작물` 탭)
 }
 
 

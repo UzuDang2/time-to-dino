@@ -41,7 +41,7 @@
       }
     ],
     "effect_raw": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "health_max+1",
     "cost_raw": "목재 x20, 석재 x10, 약초 x10"
   },
@@ -64,7 +64,7 @@
       }
     ],
     "effect_raw": "\"잘 마른 약초가 천장에 매달려 있다. 여기서는 죽지 않을 것 같다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "health_max+1",
     "cost_raw": "목재 x30, 석재 x20, 약초 x20"
   },
@@ -134,7 +134,7 @@
       }
     ],
     "effect_raw": "\"국솥에서 김이 오른다. 위장이 먼저 안다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "hunger_max+1",
     "cost_raw": "나뭇가지 x5, 돌맹이 x5, 생고기 x5, 산딸기 x2, 맑은물 x2, 버섯 x2"
   },
@@ -169,7 +169,7 @@
       }
     ],
     "effect_raw": "\"무쇠 솥은 밤새 식지 않는다. 무엇이든 익혀 먹을 수 있다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "hunger_max+1",
     "cost_raw": "목재 x3, 석재 x3, 큰생고기 x3, 딸기모둠 x1, 맑은물 x3, 버섯모둠 x1"
   },
@@ -204,7 +204,7 @@
       }
     ],
     "effect_raw": "\"기름이 솥에 흐른다. 한 번 굽는 정도로 끝나지 않는다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "hunger_max+1",
     "cost_raw": "목재 x4, 석재 x4, 큰생고기 x4, 딸기모둠 x2, 맑은물 x4, 버섯모둠 x2"
   },
@@ -239,7 +239,7 @@
       }
     ],
     "effect_raw": "\"연기가 천장을 덮는다. 화덕이 한 마을을 먹인다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "hunger_max+1",
     "cost_raw": "목재 x5, 석재 x5, 큰생고기 x5, 딸기모둠 x3, 맑은물 x5, 버섯모둠 x3"
   },
@@ -259,7 +259,7 @@
     ],
     "effect_raw": "\"투박한 작업대 위에 칼날을 갈 수 있는 자리가 생겼다.\"",
     "설명": "1등급 제작법 레시피를 해금한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "목재 x12, 끈 x6"
   },
   {
@@ -282,7 +282,7 @@
     ],
     "effect_raw": "\"가죽 끈으로 손잡이를 단단히 묶었다. 손에 더 잘 잡힌다.\"",
     "설명": "2등급 제작법 레시피를 해금한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "목재 x20, 석재 x10, 가죽 x5"
   },
   {
@@ -305,7 +305,7 @@
     ],
     "effect_raw": "\"숯불 화덕과 모루까지 들였다. 무기는 더 이상 부서지지 않을 것 같다.\"",
     "설명": "3등급 제작법 레시피를 해금한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "석재 x20, 금속 x10, 가죽 x10"
   },
   {
@@ -324,7 +324,7 @@
     ],
     "effect_raw": "\"선반 위에 가지런히 놓인 자루들. 어제의 수확이 보인다.\"",
     "설명": "1등급 무기를 제작한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "목재 x10, 돌맹이 x10"
   },
   {
@@ -347,7 +347,7 @@
     ],
     "effect_raw": "\"천장까지 닿는 선반. 한 번 더 깊이 들어갈 수 있다.\"",
     "설명": "2등급 무기를 제작한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "목재 x18, 석재 x10, 끈 x6"
   },
   {
@@ -370,7 +370,7 @@
     ],
     "effect_raw": "\"잘 정리된 창고. 무엇이 어디에 있는지 손이 먼저 안다.\"",
     "설명": "3등급 무기를 제작한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "석재 x25, 금속 x8, 끈 x10"
   },
   {
@@ -389,7 +389,7 @@
     ],
     "effect_raw": "\"낡은 활 한 자루가 벽에 걸려 있다. 첫 사냥의 흔적.\"",
     "설명": "1등급 무기를 제작한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "목재 x12, 가죽 x5"
   },
   {
@@ -412,7 +412,7 @@
     ],
     "effect_raw": "\"발자국 도감과 추적 매듭. 짐승의 길이 눈에 들어온다.\"",
     "설명": "2등급 방어구를 제작한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "목재 x20, 석재 x10, 가죽 x10"
   },
   {
@@ -435,7 +435,7 @@
     ],
     "effect_raw": "\"사냥꾼 셋이 모이면 보스의 그림자도 피할 수 있다고들 한다.\"",
     "설명": "3등급 방어구를 제작한다",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "석재 x20, 금속 x5, 가죽 x15"
   },
   {
@@ -453,7 +453,7 @@
       }
     ],
     "effect_raw": "\"손에 익숙한 도구가 늘어난다. 작은 가방이 가벼워진다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "나뭇가지 x3, 돌맹이 x2"
   },
@@ -472,7 +472,7 @@
       }
     ],
     "effect_raw": "\"선반이 깔리고 손이 빨라진다. 더 챙길 자리가 생긴다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "나뭇가지 x4, 돌맹이 x3"
   },
@@ -491,7 +491,7 @@
       }
     ],
     "effect_raw": "\"갈고리가 박힌다. 무거운 도구도 위에 걸린다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "나뭇가지 x5, 돌맹이 x3"
   },
@@ -510,7 +510,7 @@
       }
     ],
     "effect_raw": "\"선반 한 줄이 더 늘어난다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "목재 x3, 석재 x2"
   },
@@ -529,7 +529,7 @@
       }
     ],
     "effect_raw": "\"두 손이 자유로워진다. 짐 옮기기 한결 쉽다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "목재 x4, 석재 x3"
   },
@@ -552,7 +552,7 @@
       }
     ],
     "effect_raw": "\"정돈된 자루마다 자리가 정해진다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "목재 x4, 석재 x3, 줄기 x1"
   },
@@ -575,7 +575,7 @@
       }
     ],
     "effect_raw": "\"손이 닿지 않던 안쪽 칸까지 정리된다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "목재 x5, 석재 x4, 줄기 x1"
   },
@@ -598,7 +598,7 @@
       }
     ],
     "effect_raw": "\"낡은 도구가 다듬어져 새것처럼 다시 매달린다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "목재 x5, 석재 x4, 줄기 x2"
   },
@@ -621,7 +621,7 @@
       }
     ],
     "effect_raw": "\"벽도 천장도 도구로 가득 찬다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "목재 x6, 석재 x5, 줄기 x2"
   },
@@ -644,7 +644,7 @@
       }
     ],
     "effect_raw": "\"벽 가득 도구가 걸린다. 짐을 두고 갈 일이 줄어든다.\"",
-    "설명": "",
+    "설명": null,
     "reward_passive": "pack+1",
     "cost_raw": "목재 x6, 석재 x5, 줄기 x3"
   },
@@ -668,7 +668,7 @@
     ],
     "effect_raw": "\"흙을 갈아 첫 밭을 낸다. 씨앗을 받을 자리가 생긴다.\"",
     "설명": "농장 시스템(D-258에서 활성화). 텐트 패턴 — 단계마다 밭 슬롯 +1, 씨앗 추출 슬롯 누적 예정.",
-    "reward_passive": "",
+    "reward_passive": null,
     "cost_raw": "나뭇가지 x6, 돌맹이 x4, 줄기 x4"
   },
   {
@@ -690,8 +690,8 @@
       }
     ],
     "effect_raw": "\"두 번째 밭이 늘어선다. 손이 닿는 만큼 자랄 수 있다.\"",
-    "설명": "",
-    "reward_passive": "",
+    "설명": null,
+    "reward_passive": null,
     "cost_raw": "나뭇가지 x8, 돌맹이 x6, 줄기 x6"
   },
   {
@@ -713,8 +713,8 @@
       }
     ],
     "effect_raw": "\"씨앗 갈무리 자리도 생겼다. 캠프에 작은 농장이 자리잡았다.\"",
-    "설명": "",
-    "reward_passive": "",
+    "설명": null,
+    "reward_passive": null,
     "cost_raw": "목재 x5, 석재 x3, 줄기 x8"
   }
 ]
