@@ -1205,3 +1205,84 @@ button:disabled {
     /* D-189 패턴 동일 — 손패 viewport 위로 30px 올림. */
     transform: translateY(30px);
 }
+/* ─── D-254 (2026-05-06): 베이스캠프 허브맵 ───
+   카드형 BuildingsGrid → 공간형 허브맵 전환.
+   퍼센트 좌표 기반 빌딩 배치 + 캐릭터 탭 이동 + 근접 상호작용 prompt. */
+.camp-hub-map {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 0.7;
+    background:
+        radial-gradient(ellipse at 50% 90%, rgba(80,55,30,0.45) 0%, transparent 55%),
+        linear-gradient(180deg, #1a2438 0%, #0f1828 100%);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.camp-hub-building {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    background: rgba(26, 26, 46, 0.85);
+    border: 1px solid #2a3a5e;
+    border-radius: 8px;
+    padding: 6px 4px;
+    cursor: pointer;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 64px;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.camp-hub-building.nearby {
+    border-color: #d4b84a;
+    box-shadow: 0 0 12px rgba(212, 184, 74, 0.7);
+}
+.camp-hub-building:active {
+    transform: translate(-50%, -50%) scale(0.97);
+}
+
+.camp-hub-character {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: 32px;
+    pointer-events: none;
+    transition: left 0.6s ease-out, top 0.6s ease-out;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    z-index: 10;
+    line-height: 1;
+}
+.camp-hub-character.moving {
+    animation: camp-hub-walk 0.4s ease-in-out infinite;
+}
+@keyframes camp-hub-walk {
+    0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+    50%      { transform: translate(-50%, -50%) translateY(-3px); }
+}
+
+.camp-hub-prompt {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #d4b84a;
+    color: #1a1a2e;
+    border: none;
+    padding: 9px 22px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    z-index: 20;
+    animation: camp-hub-prompt-pop 0.25s ease-out;
+}
+@keyframes camp-hub-prompt-pop {
+    0%   { opacity: 0; transform: translate(-50%, 6px); }
+    100% { opacity: 1; transform: translate(-50%, 0); }
+}

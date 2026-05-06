@@ -4612,6 +4612,199 @@
             { id: 'locked_2',   kind: 'locked' }
         ];
 
+        // D-254 (2026-05-06): 베이스캠프 허브맵 — 카드 그리드 → 공간형 허브.
+        //   퍼센트 좌표 기반(맵 박스 0~100%). 모바일 세로 한 화면 fit.
+        //   좌우 2열(25% / 75%) + 가운데(50%) 잠금 슬롯 2개. 캐릭터 시작 위치 = 50,90 (맵 중앙 하단, 텐트·치료소 사이 광장).
+        //   D-256에서 locked_1을 농장으로 전환 예정 (요한 결정 #5).
+        const CAMP_BUILDINGS = [
+            { id: 'tent',       x: 25, y: 16 },
+            { id: 'clinic',     x: 75, y: 16 },
+            { id: 'kitchen',    x: 25, y: 38 },
+            { id: 'storage',    x: 75, y: 38 },
+            { id: 'workshop',   x: 25, y: 60 },
+            { id: 'training',   x: 75, y: 60 },
+            { id: 'watchtower', x: 75, y: 82 },
+            { id: 'locked_1',   x: 50, y: 28 },
+            { id: 'locked_2',   x: 50, y: 60 }
+        ];
+        const CAMP_HUB_INTERACTION_RADIUS = 16;     // 퍼센트 단위(맵 박스 기준 거리). 빌딩 폭 64px ≒ ~14% 이라 16이 자연스러운 근접.
+        const CAMP_HUB_MOVE_DURATION_MS = 600;       // CSS transition과 동일. 도착 후 자동 상호작용 트리거 시 sleep.
+        const CAMP_HUB_PLAYER_START = { x: 50, y: 92 };
+
+        function CampHubMap({ campState, activeQuests, onClickBuilding }) {
+            const [playerPos, setPlayerPos] = React.useState(CAMP_HUB_PLAYER_START);
+            const [moving, setMoving] = React.useState(false);
+            // 빌딩 직접 탭 시: 이동 후 자동 상호작용 트리거. timeout id를 ref로 보관해 cleanup.
+            const autoInteractRef = React.useRef(null);
+            const moveDoneRef = React.useRef(null);
+
+            React.useEffect(() => {
+                return () => {
+                    if (autoInteractRef.current) clearTimeout(autoInteractRef.current);
+                    if (moveDoneRef.current) clearTimeout(moveDoneRef.current);
+                };
+            }, []);
+
+            const tentLevel = (campState && campState.tentLevel) || 0;
+            const buildingLevels = (campState && campState.buildingLevels) || {};
+            const activeIds = new Set((Array.isArray(activeQuests) ? activeQuests : []).map(q => q && q.id).filter(Boolean));
+
+            const isTakeable = (id) => {
+                const slot = BUILDING_SLOTS.find(s => s.id === id);
+                if (!slot) return false;
+                if (slot.kind === 'tent') {
+                    const next = getNextTentQuest(Number(tentLevel) || 0);
+                    return !!next && !activeIds.has(next.id);
+                }
+                if (slot.kind === 'sheet') {
+                    const cur = Number(buildingLevels[id]) || 0;
+                    const next = getNextBuildingStage(id, cur);
+                    return !!next && !activeIds.has(`bld_${id}_${next.stage}`);
+                }
+                return false;
+            };
+
+            // 가까운 빌딩(interactionRadius 안). 가장 가까운 1개만.
+            const nearby = React.useMemo(() => {
+                let best = null;
+                let bestDist = CAMP_HUB_INTERACTION_RADIUS;
+                for (const b of CAMP_BUILDINGS) {
+                    const d = Math.hypot(b.x - playerPos.x, b.y - playerPos.y);
+                    if (d <= bestDist) { best = b; bestDist = d; }
+                }
+                return best;
+            }, [playerPos]);
+
+            const movePlayer = (target) => {
+                if (moveDoneRef.current) clearTimeout(moveDoneRef.current);
+                const clamped = {
+                    x: Math.max(2, Math.min(98, target.x)),
+                    y: Math.max(2, Math.min(98, target.y))
+                };
+                setPlayerPos(clamped);
+                setMoving(true);
+                moveDoneRef.current = setTimeout(() => setMoving(false), CAMP_HUB_MOVE_DURATION_MS);
+            };
+
+            const handleMapTap = (e) => {
+                // 빌딩·prompt 클릭이 propagation으로 들어왔으면 무시.
+                if (e.target.closest('.camp-hub-building, .camp-hub-prompt')) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                movePlayer({ x, y });
+            };
+
+            const handleBuildingTap = (b) => {
+                // 빌딩 직접 탭 — 캐릭터를 빌딩 발치(약간 아래)로 이동 + 도착 시 자동 상호작용.
+                const arrive = { x: b.x, y: Math.min(95, b.y + 10) };
+                movePlayer(arrive);
+                if (autoInteractRef.current) clearTimeout(autoInteractRef.current);
+                autoInteractRef.current = setTimeout(() => {
+                    const slot = BUILDING_SLOTS.find(s => s.id === b.id);
+                    if (slot) onClickBuilding && onClickBuilding(slot);
+                }, CAMP_HUB_MOVE_DURATION_MS);
+            };
+
+            const handleInteract = () => {
+                if (!nearby) return;
+                const slot = BUILDING_SLOTS.find(s => s.id === nearby.id);
+                if (slot) onClickBuilding && onClickBuilding(slot);
+            };
+
+            // 상호작용 prompt 라벨 — 빌딩별 동사 차등.
+            const promptLabel = (() => {
+                if (!nearby) return '';
+                const slot = BUILDING_SLOTS.find(s => s.id === nearby.id);
+                if (!slot) return '확인하기';
+                if (slot.kind === 'locked') return '잠금 (추후 단계에서 열림)';
+                if (slot.kind === 'tent') return '🏕️ 텐트 확인하기';
+                const def0 = getBuildingDef(nearby.id, 1);
+                const name = (def0 && def0.name) || nearby.id;
+                const emoji = BUILDING_ICON[nearby.id] || '🏗️';
+                return `${emoji} ${name} 사용하기`;
+            })();
+
+            return (
+                <div style={{
+                    marginBottom: '16px',
+                    background: '#0f0f1a',
+                    border: '1px solid #2a3a5e',
+                    borderRadius: '10px',
+                    padding: '12px'
+                }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', marginBottom: '8px' }}>
+                        🏘️ 베이스캠프
+                    </div>
+                    <div className="camp-hub-map" onClick={handleMapTap}>
+                        {CAMP_BUILDINGS.map(b => {
+                            const slot = BUILDING_SLOTS.find(s => s.id === b.id);
+                            if (!slot) return null;
+                            let stage = 0, maxStage = 0, name = '', emoji = '🔒';
+                            if (slot.kind === 'tent') {
+                                stage = Number(tentLevel) || 0;
+                                maxStage = TENT_MAX_LEVEL;
+                                name = '텐트';
+                                emoji = BUILDING_ICON.tent;
+                            } else if (slot.kind === 'sheet') {
+                                stage = Number(buildingLevels[b.id]) || 0;
+                                maxStage = getMaxStage(b.id) || 3;
+                                const def0 = getBuildingDef(b.id, 1);
+                                name = (def0 && def0.name) || b.id;
+                                emoji = BUILDING_ICON[b.id] || '🏗️';
+                            } else {
+                                name = '잠금';
+                                emoji = '🔒';
+                            }
+                            const isLocked = slot.kind === 'locked';
+                            const isUnbuilt = !isLocked && stage === 0;
+                            const cardOpacity = isLocked ? 0.4 : 1;
+                            const iconOpacity = isUnbuilt ? 0.55 : 1;
+                            const lvColor = isLocked ? '#666' : (stage > 0 ? '#d4b84a' : '#888');
+                            const takeable = isTakeable(b.id);
+                            const isNearby = nearby && nearby.id === b.id;
+                            return (
+                                <button
+                                    key={b.id}
+                                    onClick={(e) => { e.stopPropagation(); handleBuildingTap(b); }}
+                                    className={`camp-hub-building${isNearby ? ' nearby' : ''}`}
+                                    style={{
+                                        left: `${b.x}%`,
+                                        top: `${b.y}%`,
+                                        opacity: cardOpacity
+                                    }}
+                                >
+                                    {takeable && <span className="building-takeable-dot" />}
+                                    <div style={{ fontSize: '24px', lineHeight: 1, opacity: iconOpacity }}>{emoji}</div>
+                                    <div style={{ fontSize: '10px', fontWeight: 600 }}>{name}</div>
+                                    <div style={{ fontSize: '9px', color: lvColor }}>
+                                        {isLocked ? '추후' : `Lv.${stage}/${maxStage}`}
+                                    </div>
+                                </button>
+                            );
+                        })}
+
+                        <div
+                            className={`camp-hub-character${moving ? ' moving' : ''}`}
+                            style={{ left: `${playerPos.x}%`, top: `${playerPos.y}%` }}
+                        >
+                            🧍
+                        </div>
+
+                        {nearby && (
+                            <button
+                                key={nearby.id}
+                                onClick={(e) => { e.stopPropagation(); handleInteract(); }}
+                                className="camp-hub-prompt"
+                            >
+                                {promptLabel}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         function BuildingsGrid({ campState, activeQuests, onClickBuilding }) {
             const tentLevel = (campState && campState.tentLevel) || 0;
             const buildingLevels = (campState && campState.buildingLevels) || {};
@@ -5321,8 +5514,8 @@
                             </button>
                         </div>
 
-                        {/* D-168/D-174: 베이스캠프 빌딩 그리드 (3x3). 카드 클릭 → 상세 모달. */}
-                        <BuildingsGrid
+                        {/* D-254: 카드 그리드 폐기 → 공간형 허브맵 (BuildingsGrid 함수는 잔존, unused). */}
+                        <CampHubMap
                             campState={campState}
                             activeQuests={(campState && campState.quests && campState.quests.active) || []}
                             onClickBuilding={(b) => setSelectedBuilding(b)}
@@ -5374,19 +5567,7 @@
                             );
                         })()}
 
-                        {/* 건설 placeholder */}
-                        <div style={{
-                            background: '#1a1a2e',
-                            border: '1px dashed #2a3a5e',
-                            borderRadius: '10px',
-                            padding: '14px',
-                            marginBottom: '20px',
-                            textAlign: 'center',
-                            color: '#666',
-                            fontSize: '12px'
-                        }}>
-                            건설 (추후 단계에서 열림)
-                        </div>
+                        {/* D-254: 건설 placeholder 폐기 — 허브맵에 빌딩 9종 직접 노출. */}
 
                         {/* D-113: 하단 — [물건 챙기기] [탐험 떠나기] */}
                         <div style={{
