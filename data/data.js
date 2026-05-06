@@ -2609,13 +2609,15 @@ window.TTD_DATA = {
         ],
         "food": [
           "mushroom",
-          "berry"
+          "berry",
+          "herb"
         ]
       },
       "덤불": {
         "env": [
           "stem",
-          "branch"
+          "branch",
+          "fiber_plant"
         ],
         "food": [
           "berry",
@@ -2625,10 +2627,12 @@ window.TTD_DATA = {
       "평원": {
         "env": [
           "stone",
-          "branch"
+          "branch",
+          "fiber_plant"
         ],
         "food": [
-          "berry"
+          "berry",
+          "root_tuber"
         ]
       },
       "시냇물": {
@@ -2638,7 +2642,9 @@ window.TTD_DATA = {
         ],
         "food": [
           "water",
-          "fish"
+          "fish",
+          "root_tuber",
+          "herb"
         ]
       },
       "동굴": {
@@ -2658,18 +2664,37 @@ window.TTD_DATA = {
           60,
           20,
           20
+        ],
+        "food": [
+          40,
+          40,
+          20
         ]
       },
       "덤불": {
         "env": [
+          50,
+          35,
+          15
+        ]
+      },
+      "평원": {
+        "env": [
           60,
-          40
+          30,
+          10
+        ],
+        "food": [
+          70,
+          30
         ]
       },
       "시냇물": {
         "food": [
-          80,
-          20
+          50,
+          20,
+          15,
+          15
         ]
       },
       "동굴": {
