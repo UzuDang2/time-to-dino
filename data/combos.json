@@ -193,5 +193,11 @@
       "giant_bait"
     ],
     "result": "grilled_giant_bait"
+  },
+  {
+    "ingredients": [
+      "root_tuber"
+    ],
+    "result": "grilled_root_tuber"
   }
 ]

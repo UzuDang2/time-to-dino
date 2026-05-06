@@ -168,7 +168,10 @@ class InventorySystem {
         mushroom_spore: { name: '버섯 균사',    shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
         root_tuber_eye: { name: '덩이뿌리 눈',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
         herb_seed:      { name: '약초 씨앗',    shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
-        fiber_seed:     { name: '섬유풀 씨앗',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null }
+        fiber_seed:     { name: '섬유풀 씨앗',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
+
+        // D-263 (2026-05-06): 화덕 농작물 요리 — 1재료 레시피(휴식 카드 → 요리 모달 경유).
+        grilled_root_tuber: { name: '구운 덩이뿌리', shape: [[1]], grade: 2, mergeable: false, category: 'food', merge_result: null }
     };
 
     // 런타임에 TTD_DATA.ITEMS(Notion 기반)이 덮어쓰는 값 조회.
