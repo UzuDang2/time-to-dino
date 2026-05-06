@@ -4635,6 +4635,100 @@
         const CAMP_HUB_MOVE_DURATION_MS = 600;       // CSS transition과 동일. 도착 후 자동 상호작용 트리거 시 sleep.
         const CAMP_HUB_PLAYER_START = { x: 50, y: 92 };
 
+        // ─── D-257/D-258 (2026-05-06): 농장 시스템 1차 ─────────────────────
+        //  요한 결정 #4(씨앗=추출 only) + #6(gameDay=농장 한정, 탐험 1회=1일).
+        //  cropDefs는 1차 로컬 상수. D-259에서 시트 SSOT 이관 예정.
+
+        // 작물 정의 — 씨앗 id → { 출처 완제품 / 결과 완제품 / 성장일 / 물 / 수확량 / 재배 타입 }.
+        const CROP_DEFS = {
+            berry_seed: {
+                id: 'berry_seed', name: '산딸기 씨앗', cropName: '산딸기',
+                sourceItemId: 'berry', resultItemId: 'berry',
+                growDays: 2, waterCost: 1, yieldCount: 2, growType: 'field', category: 'food'
+            },
+            mushroom_spore: {
+                id: 'mushroom_spore', name: '버섯 균사', cropName: '버섯',
+                sourceItemId: 'mushroom', resultItemId: 'mushroom',
+                growDays: 2, waterCost: 0, yieldCount: 2, growType: 'shade', category: 'food'
+            },
+            root_tuber_eye: {
+                id: 'root_tuber_eye', name: '덩이뿌리 눈', cropName: '덩이뿌리',
+                sourceItemId: 'root_tuber', resultItemId: 'root_tuber',
+                growDays: 3, waterCost: 2, yieldCount: 2, growType: 'field', category: 'food'
+            },
+            herb_seed: {
+                id: 'herb_seed', name: '약초 씨앗', cropName: '약초',
+                sourceItemId: 'herb', resultItemId: 'herb',
+                growDays: 2, waterCost: 1, yieldCount: 2, growType: 'field', category: 'medicine'
+            },
+            fiber_seed: {
+                id: 'fiber_seed', name: '섬유풀 씨앗', cropName: '섬유풀',
+                sourceItemId: 'fiber_plant', resultItemId: 'stem',
+                growDays: 3, waterCost: 1, yieldCount: 2, growType: 'field', category: 'material'
+            }
+        };
+
+        // 씨앗 추출 정의 — 완제품 id → { 결과 씨앗 id / 결과 수량 / 추출일 }.
+        const SEED_EXTRACTION_DEFS = {
+            berry:       { sourceItemId: 'berry',       resultSeedId: 'berry_seed',     resultCount: 2, requiredDays: 1 },
+            mushroom:    { sourceItemId: 'mushroom',    resultSeedId: 'mushroom_spore', resultCount: 2, requiredDays: 1 },
+            root_tuber:  { sourceItemId: 'root_tuber',  resultSeedId: 'root_tuber_eye', resultCount: 2, requiredDays: 1 },
+            herb:        { sourceItemId: 'herb',        resultSeedId: 'herb_seed',      resultCount: 2, requiredDays: 1 },
+            fiber_plant: { sourceItemId: 'fiber_plant', resultSeedId: 'fiber_seed',     resultCount: 2, requiredDays: 1 }
+        };
+
+        // 농장 stage별 슬롯 capacity — 정적 슬롯 풀(max 추출 2 + 밭 5) 안에서 활성 개수만 변동.
+        //   stage 0(미빌드): 추출 0, 밭 0 (전부 disabled).
+        //   stage 1: 추출 1, 밭 3.
+        //   stage 2: 추출 1, 밭 4.
+        //   stage 3: 추출 2, 밭 5.
+        const FARM_MAX_EXTRACT = 2;
+        const FARM_MAX_PLOTS = 5;
+        function getFarmCapacity(farmStage) {
+            const lv = Number(farmStage) || 0;
+            if (lv <= 0) return { extract: 0, plots: 0 };
+            const extract = lv >= 3 ? 2 : 1;
+            const plots = Math.min(FARM_MAX_PLOTS, 2 + lv);
+            return { extract, plots };
+        }
+
+        function makeEmptyExtractionSlot() {
+            return { sourceItemId: null, resultSeedId: null, remainingDays: 0, state: 'empty' };
+        }
+        function makeEmptyPlot() {
+            return { seedId: null, remainingDays: 0, watered: false, state: 'empty' };
+        }
+        function makeInitialFarmState() {
+            return {
+                extractionSlots: Array.from({ length: FARM_MAX_EXTRACT }, makeEmptyExtractionSlot),
+                plots: Array.from({ length: FARM_MAX_PLOTS }, makeEmptyPlot)
+            };
+        }
+
+        // 하루 경과 — 추출 슬롯·밭 슬롯 remainingDays 감소, 0 이하면 결과 ready로 전환.
+        //   pure함수: farmState 새 객체 반환. caller가 setCampState로 반영.
+        function advanceFarmDay(farmState, days = 1) {
+            if (!farmState) return makeInitialFarmState();
+            const next = {};
+            next.extractionSlots = (Array.isArray(farmState.extractionSlots) ? farmState.extractionSlots : []).map(s => {
+                if (!s) return makeEmptyExtractionSlot();
+                if (s.state === 'extracting') {
+                    const r = Math.max(0, (Number(s.remainingDays) || 0) - days);
+                    return { ...s, remainingDays: r, state: r <= 0 ? 'resultReady' : 'extracting' };
+                }
+                return { ...s };
+            });
+            next.plots = (Array.isArray(farmState.plots) ? farmState.plots : []).map(p => {
+                if (!p) return makeEmptyPlot();
+                if (p.state === 'growing') {
+                    const r = Math.max(0, (Number(p.remainingDays) || 0) - days);
+                    return { ...p, remainingDays: r, state: r <= 0 ? 'ready' : 'growing' };
+                }
+                return { ...p };
+            });
+            return next;
+        }
+
         function CampHubMap({ campState, activeQuests, onClickBuilding, onPlayerMove }) {
             // D-255: 마지막 캐릭터 위치 영속화. campState.campHubState.playerPosition 폴백 = (50,92).
             const initialPos = (campState && campState.campHubState && campState.campHubState.playerPosition)
@@ -4815,6 +4909,242 @@
 
         // D-256 (2026-05-06): BuildingsGrid 함수 제거 — D-254에서 호출처 폐기, 이번에 정의도 제거.
         //   기능은 CampHubMap이 흡수했고 isTakeable 로직도 거기 동일 이식. dead code 정리.
+
+        // D-258 (2026-05-06): 농장 패널 — 씨앗 추출 슬롯 + 밭 슬롯 관리 UI.
+        //   stage 1+ 진입 시 BuildingDetailModal 대신 이쪽 라우팅. stage 0(미빌드)은 기존 BuildingDetailModal로
+        //   짓기 흐름([받기]/[완수]) 그대로. 다음 단계 업그레이드는 D-260 후속.
+        function FarmModal({ building, campState, onClose, onCampStateUpdate }) {
+            if (!building || building.id !== 'farm') return null;
+            const farmStage = (campState && campState.buildingLevels && Number(campState.buildingLevels.farm)) || 0;
+            const capacity = getFarmCapacity(farmStage);
+            const farmState = (campState && campState.farmState) || makeInitialFarmState();
+            const gameDay = (campState && campState.gameDay) || 1;
+            const inv = campState && campState.inventory;
+
+            // D-258: 'clear_water' 요청 시 'water' 동의어 합산 — items.json에 같은 한글명 '맑은물'이
+            //   두 id에 매핑된 레거시 정합 처리(별도 D 후보로 등록됨). 농장에서만 합산 분기, 다른 시스템은 그대로.
+            const WATER_ALIASES = { clear_water: ['clear_water', 'water'] };
+            const matchTypes = (type) => WATER_ALIASES[type] || [type];
+            const countOf = (type) => {
+                if (!inv || !Array.isArray(inv.items)) return 0;
+                const aliases = matchTypes(type);
+                return inv.items.filter(it => it && aliases.includes(it.type)).length;
+            };
+            // 보관함 인스턴스 직접 변형 — n개 차감 (별칭 합산 우선순위는 처음 alias).
+            //   주의: InventorySystem.removeItem은 grid만 비우고 items 배열은 보존(rotate/move/swap 패턴).
+            //   따라서 차감 시 grid 비움 + items 배열에서 splice 둘 다 필요(combatDeck.consumeWeaponUse 패턴 참조).
+            const consume = (type, n = 1) => {
+                if (!inv || !Array.isArray(inv.items)) return false;
+                const aliases = matchTypes(type);
+                const toRemoveIds = [];
+                for (let i = inv.items.length - 1; i >= 0 && toRemoveIds.length < n; i--) {
+                    if (inv.items[i] && aliases.includes(inv.items[i].type)) {
+                        toRemoveIds.push(inv.items[i].id);
+                        inv.removeItem(inv.items[i]);
+                    }
+                }
+                if (toRemoveIds.length < n) return false;
+                inv.items = inv.items.filter(it => !toRemoveIds.includes(it.id));
+                return true;
+            };
+            // 보관함 인스턴스 직접 변형 — n개 인입(빈자리 부족 시 부분 인입).
+            const award = (type, n = 1) => {
+                if (!inv) return 0;
+                let added = 0;
+                for (let i = 0; i < n; i++) {
+                    if (inv.addItem(type)) added++;
+                    else break;
+                }
+                return added;
+            };
+
+            const handleExtractStart = (slotIdx, sourceId) => {
+                const def = SEED_EXTRACTION_DEFS[sourceId];
+                if (!def) return;
+                if (countOf(sourceId) < 1) return;
+                if (!consume(sourceId, 1)) return;
+                onCampStateUpdate(prev => {
+                    const fs = prev.farmState || makeInitialFarmState();
+                    const slots = fs.extractionSlots.slice();
+                    slots[slotIdx] = {
+                        sourceItemId: sourceId,
+                        resultSeedId: def.resultSeedId,
+                        remainingDays: def.requiredDays,
+                        state: 'extracting'
+                    };
+                    return { ...prev, farmState: { ...fs, extractionSlots: slots } };
+                });
+            };
+            const handleExtractClaim = (slotIdx) => {
+                const slot = farmState.extractionSlots[slotIdx];
+                if (!slot || slot.state !== 'resultReady') return;
+                const def = SEED_EXTRACTION_DEFS[slot.sourceItemId];
+                if (!def) return;
+                award(def.resultSeedId, def.resultCount);
+                onCampStateUpdate(prev => {
+                    const fs = prev.farmState || makeInitialFarmState();
+                    const slots = fs.extractionSlots.slice();
+                    slots[slotIdx] = makeEmptyExtractionSlot();
+                    return { ...prev, farmState: { ...fs, extractionSlots: slots } };
+                });
+            };
+            const handlePlant = (plotIdx, seedId) => {
+                const def = CROP_DEFS[seedId];
+                if (!def) return;
+                if (countOf(seedId) < 1) return;
+                if (def.waterCost > 0 && countOf('clear_water') < def.waterCost) return;
+                if (!consume(seedId, 1)) return;
+                if (def.waterCost > 0) consume('clear_water', def.waterCost);
+                onCampStateUpdate(prev => {
+                    const fs = prev.farmState || makeInitialFarmState();
+                    const plots = fs.plots.slice();
+                    plots[plotIdx] = {
+                        seedId,
+                        remainingDays: def.growDays,
+                        watered: def.waterCost > 0,
+                        state: 'growing'
+                    };
+                    return { ...prev, farmState: { ...fs, plots } };
+                });
+            };
+            const handleHarvest = (plotIdx) => {
+                const plot = farmState.plots[plotIdx];
+                if (!plot || plot.state !== 'ready') return;
+                const def = CROP_DEFS[plot.seedId];
+                if (!def) return;
+                award(def.resultItemId, def.yieldCount);
+                onCampStateUpdate(prev => {
+                    const fs = prev.farmState || makeInitialFarmState();
+                    const plots = fs.plots.slice();
+                    plots[plotIdx] = makeEmptyPlot();
+                    return { ...prev, farmState: { ...fs, plots } };
+                });
+            };
+            const handleDebugDay = () => {
+                onCampStateUpdate(prev => ({
+                    ...prev,
+                    gameDay: (Number(prev.gameDay) || 1) + 1,
+                    farmState: advanceFarmDay(prev.farmState || makeInitialFarmState(), 1)
+                }));
+            };
+
+            const extractableItems = Object.keys(SEED_EXTRACTION_DEFS).filter(id => countOf(id) > 0);
+            const plantableSeeds = Object.keys(CROP_DEFS).filter(id => countOf(id) > 0);
+
+            const sectionTitle = { fontSize: '13px', fontWeight: 700, color: '#bbb', marginTop: '14px', marginBottom: '6px', letterSpacing: '0.5px' };
+            const slotBox = { background: '#16213e', border: '1px solid #2a3a5e', borderRadius: '6px', padding: '8px 10px', marginBottom: '6px', fontSize: '12px', lineHeight: 1.55 };
+            const slotDisabled = { ...slotBox, opacity: 0.35, color: '#666' };
+            const btn = { background: '#0f3460', color: '#eee', border: '1px solid #16213e', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer', marginRight: '4px', marginTop: '4px' };
+            const btnPrimary = { ...btn, background: '#d4b84a', color: '#1a1a2e', border: 'none', fontWeight: 700 };
+            const btnDisabled = { ...btn, background: '#2a2a3e', color: '#666', cursor: 'not-allowed' };
+
+            return (
+                <div className="modal" style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 1500, padding: '20px'
+                }} onClick={onClose}>
+                    <div onClick={(e) => e.stopPropagation()} style={{
+                        background: '#0f0f1a', border: '1px solid #2a3a5e', borderRadius: '10px',
+                        padding: '16px 18px', width: '100%', maxWidth: '440px', maxHeight: '88vh',
+                        overflowY: 'auto', color: '#eee'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+                            <div style={{ fontSize: '17px', fontWeight: 700, color: '#d4b84a' }}>
+                                🌱 농장 Lv.{farmStage}/3
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#888' }}>게임 일자 {gameDay}일</div>
+                        </div>
+
+                        <div style={sectionTitle}>씨앗 추출 슬롯 ({capacity.extract}/{FARM_MAX_EXTRACT} 활성)</div>
+                        {farmState.extractionSlots.map((slot, idx) => {
+                            const active = idx < capacity.extract;
+                            if (!active) return <div key={idx} style={slotDisabled}>잠금 (농장 Lv.3에서 해제)</div>;
+                            if (slot.state === 'empty') {
+                                return (
+                                    <div key={idx} style={slotBox}>
+                                        <div style={{ color: '#888', marginBottom: '4px' }}>비어 있음 — 추출할 완제품 선택</div>
+                                        {extractableItems.length === 0
+                                            ? <div style={{ color: '#666', fontSize: '11px' }}>보관함에 추출 가능한 완제품(산딸기/버섯/덩이뿌리/약초/섬유풀)이 없습니다.</div>
+                                            : extractableItems.map(id => {
+                                                const itemDef = InventorySystem.resolveDef(id) || {};
+                                                const seedDef = CROP_DEFS[SEED_EXTRACTION_DEFS[id].resultSeedId] || {};
+                                                return (
+                                                    <button key={id} style={btn} onClick={() => handleExtractStart(idx, id)}>
+                                                        {itemDef.name || id} → {seedDef.name || SEED_EXTRACTION_DEFS[id].resultSeedId} x{SEED_EXTRACTION_DEFS[id].resultCount} (보유 {countOf(id)})
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
+                                );
+                            }
+                            if (slot.state === 'extracting') {
+                                const seedDef = CROP_DEFS[slot.resultSeedId] || {};
+                                return <div key={idx} style={slotBox}>{seedDef.name || slot.resultSeedId} 추출 중 — <span style={{ color: '#d4b84a' }}>{slot.remainingDays}일 남음</span></div>;
+                            }
+                            if (slot.state === 'resultReady') {
+                                const def = SEED_EXTRACTION_DEFS[slot.sourceItemId] || {};
+                                const seedDef = CROP_DEFS[slot.resultSeedId] || {};
+                                return (
+                                    <div key={idx} style={slotBox}>
+                                        <div style={{ color: '#8bd17c' }}>✓ {seedDef.name || slot.resultSeedId} {def.resultCount}개 수령 가능</div>
+                                        <button style={btnPrimary} onClick={() => handleExtractClaim(idx)}>수령</button>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })}
+
+                        <div style={sectionTitle}>밭 슬롯 ({capacity.plots}/{FARM_MAX_PLOTS} 활성)</div>
+                        {farmState.plots.map((plot, idx) => {
+                            const active = idx < capacity.plots;
+                            if (!active) return <div key={idx} style={slotDisabled}>잠금 (농장 Lv.{idx <= 2 ? 1 : (idx <= 3 ? 2 : 3)}에서 해제)</div>;
+                            if (plot.state === 'empty') {
+                                return (
+                                    <div key={idx} style={slotBox}>
+                                        <div style={{ color: '#888', marginBottom: '4px' }}>비어 있음 — 심을 씨앗 선택</div>
+                                        {plantableSeeds.length === 0
+                                            ? <div style={{ color: '#666', fontSize: '11px' }}>보관함에 씨앗이 없습니다. 추출 슬롯에서 만들어 주세요.</div>
+                                            : plantableSeeds.map(id => {
+                                                const def = CROP_DEFS[id];
+                                                const waterOk = def.waterCost === 0 || countOf('clear_water') >= def.waterCost;
+                                                return (
+                                                    <button key={id} style={waterOk ? btn : btnDisabled} disabled={!waterOk} onClick={() => handlePlant(idx, id)}>
+                                                        {def.name} 심기 (성장 {def.growDays}일{def.waterCost > 0 ? `, 맑은물 x${def.waterCost}` : ''}, 보유 {countOf(id)})
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
+                                );
+                            }
+                            if (plot.state === 'growing') {
+                                const def = CROP_DEFS[plot.seedId] || {};
+                                return <div key={idx} style={slotBox}>{def.cropName || plot.seedId} 성장 중 — <span style={{ color: '#d4b84a' }}>{plot.remainingDays}일 남음</span></div>;
+                            }
+                            if (plot.state === 'ready') {
+                                const def = CROP_DEFS[plot.seedId] || {};
+                                return (
+                                    <div key={idx} style={slotBox}>
+                                        <div style={{ color: '#8bd17c' }}>✓ {def.cropName || plot.seedId} 수확 가능 ({def.yieldCount}개)</div>
+                                        <button style={btnPrimary} onClick={() => handleHarvest(idx)}>수확</button>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })}
+
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                            <button style={{ ...btn, background: '#3a2a1e', color: '#bbb', flex: 1 }} onClick={handleDebugDay}>🔧 [+1 day] (디버그)</button>
+                            <button style={{ ...btn, flex: 1 }} onClick={onClose}>닫기</button>
+                        </div>
+
+                        <div style={{ fontSize: '10px', color: '#555', marginTop: '8px', lineHeight: 1.5 }}>
+                            ※ 탐험 1회 완료 = 1일 경과(자동). +1 day 버튼은 라이브 테스트용 디버그.
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
         // D-174: 빌딩 카드 클릭 시 띄우는 상세 모달.
         //   - locked: "추후 공개" 안내.
@@ -5269,7 +5599,7 @@
         //   상단: 점수 → [보관함] 버튼 → [퀘스트 목록] → [현재 진행 중 퀘스트] → 건설.
         //   하단: [물건 챙기기] [탐험 떠나기] 두 버튼.
         // D-168: 빌딩 그리드 추가 — 보관함 버튼 아래.
-        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange, onWorkshopStart, onWorkshopReceive, onLearnRecipe, onCampHubChange }) {
+        function CampScreen({ campState, onDepart, onCompleteQuest, onTakeQuest, onResetData, onInventoryChange, onWorkshopStart, onWorkshopReceive, onLearnRecipe, onCampHubChange, onCampStateUpdate }) {
             const [resetOpen, setResetOpen] = React.useState(false);
             const [storageOpen, setStorageOpen] = React.useState(false);
             const [packOpen, setPackOpen] = React.useState(false);
@@ -5641,8 +5971,16 @@
                         />
                     )}
 
-                    {/* D-168: 빌딩 카드 클릭 시 상세 모달. tent → 다음 레벨 퀘스트, placeholder → 추후 공개 안내. */}
-                    {selectedBuilding && (
+                    {/* D-168: 빌딩 카드 클릭 시 상세 모달. tent → 다음 레벨 퀘스트, placeholder → 추후 공개 안내.
+                        D-258: farm은 stage 1+ 진입 시 FarmModal로 라우팅 (씨앗 추출/심기/수확 UI). stage 0은 BuildingDetailModal 그대로. */}
+                    {selectedBuilding && selectedBuilding.id === 'farm' && (Number(campState.buildingLevels && campState.buildingLevels.farm) || 0) >= 1 ? (
+                        <FarmModal
+                            building={selectedBuilding}
+                            campState={campState}
+                            onClose={() => setSelectedBuilding(null)}
+                            onCampStateUpdate={onCampStateUpdate}
+                        />
+                    ) : selectedBuilding && (
                         <BuildingDetailModal
                             building={selectedBuilding}
                             campState={campState}
@@ -10446,6 +10784,8 @@
                 buildingLevels: {},        // D-174
                 oneShotInventory: {},      // D-174
                 campHubState: { playerPosition: { x: 50, y: 92 } }, // D-255
+                gameDay: 1,                                          // D-257: 농장 한정 일자 카운터(탐험 1회=+1)
+                farmState: makeInitialFarmState(),                   // D-257
                 inventory: makeCampStorageInventory(0),  // D-174 v3: 7x20 + row 10-19 disabled.
                 pack: makePackInventory(0),
                 quests: { active: [], completed: [] },
@@ -10509,8 +10849,30 @@
                     y: Math.max(2, Math.min(98, Number(hubPos.y) || 92))
                 }
             };
+            // D-257: gameDay + farmState — 농장 한정. 미존재 폴백 = 1 / 빈 슬롯 풀.
+            const gameDay = Math.max(1, Number(state.gameDay) || 1);
+            const farmRaw = (state.farmState && typeof state.farmState === 'object') ? state.farmState : null;
+            const farmState = farmRaw ? {
+                extractionSlots: (Array.isArray(farmRaw.extractionSlots) ? farmRaw.extractionSlots : []).slice(0, FARM_MAX_EXTRACT)
+                    .map(s => s ? {
+                        sourceItemId: s.sourceItemId || null,
+                        resultSeedId: s.resultSeedId || null,
+                        remainingDays: Math.max(0, Number(s.remainingDays) || 0),
+                        state: s.state === 'extracting' || s.state === 'resultReady' ? s.state : 'empty'
+                    } : makeEmptyExtractionSlot()),
+                plots: (Array.isArray(farmRaw.plots) ? farmRaw.plots : []).slice(0, FARM_MAX_PLOTS)
+                    .map(p => p ? {
+                        seedId: p.seedId || null,
+                        remainingDays: Math.max(0, Number(p.remainingDays) || 0),
+                        watered: !!p.watered,
+                        state: p.state === 'growing' || p.state === 'ready' ? p.state : 'empty'
+                    } : makeEmptyPlot())
+            } : makeInitialFarmState();
+            // 슬롯 길이 보정 — 정적 풀 크기 채움.
+            while (farmState.extractionSlots.length < FARM_MAX_EXTRACT) farmState.extractionSlots.push(makeEmptyExtractionSlot());
+            while (farmState.plots.length < FARM_MAX_PLOTS) farmState.plots.push(makeEmptyPlot());
             return {
-                version: 5,
+                version: 6,
                 seenIntro: !!state.seenIntro,
                 firstReturnDone: !!state.firstReturnDone,
                 tentLevel,
@@ -10518,6 +10880,8 @@
                 buildingLevels,         // D-174
                 oneShotInventory,       // D-174
                 campHubState,           // D-255
+                gameDay,                // D-257
+                farmState,              // D-257
                 inventory: serializeInvItems(state.inventory),
                 pack: serializeInvItems(state.pack),
                 quests: {
@@ -10603,6 +10967,27 @@
                     y: Math.max(2, Math.min(98, Number(hubPos.y) || 92))
                 }
             };
+            // D-257: gameDay + farmState — v5 이하 폴백 = day 1 + 빈 슬롯 풀.
+            const gameDay = Math.max(1, Number(raw.gameDay) || 1);
+            const farmRaw = (raw.farmState && typeof raw.farmState === 'object') ? raw.farmState : null;
+            const farmState = farmRaw ? {
+                extractionSlots: (Array.isArray(farmRaw.extractionSlots) ? farmRaw.extractionSlots : []).slice(0, FARM_MAX_EXTRACT)
+                    .map(s => s ? {
+                        sourceItemId: s.sourceItemId || null,
+                        resultSeedId: s.resultSeedId || null,
+                        remainingDays: Math.max(0, Number(s.remainingDays) || 0),
+                        state: s.state === 'extracting' || s.state === 'resultReady' ? s.state : 'empty'
+                    } : makeEmptyExtractionSlot()),
+                plots: (Array.isArray(farmRaw.plots) ? farmRaw.plots : []).slice(0, FARM_MAX_PLOTS)
+                    .map(p => p ? {
+                        seedId: p.seedId || null,
+                        remainingDays: Math.max(0, Number(p.remainingDays) || 0),
+                        watered: !!p.watered,
+                        state: p.state === 'growing' || p.state === 'ready' ? p.state : 'empty'
+                    } : makeEmptyPlot())
+            } : makeInitialFarmState();
+            while (farmState.extractionSlots.length < FARM_MAX_EXTRACT) farmState.extractionSlots.push(makeEmptyExtractionSlot());
+            while (farmState.plots.length < FARM_MAX_PLOTS) farmState.plots.push(makeEmptyPlot());
 
             // D-174: 캠프 보관함 12x7 + 마지막 row가 텐트 슬롯.
             //   기존 v3 12x6 세이브 → 12x7로 마이그레이션. 좌표 그대로 복원 가능
@@ -10618,7 +11003,7 @@
             for (const entry of packRaw) restoreItemEntry(pack, entry);
 
             return {
-                version: 5,
+                version: 6,
                 seenIntro: !!raw.seenIntro,
                 firstReturnDone: !!raw.firstReturnDone,
                 tentLevel: tentLevelRestored,
@@ -10626,6 +11011,8 @@
                 buildingLevels,
                 oneShotInventory,
                 campHubState,        // D-255
+                gameDay,             // D-257
+                farmState,           // D-257
                 inventory: inv,
                 pack,
                 quests: {
@@ -10762,8 +11149,13 @@
                         camp.placeItem(placed);
                         camp.items.push(placed);
                     }
+                    // D-257: 탐험 1회 종료 → 농장 하루 경과(요한 결정 #6).
+                    //   gameDay +1 + farmState 진행(추출 슬롯·작물 remainingDays 감소).
+                    const advancedFarm = advanceFarmDay(prev.farmState || makeInitialFarmState(), 1);
                     const next = {
                         ...prev,
+                        gameDay: (Number(prev.gameDay) || 1) + 1,
+                        farmState: advancedFarm,
                         runs: {
                             total: prev.runs.total + 1,
                             victories: prev.runs.victories + (outcome === 'victory' ? 1 : 0),
@@ -11141,6 +11533,7 @@
                             ...prev,
                             campHubState: { ...(prev.campHubState || {}), ...patch }
                         }))}
+                        onCampStateUpdate={setCampState}
                     />
                     {pendingTentModal && (
                         <TentQuestModal

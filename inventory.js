@@ -157,7 +157,18 @@ class InventorySystem {
         //   snare_trap:  현재 타일에 설치, 보스가 밟으면 1턴 정지. 단계 3.
         wood_shard: { name: '나무 조각',         shape: [[1]], grade: 1, mergeable: false, category: '소모품', merge_result: null },
         torn_map:   { name: '찢어진 지도 조각',   shape: [[1]], grade: 1, mergeable: false, category: '소모품', merge_result: null },
-        snare_trap: { name: '덫',               shape: [[1]], grade: 1, mergeable: false, category: '소모품', merge_result: null }
+        snare_trap: { name: '덫',               shape: [[1]], grade: 1, mergeable: false, category: '소모품', merge_result: null },
+
+        // D-258 (2026-05-06): 농장 시스템 — 신규 작물 2종 + 씨앗 5종.
+        //   addItem이 ITEMS[type]을 직접 조회하므로 여기 등록 필수. 시트 `아이템마스터`에도 동시 추가됨(D-259).
+        //   shape [[1]] 단일 칸. 한글명·카테고리는 시트 SSOT가 resolveDef에서 덮어씀.
+        root_tuber:     { name: '덩이뿌리',     shape: [[1]], grade: 1, mergeable: false, category: 'food',  merge_result: null },
+        fiber_plant:    { name: '섬유풀',       shape: [[1]], grade: 1, mergeable: false, category: 'env',   merge_result: null },
+        berry_seed:     { name: '산딸기 씨앗',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
+        mushroom_spore: { name: '버섯 균사',    shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
+        root_tuber_eye: { name: '덩이뿌리 눈',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
+        herb_seed:      { name: '약초 씨앗',    shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
+        fiber_seed:     { name: '섬유풀 씨앗',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null }
     };
 
     // 런타임에 TTD_DATA.ITEMS(Notion 기반)이 덮어쓰는 값 조회.
