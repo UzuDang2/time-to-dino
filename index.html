@@ -2777,6 +2777,45 @@
             );
         }
 
+        // D-252 (2026-05-06): 공격성 사냥감 선공 시퀀스 — 점프스케어(0.55s) → 배너(2s) → 전투 모달.
+        //   D-249 v2 "자동 hunt 진입"의 시각 연출. boss와 같은 패턴, 사냥감 emoji 동적 + 흙갈색 톤.
+        function PreyAmbushJumpscare({ active, preyEmoji, onDone }) {
+            React.useEffect(() => {
+                if (!active) return;
+                const t = setTimeout(() => { onDone && onDone(); }, 550);
+                return () => clearTimeout(t);
+            }, [active]);
+            if (!active) return null;
+            return (
+                <div className="prey-ambush-overlay">
+                    <div className="prey-ambush-icon">{preyEmoji || '🐾'}</div>
+                </div>
+            );
+        }
+
+        // D-252: "야생의 X이 달려들었다!" 배너 — 2초 fade. onDone에서 부모가 setActiveHunt 호출.
+        //   이/가 조사 받침 자동(D-48 hasBatchim 동일 로직 인라인).
+        function PreyAmbushBanner({ active, preyName, onDone }) {
+            React.useEffect(() => {
+                if (!active) return;
+                const t = setTimeout(() => { onDone && onDone(); }, 2000);
+                return () => clearTimeout(t);
+            }, [active]);
+            if (!active) return null;
+            const hasBatchim = (() => {
+                if (!preyName) return false;
+                const code = preyName.charCodeAt(preyName.length - 1);
+                if (code < 0xAC00 || code > 0xD7A3) return false;
+                return (code - 0xAC00) % 28 !== 0;
+            })();
+            const particle = hasBatchim ? '이' : '가';
+            return (
+                <div className="prey-ambush-banner">
+                    야생의 {preyName}{particle} 달려들었다!
+                </div>
+            );
+        }
+
         // 플레이 가이드 모달 — 인게임 [플레이방법] 버튼으로 호출.
         // D-53 (2026-04-23 요한 지시): 게임을 처음 만나는 사람도 바로 이해할 수 있는
         // 간소화 가이드. GUIDE.md(외부 공유용 상세본)와 별도로, 인게임에서는 핵심만.
@@ -7812,6 +7851,18 @@
             // 보스 점프스케어 active flag (listen 거리=1 트리거). onDone에서 false.
             const [bossJumpscare, setBossJumpscare] = useState(false);
 
+            // D-252: 공격성 사냥감 선공 시퀀스 state.
+            //   shape: { phase: 'jumpscare' | 'banner' | 'finalize', payload, preyEmoji, preyName } | null
+            //   jumpscare 0.55s → banner 2s → finalize에서 setActiveHunt + null.
+            //   useEffect로 'finalize' 감지 시 setActiveHunt 호출(함수형 setter 안 사이드 이펙트 회피).
+            const [ambushSeq, setAmbushSeq] = useState(null);
+            React.useEffect(() => {
+                if (ambushSeq?.phase === 'finalize') {
+                    if (ambushSeq.payload) setActiveHunt(ambushSeq.payload);
+                    setAmbushSeq(null);
+                }
+            }, [ambushSeq?.phase]);
+
             // 플레이어 이동 경로 기록. 맵 보기 모드에서 방문 순서를 숫자로 표시.
             // 초기값은 게임 시작 시 setTiles 직후 [startTileId]로 채운다.
             const [moveHistory, setMoveHistory] = useState([]);
@@ -9767,9 +9818,11 @@
                 //   useCard('hunt_start')와 동일한 setActiveHunt 페이로드. 시간/발각은 이번 이동분만 차감,
                 //   추가 +1/+2(사냥시작 카드 비용)는 미부과 — "선공"은 거부할 수 없는 만남이라 자동 강제이며
                 //   카드 비용까지 떠넘기는 건 가혹. 첫 턴부터 회피/방어 카드 정상 사용 가능 (combatDeck 기존 흐름).
+                // D-252 (2026-05-06): setActiveHunt 즉시 호출 → ambushSeq 트리거로 변경.
+                //   점프스케어(0.55s) + 배너(2s) 시퀀스 후 finalize phase에서 setActiveHunt 호출.
                 if (aggressivePreyAuto) {
                     const { prey, def: preyDef } = aggressivePreyAuto;
-                    setActiveHunt({
+                    const huntPayload = {
                         prey: {
                             id: prey.id,
                             tileId: prey.tileId,
@@ -9786,6 +9839,12 @@
                             defense: Number(preyDef.defense) || 0,
                             actions_per_turn: preyDef.actions_per_turn || ''
                         }
+                    };
+                    setAmbushSeq({
+                        phase: 'jumpscare',
+                        payload: huntPayload,
+                        preyEmoji: PREY_EMOJI[prey.preyType] || '🐾',
+                        preyName: preyDef.name || prey.preyType
                     });
                 }
             };
@@ -10185,6 +10244,18 @@
                     />
 
                     <BossJumpscare active={bossJumpscare} onDone={() => setBossJumpscare(false)} />
+
+                    {/* D-252: 공격성 사냥감 선공 시퀀스 — 점프스케어 0.55s → 배너 2s → finalize에서 setActiveHunt. */}
+                    <PreyAmbushJumpscare
+                        active={ambushSeq?.phase === 'jumpscare'}
+                        preyEmoji={ambushSeq?.preyEmoji}
+                        onDone={() => setAmbushSeq(prev => prev ? ({ ...prev, phase: 'banner' }) : null)}
+                    />
+                    <PreyAmbushBanner
+                        active={ambushSeq?.phase === 'banner'}
+                        preyName={ambushSeq?.preyName}
+                        onDone={() => setAmbushSeq(prev => prev ? ({ ...prev, phase: 'finalize' }) : null)}
+                    />
 
                     {/* 맵 보기 모드 플로팅 컨트롤 — 승리 후 경로를 들여다볼 때 */}
                     {showPathView && (

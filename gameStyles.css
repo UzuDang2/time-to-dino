@@ -613,6 +613,74 @@ button:disabled {
     100% { transform: translate(-50%, -50%) scale(12);  opacity: 0; filter: blur(3px) drop-shadow(0 0 20px rgba(255, 30, 30, 0.6)); }
 }
 
+/* D-252 (2026-05-06): 공격성 사냥감 선공 시 점프스케어 — boss-jumpscare 패턴 변형.
+   톤은 흙갈색/주황 글로우(보스=빨강 전용 유지). 사냥감 emoji가 동적으로 들어감. */
+.prey-ambush-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(120, 60, 0, 0.55) 0%, rgba(0, 0, 0, 0.88) 70%);
+    animation: prey-ambush-bg 0.55s ease-out forwards;
+}
+
+.prey-ambush-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 72px;
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+    filter: drop-shadow(0 0 12px rgba(255, 180, 60, 0.8));
+    animation: prey-ambush-pop 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes prey-ambush-bg {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    70%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes prey-ambush-pop {
+    0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; filter: blur(4px) drop-shadow(0 0 12px rgba(255, 180, 60, 0.8)); }
+    18%  { transform: translate(-50%, -50%) scale(2.6); opacity: 1; filter: blur(0) drop-shadow(0 0 14px rgba(255, 180, 60, 0.9)); }
+    55%  { transform: translate(-50%, -50%) scale(6);   opacity: 1; filter: blur(0) drop-shadow(0 0 18px rgba(255, 180, 60, 1)); }
+    85%  { transform: translate(-50%, -50%) scale(8);   opacity: 0.85; filter: blur(1px) drop-shadow(0 0 20px rgba(255, 180, 60, 0.9)); }
+    100% { transform: translate(-50%, -50%) scale(10);  opacity: 0; filter: blur(3px) drop-shadow(0 0 20px rgba(255, 180, 60, 0.6)); }
+}
+
+/* D-252: "야생의 X이 달려들었다!" 배너 — 점프스케어 직후 2초 노출.
+   fade in 0.3s + 유지 1.4s + fade out 0.3s. 점프스케어보다 z 낮게(2900)
+   해서 jumpscare 0.55s 끝 직후 banner 등장 시 시각 정리. */
+.prey-ambush-banner {
+    position: fixed;
+    top: 38%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2900;
+    padding: 14px 28px;
+    background: rgba(0, 0, 0, 0.78);
+    color: #ffd166;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(255, 209, 102, 0.4);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    white-space: nowrap;
+    animation: prey-ambush-banner-fade 2s ease-in-out forwards;
+}
+
+@keyframes prey-ambush-banner-fade {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+    15%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    85%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+}
+
 /* D-55 / D-67 (2026-04-24): 배고픔/생명력 임계값 경고 점멸.
    D-55는 채움 div에만 적용이라 게이지 0%일 때 안 보였음. D-67은 stat-box 전체에도
    외곽 글로우를 추가해 채움이 비어도 유저가 체감 가능. */
