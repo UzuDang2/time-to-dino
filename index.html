@@ -4663,21 +4663,23 @@
                 sourceItemId: 'herb', resultItemId: 'herb',
                 growDays: 2, waterCost: 1, yieldCount: 2, growType: 'field', category: 'medicine'
             },
+            // D-269 (2026-05-07): fiber_seed의 sourceItemId/resultItemId 모두 stem (자기재배). fiber_plant 폐기.
             fiber_seed: {
                 id: 'fiber_seed', name: '섬유풀 씨앗', cropName: '섬유풀',
-                sourceItemId: 'fiber_plant', resultItemId: 'stem',
+                sourceItemId: 'stem', resultItemId: 'stem',
                 growDays: 3, waterCost: 1, yieldCount: 2, growType: 'field', category: 'material'
             }
         };
 
         // 씨앗 추출 정의 — 완제품 id → { 결과 씨앗 id / 결과 수량 / 추출일 }.
         // D-267: 시트 SSOT 이관 후 폴백.
+        // D-269: fiber_plant → stem 키 통합. 줄기를 추출 슬롯에 넣으면 섬유풀 씨앗.
         const FALLBACK_SEED_EXTRACTION_DEFS = {
             berry:       { sourceItemId: 'berry',       resultSeedId: 'berry_seed',     resultCount: 2, requiredDays: 1 },
             mushroom:    { sourceItemId: 'mushroom',    resultSeedId: 'mushroom_spore', resultCount: 2, requiredDays: 1 },
             root_tuber:  { sourceItemId: 'root_tuber',  resultSeedId: 'root_tuber_eye', resultCount: 2, requiredDays: 1 },
             herb:        { sourceItemId: 'herb',        resultSeedId: 'herb_seed',      resultCount: 2, requiredDays: 1 },
-            fiber_plant: { sourceItemId: 'fiber_plant', resultSeedId: 'fiber_seed',     resultCount: 2, requiredDays: 1 }
+            stem:        { sourceItemId: 'stem',        resultSeedId: 'fiber_seed',     resultCount: 2, requiredDays: 1 }
         };
 
         // 농장 stage별 슬롯 capacity — 정적 슬롯 풀(max 추출 2 + 밭 5) 안에서 활성 개수만 변동.

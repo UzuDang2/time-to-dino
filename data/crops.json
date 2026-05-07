@@ -63,7 +63,7 @@
     "id": "fiber_seed",
     "seedId": "fiber_seed",
     "cropName": "섬유풀",
-    "sourceItemId": "fiber_plant",
+    "sourceItemId": "stem",
     "resultItemId": "stem",
     "growDays": 3,
     "waterCost": 1,
@@ -72,6 +72,6 @@
     "category": "material",
     "extractCount": 2,
     "extractDays": 1,
-    "note": "섬유풀 추출 → 씨앗 2개 / 성장 3일·물 1·수확 2 (수확물=줄기)"
+    "note": "줄기 추출 → 섬유풀 씨앗 2개 / 성장 3일·물 1·수확 2 (자기재배)"
   }
 ]

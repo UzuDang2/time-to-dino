@@ -133,31 +133,6 @@
     }
   },
   {
-    "id": "fiber_plant",
-    "name": "섬유풀",
-    "이름": "섬유풀",
-    "카테고리": "재료",
-    "재료 타입": "식물재료",
-    "아이템 등급": "1단계",
-    "가방칸수": "1x1",
-    "나오는 지역": [
-      "평원",
-      "덤불"
-    ],
-    "머지 가능": false,
-    "일회용": false,
-    "설명 텍스트": "말려서 줄기로 가공할 수 있다.",
-    "효과 요약": "끈·천 재료가 되는 풀잎.",
-    "사용 효과": "",
-    "merge_result": null,
-    "merge_enabled": false,
-    "effect": {
-      "usable": false,
-      "actions": [],
-      "raw": ""
-    }
-  },
-  {
     "id": "fish",
     "name": "물고기",
     "이름": "물고기",
@@ -351,7 +326,7 @@
     "사용 효과": "",
     "merge_result": null,
     "merge_enabled": false,
-    "내구도": "3",
+    "내구도": 3,
     "effect": {
       "usable": false,
       "actions": [],
@@ -459,7 +434,7 @@
     "사용 효과": "health+2",
     "merge_result": null,
     "merge_enabled": false,
-    "내구도": "1",
+    "내구도": 1,
     "effect": {
       "usable": true,
       "actions": [

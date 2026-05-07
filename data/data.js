@@ -8,8 +8,8 @@ window.TTD_DATA = {
       "count": 7,
       "effect": "아이템 획득, 주변 정보",
       "detection": 5,
-      "consume": null,
-      "extra_effect": null
+      "consume": "",
+      "extra_effect": ""
     },
     {
       "id": "listen",
@@ -17,8 +17,8 @@ window.TTD_DATA = {
       "count": 3,
       "effect": "거리별 소리로 보스 감지 · 사냥감 흔적",
       "detection": -5,
-      "consume": null,
-      "extra_effect": null
+      "consume": "",
+      "extra_effect": ""
     },
     {
       "id": "find_food",
@@ -26,8 +26,8 @@ window.TTD_DATA = {
       "count": 1,
       "effect": "음식 획득",
       "detection": 10,
-      "consume": null,
-      "extra_effect": null
+      "consume": "",
+      "extra_effect": ""
     },
     {
       "id": "hide",
@@ -35,8 +35,8 @@ window.TTD_DATA = {
       "count": 1,
       "effect": "은신",
       "detection": -15,
-      "consume": null,
-      "extra_effect": null
+      "consume": "",
+      "extra_effect": ""
     },
     {
       "id": "rest",
@@ -45,7 +45,7 @@ window.TTD_DATA = {
       "effect": "체력/배고픔 소폭 회복, 소음 최소",
       "detection": -5,
       "consume": "category:food;bonus:recover=1",
-      "extra_effect": null
+      "extra_effect": ""
     }
   ],
   "EXTRA_CARDS": [
@@ -88,9 +88,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": null,
-      "evade": null,
-      "loss_chance": null
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "throw_stone",
@@ -101,9 +101,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": null,
-      "evade": null,
-      "loss_chance": null
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "stab_weapon",
@@ -114,9 +114,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 1,
       "full_loss": "N",
-      "defense": null,
-      "evade": null,
-      "loss_chance": null
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "dodge",
@@ -127,9 +127,9 @@ window.TTD_DATA = {
       "count": 3,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": null,
+      "defense": "",
       "evade": 1,
-      "loss_chance": null
+      "loss_chance": ""
     },
     {
       "id": "run_away",
@@ -140,9 +140,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 0,
       "full_loss": "N",
-      "defense": null,
-      "evade": null,
-      "loss_chance": null
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "throw_spear",
@@ -153,8 +153,8 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 2,
       "full_loss": "N",
-      "defense": null,
-      "evade": null,
+      "defense": "",
+      "evade": "",
       "loss_chance": 50
     },
     {
@@ -166,9 +166,9 @@ window.TTD_DATA = {
       "count": 1,
       "accuracy": 1,
       "full_loss": "N",
-      "defense": null,
-      "evade": null,
-      "loss_chance": null
+      "defense": "",
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "crouch",
@@ -180,8 +180,8 @@ window.TTD_DATA = {
       "accuracy": 0,
       "full_loss": "N",
       "defense": 1,
-      "evade": null,
-      "loss_chance": null
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "shield_block",
@@ -193,8 +193,8 @@ window.TTD_DATA = {
       "accuracy": 0,
       "full_loss": "N",
       "defense": 1,
-      "evade": null,
-      "loss_chance": null
+      "evade": "",
+      "loss_chance": ""
     },
     {
       "id": "chipped_stone_strike",
@@ -253,17 +253,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 4,
       "attack": 0,
-      "defense": 0,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 2,
       "habitat": "덤불",
+      "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "drop_count": "2",
-      "turn1": "peek",
-      "turn2": "defend",
-      "turn3": "kick",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,defend,kick",
+      "defense": 0,
+      "aggressive": false
     },
     {
       "id": "mouse",
@@ -271,17 +269,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 2,
       "attack": 0,
-      "defense": 0,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 1,
       "habitat": "덤불",
+      "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "drop_count": "1",
-      "turn1": "peek",
-      "turn2": "peek",
-      "turn3": "nibble",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,peek,nibble",
+      "defense": 0,
+      "aggressive": false
     },
     {
       "id": "squirrel",
@@ -289,17 +285,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 3,
       "attack": 1,
-      "defense": 0,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 1,
       "habitat": "숲",
+      "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "drop_count": "1",
-      "turn1": "peek",
-      "turn2": "evade",
-      "turn3": "acorn_throw",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,evade,acorn_throw",
+      "defense": 0,
+      "aggressive": false
     },
     {
       "id": "bird",
@@ -307,17 +301,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 3,
       "attack": 0,
-      "defense": 0,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 2,
       "habitat": "평원",
+      "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "drop_count": "2",
-      "turn1": "peek",
-      "turn2": "peek",
-      "turn3": "peck",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,peek,peck",
+      "defense": 0,
+      "aggressive": false
     },
     {
       "id": "salamander",
@@ -325,17 +317,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 3,
       "attack": 0,
-      "defense": 0,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 1,
       "habitat": "숲",
+      "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "drop_count": "1",
-      "turn1": "peek",
-      "turn2": "slime_lash",
-      "turn3": "evade",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,slime_lash,evade",
+      "defense": 0,
+      "aggressive": false
     },
     {
       "id": "snake",
@@ -343,17 +333,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 3,
       "attack": 0,
-      "defense": 0,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 2,
       "habitat": "덤불",
+      "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "drop_count": "2",
-      "turn1": "peek",
-      "turn2": "venom_bite",
-      "turn3": "evade",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,venom_bite,evade",
+      "defense": 0,
+      "aggressive": false
     },
     {
       "id": "frog",
@@ -361,17 +349,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 3,
       "attack": 0,
-      "defense": 0,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 1,
       "habitat": "덤불",
+      "evade_per_turn": "1,1,1",
       "drop_item": "meat",
-      "drop_count": "1",
-      "turn1": "peek",
-      "turn2": "evade",
-      "turn3": "tongue_lash",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,evade,tongue_lash",
+      "defense": 0,
+      "aggressive": false
     },
     {
       "id": "crab",
@@ -379,17 +365,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 2,
       "attack": 0,
-      "defense": 1,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 1,
       "habitat": "시냇물",
+      "evade_per_turn": "1,1,1",
       "drop_item": "crab_whole",
-      "drop_count": "1",
-      "turn1": "peek",
-      "turn2": "pinch",
-      "turn3": "evade",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,pinch,evade",
+      "defense": 1,
+      "aggressive": false
     },
     {
       "id": "grasshopper",
@@ -397,17 +381,15 @@ window.TTD_DATA = {
       "level": 1,
       "hp": 1,
       "attack": 0,
-      "defense": 0,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "회피형",
+      "meat": 1,
       "habitat": "평원",
+      "evade_per_turn": "1,1,1",
       "drop_item": "grasshopper_whole",
-      "drop_count": "1",
-      "turn1": "peek",
-      "turn2": "peek",
-      "turn3": "kick_jump",
-      "turn4": null,
-      "aggressive": null
+      "actions_per_turn": "peek,peek,kick_jump",
+      "defense": 0,
+      "aggressive": false
     },
     {
       "id": "boar",
@@ -415,17 +397,15 @@ window.TTD_DATA = {
       "level": 2,
       "hp": 5,
       "attack": 2,
-      "defense": 1,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "반격형",
+      "meat": 2,
       "habitat": "덤불,숲",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "drop_count": 2,
-      "turn1": "tusk_charge",
-      "turn2": "attack",
-      "turn3": "defend",
-      "turn4": "evade",
-      "aggressive": "Y"
+      "actions_per_turn": "tusk_charge,attack,defend,evade",
+      "defense": 1,
+      "aggressive": true
     },
     {
       "id": "dinosaur",
@@ -433,17 +413,15 @@ window.TTD_DATA = {
       "level": 2,
       "hp": 4,
       "attack": 1,
-      "defense": 1,
-      "evade": "2",
+      "evade_rate": 2,
       "type": "반격형",
+      "meat": 1,
       "habitat": "동굴",
+      "evade_per_turn": "2,2,2,2",
       "drop_item": "big_meat",
-      "drop_count": "1",
-      "turn1": "pounce_bite",
-      "turn2": "evade",
-      "turn3": "attack",
-      "turn4": "peek",
-      "aggressive": "Y"
+      "actions_per_turn": "pounce_bite,evade,attack,peek",
+      "defense": 1,
+      "aggressive": true
     },
     {
       "id": "deer",
@@ -451,17 +429,15 @@ window.TTD_DATA = {
       "level": 2,
       "hp": 7,
       "attack": 2,
-      "defense": 1,
-      "evade": "3",
+      "evade_rate": 3,
       "type": "회피형",
+      "meat": 2,
       "habitat": "평원,숲",
+      "evade_per_turn": "3,3,3,3",
       "drop_item": "big_meat",
-      "drop_count": "2",
-      "turn1": "evade",
-      "turn2": "gore",
-      "turn3": "attack",
-      "turn4": "peek",
-      "aggressive": null
+      "actions_per_turn": "evade,gore,attack,peek",
+      "defense": 1,
+      "aggressive": false
     },
     {
       "id": "badger",
@@ -469,17 +445,15 @@ window.TTD_DATA = {
       "level": 2,
       "hp": 6,
       "attack": 2,
-      "defense": 1,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "반격형",
+      "meat": 2,
       "habitat": "덤불",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "drop_count": "2",
-      "turn1": "defend",
-      "turn2": "frenzy_claw",
-      "turn3": "evade",
-      "turn4": "attack",
-      "aggressive": null
+      "actions_per_turn": "defend,frenzy_claw,evade,attack",
+      "defense": 1,
+      "aggressive": false
     },
     {
       "id": "fox",
@@ -487,17 +461,15 @@ window.TTD_DATA = {
       "level": 2,
       "hp": 5,
       "attack": 2,
-      "defense": 1,
-      "evade": "3",
+      "evade_rate": 3,
       "type": "회피형",
+      "meat": 1,
       "habitat": "숲",
+      "evade_per_turn": "3,3,3,3",
       "drop_item": "big_meat",
-      "drop_count": "1",
-      "turn1": "feint_strike",
-      "turn2": "evade",
-      "turn3": "evade",
-      "turn4": "peek",
-      "aggressive": null
+      "actions_per_turn": "feint_strike,evade,evade,peek",
+      "defense": 1,
+      "aggressive": false
     },
     {
       "id": "turkey",
@@ -505,17 +477,15 @@ window.TTD_DATA = {
       "level": 2,
       "hp": 4,
       "attack": 2,
-      "defense": 1,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "반격형",
+      "meat": 2,
       "habitat": "평원",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "drop_count": 2,
-      "turn1": "wing_slap",
-      "turn2": "evade",
-      "turn3": "defend",
-      "turn4": "peek",
-      "aggressive": null
+      "actions_per_turn": "wing_slap,evade,defend,peek",
+      "defense": 1,
+      "aggressive": false
     },
     {
       "id": "armadillo",
@@ -523,17 +493,15 @@ window.TTD_DATA = {
       "level": 2,
       "hp": 8,
       "attack": 2,
-      "defense": 1,
-      "evade": "1",
+      "evade_rate": 1,
       "type": "방어형",
+      "meat": 2,
       "habitat": "동굴",
+      "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "drop_count": 2,
-      "turn1": "iron_curl",
-      "turn2": "defend",
-      "turn3": "evade",
-      "turn4": "peek",
-      "aggressive": null
+      "actions_per_turn": "iron_curl,defend,evade,peek",
+      "defense": 1,
+      "aggressive": false
     }
   ],
   "PREY_ACTIONS": [
@@ -771,7 +739,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"약초 향이 텐트 안까지 스며든다. 작은 상처는 두렵지 않다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "health_max+1",
       "cost_raw": "목재 x20, 석재 x10, 약초 x10"
     },
@@ -794,7 +762,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"잘 마른 약초가 천장에 매달려 있다. 여기서는 죽지 않을 것 같다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "health_max+1",
       "cost_raw": "목재 x30, 석재 x20, 약초 x20"
     },
@@ -864,7 +832,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"국솥에서 김이 오른다. 위장이 먼저 안다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "hunger_max+1",
       "cost_raw": "나뭇가지 x5, 돌맹이 x5, 생고기 x5, 산딸기 x2, 맑은물 x2, 버섯 x2"
     },
@@ -899,7 +867,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"무쇠 솥은 밤새 식지 않는다. 무엇이든 익혀 먹을 수 있다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "hunger_max+1",
       "cost_raw": "목재 x3, 석재 x3, 큰생고기 x3, 딸기모둠 x1, 맑은물 x3, 버섯모둠 x1"
     },
@@ -934,7 +902,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"기름이 솥에 흐른다. 한 번 굽는 정도로 끝나지 않는다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "hunger_max+1",
       "cost_raw": "목재 x4, 석재 x4, 큰생고기 x4, 딸기모둠 x2, 맑은물 x4, 버섯모둠 x2"
     },
@@ -969,7 +937,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"연기가 천장을 덮는다. 화덕이 한 마을을 먹인다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "hunger_max+1",
       "cost_raw": "목재 x5, 석재 x5, 큰생고기 x5, 딸기모둠 x3, 맑은물 x5, 버섯모둠 x3"
     },
@@ -989,7 +957,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"투박한 작업대 위에 칼날을 갈 수 있는 자리가 생겼다.\"",
       "설명": "1등급 제작법 레시피를 해금한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "목재 x12, 끈 x6"
     },
     {
@@ -1012,7 +980,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"가죽 끈으로 손잡이를 단단히 묶었다. 손에 더 잘 잡힌다.\"",
       "설명": "2등급 제작법 레시피를 해금한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "목재 x20, 석재 x10, 가죽 x5"
     },
     {
@@ -1035,7 +1003,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"숯불 화덕과 모루까지 들였다. 무기는 더 이상 부서지지 않을 것 같다.\"",
       "설명": "3등급 제작법 레시피를 해금한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "석재 x20, 금속 x10, 가죽 x10"
     },
     {
@@ -1054,7 +1022,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"선반 위에 가지런히 놓인 자루들. 어제의 수확이 보인다.\"",
       "설명": "1등급 무기를 제작한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "목재 x10, 돌맹이 x10"
     },
     {
@@ -1077,7 +1045,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"천장까지 닿는 선반. 한 번 더 깊이 들어갈 수 있다.\"",
       "설명": "2등급 무기를 제작한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "목재 x18, 석재 x10, 끈 x6"
     },
     {
@@ -1100,7 +1068,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"잘 정리된 창고. 무엇이 어디에 있는지 손이 먼저 안다.\"",
       "설명": "3등급 무기를 제작한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "석재 x25, 금속 x8, 끈 x10"
     },
     {
@@ -1119,7 +1087,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"낡은 활 한 자루가 벽에 걸려 있다. 첫 사냥의 흔적.\"",
       "설명": "1등급 무기를 제작한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "목재 x12, 가죽 x5"
     },
     {
@@ -1142,7 +1110,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"발자국 도감과 추적 매듭. 짐승의 길이 눈에 들어온다.\"",
       "설명": "2등급 방어구를 제작한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "목재 x20, 석재 x10, 가죽 x10"
     },
     {
@@ -1165,7 +1133,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"사냥꾼 셋이 모이면 보스의 그림자도 피할 수 있다고들 한다.\"",
       "설명": "3등급 방어구를 제작한다",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "석재 x20, 금속 x5, 가죽 x15"
     },
     {
@@ -1183,7 +1151,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"손에 익숙한 도구가 늘어난다. 작은 가방이 가벼워진다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "나뭇가지 x3, 돌맹이 x2"
     },
@@ -1202,7 +1170,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"선반이 깔리고 손이 빨라진다. 더 챙길 자리가 생긴다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "나뭇가지 x4, 돌맹이 x3"
     },
@@ -1221,7 +1189,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"갈고리가 박힌다. 무거운 도구도 위에 걸린다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "나뭇가지 x5, 돌맹이 x3"
     },
@@ -1240,7 +1208,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"선반 한 줄이 더 늘어난다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "목재 x3, 석재 x2"
     },
@@ -1259,7 +1227,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"두 손이 자유로워진다. 짐 옮기기 한결 쉽다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "목재 x4, 석재 x3"
     },
@@ -1282,7 +1250,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"정돈된 자루마다 자리가 정해진다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "목재 x4, 석재 x3, 줄기 x1"
     },
@@ -1305,7 +1273,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"손이 닿지 않던 안쪽 칸까지 정리된다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "목재 x5, 석재 x4, 줄기 x1"
     },
@@ -1328,7 +1296,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"낡은 도구가 다듬어져 새것처럼 다시 매달린다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "목재 x5, 석재 x4, 줄기 x2"
     },
@@ -1351,7 +1319,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"벽도 천장도 도구로 가득 찬다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "목재 x6, 석재 x5, 줄기 x2"
     },
@@ -1374,7 +1342,7 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"벽 가득 도구가 걸린다. 짐을 두고 갈 일이 줄어든다.\"",
-      "설명": null,
+      "설명": "",
       "reward_passive": "pack+1",
       "cost_raw": "목재 x6, 석재 x5, 줄기 x3"
     },
@@ -1398,7 +1366,7 @@ window.TTD_DATA = {
       ],
       "effect_raw": "\"흙을 갈아 첫 밭을 낸다. 씨앗을 받을 자리가 생긴다.\"",
       "설명": "농장 시스템(D-258에서 활성화). 텐트 패턴 — 단계마다 밭 슬롯 +1, 씨앗 추출 슬롯 누적 예정.",
-      "reward_passive": null,
+      "reward_passive": "",
       "cost_raw": "나뭇가지 x6, 돌맹이 x4, 줄기 x4"
     },
     {
@@ -1420,8 +1388,8 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"두 번째 밭이 늘어선다. 손이 닿는 만큼 자랄 수 있다.\"",
-      "설명": null,
-      "reward_passive": null,
+      "설명": "",
+      "reward_passive": "",
       "cost_raw": "나뭇가지 x8, 돌맹이 x6, 줄기 x6"
     },
     {
@@ -1443,8 +1411,8 @@ window.TTD_DATA = {
         }
       ],
       "effect_raw": "\"씨앗 갈무리 자리도 생겼다. 캠프에 작은 농장이 자리잡았다.\"",
-      "설명": null,
-      "reward_passive": null,
+      "설명": "",
+      "reward_passive": "",
       "cost_raw": "목재 x5, 석재 x3, 줄기 x8"
     }
   ],
@@ -1573,31 +1541,6 @@ window.TTD_DATA = {
       "일회용": false,
       "설명 텍스트": "딱딱한 등껍질을 가진 작은 갑각류. 돌로 깨부숴야 살을 꺼낼 수 있다.",
       "효과 요약": "조합으로 게살을 바를 수 있다.",
-      "사용 효과": "",
-      "merge_result": null,
-      "merge_enabled": false,
-      "effect": {
-        "usable": false,
-        "actions": [],
-        "raw": ""
-      }
-    },
-    {
-      "id": "fiber_plant",
-      "name": "섬유풀",
-      "이름": "섬유풀",
-      "카테고리": "재료",
-      "재료 타입": "식물재료",
-      "아이템 등급": "1단계",
-      "가방칸수": "1x1",
-      "나오는 지역": [
-        "평원",
-        "덤불"
-      ],
-      "머지 가능": false,
-      "일회용": false,
-      "설명 텍스트": "말려서 줄기로 가공할 수 있다.",
-      "효과 요약": "끈·천 재료가 되는 풀잎.",
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
@@ -1801,7 +1744,7 @@ window.TTD_DATA = {
       "사용 효과": "",
       "merge_result": null,
       "merge_enabled": false,
-      "내구도": "3",
+      "내구도": 3,
       "effect": {
         "usable": false,
         "actions": [],
@@ -1909,7 +1852,7 @@ window.TTD_DATA = {
       "사용 효과": "health+2",
       "merge_result": null,
       "merge_enabled": false,
-      "내구도": "1",
+      "내구도": 1,
       "effect": {
         "usable": true,
         "actions": [
@@ -2668,7 +2611,7 @@ window.TTD_DATA = {
       "카테고리": "무기",
       "가방칸수": "3x1",
       "아이템 등급": "2단계",
-      "내구도": "5",
+      "내구도": 5,
       "설명 텍스트": "나뭇가지와 돌을 엮어 만든 단순한 창. 창으로 찌르기·창던지기 카드 사용.",
       "효과 요약": "기본 무기. 전투 카드 '창으로 찌르기' / '창던지기' 소지 조건."
     },
@@ -2679,7 +2622,7 @@ window.TTD_DATA = {
       "카테고리": "무기",
       "가방칸수": "2x1",
       "아이템 등급": "1단계",
-      "내구도": "3",
+      "내구도": 3,
       "설명 텍스트": "돌맹이를 장전해 날리는 소형 무기. 새총 쏘기 카드 사용.",
       "효과 요약": "새총 쏘기 카드 소지 조건."
     },
@@ -2806,8 +2749,7 @@ window.TTD_DATA = {
       "덤불": {
         "env": [
           "stem",
-          "branch",
-          "fiber_plant"
+          "branch"
         ],
         "food": [
           "berry",
@@ -2818,7 +2760,7 @@ window.TTD_DATA = {
         "env": [
           "stone",
           "branch",
-          "fiber_plant"
+          "stem"
         ],
         "food": [
           "berry",
@@ -2865,8 +2807,7 @@ window.TTD_DATA = {
       "덤불": {
         "env": [
           50,
-          35,
-          15
+          35
         ]
       },
       "평원": {
@@ -3509,7 +3450,7 @@ window.TTD_DATA = {
       "id": "fiber_seed",
       "seedId": "fiber_seed",
       "cropName": "섬유풀",
-      "sourceItemId": "fiber_plant",
+      "sourceItemId": "stem",
       "resultItemId": "stem",
       "growDays": 3,
       "waterCost": 1,
@@ -3518,7 +3459,7 @@ window.TTD_DATA = {
       "category": "material",
       "extractCount": 2,
       "extractDays": 1,
-      "note": "섬유풀 추출 → 씨앗 2개 / 성장 3일·물 1·수확 2 (수확물=줄기)"
+      "note": "줄기 추출 → 섬유풀 씨앗 2개 / 성장 3일·물 1·수확 2 (자기재배)"
     }
   ]
 };

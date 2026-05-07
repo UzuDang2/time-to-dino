@@ -163,7 +163,7 @@ class InventorySystem {
         //   addItem이 ITEMS[type]을 직접 조회하므로 여기 등록 필수. 시트 `아이템마스터`에도 동시 추가됨(D-259).
         //   shape [[1]] 단일 칸. 한글명·카테고리는 시트 SSOT가 resolveDef에서 덮어씀.
         root_tuber:     { name: '덩이뿌리',     shape: [[1]], grade: 1, mergeable: false, category: 'food',  merge_result: null },
-        fiber_plant:    { name: '섬유풀',       shape: [[1]], grade: 1, mergeable: false, category: 'env',   merge_result: null },
+        // D-269 (2026-05-07): fiber_plant 폐기 → stem 통합 (개념상 같음). 농장 fiber_seed의 sourceItemId/resultItemId 모두 stem.
         berry_seed:     { name: '산딸기 씨앗',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
         mushroom_spore: { name: '버섯 균사',    shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },
         root_tuber_eye: { name: '덩이뿌리 눈',  shape: [[1]], grade: 2, mergeable: false, category: 'seed',  merge_result: null },

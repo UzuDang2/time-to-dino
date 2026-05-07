@@ -42,8 +42,7 @@
     "덤불": {
       "env": [
         "stem",
-        "branch",
-        "fiber_plant"
+        "branch"
       ],
       "food": [
         "berry",
@@ -54,7 +53,7 @@
       "env": [
         "stone",
         "branch",
-        "fiber_plant"
+        "stem"
       ],
       "food": [
         "berry",
@@ -101,8 +100,7 @@
     "덤불": {
       "env": [
         50,
-        35,
-        15
+        35
       ]
     },
     "평원": {
