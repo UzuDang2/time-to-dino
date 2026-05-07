@@ -7768,6 +7768,7 @@
                 }
                 // D-150: armorState — 인벤 모든 방어구(shield/armor) 인스턴스별 잔여 durability.
                 //   item.id를 키로 인스턴스 단위 추적(동일 type 여러 개 보유 가능).
+                // D-274: category 추가 — 카드 종류별(crouch=armor / shield_block=shield) 분기 차감용.
                 const armorState = {};
                 {
                     const items = (inventory && inventory.items) || [];
@@ -7779,7 +7780,7 @@
                             ? it.durabilityLeft
                             : (typeof def.durability === 'number' ? def.durability : 0);
                         if (dur <= 0) continue;
-                        armorState[it.id] = { durabilityLeft: dur };
+                        armorState[it.id] = { durabilityLeft: dur, category: cat };
                     }
                 }
                 const res = CombatDeck.resolveHunt(prey, slots, {

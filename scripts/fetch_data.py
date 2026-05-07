@@ -1099,6 +1099,11 @@ def rows_to_armors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         name = str(r.get("name") or "").strip()
         if not aid or not name:
             continue
+        durability_raw = r.get("durability")
+        try:
+            durability_val = int(float(durability_raw)) if durability_raw not in (None, "", 0) else 0
+        except (TypeError, ValueError):
+            durability_val = 0
         armor: dict[str, Any] = {
             "id": aid,
             "name": name,
@@ -1112,6 +1117,10 @@ def rows_to_armors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "설명 텍스트": str(r.get("설명") or r.get("description") or "").strip(),
             "효과 요약": str(r.get("summary") or "").strip(),
         }
+        # D-274 (2026-05-07): 방어구 내구도 — 시트 `durability` 컬럼 신설.
+        if durability_val > 0:
+            armor["durability"] = durability_val
+            armor["내구도"] = durability_val
         out.append(armor)
     return out
 

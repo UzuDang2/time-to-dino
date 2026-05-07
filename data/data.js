@@ -461,11 +461,11 @@ window.TTD_DATA = {
       "level": 2,
       "hp": 5,
       "attack": 2,
-      "evade_rate": 3,
+      "evade_rate": 2,
       "type": "회피형",
       "meat": 1,
       "habitat": "숲",
-      "evade_per_turn": "3,3,3,3",
+      "evade_per_turn": "2,2,2,2",
       "drop_item": "big_meat",
       "actions_per_turn": "feint_strike,evade,evade,peek",
       "defense": 1,
@@ -2650,7 +2650,9 @@ window.TTD_DATA = {
       "defense": 1,
       "방어력": 1,
       "설명 텍스트": "임시방편 잎사귀 조끼",
-      "효과 요약": ""
+      "효과 요약": "",
+      "durability": 8,
+      "내구도": 8
     },
     {
       "id": "wooden_shield",
@@ -2663,7 +2665,9 @@ window.TTD_DATA = {
       "defense": 2,
       "방어력": 2,
       "설명 텍스트": "투박한 나무 방패",
-      "효과 요약": ""
+      "효과 요약": "",
+      "durability": 5,
+      "내구도": 5
     },
     {
       "id": "cloth_armor",
@@ -2676,7 +2680,9 @@ window.TTD_DATA = {
       "defense": 2,
       "방어력": 2,
       "설명 텍스트": "천 조각을 꿰맨 갑옷",
-      "효과 요약": ""
+      "효과 요약": "",
+      "durability": 12,
+      "내구도": 12
     },
     {
       "id": "reinforced_shield",
@@ -2689,7 +2695,9 @@ window.TTD_DATA = {
       "defense": 3,
       "방어력": 3,
       "설명 텍스트": "돌로 보강한 나무 방패",
-      "효과 요약": ""
+      "효과 요약": "",
+      "durability": 10,
+      "내구도": 10
     },
     {
       "id": "scale_mail",
@@ -2702,7 +2710,9 @@ window.TTD_DATA = {
       "defense": 3,
       "방어력": 3,
       "설명 텍스트": "비늘처럼 돌을 덧댄 갑옷",
-      "효과 요약": ""
+      "효과 요약": "",
+      "durability": 18,
+      "내구도": 18
     }
   ],
   "DROP_TABLE": {

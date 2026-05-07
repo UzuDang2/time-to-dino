@@ -289,11 +289,15 @@
                 weaponState[k] = { durabilityLeft: Number(v && v.durabilityLeft) || 0 };
             }
         }
-        // D-150: armorState 얕은 복사. 방어 카드 사용 시 모든 잔여 방어구 1씩 차감.
+        // D-150: armorState 얕은 복사.
+        // D-274: category 필드 보존 — recordArmorUseByCategory의 카드 종류별 분기 필수.
         const armorState = {};
         if (opts.armorState) {
             for (const [k, v] of Object.entries(opts.armorState)) {
-                armorState[k] = { durabilityLeft: Number(v && v.durabilityLeft) || 0 };
+                armorState[k] = {
+                    durabilityLeft: Number(v && v.durabilityLeft) || 0,
+                    category: v && v.category ? String(v.category) : null
+                };
             }
         }
 
@@ -338,17 +342,25 @@
             weaponUsage[wid] = slot;
         };
 
-        // D-150: 방어구 사용 기록 — 방어 카드 슬롯 발동 시 모든 잔여 방어구 1씩 차감.
-        const recordArmorUseAll = () => {
+        // D-274 (2026-05-07): 방어구 사용 기록 — 카드 종류별 카테고리 1개 인스턴스만 차감.
+        //   crouch(웅크리기) → armor 카테고리 첫 인스턴스 -1
+        //   shield_block(방패막기) → shield 카테고리 첫 인스턴스 -1
+        //   D-150 recordArmorUseAll(모든 방어구 일괄 차감)에서 변경 — 사용자 의도 정합.
+        //   호출 시점도 "카드 발동 시"가 아닌 "흡수 발생 시(takeDamageThisTurn defense stack 흡수)"로 이동.
+        const recordArmorUseByCategory = (category) => {
+            if (!category) return false;
             for (const [aid, state] of Object.entries(armorState)) {
                 if (!state || state.durabilityLeft <= 0) continue;
+                if (state.category !== category) continue;
                 state.durabilityLeft = Math.max(0, state.durabilityLeft - 1);
                 const slot = armorUsage[aid] || { used: 0, broken: false };
                 slot.used += 1;
                 slot.broken = slot.broken || state.durabilityLeft <= 0;
                 slot.durabilityFinal = state.durabilityLeft;
                 armorUsage[aid] = slot;
+                return true;
             }
+            return false;
         };
 
         let terminatedOutcome = null;
@@ -386,12 +398,21 @@
                 ? actionDef.defense : preyDefenseFallback;
             const cardDefense = Math.max(0, Number(card && card.defense) || 0);
             const cardEvade = Math.max(0, Number(card && card.evade) || 0);
+            // D-274: 카드 종류별 방어구 카테고리 분기. crouch=armor / shield_block=shield.
+            //   다른 방어 카드(향후 추가)는 null — 차감 X.
+            const cardArmorCategory = (card && cardDefense > 0)
+                ? (card.id === 'shield_block' ? 'shield' : (card.id === 'crouch' ? 'armor' : null))
+                : null;
 
-            // D-246: 방어/회피 카드 사용 시 stack ← cap. 카드 자체 수치 무관(트리거 역할).
-            //   stack < cap이면 cap으로 set, 이미 cap이면 변화 X. age 0 리셋(부여 turn).
-            if (card && cardDefense > 0 && defenseStack < defenseCap) {
-                defenseStack = defenseCap;
-                defenseStackAge = 0;
+            // D-246: 방어/회피 카드 사용 시 stack ← cap. age 0 리셋(부여 turn).
+            // D-274: cap 동적 합산 — 장비/패시브(defenseCap) + 카드 자체 defense.
+            //   잎사귀조끼 1 + 웅크리기 1 = stack 2 흡수.
+            if (card && cardDefense > 0) {
+                const triggeredCap = defenseCap + cardDefense;
+                if (defenseStack < triggeredCap) {
+                    defenseStack = triggeredCap;
+                    defenseStackAge = 0;
+                }
             }
             if (card && cardEvade > 0 && evadeStack < evadeCap) {
                 evadeStack = evadeCap;
@@ -411,6 +432,11 @@
                 if (defenseStack > 0) {
                     const absorbed = Math.min(defenseStack, preyAttackThisTurn);
                     defenseStack -= absorbed;
+                    // D-274: 흡수가 발생했고 이 turn 카드가 armor/shield 분기면 인스턴스 1개 차감.
+                    //   (잔존 stack 흡수 — 다음 turn 카드 미사용·다른 카드 — 는 차감 X.)
+                    if (absorbed > 0 && cardArmorCategory) {
+                        recordArmorUseByCategory(cardArmorCategory);
+                    }
                     const dmg = preyAttackThisTurn - absorbed;
                     if (dmg > 0) playerDamageTaken += dmg;
                     return dmg;
@@ -429,10 +455,8 @@
                 continue;
             }
 
-            // D-150: 방어 카드 슬롯이면 인벤 모든 방어구 내구도 1씩 차감.
-            //   cardDefense > 0 = 카드의 finalDefense가 인벤 합산까지 포함되어 있으니
-            //   자체 defense가 양수라는 뜻 — crouch/shield_block 등.
-            if (cardDefense > 0) recordArmorUseAll();
+            // D-274: D-150 recordArmorUseAll 호출 폐기 — 적중 시(takeDamageThisTurn 안)에 카테고리 분기 차감.
+            //   카드 발동만으로 차감하던 패턴은 사용자 신고로 정정. crouch/shield_block 적중 turn에만 1 차감.
 
             // D-51 auto-fail: 무기 요구 카드인데 무기 재고가 0이면 시도조차 하지 않음.
             // D-221: weaponIds 배열 — 무기 여러 개 require하는 카드(화살쏘기)는 어느 하나라도 0이면 fail.
