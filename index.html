@@ -11714,12 +11714,24 @@
                         onCompleteQuest={handleCompleteQuest}
                         onTakeQuest={(questId) => {
                             // D-148: [받기] — quests.active에 추가. 이미 active/completed면 무시.
+                            // D-270 (2026-05-07): 빌딩 quest 'bld_<id>_<stage>'는 buildingLevels 기준으로
+                            //   재검증. completedQuests에 있어도 buildingLevels[id] < stage이면 받기 허용
+                            //   (데이터 모순 회복 — 직전 시뮬에서 buildingLevels reset 등으로 발생 가능).
                             setCampState(prev => {
-                                const taken = new Set([
-                                    ...((prev.quests && prev.quests.active) || []).map(q => q.id),
-                                    ...((prev.quests && prev.quests.completed) || []).map(q => q.id)
-                                ]);
-                                if (taken.has(questId)) return prev;
+                                const activeIds = new Set(((prev.quests && prev.quests.active) || []).map(q => q.id));
+                                if (activeIds.has(questId)) return prev;  // 이미 진행 중
+
+                                const bldMatch = typeof questId === 'string' && questId.match(/^bld_([a-z_]+)_(\d+)$/);
+                                if (bldMatch) {
+                                    const bId = bldMatch[1];
+                                    const bStage = Number(bldMatch[2]);
+                                    const builtStage = Number((prev.buildingLevels || {})[bId]) || 0;
+                                    if (builtStage >= bStage) return prev;  // 이미 빌드된 stage 이상 — 받기 무의미
+                                    // 빌딩 quest는 completedQuests 무시 (버그 회복용 + 데이터 모순 방지)
+                                } else {
+                                    const completedIds = new Set(((prev.quests && prev.quests.completed) || []).map(q => q.id));
+                                    if (completedIds.has(questId)) return prev;
+                                }
                                 return {
                                     ...prev,
                                     quests: {
