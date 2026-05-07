@@ -1211,7 +1211,9 @@ button:disabled {
 .camp-hub-map {
     position: relative;
     width: 100%;
-    aspect-ratio: 0.7;
+    /* D-271 (2026-05-07): 화면 가득 차게 키움 — 0.7 → 0.55 (더 세로 길게).
+       모바일 414×800 기준 약 760px → 화면 대부분 차지. 빌딩 9 + 임무 게시판 1 + 잠금 1 = 11 오브젝트 fit. */
+    aspect-ratio: 0.55;
     background:
         radial-gradient(ellipse at 50% 90%, rgba(80,55,30,0.45) 0%, transparent 55%),
         linear-gradient(180deg, #1a2438 0%, #0f1828 100%);
