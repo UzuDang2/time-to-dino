@@ -5136,7 +5136,8 @@
                         })()}
 
                         {/* D-262: 씨앗 추출 슬롯 그리드 — 밭과 동일 패턴, growing 톤만 파랑 차등.
-                            empty 클릭 → 추출 picker 팝업, resultReady 클릭 → 즉시 수령. */}
+                            empty 클릭 → 추출 picker 팝업, resultReady 클릭 → 즉시 수령.
+                            D-268: 잠금 라벨에 도구작업대 해제 조건 추가. 추출 idx 1은 farm Lv.3 또는 watchtower Lv.5. */}
                         <div style={sectionTitle}>씨앗 추출 슬롯</div>
                         <div style={slotGrid}>
                             {Array.from({ length: FARM_MAX_EXTRACT }).map((_, idx) => {
@@ -5145,7 +5146,8 @@
                                     return (
                                         <div key={idx} style={slotLocked}>
                                             🔒
-                                            <div style={{ marginTop: '4px', fontSize: '10px' }}>Lv.3</div>
+                                            <div style={{ marginTop: '4px', fontSize: '9px', lineHeight: 1.3 }}>농장 Lv.3</div>
+                                            <div style={{ fontSize: '9px', color: '#5a6a8a', lineHeight: 1.3 }}>또는 🛠️5</div>
                                         </div>
                                     );
                                 }
@@ -5189,11 +5191,14 @@
                             {Array.from({ length: FARM_MAX_PLOTS }).map((_, idx) => {
                                 const active = idx < capacity.plots;
                                 if (!active) {
-                                    const unlockLv = idx <= 2 ? 1 : (idx <= 3 ? 2 : 3);
+                                    // D-268: 밭 idx별 unlock 조건. idx 0~2 농장 Lv.1, idx 3 농장 Lv.2/🛠️7, idx 4 농장 Lv.3/🛠️9.
+                                    const farmLv = idx <= 2 ? 1 : (idx <= 3 ? 2 : 3);
+                                    const watchtowerLv = idx === 3 ? 7 : (idx === 4 ? 9 : null);
                                     return (
                                         <div key={idx} style={slotLocked}>
                                             🔒
-                                            <div style={{ marginTop: '4px', fontSize: '10px' }}>Lv.{unlockLv}</div>
+                                            <div style={{ marginTop: '4px', fontSize: '9px', lineHeight: 1.3 }}>농장 Lv.{farmLv}</div>
+                                            {watchtowerLv && <div style={{ fontSize: '9px', color: '#5a6a8a', lineHeight: 1.3 }}>또는 🛠️{watchtowerLv}</div>}
                                         </div>
                                     );
                                 }
