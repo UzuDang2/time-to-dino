@@ -4978,7 +4978,7 @@
         // D-258 (2026-05-06): 농장 패널 — 씨앗 추출 슬롯 + 밭 슬롯 관리 UI.
         //   stage 1+ 진입 시 BuildingDetailModal 대신 이쪽 라우팅. stage 0(미빌드)은 기존 BuildingDetailModal로
         //   짓기 흐름([받기]/[완수]) 그대로. 다음 단계 업그레이드는 D-260 후속.
-        function FarmModal({ building, campState, onClose, onCampStateUpdate }) {
+        function FarmModal({ building, campState, onClose, onCampStateUpdate, onTakeQuest, onCompleteQuest, activeQuests }) {
             if (!building || building.id !== 'farm') return null;
             // D-261 (2026-05-06): UI 흐름 개편 — 메인=상태만, 선택 목록=팝업 분리.
             //   data 구조·헬퍼·handle*·advanceFarmDay 모두 D-257/D-258 그대로. UI 레이어만 재구성.
@@ -5178,6 +5178,82 @@
                             return (
                                 <div style={{ fontSize: '10px', color: '#bbd0e5', marginBottom: '4px' }}>
                                     🛠️ 도구작업대 Lv.{watchtowerStage} 보너스: {parts.join(' / ')}
+                                </div>
+                            );
+                        })()}
+
+                        {/* D-272 (2026-05-07): 농장 다음 stage quest 박스 — 받기/완수 흐름 인라인.
+                            stage<3이고 nextDef 있을 때 노출. 빌딩 카드 클릭 → BuildingDetailModal로
+                            우회 안 하고 FarmModal 안에서 직접 처리. */}
+                        {(() => {
+                            const farmStageNum = Number(farmStage) || 0;
+                            const maxFarm = getMaxStage('farm') || 3;
+                            if (farmStageNum >= maxFarm) {
+                                return (
+                                    <div style={{ fontSize: '11px', color: '#888', marginTop: '8px', marginBottom: '8px' }}>
+                                        🏆 농장 최대 단계 도달 (Lv.{maxFarm})
+                                    </div>
+                                );
+                            }
+                            const nextDef = getNextBuildingStage('farm', farmStageNum);
+                            if (!nextDef) return null;
+                            const questId = `bld_farm_${nextDef.stage}`;
+                            const inActive = (activeQuests || []).some(q => q && q.id === questId);
+                            const costRows = (nextDef.cost || []).map(c => {
+                                const idEn = InventorySystem.findIdByKoreanName(c.material);
+                                const have = idEn ? countOf(idEn) : 0;
+                                const need = Number(c.count) || 0;
+                                return { koName: c.material, have, need, ok: !!idEn && have >= need };
+                            });
+                            const canComplete = inActive && costRows.length > 0 && costRows.every(r => r.ok);
+                            return (
+                                <div style={{
+                                    background: '#16213e', border: '1px solid #2a3a5e', borderRadius: '8px',
+                                    padding: '10px 12px', marginTop: '10px', marginBottom: '4px'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#d4b84a' }}>
+                                            🌱 Lv.{nextDef.stage} {inActive ? '진행 중' : '진행 가능'}
+                                        </div>
+                                        {!inActive && (
+                                            <button
+                                                style={{
+                                                    background: '#d4b84a', color: '#1a1a2e', border: 'none',
+                                                    padding: '5px 16px', borderRadius: '5px', fontSize: '11px',
+                                                    fontWeight: 700, cursor: 'pointer'
+                                                }}
+                                                onClick={() => onTakeQuest && onTakeQuest(questId)}
+                                            >
+                                                받기
+                                            </button>
+                                        )}
+                                        {inActive && (
+                                            <button
+                                                disabled={!canComplete}
+                                                style={{
+                                                    background: canComplete ? '#4CAF50' : '#444',
+                                                    color: '#fff', border: 'none', padding: '5px 16px',
+                                                    borderRadius: '5px', fontSize: '11px', fontWeight: 700,
+                                                    cursor: canComplete ? 'pointer' : 'not-allowed'
+                                                }}
+                                                onClick={() => canComplete && onCompleteQuest && onCompleteQuest(questId)}
+                                            >
+                                                완수
+                                            </button>
+                                        )}
+                                    </div>
+                                    {nextDef.effect_raw && (
+                                        <div style={{ fontSize: '11px', fontStyle: 'italic', color: '#bbb', marginBottom: '6px' }}>
+                                            {String(nextDef.effect_raw).replace(/^"|"$/g, '')}
+                                        </div>
+                                    )}
+                                    <div style={{ fontSize: '11px', lineHeight: 1.5 }}>
+                                        {costRows.map(r => (
+                                            <div key={r.koName} style={{ color: r.ok ? '#8bd17c' : '#ddd' }}>
+                                                · {r.koName} {r.have}/{r.need}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             );
                         })()}
@@ -6188,6 +6264,12 @@
                             campState={campState}
                             onClose={() => setSelectedBuilding(null)}
                             onCampStateUpdate={onCampStateUpdate}
+                            activeQuests={activeQuests}
+                            onTakeQuest={(qid) => onTakeQuest && onTakeQuest(qid)}
+                            onCompleteQuest={(qid) => {
+                                if (onCompleteQuest) onCompleteQuest(qid);
+                                // 완수 후 모달 닫지 않음 — farmStage 갱신되어 quest 박스가 다음 stage 표시
+                            }}
                         />
                     ) : selectedBuilding && (
                         <BuildingDetailModal
