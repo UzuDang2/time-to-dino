@@ -403,7 +403,7 @@ window.TTD_DATA = {
       "habitat": "덤불,숲",
       "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "actions_per_turn": "tusk_charge,attack,defend,evade",
+      "actions_per_turn": "tusk_charge,attack,?,evade",
       "defense": 1,
       "aggressive": true
     },
@@ -419,7 +419,7 @@ window.TTD_DATA = {
       "habitat": "동굴",
       "evade_per_turn": "2,2,2,2",
       "drop_item": "big_meat",
-      "actions_per_turn": "pounce_bite,evade,attack,peek",
+      "actions_per_turn": "pounce_bite,evade,?,peek",
       "defense": 1,
       "aggressive": true
     },
@@ -435,7 +435,7 @@ window.TTD_DATA = {
       "habitat": "평원,숲",
       "evade_per_turn": "3,3,3,3",
       "drop_item": "big_meat",
-      "actions_per_turn": "evade,gore,attack,peek",
+      "actions_per_turn": "evade,gore,?,peek",
       "defense": 1,
       "aggressive": false
     },
@@ -451,7 +451,7 @@ window.TTD_DATA = {
       "habitat": "덤불",
       "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "actions_per_turn": "defend,frenzy_claw,evade,attack",
+      "actions_per_turn": "defend,frenzy_claw,?,attack",
       "defense": 1,
       "aggressive": false
     },
@@ -467,7 +467,7 @@ window.TTD_DATA = {
       "habitat": "숲",
       "evade_per_turn": "2,2,2,2",
       "drop_item": "big_meat",
-      "actions_per_turn": "feint_strike,evade,evade,peek",
+      "actions_per_turn": "feint_strike,evade,?,peek",
       "defense": 1,
       "aggressive": false
     },
@@ -483,7 +483,7 @@ window.TTD_DATA = {
       "habitat": "평원",
       "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "actions_per_turn": "wing_slap,evade,defend,peek",
+      "actions_per_turn": "wing_slap,evade,?,peek",
       "defense": 1,
       "aggressive": false
     },
@@ -499,7 +499,7 @@ window.TTD_DATA = {
       "habitat": "동굴",
       "evade_per_turn": "1,1,1,1",
       "drop_item": "big_meat",
-      "actions_per_turn": "iron_curl,defend,evade,peek",
+      "actions_per_turn": "iron_curl,defend,?,peek",
       "defense": 1,
       "aggressive": false
     }

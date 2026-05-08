@@ -1,6 +1,8 @@
 # project-state.md
 
-마지막 검증: 2026-05-08 (**D-275, 연속 카드 보너스 +1 — 같은 카드 id 직전 슬롯과 연속 시 핵심 스탯(damage>defense>evade>accuracy 우선) +1. 슬롯 골드 outline + "콤보 +1" 배지 + 글로우 + 턴 로그 "연속 +1" chip. resolveHunt 단위 검증 통과(3연속 punch → T2/T3 dmg 1→2, 다른 카드 끼면 리셋).**).
+마지막 검증: 2026-05-08 (**D-276, L2 사냥감 행동패턴 ❓ 슬롯 — 7종 모두 turn3을 `?`로 통일(시트 update + make data). UI는 ❓·"알 수 없음"·보라 dashed 보더. resolveHunt가 turn 진입 시 비-? 풀에서 균등 추첨 → revealedAction 부착, UI step1에서 setSlotActions로 swap. 단위 sim 4종 × 300회 → revealedTurns 100% + 분포 균등(33%씩 3가지). HuntCombatModal 스크린샷 검증 ✓.**).
+
+이전 검증: 2026-05-08 (D-275, 연속 카드 보너스 +1 — 같은 카드 id 직전 슬롯과 연속 시 핵심 스탯(damage>defense>evade>accuracy 우선) +1. 슬롯 골드 outline + "콤보 +1" 배지 + 글로우 + 턴 로그 "연속 +1" chip. resolveHunt 단위 검증 통과(3연속 punch → T2/T3 dmg 1→2, 다른 카드 끼면 리셋).).
 
 이전 검증: 2026-05-06 (D-249 v2 / D-250, ① 공격성 사냥감 선공 = HP 차감 → 자동 hunt 진입(사냥시작 버튼 자동 발동)으로 정정. ② 도망치기 = 즉발 → 카드 슬롯 추가형(20% × 무한 사용)으로 재정의. 시트 `전투카드.run_away.success_rate` 25→20).
 

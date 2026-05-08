@@ -7115,27 +7115,38 @@
                             const dmg = (actionDef.damage > 0) ? actionDef.damage : (preyAttack || 0);
                             const def = (actionDef.defense > 0) ? actionDef.defense : (preyDefense || 0);
                             const acc = Number(actionDef.accuracy) || 0;
+                            // D-276: unknown 슬롯 — ❓ 큰 글자 + 보라톤 강조. reveal 직전엔 isCurrent 외곽선이 강조 역할.
+                            const isUnknown = type === 'unknown';
                             return (
                                 <div key={i} style={{
                                     padding: '6px 4px',
-                                    background: '#2a2a3e',
-                                    border: isCurrent ? '2px solid #d4b84a' : '1px solid #444',
+                                    background: isUnknown ? '#3a2a4e' : '#2a2a3e',
+                                    border: isCurrent ? '2px solid #d4b84a' : (isUnknown ? '1px dashed #b890e0' : '1px solid #444'),
                                     boxShadow: isCurrent ? '0 0 10px rgba(212, 184, 74, 0.55)' : 'none',
                                     borderRadius: 6,
                                     fontSize: 11,
                                     textAlign: 'center',
                                     opacity: isDone ? 0.4 : 1,
-                                    transition: 'opacity 0.2s, border-color 0.2s, box-shadow 0.2s',
+                                    transition: 'opacity 0.2s, border-color 0.2s, box-shadow 0.2s, background 0.3s',
                                     lineHeight: 1.3
                                 }}>
                                     <div style={{ color: '#888', fontSize: 10 }}>T{i + 1}</div>
-                                    <div style={{ color: '#ddd', fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{actionDef.name}</div>
-                                    <div style={{ marginTop: 2, fontSize: 10, display: 'inline-flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
-                                        {type === 'attack' && dmg > 0 && <span style={{ color: '#ff9999' }}>🗡️{dmg}</span>}
-                                        {type === 'attack' && acc > 0 && <span style={{ color: '#8bd17c' }}>🏹{acc}</span>}
-                                        {type === 'defend' && def > 0 && <span style={{ color: '#4db8ff' }}>🛡️{def}</span>}
-                                        {type === 'evade' && <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />}
-                                    </div>
+                                    {isUnknown ? (
+                                        <>
+                                            <div style={{ fontSize: 18, lineHeight: 1, color: '#d4b8ff' }}>❓</div>
+                                            <div style={{ color: '#bba0d8', fontSize: 10, marginTop: 2 }}>알 수 없음</div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div style={{ color: '#ddd', fontWeight: 600, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{actionDef.name}</div>
+                                            <div style={{ marginTop: 2, fontSize: 10, display: 'inline-flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                                {type === 'attack' && dmg > 0 && <span style={{ color: '#ff9999' }}>🗡️{dmg}</span>}
+                                                {type === 'attack' && acc > 0 && <span style={{ color: '#8bd17c' }}>🏹{acc}</span>}
+                                                {type === 'defend' && def > 0 && <span style={{ color: '#4db8ff' }}>🛡️{def}</span>}
+                                                {type === 'evade' && <EvadeBadge baseEvade={ev.base} finalEvade={ev.final} consumed={consumed} />}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             );
                         })}
@@ -7572,10 +7583,15 @@
             // D-75/D-98/D-108: actions_per_turn CSV 파싱 → 턴별 actionDef 배열.
             //   SSOT는 combatDeck.js::parsePreyActions + findPreyAction.
             //   slotActions[i] = { id, name, type, damage, accuracy, defense } — UI 배지에 직접 사용.
-            const slotActions = React.useMemo(() => {
+            // D-276: slotActions는 state로 관리 — '?' 슬롯이 resolve 시 reveal되면 해당 인덱스 교체.
+            //   초기값은 prey.actions_per_turn 기반. resolve의 step1(t+0) 시점에 turns[t].revealedAction으로 patch.
+            const initialSlotActions = React.useMemo(() => {
                 const ids = CombatDeck.parsePreyActions(prey, SLOT_COUNT);
                 return ids.map(id => CombatDeck.findPreyAction(id));
             }, [prey.actions_per_turn, prey.level, SLOT_COUNT]);
+            const [slotActions, setSlotActions] = useState(initialSlotActions);
+            // prey 바뀌면 reset (다른 사냥감 조우 케이스).
+            React.useEffect(() => { setSlotActions(initialSlotActions); }, [initialSlotActions]);
 
             const computedEvades = React.useMemo(() => {
                 const byTurn = CombatDeck.parseEvadesByTurn(prey);
@@ -7867,6 +7883,15 @@
                     const isPlayerDefend = !!(card && cardDefenseVal > 0);
                     setTimeout(() => {
                         setLogs(prev => [...prev, turn]);
+                        // D-276: '?' 슬롯 reveal — turn 시작 시점에 실제 행동으로 교체.
+                        //   resolveHunt가 turns[t].revealedAction을 채워줌. UI는 같은 actionDef shape.
+                        if (turn.revealedFromUnknown && turn.revealedAction) {
+                            setSlotActions(prev => {
+                                const next = [...prev];
+                                next[idx] = turn.revealedAction;
+                                return next;
+                            });
+                        }
                         setActiveEvent({
                             id: baseId + 1,
                             slotIdx: idx,

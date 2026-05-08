@@ -245,8 +245,14 @@
     // D-108: 행동 id → 행동 정의 lookup. SSOT는 시트 '사냥감행동' (TTD_DATA.PREY_ACTIONS).
     //   못 찾으면 fallback — id를 type으로 보고 기본값(damage/accuracy/defense=0).
     //   기본 type 토큰('attack'/'defend'/'evade'/'peek')도 시트에 row로 있으므로 lookup 성공이 정상 경로.
+    // D-276: '?' 토큰 — L2 사냥감의 미공개 슬롯. UI는 '알 수 없음'(❓)으로 표시,
+    //   resolveHunt가 turn 진입 시점에 그 사냥감의 비-? 풀에서 균등 추첨하여 실제 행동 적용.
     const FALLBACK_TYPES = new Set(['attack', 'defend', 'evade', 'peek']);
     function findPreyAction(id) {
+        // D-276: '?' sentinel — UI 미리보기용 unknown 행동. 추첨/실행은 resolveHunt에서.
+        if (id === '?' || id === 'unknown') {
+            return { id: '?', name: '알 수 없음', type: 'unknown', damage: 0, accuracy: 0, defense: 0 };
+        }
         const TTD = (typeof window !== 'undefined' && window.TTD_DATA) ? window.TTD_DATA : null;
         const pool = (TTD && Array.isArray(TTD.PREY_ACTIONS)) ? TTD.PREY_ACTIONS : [];
         const hit = pool.find(a => a && a.id === id);
@@ -263,6 +269,19 @@
         // Fallback: id 자체가 기본 type이면 그대로, 아니면 peek로.
         const t = FALLBACK_TYPES.has(id) ? id : 'peek';
         return { id, name: id, type: t, damage: 0, accuracy: 0, defense: 0 };
+    }
+
+    // D-276: '?' 슬롯 reveal — 그 prey의 actions_per_turn에서 ?·빈값을 제외한 풀에서 균등 랜덤 추첨.
+    //   풀이 비면 'peek'로 폴백 (사냥감이 멈칫 — 안전한 기본).
+    //   resolveHunt 내부 호출. seed는 Math.random() — 매 턴 진입 시 결정.
+    function rollUnknownAction(prey) {
+        const raw = prey && prey.actions_per_turn;
+        const parts = (raw == null || raw === '') ? [] :
+            String(raw).split(',').map(s => s.trim().toLowerCase())
+                .filter(s => s && s !== '?' && s !== 'unknown');
+        if (parts.length === 0) return findPreyAction('peek');
+        const pick = parts[Math.floor(Math.random() * parts.length)];
+        return findPreyAction(pick);
     }
 
     // D-48/D-50/D-51/D-60/D-74/D-75/D-98 개정: 사냥 전투 해결 로직.
@@ -401,7 +420,14 @@
                 }
             }
             // D-108: 행동 id → actionDef lookup. type/damage/accuracy/defense 모두 actionDef 기준.
-            const actionDef = findPreyAction(preyActions[t]);
+            // D-276: '?' 슬롯 — UI엔 '알 수 없음'으로 미리 노출, 여기서 turn 진입 시 실제 행동으로 reveal.
+            //   rollUnknownAction이 그 prey의 비-? 풀에서 균등 추첨. turns[t]에 reveal flag 부착.
+            let actionDef = findPreyAction(preyActions[t]);
+            let revealedFromUnknown = false;
+            if (actionDef.type === 'unknown') {
+                actionDef = rollUnknownAction(prey);
+                revealedFromUnknown = true;
+            }
             const preyActionType = actionDef.type;
             const preyActionLabel = actionDef.name || (
                 preyActionType === 'attack' ? '공격'
@@ -409,6 +435,19 @@
                 : preyActionType === 'peek'   ? '눈치'
                 : '회피'
             );
+
+            // D-276: '?' 슬롯 reveal info — 모든 turns.push 객체에 일관 부착.
+            const revealInfo = revealedFromUnknown ? {
+                revealedFromUnknown: true,
+                revealedAction: {
+                    id: actionDef.id,
+                    name: actionDef.name,
+                    type: actionDef.type,
+                    damage: actionDef.damage,
+                    accuracy: actionDef.accuracy,
+                    defense: actionDef.defense,
+                }
+            } : {};
 
             // 턴별 prey 수치 — actionDef 우선, 0이면 prey 폴백.
             const preyAttackThisTurn = (actionDef.damage > 0)
@@ -476,7 +515,8 @@
                 turns.push({
                     turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: null,
                     hit: false, preyHpAfter: hp,
-                    ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
+                    ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {}),
+                    ...revealInfo
                 });
                 continue;
             }
@@ -499,7 +539,8 @@
                     turns.push({
                         turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
                         hit: false, autoFail: true, reason: 'weapon_missing', preyHpAfter: hp,
-                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
+                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {}),
+                        ...revealInfo
                     });
                     continue;
                 }
@@ -511,7 +552,8 @@
             if (card.id === 'run_away' && cardHit) {
                 turns.push({
                     turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
-                    outcome: 'player_flee', preyHpAfter: hp
+                    outcome: 'player_flee', preyHpAfter: hp,
+                    ...revealInfo
                 });
                 terminatedOutcome = 'player_fled';
                 break;
@@ -553,7 +595,8 @@
                         hit: true, preyEvaded: false, damage: appliedDamage,
                         effectiveEvade, preyHpAfter: hp,
                         ...(defenseReduction > 0 ? { preyDefended: defenseReduction } : {}),
-                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
+                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {}),
+                        ...revealInfo
                     });
                     if (hp <= 0) {
                         terminatedOutcome = 'victory';
@@ -565,7 +608,8 @@
                         turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
                         hit: true, preyEvaded: true,
                         effectiveEvade, preyHpAfter: hp,
-                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
+                        ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {}),
+                        ...revealInfo
                     });
                 }
             } else {
@@ -574,12 +618,14 @@
                 turns.push({
                     turn: t + 1, preyAction: preyActionLabel, preyActionType, userCard: card,
                     hit: false, preyHpAfter: hp,
-                    ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {})
+                    ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {}),
+                    ...revealInfo
                 });
             }
 
             // D-246: turn 끝 시점 stack 스냅샷 — 마지막 push된 turn에 기록 + 별도 events 배열.
             // D-275: 콤보 정보도 같이 부착 — UI가 슬롯/턴 로그에서 콤보 발동 표시 가능.
+            // D-276: revealedFromUnknown / revealedAction은 turns.push 시점에 직접 박았으므로 여기선 stack/combo만.
             const lastTurn = turns[turns.length - 1];
             if (lastTurn) {
                 lastTurn.defenseStack = defenseStack;
