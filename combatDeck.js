@@ -518,6 +518,14 @@
                     ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {}),
                     ...revealInfo
                 });
+                // D-277: null 카드 turn에도 stack 스냅샷 부착 — UI live stack 추적용.
+                //   takeDamageThisTurn에서 흡수 발생했을 수 있으므로 turn 끝 시점 값을 기록.
+                const lastTurnNull = turns[turns.length - 1];
+                if (lastTurnNull) {
+                    lastTurnNull.defenseStack = defenseStack;
+                    lastTurnNull.evadeStack = evadeStack;
+                }
+                stackEvents.push({ turn: t + 1, defenseStack, evadeStack });
                 continue;
             }
 
@@ -542,6 +550,13 @@
                         ...(dmgTaken > 0 ? { playerDamage: dmgTaken } : {}),
                         ...revealInfo
                     });
+                    // D-277: autoFail turn에도 stack 스냅샷 — UI live stack 추적용.
+                    const lastTurnAF = turns[turns.length - 1];
+                    if (lastTurnAF) {
+                        lastTurnAF.defenseStack = defenseStack;
+                        lastTurnAF.evadeStack = evadeStack;
+                    }
+                    stackEvents.push({ turn: t + 1, defenseStack, evadeStack });
                     continue;
                 }
             }

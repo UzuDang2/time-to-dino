@@ -1013,6 +1013,36 @@ button:disabled {
 .hunt-card-stat--acc { background: #2e4168; }
 .hunt-card-stat--eva { background: #365850; }
 .hunt-card-stat--def { background: #454b56; }
+/* D-277: 라이브 방어 stack 활성 시 글로우 펄스 — "나" 박스 🛡️ 배지에 적용. */
+@keyframes defense-stack-pulse {
+    0%   { box-shadow: 0 0 0 rgba(77, 184, 255, 0); background: rgba(77, 184, 255, 0.15); }
+    100% { box-shadow: 0 0 8px rgba(77, 184, 255, 0.85); background: rgba(77, 184, 255, 0.35); }
+}
+.defense-stack-active {
+    animation: defense-stack-pulse 0.6s ease-in-out infinite alternate;
+}
+/* D-277: 방어 카드 "2턴" chip — def 스탯 컬럼(좌측) 가장 아래 추가.
+   def 스탯 칸 바로 아래 자연 스택. 다른 스탯과 같은 폭, 파란톤으로 시인성 강조. */
+.hunt-card-defense-duration {
+    position: absolute;
+    left: 0;
+    /* hunt-card-stats top 17.62%에서 시작해 def 스탯이 마지막이라 카드 폭 30/25 비율 칸 N개 + gap 누적.
+       정확한 계산보다 stats 컨테이너 직속 자식이 아니라 절대배치니 별도 위치 — def 칸 바로 아래로 잡기 위해 stats 절대좌표 + 4번째 슬롯 근사값 사용.
+       att/acc/eva/def 4스탯 가정 시 stats top 17.62% + 4 * (3.36cqw + gap) ≈ 너무 변동적. 단순화: 카드 좌측 컬럼 하단 영역에 fixed 위치. */
+    bottom: 30%;
+    width: 21.28%;
+    background: linear-gradient(135deg, #4a8fdb 0%, #2c5d99 100%);
+    color: #eaf3ff;
+    font-size: 6.5cqw;
+    font-weight: 700;
+    text-align: center;
+    padding: 1.2cqw 0;
+    border-radius: 1.79cqw 1.79cqw 1.79cqw 0;
+    box-shadow: 0 0 4cqw rgba(74, 143, 219, 0.55);
+    z-index: 2;
+    pointer-events: none;
+    letter-spacing: 0.5px;
+}
 .hunt-card-corner-badge {
     position: absolute;
     top: 2.14cqw;

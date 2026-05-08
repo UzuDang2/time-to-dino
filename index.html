@@ -7010,6 +7010,8 @@
             slotsFull,
             // D-246: 방어/회피 스택 cap 표시 (장비/패시브 합산 max). 동적 stack 진행은 후속.
             defenseCap, evadeCap,
+            // D-277: 라이브 방어 stack — turn 진행 중 동적값. 0이면 dim, >0이면 글로우 펄스.
+            liveDefenseStack = 0,
         }) {
             const healthPct = Math.max(0, Math.min(100, (playerHealth / Math.max(1, maxHealth)) * 100));
             const hungerPct = Math.max(0, Math.min(100, (playerHunger / Math.max(1, maxHunger)) * 100));
@@ -7310,7 +7312,17 @@
                                         <span>❤️ {playerHealth}/{maxHealth}</span>
                                         {/* D-246: 방어/회피 cap 배지 — 장비/패시브 합산 max 표시. 0이면 숨김. */}
                                         {defenseCap > 0 && (
-                                            <span style={{ color: '#a8c4ff' }} title="방어 카드 사용 시 이만큼 스택 부여">🛡️ {defenseCap}</span>
+                                            <span
+                                                className={liveDefenseStack > 0 ? 'defense-stack-active' : ''}
+                                                style={{
+                                                    color: liveDefenseStack > 0 ? '#cfe5ff' : '#a8c4ff',
+                                                    fontWeight: liveDefenseStack > 0 ? 800 : 400,
+                                                    padding: liveDefenseStack > 0 ? '0 4px' : 0,
+                                                    borderRadius: 4,
+                                                }}
+                                                title="방어 카드 사용 시 이만큼 스택 부여 (현재/최대). 발동 turn + 다음 turn까지 2턴 흡수.">
+                                                🛡️ {liveDefenseStack}/{defenseCap}
+                                            </span>
                                         )}
                                         {evadeCap > 0 && (
                                             <span style={{ color: '#a8e8c4' }} title="회피 카드 사용 시 이만큼 스택 부여">💨 {evadeCap}</span>
@@ -7341,19 +7353,50 @@
                                 else if ((Number(card.accuracy) || 0) > 0) comboStat = 'accuracy';
                             }
                             const isCombo = !!comboStat;
+                            // D-277: 방어 carry 오버레이 — 직전 슬롯이 defense 카드면 이번 슬롯에 잔류 흡수가 살아있음.
+                            //   N+1 슬롯에 새 defense 카드가 들어오면 자기 stack 우선 → carry 큐 숨김 (중복 표시 회피).
+                            //   isCurrent / isCombo 우선순위 유지 — outline 색상 충돌 시 carry는 양보.
+                            const prevDefenseVal = (i > 0 && prevCard) ? (Number(prevCard.defense) || 0) : 0;
+                            const ownDefenseVal = card ? (Number(card.defense) || 0) : 0;
+                            const showDefenseCarry = prevDefenseVal > 0 && ownDefenseVal === 0;
                             const wrapperStyle = {
                                 position: 'relative',
                                 borderRadius: 10,
                                 opacity: isDone ? 0.4 : 1,
-                                outline: isCurrent ? '2px solid #d4b84a' : (isCombo ? '2px solid #ffcf4a' : 'none'),
+                                outline: isCurrent
+                                    ? '2px solid #d4b84a'
+                                    : (isCombo ? '2px solid #ffcf4a'
+                                        : (showDefenseCarry ? '2px dashed #4db8ff' : 'none')),
                                 boxShadow: isCurrent
                                     ? '0 0 12px rgba(212, 184, 74, 0.55)'
-                                    : (isCombo ? '0 0 14px rgba(255, 207, 74, 0.7)' : 'none'),
+                                    : (isCombo ? '0 0 14px rgba(255, 207, 74, 0.7)'
+                                        : (showDefenseCarry ? '0 0 10px rgba(77, 184, 255, 0.45)' : 'none')),
                                 transition: 'opacity 0.2s, outline-color 0.2s, box-shadow 0.2s',
                                 maxWidth: 80,
                                 justifySelf: 'center',
                                 width: '100%',
                             };
+                            // D-277: 좌하단 미니 배지 "🛡️ 지속" — 콤보 배지(좌상단)와 위치 분리.
+                            const carryBadge = showDefenseCarry ? (
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: -7, left: -6,
+                                    background: 'linear-gradient(135deg, #4db8ff 0%, #2c7fc4 100%)',
+                                    color: '#eaf3ff',
+                                    fontSize: 9,
+                                    fontWeight: 800,
+                                    padding: '2px 6px',
+                                    borderRadius: 8,
+                                    border: '1px solid #1a4d7a',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+                                    zIndex: 5,
+                                    whiteSpace: 'nowrap',
+                                    pointerEvents: 'none',
+                                    opacity: 0.85,
+                                }}>
+                                    🛡️ 지속
+                                </div>
+                            ) : null;
                             // D-275: 콤보 배지 — 슬롯 좌상단 골드 배지("+1 콤보"). 카드 위 z-index 띄움.
                             const comboBadge = isCombo ? (
                                 <div style={{
@@ -7378,6 +7421,7 @@
                             if (!card) {
                                 return (
                                     <div key={i} style={wrapperStyle}>
+                                        {carryBadge}
                                         <div
                                             onClick={() => phase === 'select' && handleSlotClick(i)}
                                             style={{
@@ -7400,6 +7444,7 @@
                             return (
                                 <div key={i} style={wrapperStyle}>
                                     {comboBadge}
+                                    {carryBadge}
                                     <HuntCard
                                         card={card}
                                         selected={true}
@@ -7495,6 +7540,13 @@
                             )}
                         </div>
                     )}
+                    {/* D-277: 방어 카드는 발동 turn + 다음 turn까지 2턴 흡수 — "2턴" chip을 def 스탯 바로 아래 노출.
+                        손패·슬롯 양쪽 일관 노출 (HuntCard 컴포넌트 단일 정의). */}
+                    {def > 0 && (
+                        <div className="hunt-card-defense-duration" title="이 방어는 발동 턴 + 다음 턴, 총 2턴 동안 유지됩니다">
+                            2턴
+                        </div>
+                    )}
                     {/* D-223: 무기 require 카드는 dur-badge 우선, cornerBadge 미표시 (잔여 사용 횟수 = 무기 내구도로 자연 표현). */}
                     {durability != null && typeof durability.left === 'number' ? (
                         <div className="hunt-card-dur-badge">
@@ -7569,6 +7621,10 @@
             //   { id, slotIdx, playerAttack, preyEvaded, preyDamage, playerDamage } | null
             //   id가 바뀔 때마다 BattleStage가 wrapper key를 갱신해 CSS 애니 재시작.
             const [activeEvent, setActiveEvent] = useState(null);
+            // D-277: 라이브 방어 stack — turn 진행 중 동적 갱신. 0이면 배지 dim, >0이면 파란 글로우 펄스.
+            //   step1(t+0): 카드가 defense 카드면 defenseCap+cardDef로 즉시 set (리워드 시각화).
+            //   step2(t+200): turn.defenseStack(end-of-turn 흡수 후 잔여)로 set — 흡수 결과 반영.
+            const [liveDefenseStack, setLiveDefenseStack] = useState(0);
             // D-179: 무덤(비활성 카드) 모달 — 자원 부족·무기 부재로 못 쓰는 카드 보기.
             const [discardOpen, setDiscardOpen] = useState(false);
             // D-183: 손패 카드 hover preview — uid를 저장. 가운데 큰 카드 노출 + 원본 자리 darkened.
@@ -7892,6 +7948,11 @@
                                 return next;
                             });
                         }
+                        // D-277: 방어 카드 발동 turn → 라이브 stack 즉시 부여 (cap + 카드 자체 defense).
+                        //   step1 시점이라 흡수 전. step2에서 turn.defenseStack(post-absorb)으로 갱신.
+                        if (isPlayerDefend) {
+                            setLiveDefenseStack(stackCaps.defenseCap + cardDefenseVal);
+                        }
                         setActiveEvent({
                             id: baseId + 1,
                             slotIdx: idx,
@@ -7908,6 +7969,11 @@
                     // Step 2: 사냥감 적중 또는 회피 — preyDamage / preyEvaded float + prey evade/flash (공격 200ms 후)
                     setTimeout(() => {
                         if (typeof turn.preyHpAfter === 'number') setHpCurrent(turn.preyHpAfter);
+                        // D-277: turn.defenseStack — combatDeck.js가 lastTurn에 부착하는 turn-end 스냅샷.
+                        //   흡수/age 진행 후 잔여 stack. 0이면 만료(2턴 지속 후) or 미발동.
+                        if (typeof turn.defenseStack === 'number') {
+                            setLiveDefenseStack(turn.defenseStack);
+                        }
                         setActiveEvent({
                             id: baseId + 2,
                             slotIdx: idx,
@@ -7971,6 +8037,7 @@
                 setTimeout(() => {
                     setPhase('done');
                     setActiveEvent(null);
+                    setLiveDefenseStack(0);  // D-277: 결과 페이즈 진입 시 라이브 stack 리셋.
                 }, TURN_DELAY_MS * res.turns.length + 800);
             };
 
@@ -8053,6 +8120,7 @@
                             slotsFull={allFilled}
                             defenseCap={stackCaps.defenseCap}
                             evadeCap={stackCaps.evadeCap}
+                            liveDefenseStack={liveDefenseStack}
                         />
 
                         {/* D-183: 결과 배너 → 별도 팝업(z-index 1800)으로 분리. BattleStage 시원하게 늘릴 자리 확보. */}

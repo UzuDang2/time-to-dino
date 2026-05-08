@@ -1,6 +1,8 @@
 # project-state.md
 
-마지막 검증: 2026-05-08 (**D-276, L2 사냥감 행동패턴 ❓ 슬롯 — 7종 모두 turn3을 `?`로 통일(시트 update + make data). UI는 ❓·"알 수 없음"·보라 dashed 보더. resolveHunt가 turn 진입 시 비-? 풀에서 균등 추첨 → revealedAction 부착, UI step1에서 setSlotActions로 swap. 단위 sim 4종 × 300회 → revealedTurns 100% + 분포 균등(33%씩 3가지). HuntCombatModal 스크린샷 검증 ✓.**).
+마지막 검증: 2026-05-08 (**D-277, 방어 카드 2턴 지속 시인성 3중 큐 — ① HuntCard에 "2턴" 파란 chip(손패·슬롯 일관), ② 슬롯 N+1 carry 오버레이(파란 dashed outline + 좌하단 "🛡️ 지속" 배지, N+1 자체 defense면 숨김), ③ "나" 박스 라이브 stack `🛡️ {liveStack}/{cap}` + 0.6s alternate 펄스. combatDeck.js의 `!card`·autoFail continue 분기에 누락된 stack 스냅샷 추가 — 모든 turn에 `defenseStack` 부착 보장. L2 boar 4턴 attack + crouch 슬롯1만 sim → T1 stack 2(흡수 후), T2 stack 0(흡수 후 만료), T3·T4 dmg 통과 검증 ✓. 임시 DOM 인젝션 시각 검증으로 chip + 펄스 적용 확인 ✓.**).
+
+이전 검증: 2026-05-08 (D-276, L2 사냥감 행동패턴 ❓ 슬롯 — 7종 모두 turn3을 `?`로 통일(시트 update + make data). UI는 ❓·"알 수 없음"·보라 dashed 보더. resolveHunt가 turn 진입 시 비-? 풀에서 균등 추첨 → revealedAction 부착, UI step1에서 setSlotActions로 swap. 단위 sim 4종 × 300회 → revealedTurns 100% + 분포 균등(33%씩 3가지). HuntCombatModal 스크린샷 검증 ✓.).
 
 이전 검증: 2026-05-08 (D-275, 연속 카드 보너스 +1 — 같은 카드 id 직전 슬롯과 연속 시 핵심 스탯(damage>defense>evade>accuracy 우선) +1. 슬롯 골드 outline + "콤보 +1" 배지 + 글로우 + 턴 로그 "연속 +1" chip. resolveHunt 단위 검증 통과(3연속 punch → T2/T3 dmg 1→2, 다른 카드 끼면 리셋).).
 
