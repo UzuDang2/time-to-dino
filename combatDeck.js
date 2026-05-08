@@ -381,6 +381,25 @@
             }
 
             const card = userSlots[t];
+            // D-275 (2026-05-08): 연속 카드 보너스 +1.
+            //   직전 슬롯 카드와 id가 같으면 핵심 스탯 +1 강화.
+            //   우선순위: damage > defense > evade > accuracy. (한 카드는 보통 핵심 1개.)
+            //   다른 카드 끼면 자동 리셋(직전 비교 방식). 빈 슬롯과는 콤보 안 됨.
+            //   무기 카드도 동일 적용 — id가 같으면 OK.
+            //   기획 의도: 같은 카드 반복 = 익숙해진다는 텍스트적 정합성 + 전투 다양성.
+            const prevCard = t > 0 ? userSlots[t - 1] : null;
+            let comboBonus = null;  // { stat: 'damage'|'defense'|'evade'|'accuracy', amount: 1 } | null
+            if (card && prevCard && card.id && prevCard.id && card.id === prevCard.id) {
+                if ((Number(card.damage) || 0) > 0) {
+                    comboBonus = { stat: 'damage', amount: 1 };
+                } else if ((Number(card.defense) || 0) > 0) {
+                    comboBonus = { stat: 'defense', amount: 1 };
+                } else if ((Number(card.evade) || 0) > 0) {
+                    comboBonus = { stat: 'evade', amount: 1 };
+                } else if ((Number(card.accuracy) || 0) > 0) {
+                    comboBonus = { stat: 'accuracy', amount: 1 };
+                }
+            }
             // D-108: 행동 id → actionDef lookup. type/damage/accuracy/defense 모두 actionDef 기준.
             const actionDef = findPreyAction(preyActions[t]);
             const preyActionType = actionDef.type;
@@ -396,8 +415,15 @@
                 ? actionDef.damage : preyAttackFallback;
             const preyDefenseThisTurn = (actionDef.defense > 0)
                 ? actionDef.defense : preyDefenseFallback;
-            const cardDefense = Math.max(0, Number(card && card.defense) || 0);
-            const cardEvade = Math.max(0, Number(card && card.evade) || 0);
+            // D-275: 콤보 보너스를 카드 수치에 합산. 원본 card는 변경하지 않고 turn 로직 내 로컬 변수만 영향.
+            const cardDamageRaw = Math.max(0, Number(card && card.damage) || 0);
+            const cardAccuracyRaw = Math.max(0, Number(card && card.accuracy) || 0);
+            const cardDamageWithCombo = cardDamageRaw + (comboBonus && comboBonus.stat === 'damage' ? comboBonus.amount : 0);
+            const cardAccuracyWithCombo = cardAccuracyRaw + (comboBonus && comboBonus.stat === 'accuracy' ? comboBonus.amount : 0);
+            const cardDefense = Math.max(0, Number(card && card.defense) || 0)
+                + (comboBonus && comboBonus.stat === 'defense' ? comboBonus.amount : 0);
+            const cardEvade = Math.max(0, Number(card && card.evade) || 0)
+                + (comboBonus && comboBonus.stat === 'evade' ? comboBonus.amount : 0);
             // D-274: 카드 종류별 방어구 카테고리 분기. crouch=armor / shield_block=shield.
             //   다른 방어 카드(향후 추가)는 null — 차감 X.
             const cardArmorCategory = (card && cardDefense > 0)
@@ -491,7 +517,8 @@
                 break;
             }
 
-            const damageOut = Number(card.damage) || 0;
+            // D-275: 콤보 보너스 합산값 사용.
+            const damageOut = cardDamageWithCombo;
             if (cardHit && damageOut > 0) {
                 // D-96 (2026-04-25 요한 지시): 회피율(%) → 회피(정수), 명중률(%) → 명중(정수).
                 //   판정: 명중 ≥ 회피이면 무조건 명중, 회피 > 명중이면 무조건 회피.
@@ -499,7 +526,8 @@
                 //   D-98: turn-action 분기 L1/L2 공통 — peek/attack/defend는 회피 0.
                 let baseEvadeT = Math.max(0, (evadesByTurn[t] || 0) - fleeCount);
                 if (preyActionType !== 'evade') baseEvadeT = 0;
-                const cardAccuracy = Number(card.accuracy) || 0;
+                // D-275: 콤보 보너스 적용된 명중 사용.
+                const cardAccuracy = cardAccuracyWithCombo;
                 const effectiveEvade = baseEvadeT;
                 const preyEvaded = effectiveEvade > cardAccuracy;
 
@@ -551,10 +579,15 @@
             }
 
             // D-246: turn 끝 시점 stack 스냅샷 — 마지막 push된 turn에 기록 + 별도 events 배열.
+            // D-275: 콤보 정보도 같이 부착 — UI가 슬롯/턴 로그에서 콤보 발동 표시 가능.
             const lastTurn = turns[turns.length - 1];
             if (lastTurn) {
                 lastTurn.defenseStack = defenseStack;
                 lastTurn.evadeStack = evadeStack;
+                if (comboBonus) {
+                    lastTurn.combo = true;
+                    lastTurn.comboBonus = comboBonus;
+                }
             }
             stackEvents.push({ turn: t + 1, defenseStack, evadeStack });
         }
