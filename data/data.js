@@ -3025,6 +3025,14 @@ window.TTD_DATA = {
     },
     {
       "ingredients": [
+        "stem",
+        "wood",
+        "stone"
+      ],
+      "result": "wood_skewer"
+    },
+    {
+      "ingredients": [
         "big_meat",
         "branch"
       ],

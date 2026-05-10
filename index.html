@@ -3360,7 +3360,8 @@
         //   ① 단계별 등급 풀 확장: stage 1 = grade ≤ 2 / stage 2 = grade ≤ 3 / stage 3 = grade ≤ 4
         //   ② 풀 안 레시피는 따로 학습(구매) — 학습 비용 = ingredients × 2 (학습세 — 1세트 만들고 1세트 더, 후속 조정 가능).
         //   ③ 화이트리스트(무료 자동 해금): chipped_stone(뗀석기) + food 카테고리 결과물 + 자동 판정 1등급(`unlock_tier=1`).
-        //      ※ wood_skewer는 combos.json 미존재라 사문화 — 향후 합성법 추가 시 자동 무료(화이트리스트 명시).
+        //      ※ wood_skewer: D-278에서 stem+wood+stone→wood_skewer 합성법 복원 (D-249 시트 동기화로 빠졌던 것).
+        //         이제 화이트리스트로 작업대 학습 패널에 자동 노출 + 합성 패널로 제작 가능.
         const RECIPE_UNLOCK_WHITELIST = new Set(['chipped_stone', 'wood_skewer']);
         // D-235 (2026-05-02 요한 지시): 자동 unlock 정책 예외 강제 잠금.
         //   1등급 재료라도 자동으로 풀리면 안 되는 레시피 — whitelist/food/tier 모두 우회하고

@@ -4,6 +4,17 @@
 
 ---
 
+## D-278 (2026-05-10): 나무쑤시개 합성법 시트 동기화 (다음 로컬 세션)
+
+### 시트 SSOT 동기화 — 다음 로컬 세션에서 진행
+- [ ] **[로컬]** 시트 `조합레시피` 탭에 1행 추가: `ingredient_a=stem, ingredient_b=wood, ingredient_c=stone, result=wood_skewer`. (D-249 동기화 sweep 시 누락된 행 복원)
+- [ ] **[로컬]** 시트 `무기` 탭에 1행 추가: `id=wood_skewer, name=나무쑤시개, size=2x1, grade=1단계, durability=5, description="끝을 뾰족하게 깎은 나무 막대.", summary="원시적인 찌르기 무기."` (없으면 `make data` 시 합성법이 result 검증 실패로 다시 스킵된다 — D-249 재발 방지)
+- [ ] **[로컬]** `make data` 실행 → `data/combos.json`·`data/weapons.json` 자동 갱신 결과가 D-278 직접 패치와 동치인지 확인. 차이 있으면 시트 헤더/값 재점검.
+- [ ] **[요한 QA]** 인벤에 stem/wood/stone 1개씩 모은 뒤 합성 패널에서 "나무쑤시개" 노출·제작 확인. 작업대 모달에서도 자동 unlock(학습 비용 0) 노출 확인.
+- 세부 사양: `design-decisions.md` D-278.
+
+---
+
 ## D-277 (2026-05-08 요한 지시): 방어 카드 2턴 지속 시인성 3중 큐
 
 ### 요한 QA 대기
