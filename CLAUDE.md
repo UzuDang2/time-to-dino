@@ -42,6 +42,20 @@
 - 큰 변경 → `project-state.md` 마지막 검증 날짜·요약 갱신.
 - 트리거: `ttd-commit-push` 스킬 1.5단계가 블로킹 체크포인트로 강제한다.
 
+## 웹버전 클로드 동기화
+
+사용자가 "**웹버전 클로드 동기화**", "**최신화**", "**푸시 못한 거 가져와줘**", "**머지 안 된 거 끌어와줘**" 같은 표현을 쓰면 다음 절차로 동작한다.
+
+1. `git fetch origin --quiet`
+2. `git branch -r --list 'origin/claude/*'` — 웹버전이 만든 PR 브랜치 후보 식별
+3. 각 후보에 대해 `git log origin/main..origin/<branch> --oneline` 으로 main 미머지 커밋 확인
+4. fast-forward 가능 → `git merge --ff-only origin/<branch>` + `git push origin HEAD:main`
+5. ff 불가(main이 갈라짐) → 사용자에게 보고 후 결정
+
+배경: 웹버전 클로드(claude.ai)는 작업을 PR 브랜치(`origin/claude/<slug>`)에 push만 하고 main 통합은 GitHub PR 경유. 사용자가 PR 머지 못 한 경우 origin엔 있는데 main엔 없는 상태가 흔함 — 이게 "푸시 못한 거"의 일상적 의미. "main이 뒤처졌다"가 아니라 "**PR 브랜치만 떠 있다**"로 1차 가설을 세운다.
+
+D-XX 커밋이 디렉터 메모리(`design-decisions.md`/`pending.md`) 단락을 포함했다면 ff만으로 메모리 자동 동기화. 포함 안 됐다면 메모리 수동 보강도 함께.
+
 ## 핵심 경로 (자주 참조)
 
 - 메인 코드: `index.html` (거대 단일 파일, React 인라인)
@@ -52,6 +66,7 @@
 
 ## 자주 빠지는 함정
 
+- **`git log --all` 1차 진단 금지**: 다른 브랜치 끝이 최상단에 섞여 워크트리 HEAD를 오인한다. 진단은 `git log -1 HEAD` + `git log -1 origin/main` + `git log origin/main..HEAD --oneline` 명시 비교로 시작.
 - **데이터 변경 후 `make data` 호출 여부**: 시트 변경했으면 호출, JSON 직접 수정만 했으면 호출 X (호출하면 시트→JSON 덮어쓰기로 변경분 손실).
 - **`tentBuilt:bool` 잔존**: D-168부터 `tentLevel:0..10`으로 이행. 직렬화 v3는 두 필드 동시 저장으로 호환. 새 코드에선 `tentLevel`만 신뢰.
 - **`MAX_HEALTH`/`MAX_HUNGER` 하드코딩 금지**: D-168부터 동적. `getMaxHealth(tentLevel)` / `getMaxHunger(tentLevel)` helper 사용.
