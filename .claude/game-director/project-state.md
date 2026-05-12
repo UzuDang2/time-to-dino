@@ -14,7 +14,7 @@
 가방·보관함 공통 인터랙션 5케이스(요한 명시) + 정렬 기능.
 
 - ① 빈칸 드롭 자동 확정 ([확정] 버튼 클릭 없이 셀 탭 즉시 배치).
-- ② 같은 size 다른 type → swap (selectedItem 전환).
+- ② 같은 size 다른 type → swap = **자리 교체 후 자동 확정** (selection 해제). 라이브 QA 보완(2026-05-12). target shape이 item 원위치에 fit 안 되면 selectedItem=target fallback.
 - ③ A(소) → B(대) 내부 fit → `pickup_swap` (B 픽업 + A 확정).
 - ④ B(대) → C(소) + 옆 빈칸 → `displace` (B 배치 + C 픽업).
 - ⑤ 자리 부족 → `blocked` + 내레이션 바 피드백.

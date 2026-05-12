@@ -1742,7 +1742,15 @@
                     }
                     return false;
                 }
-                if (res.action === 'swap' || res.action === 'pickup_swap' || res.action === 'displace') {
+                if (res.action === 'swap') {
+                    // ② D-280 보완: 같은 size swap = 자리 교체 후 자동 확정. selectedItem은 inventory에서 null (fit 실패 fallback이면 target 유지).
+                    setSelectedItem(inventory.selectedItem);
+                    setPendingPos(inventory.selectedItem
+                        ? { x: inventory.selectedItem.x, y: inventory.selectedItem.y }
+                        : null);
+                    return true;
+                }
+                if (res.action === 'pickup_swap' || res.action === 'displace') {
                     setSelectedItem(inventory.selectedItem);
                     setPendingPos(inventory.selectedItem
                         ? { x: inventory.selectedItem.x, y: inventory.selectedItem.y }

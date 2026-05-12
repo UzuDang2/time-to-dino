@@ -811,14 +811,22 @@ class InventorySystem {
             const targetH = target.shape.length, targetW = target.shape[0].length;
             const sameSize = (itemArea === targetArea && itemH === targetH && itemW === targetW);
 
-            // ② 같은 size — 단순 swap. target은 item의 원위치(item.x,item.y)로 이동 후 선택 전환.
+            // ② 같은 size — 단순 swap. 자리 교체 후 selection 해제 (자동 확정, 요한 D-280 보완).
             if (sameSize) {
                 this.removeItem(target);
                 if (this.canPlace(item.shape, x, y)) {
+                    const origX = item.x, origY = item.y;
                     item.x = x;
                     item.y = y;
                     this.placeItem(item);
-                    this.selectedItem = target;
+                    if (this.canPlace(target.shape, origX, origY)) {
+                        target.x = origX;
+                        target.y = origY;
+                        this.placeItem(target);
+                        this.selectedItem = null;
+                    } else {
+                        this.selectedItem = target;
+                    }
                     return { ok: true, action: 'swap' };
                 }
                 this.placeItem(target);
@@ -879,12 +887,21 @@ class InventorySystem {
             }
 
             // 같은 면적인데 shape이 다른 경우(2x1 vs 1x2 같은 회전 케이스) — fallback swap.
+            // D-280 보완: ②와 동일하게 자동 확정. target shape이 item 원위치에 fit 안 되면 selectedItem 유지로 fallback.
             this.removeItem(target);
             if (this.canPlace(item.shape, x, y)) {
+                const origX = item.x, origY = item.y;
                 item.x = x;
                 item.y = y;
                 this.placeItem(item);
-                this.selectedItem = target;
+                if (this.canPlace(target.shape, origX, origY)) {
+                    target.x = origX;
+                    target.y = origY;
+                    this.placeItem(target);
+                    this.selectedItem = null;
+                } else {
+                    this.selectedItem = target;
+                }
                 return { ok: true, action: 'swap' };
             }
             this.placeItem(target);
