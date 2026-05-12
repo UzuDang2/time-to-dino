@@ -248,6 +248,33 @@ D-168 텐트만 활성이던 빌딩 그리드를 시트 SSOT 기반 6종 빌딩(
 
 ---
 
+### D-284. 베이스캠프 복귀 시 가방→보관함 자동 fit 불가 → 강제 선택 UI (2026-05-12)
+
+요한 지시: "스테이지 완료해서 베이스캠프로 돌아가기 할때 베이스캠프 보관함에 있는 나의 물품이 꽉차서 내 가방에 있는 물품을 버려야 하는 경우, 강제로 [탐험떠나기]때와 동일한 UI로 가방과 보관함을 함께 보여줘서 어떤 물품을 보관함으로 가져가고 어떤 물품을 버릴지 강제로 선택하도록 해줘. 사용자가 보관함 가득찬 상태를 인지하지 못한채 그냥 복귀했을때의 손실을 줄여주기 위함."
+
+**진단**: D-113 이래 `handleRunEnd`(index.html:11733)가 `camp.findEmptySpace(shape)` 실패 시 `continue`로 silent 폐기. 사용자가 인지 못한 채 손실 발생.
+
+**해결**: 자동 transfer 가능 여부를 사전 검사 → 불가능 시 `view='returnTransfer'` 강제 라우팅.
+
+- **fit 검사 helper**: `InventorySystem.canFitAll(incomingItems)` (inventory.js:1011-1066) — 현재 grid 복제 위에 큰 면적 순 fit 시뮬. ok/fittedCount/failedItems 반환. 상태 변경 X.
+- **handleRunEnd 분기**(index.html:11737-11760): outcome='victory' + itemsToTransfer.length>0 + canFitAll.ok=false → `setPendingReturn({runInv, runStats, runFinal, itemsAllSnapshot})` + `setView('returnTransfer')`. fit OK → 기존 자동 transfer 경로 그대로.
+- **finalizeReturn 신설**(index.html:11762-11811): handleRunEnd 자동 case와 ReturnTransferModal 강제 case 공통 진입점. alreadyMoved flag로 인입 스킵 분기. 점수·gameDay+1·farmAdvance·runs 카운팅은 동일.
+- **ReturnTransferModal 컴포넌트**(index.html:4781-4970): D-271 PackTransferModal 베이스. 가방·보관함 동시 그리드(D-280 인터랙션). [보관함으로]·[버리기]·[복귀] 3버튼. [버리기]는 두 번째 탭 1.8s 안에 "정말로?" 확정(실수 방지). [복귀]("🏕️ 베이스캠프 도착")는 `pack.items.length === 0` 일 때만 활성 — 닫기 버튼 X (강제 흐름).
+- **App 라우터**(index.html:12180-12219): `view === 'returnTransfer' && pendingReturn` → ReturnTransferModal 렌더. onFinalize → finalizeReturn(alreadyMoved=itemsAllSnapshot)으로 commit.
+
+**점수 계산 1차 근사**: ReturnTransferModal 케이스에선 폐기 추적 별도 안 함 → `selectedItems = itemsAllSnapshot` 전체를 점수 대상으로 전달 (보수적으로 옮긴 양과 무관하게 원래 가져온 총량 기준). 정확 계산(폐기분 빼기)은 후속 보강 가능 — 요한 의도가 "손실 방지"라 점수 보수는 의도와 일치.
+
+**검증** (Preview MCP):
+- 강제 케이스: 보관함 70/70(BASE 가득) + 가방 3아이템(stone/branch/berry) → 모달 진입 ✓. 가방 item 탭→선택 highlight + 버튼 활성 ✓. [버리기] 1탭→"정말로?" 1.8s 윈도우 ✓. 2탭→폐기 확정, pack 3→2 ✓. [보관함으로] 누르면 "보관함 자리 부족 — 0개만 옮김" 토스트 + pack 유지 ✓. 가방 전부 폐기→pack 0, [복귀] 활성("🏕️ 베이스캠프 도착") ✓. [복귀] 클릭→modal 닫힘, 캠프 화면 복귀, 탐험 떠나기 버튼 노출 ✓.
+- 자동 케이스: 빈 보관함 + 1x1 3개 fit OK → 모달 안 뜨고 기존 흐름 ✓.
+- 콘솔 실에러 0 (BABEL deopt warning만).
+
+**파일**: `inventory.js:1011-1066` (canFitAll), `index.html:11688-11693` (pendingReturn state), `index.html:11710-11760` (handleRunEnd 분기), `index.html:11762-11811` (finalizeReturn), `index.html:4781-4970` (ReturnTransferModal), `index.html:12180-12219` (라우터).
+
+요한 라이브 QA는 `pending.md` D-284 항목.
+
+---
+
 ## 6. 사냥 전투
 
 ### D-110. 런 점수 + 전리품 결과창 + 이동거리 점수

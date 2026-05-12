@@ -1008,6 +1008,60 @@ class InventorySystem {
         return { ok: true, sortedCount: placed.length, overflow: overflow.length };
     }
 
+    // D-284 (2026-05-12): 베이스캠프 복귀 시 가방→보관함 자동 transfer 가능성 검사.
+    //   현재 보관함 상태(grid 그대로) 위에 incomingItems를 큰 면적 순으로 fit 시뮬.
+    //   하나라도 자리 없으면 ok=false. 상태 변경 없음.
+    //   incomingItems: [{ shape, type?, id? }, ...]
+    //   반환: { ok: bool, fittedCount: number, failedItems: [item...] }
+    canFitAll(incomingItems) {
+        const items = (incomingItems || []).filter(it => it && it.shape);
+        // 현재 grid 복제(아이템 점유 상태 유지).
+        const vGrid = this.grid.map(row => row.slice());
+        const shapeArea = (shape) => shape.reduce(
+            (a, row) => a + row.filter(v => v === 1).length, 0);
+        const canPlaceV = (shape, sx, sy) => {
+            if (sy + shape.length > this.rows || sx + shape[0].length > this.cols) return false;
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[dy].length; dx++) {
+                    if (shape[dy][dx] !== 1) continue;
+                    const cy = sy + dy, cx = sx + dx;
+                    if (this.isDisabled(cx, cy)) return false;
+                    if (vGrid[cy][cx] !== null) return false;
+                }
+            }
+            return true;
+        };
+        const findEmptyV = (shape) => {
+            for (let y = 0; y <= this.rows - shape.length; y++) {
+                for (let x = 0; x <= this.cols - shape[0].length; x++) {
+                    if (canPlaceV(shape, x, y)) return { x, y };
+                }
+            }
+            return null;
+        };
+        const writeShape = (shape, x, y, marker) => {
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[dy].length; dx++) {
+                    if (shape[dy][dx]) vGrid[y + dy][x + dx] = marker;
+                }
+            }
+        };
+        // 큰 면적 먼저 fit (greedy — 작은 자투리 칸에 큰 게 안 들어가는 케이스 회피).
+        const sorted = [...items].sort((a, b) => shapeArea(b.shape) - shapeArea(a.shape));
+        const failedItems = [];
+        let fittedCount = 0;
+        for (const it of sorted) {
+            const pos = findEmptyV(it.shape);
+            if (!pos) {
+                failedItems.push(it);
+                continue;
+            }
+            writeShape(it.shape, pos.x, pos.y, `__sim_${fittedCount}__`);
+            fittedCount += 1;
+        }
+        return { ok: failedItems.length === 0, fittedCount, failedItems };
+    }
+
     // D-47 합성 확정: 레시피의 ingredients를 인벤에서 개별 제거 후 결과 아이템을 배치.
     //   - preferredPos가 있으면 해당 자리 우선, 실패 시 빈 공간 자동 탐색.
     //   - 결과 배치 실패(공간 없음)면 재료 소비도 하지 않고 실패 반환.
