@@ -21,7 +21,7 @@ time-to-dino 변경사항을 한국어 커밋 메시지로 기록하고 origin/m
      - `pending.md` 완료 항목 이동, 신규 대기 추가.
      - `project-state.md` 마지막 검증 날짜 갱신.
    - 메모리 갱신 안 한 채로 push까지 가면 다음 세션의 `ttd-brief`가 **stale 상태로 출발**한다 — 회피 필수.
-   - 메모리 파일은 `.gitignore`라 git stage엔 안 올라감 — 커밋과 무관하게 갱신만 하면 됨.
+   - **메모리 파일은 tracked 상태** (`.gitignore`에 없음). 갱신 후 같은 커밋 또는 직후 별도 커밋에 포함해 push해야 origin과 동기화. push 누락 시 워크트리 dirty 상태가 누적된다.
 
 2. **분할 판단**:
    - **D-XX 단위가 1차 분할 기준** — 1 D = 1 commit이 가장 깔끔 (D-162~D-168 사례).
@@ -34,7 +34,8 @@ time-to-dino 변경사항을 한국어 커밋 메시지로 기록하고 origin/m
    다음 패턴은 **절대 add 금지** (이미 `.gitignore`지만 이중 방어):
    - `.secrets/`, `*.sa.json`, `*-sa.json`, `service-account*.json`, `google-credentials*.json`
    - `.DS_Store`, `data/.sheet_cache.xlsx`
-   - `.claude/game-director/` (디렉터 개인 메모리)
+
+   참고: `.claude/game-director/` (디렉터 메모리·archive)는 **tracked 상태이므로 add 정답**. 코드 변경과 함께 push해야 origin 일관.
 
 4. **파일 add**:
    ```
