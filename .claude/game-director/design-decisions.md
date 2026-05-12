@@ -234,6 +234,18 @@ D-168 텐트만 활성이던 빌딩 그리드를 시트 SSOT 기반 6종 빌딩(
 
 **검증**: localStorage clear → reload → 탐험 진입 HUD 표시 `❤️ 5/5 / 🍖 6/6` Claude Preview MCP 확인. `BASE_MAX_HEALTH` 5, `BASE_MAX_HUNGER` 6 정확.
 
+### D-283. [📚 레시피] 모달 — 가방·보관함 공통 레시피 카탈로그 (2026-05-12)
+
+요한 지시: "가방과 보관함의 정리버튼 옆쪽에 레시피 전부보기 버튼도 만들어줘. 모든 레시피를 가방에서처럼 카테고리에서 전부다 볼 수 있는 기능".
+
+`recipeBrowserOpen` state + 헤더 [📚 레시피] 버튼 (가방·보관함 양쪽). 클릭 시 viewport 중앙 fixed modal(zIndex 2000, 외부 클릭으로 닫기), 내부에 `CraftPanel`을 카테고리 탭 모드(`showCategoryTabs={true}`)로 띄움. recipes prop = `filteredAllRecipes`(카테고리 + lock gate 통과). inventory prop = 모달의 inventory(가방=가방, 보관함=보관함). onCraft는 기존 `handleCraft` 재사용.
+
+**lock gate는 가방 모드와 동일 적용** — `recipeLockGate` 통과한 unlocked 레시피만 노출. 잠긴 레시피(tier 2+ 미학습 — 예: clean_cloth)는 작업대 학습 후에야 표시. 가방 모드와 일관(요한 명시 "가방에서처럼").
+
+**검증**: Preview MCP 보관함 진입 → [📚 레시피] 클릭 → modal 열림, 카테고리 탭(전체·음식·무기·방어구·재료) + 22개 레시피 노출(인벤 비었으므로 모두 [재료부족]). 스크린샷 일치.
+
+**파일**: `index.html:1672-1673` (state), `index.html:2087-2102` ([📚 레시피] 버튼), `index.html:2327-2370` (modal overlay).
+
 ---
 
 ## 6. 사냥 전투

@@ -1655,6 +1655,8 @@
             // D-281: 들고 있는 아이템 free-floating 좌표 (viewport 기준).
             //   PC = pointermove로 마우스 따라가기, 모바일 = 마지막 pointerdown 지점.
             const [floatingPointer, setFloatingPointer] = React.useState(null);
+            // D-283: 레시피 전부보기 모달 (가방·보관함 공통, 헤더 [📚 레시피] 버튼으로 토글).
+            const [recipeBrowserOpen, setRecipeBrowserOpen] = React.useState(false);
             React.useEffect(() => {
                 if (!selectedItem) {
                     setFloatingPointer(null);
@@ -2083,6 +2085,22 @@
                                 >
                                     🧹 정리
                                 </button>
+                                {/* D-283: 모든 레시피 카테고리별 조회. 가방·보관함 공통. */}
+                                <button
+                                    onClick={() => setRecipeBrowserOpen(true)}
+                                    style={{
+                                        background: '#2a3a5e',
+                                        color: '#cfe',
+                                        border: '1px solid #4a6a9e',
+                                        padding: '5px 10px',
+                                        borderRadius: '5px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px'
+                                    }}
+                                    title="모든 레시피를 카테고리(전체·음식·무기·방어구·재료)별로 보기"
+                                >
+                                    📚 레시피
+                                </button>
                                 <button onClick={handleClose}>닫기</button>
                             </div>
                         </div>
@@ -2304,6 +2322,48 @@
                             } : null}
                             onClose={() => setInfoItem(null)}
                         />
+                    )}
+                    {/* D-283: 모든 레시피 조회 모달 — 카테고리 탭 모드. 인벤(가방) 기준으로 합성 가능 여부 표시. */}
+                    {recipeBrowserOpen && (
+                        <div
+                            style={{
+                                position: 'fixed',
+                                inset: 0,
+                                background: 'rgba(0,0,0,0.7)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 2000,
+                            }}
+                            onClick={(e) => { if (e.target === e.currentTarget) setRecipeBrowserOpen(false); }}
+                        >
+                            <div style={{
+                                background: '#16213e',
+                                padding: '16px 18px',
+                                borderRadius: '8px',
+                                border: '1px solid #4a6a9e',
+                                width: 'min(520px, 92vw)',
+                                maxHeight: '85vh',
+                                overflow: 'auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px',
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ margin: 0, color: '#cfe' }}>📚 레시피</h3>
+                                    <button onClick={() => setRecipeBrowserOpen(false)}>닫기</button>
+                                </div>
+                                <CraftPanel
+                                    recipes={filteredAllRecipes}
+                                    inventory={inventory}
+                                    onCraft={(recipe) => { handleCraft(recipe); }}
+                                    onClose={null}
+                                    showCategoryTabs={true}
+                                    category={recipeCategory}
+                                    onCategoryChange={updateRecipeCategory}
+                                />
+                            </div>
+                        </div>
                     )}
                 </div>
             );

@@ -9,6 +9,16 @@
 
 ## 마지막 검증 (최신)
 
+**2026-05-12 (D-283, [📚 레시피] 모달 — 가방·보관함 공통)**
+
+`recipeBrowserOpen` state + 헤더 [📚 레시피] 버튼. 클릭 시 viewport 중앙 fixed modal(zIndex 2000)에 `CraftPanel` 카테고리 탭 모드. recipes=`filteredAllRecipes`(lock gate 통과). 가방·보관함 일관. Preview MCP: 보관함→[📚 레시피] 클릭→카테고리 탭(전체·음식·무기·방어구·재료)+22개 레시피 노출 확인.
+
+**파일**: `index.html:1672-1673` (state), `index.html:2087-2102` (버튼), `index.html:2327-2370` (modal).
+
+요한 라이브 QA는 `pending.md` D-283 항목. 잠긴 레시피(tier 2+, 예: clean_cloth)는 작업대 학습 후 노출 — 사용자가 "모든" 의미를 잠긴 것 포함으로 원할 시 후속 작업 (lock 표시 UI 추가).
+
+---
+
 **2026-05-12 (D-282, 초기 base stat 체력 5 / 배고픔 6)**
 
 `BASE_MAX_HEALTH` 6→5, `BASE_MAX_HUNGER` 10→6 (`index.html:3282-3283`). HUD fallback도 5/6으로 정합. 텐트 보너스는 그대로. Preview MCP: localStorage clear→reload→탐험 진입 HUD `❤️ 5/5 · 🍖 6/6` 확인.
