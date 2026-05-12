@@ -227,9 +227,9 @@
             const detectionColor = detection < 30 ? '#4CAF50' :
                                   detection < 60 ? '#FFC107' : '#e94560';
 
-            // D-168: max는 props로 — 텐트 레벨 보너스 누적이 반영된 동적 값. 기본은 베이스(6/10).
-            const MAX_HEALTH = Number(maxHealth) > 0 ? Number(maxHealth) : 6;
-            const MAX_HUNGER = Number(maxHunger) > 0 ? Number(maxHunger) : 10;
+            // D-168: max는 props로 — 텐트 레벨 보너스 누적이 반영된 동적 값. 기본은 베이스(5/6, D-282).
+            const MAX_HEALTH = Number(maxHealth) > 0 ? Number(maxHealth) : 5;
+            const MAX_HUNGER = Number(maxHunger) > 0 ? Number(maxHunger) : 6;
             const healthPct = Math.max(0, Math.min(100, (health / MAX_HEALTH) * 100));
             const hungerPct = Math.max(0, Math.min(100, (hunger / MAX_HUNGER) * 100));
 
@@ -3279,8 +3279,8 @@
             { level: 10, name: '텐트 완성 — 영구 거점',     icon: '🏠',  rewardType: 'camp_storage', rewardLabel: '보관함 +7칸', requirements: { stem: 10,   stone_block: 8 } }
         ];
         const TENT_MAX_LEVEL = 10;
-        const BASE_MAX_HEALTH = 6;
-        const BASE_MAX_HUNGER = 10;
+        const BASE_MAX_HEALTH = 5;
+        const BASE_MAX_HUNGER = 6;
         // D-174 v3 (2026-04-30): 캠프 보관함 BASE — 7x20 그리드 (모바일 가로 7칸 적합).
         //   row 0-9(BASE 활성 70칸) + row 10-19(텐트 슬롯, 단계마다 row 1줄=7칸 풀림).
         //   tentLevel=10이면 활성 140, 영구 disabled 0.

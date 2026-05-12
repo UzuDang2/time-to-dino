@@ -224,6 +224,16 @@ D-168 텐트만 활성이던 빌딩 그리드를 시트 SSOT 기반 6종 빌딩(
 
 **파일**: `index.html:1655-1670` (`floatingPointer` state + listener), `index.html:2161-2178` (floating div free-floating).
 
+### D-282. 초기 base stat — 체력 5 / 배고픔 6 (2026-05-12)
+
+요한 지시: 시작 시 stat 5/6으로 강화. 기존 6/10에서 둘 다 축소 — 게임 초반 압박감 + 텐트 빌드 동기 강화.
+
+`BASE_MAX_HEALTH = 5` / `BASE_MAX_HUNGER = 6` (`index.html:3282-3283`). HUD progress fallback도 5/6으로 정합 (`index.html:230-232`). 텐트 보너스(`getMaxHealth(campState)` / `getMaxHunger(campState)`)는 그대로 — base만 변경.
+
+기존 저장 게임은 load 시 새 cap으로 자동 clamp.
+
+**검증**: localStorage clear → reload → 탐험 진입 HUD 표시 `❤️ 5/5 / 🍖 6/6` Claude Preview MCP 확인. `BASE_MAX_HEALTH` 5, `BASE_MAX_HUNGER` 6 정확.
+
 ---
 
 ## 6. 사냥 전투

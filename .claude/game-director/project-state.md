@@ -9,6 +9,16 @@
 
 ## 마지막 검증 (최신)
 
+**2026-05-12 (D-282, 초기 base stat 체력 5 / 배고픔 6)**
+
+`BASE_MAX_HEALTH` 6→5, `BASE_MAX_HUNGER` 10→6 (`index.html:3282-3283`). HUD fallback도 5/6으로 정합. 텐트 보너스는 그대로. Preview MCP: localStorage clear→reload→탐험 진입 HUD `❤️ 5/5 · 🍖 6/6` 확인.
+
+**파일**: `index.html:3282-3283` (BASE 상수), `index.html:230-232` (HUD fallback).
+
+요한 라이브 QA는 `pending.md` D-282 항목.
+
+---
+
 **2026-05-12 (D-281, 들고 있는 아이템 free-floating)**
 
 PC 마우스 추적 + 모바일 마지막 터치 지점 정착. InventoryModal에 `floatingPointer` state + document `pointermove`/`pointerdown` listener. floating div `position:fixed` + `transform:translate(-50%,-50%)` + `pointerEvents:none` + `zIndex:9999`. Claude Preview MCP sim(pointermove 300,600) → floating 좌표 정확 일치 + 스크린샷 확인.
