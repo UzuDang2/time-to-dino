@@ -1728,14 +1728,21 @@
                 setInfoItem(item);
             };
 
-            // D-48: confirmPlacement 결과 반영 공통 헬퍼.
-            //   - merge: 즉시 실행 (기존 동작).
-            //   - swap: 새 아이템으로 선택 전환.
-            //   - place: 배치 후 선택 해제.
-            //   합성 패널은 '선택된 아이템 기준'으로 자동 노출되므로 craft_prompt 경로 없음.
+            // D-48 → D-280: confirmPlacement 결과 반영.
+            //   - 'place': 배치 후 선택 해제 (① 빈칸 — 자동확정).
+            //   - 'merge': 같은 재료 합성 + 토스트.
+            //   - 'swap': 같은 size 단순 교체 — 새 target으로 선택 전환.
+            //   - 'pickup_swap': ③ A(소)<B(대) — B를 손에 들고 A 확정. UI는 swap과 동일(target 선택 전환).
+            //   - 'displace': ④ B(대) → C(소) + 옆 빈칸 — B 배치 + C 손에 듦.
+            //   - !ok + reason='blocked' → ⑤ 자리 부족 토스트.
             const applyDropResult = (res) => {
-                if (!res || !res.ok) return false;
-                if (res.action === 'swap') {
+                if (!res || !res.ok) {
+                    if (res && res.reason === 'blocked' && onFlashMessage) {
+                        onFlashMessage('자리가 부족해 옮길 수 없다.');
+                    }
+                    return false;
+                }
+                if (res.action === 'swap' || res.action === 'pickup_swap' || res.action === 'displace') {
                     setSelectedItem(inventory.selectedItem);
                     setPendingPos(inventory.selectedItem
                         ? { x: inventory.selectedItem.x, y: inventory.selectedItem.y }
@@ -1843,9 +1850,15 @@
                 bump();
             };
 
+            // D-280 ① 빈칸 자동 확정 — 셀 클릭 = 즉시 confirmPlacement 시도.
+            //   confirmPlacement가 빈칸이면 'place'로 즉시 확정, 점유면 5케이스 분기.
+            //   기존: 셀 클릭은 pendingPos만 갱신하고 [확정] 버튼 눌러야 확정 — 한 번 클릭 더 필요했음.
+            //   신규: 클릭 = 곧바로 확정 시도. 회전 후 같은 위치 확정 필요 시 [확정] 버튼은 유지.
             const handleCellClick = (row, col) => {
                 if (!selectedItem) return;
                 setPendingPos({ x: col, y: row });
+                const res = inventory.confirmPlacement(col, row);
+                applyDropResult(res);
                 bump();
             };
 
@@ -1884,10 +1897,13 @@
                 bump();
             };
 
-            // 미리보기 가능 여부 (현재 pendingPos에 selectedItem이 들어갈 수 있는가)
-            //   D-47: 'combine' kind 폐기 — 조합은 이제 합성 패널 경유. 다른 재료 +
-            //         관련 레시피 있음 = 'craft' kind, 아니면 'swap'.
-            //   disabled 셀(가방 구석 비활성)을 하나라도 침범하면 'blocked'.
+            // D-280: previewInfo 5케이스 분기 — confirmPlacement와 동일 매트릭스.
+            //   - 'place' (①): 빈칸.
+            //   - 'merge': 같은 재료 합성.
+            //   - 'swap' (②): 같은 size 단순 교체.
+            //   - 'pickup_swap' (③): A<B — B를 들어올리고 A 확정.
+            //   - 'displace' (④): B>C + 옆 빈칸 — B 배치 + C 픽업.
+            //   - !ok blocked: ⑤ 자리 부족.
             const previewInfo = (() => {
                 if (!selectedItem || !pendingPos) return null;
                 const { x, y } = pendingPos;
@@ -1907,7 +1923,30 @@
                 if (overlap.length === 1) {
                     const t = overlap[0];
                     if (inventory.canMerge(selectedItem, t)) return { ok: true, kind: 'merge' };
-                    return { ok: true, kind: 'swap' };
+                    const sh = (s) => s.reduce((a, r) => a + r.filter(v => v === 1).length, 0);
+                    const ia = sh(shape), ta = sh(t.shape);
+                    const sameSize = (ia === ta && shape.length === t.shape.length && shape[0].length === t.shape[0].length);
+                    if (sameSize) return { ok: true, kind: 'swap' };
+                    if (ia < ta) {
+                        // A<B fit 검사 — A의 모든 칸이 B 안에 있어야 pickup_swap.
+                        const cells = new Set();
+                        for (let dy = 0; dy < t.shape.length; dy++) {
+                            for (let dx = 0; dx < t.shape[0].length; dx++) {
+                                if (t.shape[dy][dx] === 1) cells.add(`${t.x + dx},${t.y + dy}`);
+                            }
+                        }
+                        let allInside = true;
+                        for (let dy = 0; dy < shape.length && allInside; dy++) {
+                            for (let dx = 0; dx < shape[0].length && allInside; dx++) {
+                                if (shape[dy][dx] !== 1) continue;
+                                if (!cells.has(`${x + dx},${y + dy}`)) allInside = false;
+                            }
+                        }
+                        if (allInside) return { ok: true, kind: 'pickup_swap' };
+                        return { ok: true, kind: 'swap' }; // 같은 면적 아닌데 안에 안 들어가면 swap fallback
+                    }
+                    // ia > ta: B(item)>C(target). overlap=1이면 자리 OK (다른 아이템 없음).
+                    return { ok: true, kind: 'displace' };
                 }
                 return { ok: false, kind: 'blocked' };
             })();
@@ -1993,7 +2032,35 @@
                             alignItems: 'center'
                         }}>
                             <h3 style={{ margin: 0 }}>{title || '가방'}</h3>
-                            <button onClick={handleClose}>닫기</button>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                {/* D-280: 보관함 정리 — 카테고리(무기→방어구→음식→재료) → 등급 내림차순 → 면적 큰 순 재배치.
+                                    가방 모달에도 노출(요한 명시: '가방·보관함 공통' 동작이지만 정리는 보관함이 본업).
+                                    가방·보관함 일관성을 위해 양쪽 모두에 두되, 가방은 칸 수가 적어 효용은 낮음. */}
+                                <button
+                                    onClick={() => {
+                                        const r = inventory.sortStorage();
+                                        if (onFlashMessage && r && r.ok) {
+                                            onFlashMessage('가방을 정리했다.');
+                                        }
+                                        setSelectedItem(null);
+                                        setPendingPos(null);
+                                        bump();
+                                    }}
+                                    style={{
+                                        background: '#2a3a5e',
+                                        color: '#cfe',
+                                        border: '1px solid #4a6a9e',
+                                        padding: '5px 10px',
+                                        borderRadius: '5px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px'
+                                    }}
+                                    title="카테고리(무기·방어구·음식·재료) + 등급 순으로 자동 정렬"
+                                >
+                                    🧹 정리
+                                </button>
+                                <button onClick={handleClose}>닫기</button>
+                            </div>
                         </div>
                         {/* D-174 v4: 슬롯 그리드만 자체 스크롤 영역 — 한 겹 배경(.inventory-slot-panel). */}
                         <div className="inventory-slot-panel">
@@ -2132,7 +2199,12 @@
                                     disabled={!previewInfo || !previewInfo.ok}
                                 >
                                     확정{previewInfo && previewInfo.ok && previewInfo.kind !== 'place'
-                                        ? ` (${previewInfo.kind === 'merge' ? '머지' : '교체'})`
+                                        ? ` (${
+                                            previewInfo.kind === 'merge' ? '머지' :
+                                            previewInfo.kind === 'swap' ? '교체' :
+                                            previewInfo.kind === 'pickup_swap' ? '들고 교체' :
+                                            previewInfo.kind === 'displace' ? '밀어내기' : '교체'
+                                          })`
                                         : ''}
                                 </button>
                                 <button onClick={handleCancel}>취소</button>

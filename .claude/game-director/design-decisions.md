@@ -181,6 +181,32 @@ D-168 텐트만 활성이던 빌딩 그리드를 시트 SSOT 기반 6종 빌딩(
 
 하단 버튼 행 통합 `[기록보기][보관함][탐험 떠나기]` 3개. [📦 보관함] → `setStorageOpen(true)` → `InventoryModal mode="storage"` (D-145·D-149·D-150 floating popover). 가방↔보관함 transfer는 [탐험 떠나기] 흐름의 `packDeparting=true` 상태로 진입.
 
+### D-280. 인벤토리 5+1 케이스 + 보관함 정리 (2026-05-12)
+
+요한 명시 5케이스 매트릭스 + 정리. 가방·보관함 공통.
+
+**5케이스 — `confirmPlacement(x, y)` 분기**:
+1. **① 빈칸 드롭** — `overlapped.length === 0` → `action: 'place'`. UI: `handleCellClick`이 setPendingPos 후 즉시 `confirmPlacement` 호출 (이전엔 [확정] 버튼 클릭 한 번 더 필요).
+2. **② 같은 size 다른 type** — `sameSize` (`shape.length`/`shape[0].length`/area 모두 동일) → `action: 'swap'`. selectedItem이 target으로 전환.
+3. **③ A(소) → B(대)** — `itemArea < targetArea` + A의 모든 점유 칸이 B의 점유 칸 집합 내부면 → `action: 'pickup_swap'`. B를 손에 들고 A를 (x,y) 확정. 이전 모듈은 무조건 swap이라 B의 다른 칸이 빈 grid에 못 들어가 fail.
+4. **④ B(대) → C(소) + 옆 빈칸** — `itemArea > targetArea` + overlap=1(C만) → `action: 'displace'`. B를 (x,y) 배치 + C 픽업. C 외에 다른 아이템이 영역에 있으면 overlap>=2 분기로 빠짐.
+5. **⑤ 자리 부족** — overlap>=2 또는 disabled 침범 등 → `action: 'none', reason: 'blocked'`. UI는 내레이션 바 "자리가 부족해 옮길 수 없다."
+
+**previewInfo도 동일 매트릭스로 확장** — kind: `place|swap|pickup_swap|displace|merge|blocked|oob`. [확정] 버튼 라벨도 "들고 교체" / "밀어내기"로 차등 표시. [확정] 버튼은 유지 (회전 후 재확정·명시적 confirm용).
+
+**applyDropResult 분기 확장** — `swap | pickup_swap | displace` 모두 selectedItem 전환 + pendingPos 갱신. blocked 시 onFlashMessage 호출.
+
+**보관함 정리 — `sortStorage()` 메서드**:
+- 카테고리 순위 (`무기/weapon=0 → shield/armor/방어구=1 → food/음식=2 → 그 외=3`).
+- 카테고리 내 등급 내림차순 → 면적 내림차순 → 이름 안정.
+- 가상 grid에 좌상→우하로 fit (큰 면적 우선 정책 제거 — 카테고리 순서 보존).
+- selectedItem 있으면 사전 cancelSelection.
+- 모달 헤더 우측 [🧹 정리] 버튼 (가방·보관함 공통, 단 가방은 칸 적어 효용 낮음).
+
+**검증 sim**: 단위 5케이스 + 정렬 모두 ok. ① place ok, ② swap ok+selectedItem=b, ③ pickup_swap ok+B픽업, ④ displace ok+C픽업, ⑤ blocked. 정렬: 무기(0,0)→방어구(2,0)→음식(3,0)→재료(4,0) 첫 행 좌→우.
+
+**파일**: `inventory.js:747-958` (`confirmPlacement` 재구현 + `_shapeArea` 헬퍼 + `sortStorage`), `index.html:1736-1759` (`applyDropResult` 확장), `index.html:1846-1860` (`handleCellClick` 자동확정), `index.html:1891-1947` (`previewInfo` 확장), `index.html:2131-2148` ([확정] 라벨), `index.html:1995-2024` (보관함 헤더 [정리] 버튼).
+
 ---
 
 ## 6. 사냥 전투

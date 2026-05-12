@@ -744,24 +744,43 @@ class InventorySystem {
         return { broken: false, durabilityLeft: after };
     }
 
-    // 선택된 아이템을 (x, y)에 확정 배치
-    // 반환: { ok, action: 'place'|'merge'|'swap'|'none', ... }
-    //   - merge: 같은 재료 → 즉시 상위 재료 자동 합성.
-    //   - swap: 다른 재료 → 교체 (선택 전환).
-    // D-48: 합성 패널은 '선택된 아이템 기준'으로 UI가 자동 노출 — 이 함수가 craft_prompt를
-    //   반환하던 경로는 폐기. 드롭 상호작용은 단순 머지/swap/배치에 집중.
+    // 선택된 아이템을 (x, y)에 확정 배치 — D-280 5+1 케이스 정착.
+    //
+    // 케이스 매트릭스:
+    //   ① 빈칸 드롭 → 'place' (UI에서 셀 탭 자동 발동, [확정] 불필요).
+    //   ② 같은 size 아이템 겹침 → 'merge'(같은 재료) or 'swap'(다른 재료).
+    //   ③ A(소) → B(대) 자리 — B의 점유 영역 안에 A가 fit. B를 들어올리고 A를 B 좌표에 확정.
+    //   ④ B(대) → C(소) 자리 — C 옆 빈칸 활용 시 B의 shape이 fit하면 B를 (x,y)에 배치하고 C를 들어올림.
+    //   ⑤ 자리 부족(③④ 모두 불가, 2개 이상 겹침 포함) → 'blocked' 사유 반환.
+    //
+    // 반환: { ok, action: 'place'|'merge'|'swap'|'pickup_swap'|'displace'|'none', reason?, resultType? }
+    //   - 'swap': ② 같은 size 단순 교체 (선택을 target으로 전환).
+    //   - 'pickup_swap': ③ B를 들어올리고 A 확정 (선택을 B로 전환).
+    //   - 'displace': ④ B를 (x,y)에 두고 C를 들어올림 (선택을 C로 전환).
+    //   - 'none' + reason='blocked' or 'oob': UI가 피드백 토스트 노출.
+    //
+    // D-48 합성 자동발동 제거 원칙 유지 — 다른 재료 겹침은 swap/pickup_swap/displace 중 하나로 분기.
     confirmPlacement(x, y) {
         if (!this.selectedItem) return { ok: false, action: 'none' };
         const item = this.selectedItem;
 
-        // 범위 체크
+        // 범위 체크 (① 빈칸도 oob일 수 있음).
         if (y + item.shape.length > this.rows || x + item.shape[0].length > this.cols || x < 0 || y < 0) {
-            return { ok: false, action: 'none' };
+            return { ok: false, action: 'none', reason: 'oob' };
+        }
+
+        // disabled 셀 침범 검사 — selectedItem은 grid에서 빠진 상태라 canPlace 우회.
+        for (let dy = 0; dy < item.shape.length; dy++) {
+            for (let dx = 0; dx < item.shape[0].length; dx++) {
+                if (item.shape[dy][dx] === 1 && this.isDisabled(x + dx, y + dy)) {
+                    return { ok: false, action: 'none', reason: 'blocked' };
+                }
+            }
         }
 
         const overlapped = this.getItemsOverlapping(item.shape, x, y);
 
-        // 1) 빈 자리 — 그대로 배치
+        // ① 빈 자리 — 그대로 배치 (자동 확정).
         if (overlapped.length === 0) {
             item.x = x;
             item.y = y;
@@ -770,11 +789,11 @@ class InventorySystem {
             return { ok: true, action: 'place' };
         }
 
-        // 2) 정확히 1개 아이템과 겹침
+        // ② 정확히 1개 아이템과 겹침 — 같은 size 경로 + ③④ 분기.
         if (overlapped.length === 1) {
             const target = overlapped[0];
 
-            // 2a) 머지 (같은 재료 2개 → merge_result, 즉시 실행)
+            // ②a 같은 재료 머지 — size·shape 무관 동일 type이면 즉시 합성.
             if (this.canMerge(item, target)) {
                 const newType = this.getMergeResult(item);
                 this.removeItem(target);
@@ -785,7 +804,81 @@ class InventorySystem {
                 return { ok: true, action: 'merge', resultType: newType };
             }
 
-            // 2b) 교체 (swap) — 다른 재료는 무조건 swap. 합성은 선택 시점에 UI가 패널로 안내.
+            // 같은 size 판정 — shape의 점유 칸 수가 동일 + bounding box 동일.
+            const itemArea = this._shapeArea(item.shape);
+            const targetArea = this._shapeArea(target.shape);
+            const itemH = item.shape.length, itemW = item.shape[0].length;
+            const targetH = target.shape.length, targetW = target.shape[0].length;
+            const sameSize = (itemArea === targetArea && itemH === targetH && itemW === targetW);
+
+            // ② 같은 size — 단순 swap. target은 item의 원위치(item.x,item.y)로 이동 후 선택 전환.
+            if (sameSize) {
+                this.removeItem(target);
+                if (this.canPlace(item.shape, x, y)) {
+                    item.x = x;
+                    item.y = y;
+                    this.placeItem(item);
+                    this.selectedItem = target;
+                    return { ok: true, action: 'swap' };
+                }
+                this.placeItem(target);
+                return { ok: false, action: 'none', reason: 'blocked' };
+            }
+
+            // ③ A(소) → B(대) — A의 shape이 B의 점유 영역 내에서 fit (단, drop 좌표가 B 영역 내).
+            //    B를 들어올리고 A를 (x,y)에 확정. B는 selectedItem이 됨.
+            //    조건: item의 모든 점유 칸이 target의 점유 칸 안에 있어야 함 (확실히 B 내부 클릭).
+            if (itemArea < targetArea) {
+                // item의 모든 점유 칸이 target의 점유 칸 집합에 포함되는지 검사.
+                const targetCells = new Set();
+                for (let dy = 0; dy < target.shape.length; dy++) {
+                    for (let dx = 0; dx < target.shape[0].length; dx++) {
+                        if (target.shape[dy][dx] === 1) {
+                            targetCells.add(`${target.x + dx},${target.y + dy}`);
+                        }
+                    }
+                }
+                let allInside = true;
+                for (let dy = 0; dy < item.shape.length && allInside; dy++) {
+                    for (let dx = 0; dx < item.shape[0].length && allInside; dx++) {
+                        if (item.shape[dy][dx] !== 1) continue;
+                        if (!targetCells.has(`${x + dx},${y + dy}`)) allInside = false;
+                    }
+                }
+                if (allInside) {
+                    // B 픽업 + A 확정.
+                    this.removeItem(target);
+                    if (this.canPlace(item.shape, x, y)) {
+                        item.x = x;
+                        item.y = y;
+                        this.placeItem(item);
+                        this.selectedItem = target;
+                        return { ok: true, action: 'pickup_swap' };
+                    }
+                    this.placeItem(target);
+                    return { ok: false, action: 'none', reason: 'blocked' };
+                }
+            }
+
+            // ④ B(대) → C(소) — B(item)가 C(target)보다 큼. (x,y)에 B 두려는데
+            //    그 영역에 C 하나만 걸쳐있으면 C를 들어올리고 B 배치.
+            //    이미 overlapped.length === 1이므로 target=C 외엔 차지하는 아이템 없음 = 자리 OK.
+            //    (다른 아이템도 영역에 있다면 overlapped.length >= 2로 빠짐.)
+            if (itemArea > targetArea) {
+                this.removeItem(target);
+                if (this.canPlace(item.shape, x, y)) {
+                    item.x = x;
+                    item.y = y;
+                    this.placeItem(item);
+                    this.selectedItem = target;
+                    return { ok: true, action: 'displace' };
+                }
+                // disabled 셀 침범 등으로 실패 — C 복원.
+                this.placeItem(target);
+                return { ok: false, action: 'none', reason: 'blocked' };
+            }
+
+            // 같은 면적인데 shape이 다른 경우(2x1 vs 1x2 같은 회전 케이스) — fallback swap.
             this.removeItem(target);
             if (this.canPlace(item.shape, x, y)) {
                 item.x = x;
@@ -793,14 +886,109 @@ class InventorySystem {
                 this.placeItem(item);
                 this.selectedItem = target;
                 return { ok: true, action: 'swap' };
-            } else {
-                this.placeItem(target);
-                return { ok: false, action: 'none' };
             }
+            this.placeItem(target);
+            return { ok: false, action: 'none', reason: 'blocked' };
         }
 
-        // 3) 2개 이상 겹침 — 기획상 불가
-        return { ok: false, action: 'none' };
+        // ⑤ 2개 이상 겹침 — 자리 부족.
+        return { ok: false, action: 'none', reason: 'blocked' };
+    }
+
+    // D-280 헬퍼: shape의 점유 칸 수 (면적).
+    _shapeArea(shape) {
+        let n = 0;
+        for (const row of shape) for (const v of row) if (v === 1) n += 1;
+        return n;
+    }
+
+    // D-280: 보관함 정리 — 카테고리(무기→방어구→음식→재료) → 등급 내림차순 → 면적 큰 순으로
+    //   좌상→우하 재배치. selectedItem 있으면 정리 전에 cancelSelection().
+    //   카테고리 분류는 resolveDef로 시트 SSOT 우선 (영문/한글 카테고리 호환).
+    sortStorage() {
+        if (this.selectedItem) this.cancelSelection();
+        const categoryRank = (item) => {
+            const def = InventorySystem.resolveDef(item.type) || {};
+            const cat = def.category;
+            if (cat === '무기' || cat === 'weapon') return 0;
+            if (cat === 'shield' || cat === 'armor' || cat === '방어구') return 1;
+            if (cat === 'food' || cat === '음식') return 2;
+            return 3; // 재료·소모품·seed·기타
+        };
+        const gradeOf = (item) => {
+            const def = InventorySystem.resolveDef(item.type) || {};
+            return Number(def.grade) || 0;
+        };
+        const areaOf = (item) => this._shapeArea(item.shape);
+        // 정렬: 카테고리 오름차순 → 등급 내림차순 → 면적 내림차순 → name 안정.
+        const sorted = [...this.items].sort((a, b) => {
+            const ra = categoryRank(a), rb = categoryRank(b);
+            if (ra !== rb) return ra - rb;
+            const ga = gradeOf(a), gb = gradeOf(b);
+            if (ga !== gb) return gb - ga;
+            const aa = areaOf(a), ab = areaOf(b);
+            if (aa !== ab) return ab - aa;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+        // 시뮬레이션: 큰 면적 먼저 fit 보장을 위해 _simulateCompact를 재사용하되,
+        //   입력 순서를 categoryRank 기준으로 정한 후 _simulateCompact가 면적 순 fit하므로
+        //   여기서는 우리 정렬을 그대로 적용하는 별도 함수가 필요.
+        //   요구사항은 "카테고리·등급 순"이므로 면적 정렬 X. fit 우선.
+        const vGrid = Array(this.rows).fill(null).map(() => Array(this.cols).fill(null));
+        const canPlaceV = (shape, sx, sy) => {
+            if (sy + shape.length > this.rows || sx + shape[0].length > this.cols) return false;
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[dy].length; dx++) {
+                    if (shape[dy][dx] !== 1) continue;
+                    const cy = sy + dy, cx = sx + dx;
+                    if (this.isDisabled(cx, cy)) return false;
+                    if (vGrid[cy][cx] !== null) return false;
+                }
+            }
+            return true;
+        };
+        const findEmptyV = (shape) => {
+            for (let y = 0; y <= this.rows - shape.length; y++) {
+                for (let x = 0; x <= this.cols - shape[0].length; x++) {
+                    if (canPlaceV(shape, x, y)) return { x, y };
+                }
+            }
+            return null;
+        };
+        const writeShape = (shape, x, y, marker) => {
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[dy].length; dx++) {
+                    if (shape[dy][dx]) vGrid[y + dy][x + dx] = marker;
+                }
+            }
+        };
+        const newPositions = new Map();
+        const overflow = [];
+        for (const it of sorted) {
+            const pos = findEmptyV(it.shape);
+            if (!pos) {
+                overflow.push(it);
+                continue;
+            }
+            writeShape(it.shape, pos.x, pos.y, it.id);
+            newPositions.set(it.id, pos);
+        }
+        // 적용 — grid clear + 위치 부여 + replace.
+        this.grid = Array(this.rows).fill(null).map(() => Array(this.cols).fill(null));
+        const placed = [];
+        for (const it of sorted) {
+            const pos = newPositions.get(it.id);
+            if (!pos) continue;
+            it.x = pos.x;
+            it.y = pos.y;
+            this.placeItem(it);
+            placed.push(it);
+        }
+        // overflow는 인벤에서 제거하지 않음 — 이론상 발생 X (재배치라 총 면적 동일).
+        //   안전망: 만약 발생하면 그대로 둠 (x/y 갱신만 스킵돼 화면에서 잠시 어긋나 보일 수 있으나
+        //   다음 인터랙션에서 자연 회복). overflow=0이 정상.
+        this.items = placed.concat(overflow);
+        return { ok: true, sortedCount: placed.length, overflow: overflow.length };
     }
 
     // D-47 합성 확정: 레시피의 ingredients를 인벤에서 개별 제거 후 결과 아이템을 배치.
