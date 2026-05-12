@@ -207,6 +207,23 @@ D-168 텐트만 활성이던 빌딩 그리드를 시트 SSOT 기반 6종 빌딩(
 
 **파일**: `inventory.js:747-958` (`confirmPlacement` 재구현 + `_shapeArea` 헬퍼 + `sortStorage`), `index.html:1736-1759` (`applyDropResult` 확장), `index.html:1846-1860` (`handleCellClick` 자동확정), `index.html:1891-1947` (`previewInfo` 확장), `index.html:2131-2148` ([확정] 라벨), `index.html:1995-2024` (보관함 헤더 [정리] 버튼).
 
+### D-281. 들고 있는 아이템 free-floating — 마우스/터치 추적 (2026-05-12)
+
+요한 지시: "들고 있는 아이템이 마우스 커서를 따라다니게 + 모바일은 마지막 터치 지점쯤의 공중에 떠있게". 기존 floating 아이템은 `pendingPos` 셀에 자석 정렬돼서 마우스를 따라가지 않음 — 셀 단위로 점프.
+
+**구현**: `InventoryModal`에 `floatingPointer` state(viewport 좌표). selectedItem 있을 때만 document에 `pointermove`/`pointerdown` listener 등록 → 좌표 갱신. cleanup은 useEffect deps=[selectedItem]로 자동.
+
+- PC: `pointermove`가 마우스 이동마다 발화 → 실시간 추적.
+- 모바일: 단일 탭은 `pointerdown`만 발화(드래그 없으면 `pointermove` 미발화) → 마지막 터치 지점에 정착, 다음 탭마다 새 위치로 점프.
+
+**floating div**: `position:fixed` + `transform:translate(-50%,-50%)`로 viewport 좌표에 중심 정렬. `pointerEvents:none`으로 아래 셀 클릭 통과. `zIndex:9999` 모든 모달 위.
+
+**원본 자리**: selectedItem은 그리드 render에서 이미 filter됨 (line 2119). 즉 빈 칸으로 보임 — 별도 처리 불필요.
+
+**검증**: Claude Preview MCP `pointermove(300,600)` dispatch → floating left:300px / top:600px / transform 중앙 정렬 일치. 스크린샷에 목재 빨간 박스가 정확히 (300,600) 근처 떠있음 확인.
+
+**파일**: `index.html:1655-1670` (`floatingPointer` state + listener), `index.html:2161-2178` (floating div free-floating).
+
 ---
 
 ## 6. 사냥 전투

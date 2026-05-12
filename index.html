@@ -1652,6 +1652,22 @@
             const [pendingPos, setPendingPos] = React.useState(null);
             // 정보창으로 띄울 아이템 (null이면 정보창 닫힘)
             const [infoItem, setInfoItem] = React.useState(null);
+            // D-281: 들고 있는 아이템 free-floating 좌표 (viewport 기준).
+            //   PC = pointermove로 마우스 따라가기, 모바일 = 마지막 pointerdown 지점.
+            const [floatingPointer, setFloatingPointer] = React.useState(null);
+            React.useEffect(() => {
+                if (!selectedItem) {
+                    setFloatingPointer(null);
+                    return;
+                }
+                const update = (e) => setFloatingPointer({ x: e.clientX, y: e.clientY });
+                document.addEventListener('pointermove', update);
+                document.addEventListener('pointerdown', update);
+                return () => {
+                    document.removeEventListener('pointermove', update);
+                    document.removeEventListener('pointerdown', update);
+                };
+            }, [selectedItem]);
 
             // D-104 (2026-04-27 요한 지시): 합성 패널 항상 렌더 + 카테고리 탭.
             //   비선택 상태에서도 모든 레시피를 카테고리별로 필터링해 노출.
@@ -2157,17 +2173,21 @@
                                 );
                             })}
 
-                            {/* 공중에 뜬 선택 아이템 (pendingPos를 따라감) */}
-                            {selectedItem && pendingPos && (
+                            {/* D-281: 공중에 뜬 선택 아이템 — PC는 마우스 추적, 모바일은 마지막 터치 지점.
+                               pointerEvents:none으로 아래 셀 클릭 통과. */}
+                            {selectedItem && floatingPointer && (
                                 <div
                                     className="inventory-item floating selected"
                                     style={{
-                                        left: `${pendingPos.x * CELL + PAD}px`,
-                                        top: `${pendingPos.y * CELL + PAD}px`,
+                                        position: 'fixed',
+                                        left: `${floatingPointer.x}px`,
+                                        top: `${floatingPointer.y}px`,
                                         width: `${selectedItem.shape[0].length * CELL - PAD}px`,
                                         height: `${selectedItem.shape.length * CELL - PAD}px`,
+                                        transform: 'translate(-50%, -50%)',
+                                        pointerEvents: 'none',
+                                        zIndex: 9999,
                                     }}
-                                    onClick={(e) => { e.stopPropagation(); handleItemClick(selectedItem); }}
                                 >
                                     {selectedItem.name}
                                 </div>

@@ -9,6 +9,16 @@
 
 ## 마지막 검증 (최신)
 
+**2026-05-12 (D-281, 들고 있는 아이템 free-floating)**
+
+PC 마우스 추적 + 모바일 마지막 터치 지점 정착. InventoryModal에 `floatingPointer` state + document `pointermove`/`pointerdown` listener. floating div `position:fixed` + `transform:translate(-50%,-50%)` + `pointerEvents:none` + `zIndex:9999`. Claude Preview MCP sim(pointermove 300,600) → floating 좌표 정확 일치 + 스크린샷 확인.
+
+**파일**: `index.html:1655-1670` (state+listener), `index.html:2161-2178` (floating div).
+
+요한 라이브 QA는 `pending.md` D-281 항목.
+
+---
+
 **2026-05-12 (D-280, 인벤토리 5+1 케이스 + 보관함 정리)**
 
 가방·보관함 공통 인터랙션 5케이스(요한 명시) + 정렬 기능.
